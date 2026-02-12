@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Teachers;
 
 use App\Http\Controllers\Base\BaseController;
+use App\Models\School\TeacherProfile;
 
 class BaseTeacherController extends BaseController
 {
-    protected function teacherUser()
+    protected function teacherProfile(): TeacherProfile
     {
-        return auth('sanctum')->user();
+        return $this->user()->teacherProfiles()->firstOrFail();
     }
 }
