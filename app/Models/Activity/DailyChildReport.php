@@ -18,7 +18,7 @@ class DailyChildReport extends BaseModel
         'appetite',
         'notes',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [

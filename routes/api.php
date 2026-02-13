@@ -9,34 +9,74 @@ use Illuminate\Support\Facades\Route;
 |
 | Tüm API route'ları burada tanımlanır.
 | Prefix: /api (bootstrap/app.php'de tanımlı)
-| Middleware: auth:sanctum
 |
+| Route Grupları:
+| 1. Herkese Açık — Auth gerektirmez
+| 2. Auth Gerekli — Token gerekir ama abonelik gerekmez
+| 3. Abonelik Gerekli — Aktif paket gerekir
+| 4. Admin Only — Super Admin gerekir
 */
 
-// ─── Herkese Açık ──────────────────────────────────────────
-Route::get('/health', fn () => response()->json(['status' => 'ok']));
+// ═══════════════════════════════════════════════════════════
+// 1️⃣ HERKESE AÇIK
+// ═══════════════════════════════════════════════════════════
+Route::get('/health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()]));
 
-// ─── Auth Gerekli ──────────────────────────────────────────
+// Auth endpoint'leri
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [\App\Http\Controllers\Auth\AuthController::class, 'register']);
+    Route::post('/login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
+});
+
+// Aktif paketleri listele (kayıt öncesi gösterilir)
+Route::get('/packages', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'availablePackages']);
+
+// ═══════════════════════════════════════════════════════════
+// 2️⃣ AUTH GEREKLİ (Abonelik gerektirmez)
+// ═══════════════════════════════════════════════════════════
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Aktif kullanıcı bilgisi
-    Route::get('/user', fn () => request()->user());
+    // Auth işlemleri
+    Route::post('/auth/logout', [\App\Http\Controllers\Auth\AuthController::class, 'logout']);
+    Route::get('/auth/me', [\App\Http\Controllers\Auth\AuthController::class, 'me']);
 
-    // ─── Tenant İşlemleri ──────────────────────────────────
+    // Paket seçimi ve abonelik yönetimi
+    Route::prefix('tenant')->group(function () {
+        Route::post('/subscribe', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'subscribe']);
+        Route::get('/subscription', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'currentSubscription']);
+        Route::get('/subscription/history', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'subscriptionHistory']);
+        Route::get('/subscription/usage', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'usageReport']);
+        Route::post('/subscription/cancel', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'cancelSubscription']);
+    });
+
+    // Tenant CRUD (abonelik gerekmez, tenant yönetimi için)
     Route::apiResource('tenants', \App\Http\Controllers\Tenant\TenantController::class)
-        ->except(['store']); // Tenant store Super Admin panel'den yapılır
+        ->except(['store']);
 
-    // ─── Abonelik İşlemleri ────────────────────────────────
-    Route::apiResource('subscriptions', \App\Http\Controllers\Tenant\SubscriptionController::class);
+    // ═══════════════════════════════════════════════════════
+    // 3️⃣ ABONELİK GEREKLİ (Aktif paket zorunlu)
+    // ═══════════════════════════════════════════════════════
+    Route::middleware('subscription.active')->group(function () {
 
-    // ─── Okul İşlemleri ────────────────────────────────────
-    Route::apiResource('schools', \App\Http\Controllers\Schools\SchoolController::class);
+        // Aile abonelikleri (B2C)
+        Route::apiResource('subscriptions', \App\Http\Controllers\Tenant\SubscriptionController::class);
 
-    // ─── Okul Altındaki Kaynaklar ──────────────────────────
-    Route::prefix('schools/{school_id}')->group(function () {
-        Route::apiResource('classes', \App\Http\Controllers\Schools\ClassController::class);
-        Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
-        Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
-        Route::apiResource('families', \App\Http\Controllers\Schools\FamilyProfileController::class);
+        // Okul işlemleri
+        Route::apiResource('schools', \App\Http\Controllers\Schools\SchoolController::class);
+
+        // Okul altındaki kaynaklar (nested routes)
+        Route::prefix('schools/{school_id}')->group(function () {
+            Route::apiResource('classes', \App\Http\Controllers\Schools\ClassController::class);
+            Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
+            Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
+            Route::apiResource('families', \App\Http\Controllers\Schools\FamilyProfileController::class);
+        });
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // 4️⃣ ADMIN ONLY (Super Admin)
+    // ═══════════════════════════════════════════════════════
+    Route::prefix('admin')->group(function () {
+        Route::apiResource('packages', \App\Http\Controllers\Admin\PackageController::class);
     });
 });

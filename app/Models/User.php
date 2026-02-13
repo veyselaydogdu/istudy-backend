@@ -3,15 +3,16 @@
 namespace App\Models;
 
 // Illuminate\Foundation\Auth\User as Authenticatable
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Models\Base\Role;
+use App\Models\Child\FamilyProfile;
+use App\Models\School\TeacherProfile;
+use App\Models\Tenant\Tenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Tenant\Tenant;
-use App\Models\School\TeacherProfile;
-use App\Models\Child\FamilyProfile;
-use App\Models\Base\Role; 
+
 // Role modelini ayrıca oluşturacağız veya User içinde tanımlı relation
 
 class User extends Authenticatable
@@ -87,12 +88,12 @@ class User extends Authenticatable
         // User might own tenants or belong to them. Assuming 'owner_user_id' in tenants table for ownership.
         return $this->hasMany(Tenant::class, 'owner_user_id');
     }
-    
-    // If users table had tenant_id, belongsTo would be appropriate. 
+
+    // If users table had tenant_id, belongsTo would be appropriate.
     // The prompt says "Kullanıcı birden fazla tenant’a bağlanabilir." implies pivot or ownership.
     // However, "tenant_id" column is mentioned in index rules but not explicitly in Users table fields list in Request.
     // Let's stick to explicit relations requested: tenants(), teacherProfiles(), familyProfiles(), roles().
-    
+
     public function teacherProfiles()
     {
         return $this->hasMany(TeacherProfile::class, 'user_id');
@@ -102,9 +103,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(FamilyProfile::class, 'owner_user_id');
     }
-    
+
     public function roles()
     {
-         return $this->belongsToMany(Role::class, 'role_user', 'user_id', 'role_id')->withTimestamps();
+        return $this->belongsToMany(Role::class, 'role_user', 'user_id', 'role_id')->withTimestamps();
     }
 }

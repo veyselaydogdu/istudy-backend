@@ -2,10 +2,10 @@
 
 namespace App\Models\Academic;
 
-use App\Models\Base\BaseModel;
-use App\Models\School\School;
 use App\Models\Activity\Activity;
 use App\Models\Activity\Event;
+use App\Models\Base\BaseModel;
+use App\Models\School\School;
 
 class AcademicYear extends BaseModel
 {
@@ -18,7 +18,7 @@ class AcademicYear extends BaseModel
         'end_date',
         'is_active',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [

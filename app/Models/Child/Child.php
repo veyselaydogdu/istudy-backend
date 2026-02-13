@@ -2,18 +2,17 @@
 
 namespace App\Models\Child;
 
-use App\Models\Base\BaseModel;
-use App\Models\User;
-use App\Models\School\School;
 use App\Models\Academic\AcademicYear;
 use App\Models\Academic\SchoolClass;
-use App\Models\Health\Allergen;
-use App\Models\Health\Medication;
-use App\Models\Health\MedicalCondition;
-use App\Models\Activity\DailyChildReport;
-use App\Models\Activity\Attendance;
 use App\Models\Activity\Activity;
+use App\Models\Activity\Attendance;
+use App\Models\Activity\DailyChildReport;
 use App\Models\Activity\Event;
+use App\Models\Base\BaseModel;
+use App\Models\Health\Allergen;
+use App\Models\Health\MedicalCondition;
+use App\Models\Health\Medication;
+use App\Models\School\School;
 
 class Child extends BaseModel
 {
@@ -29,13 +28,13 @@ class Child extends BaseModel
         'gender',
         'profile_photo',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
     ];
-    
+
     // Helper to get full name
     public function getFullNameAttribute()
     {

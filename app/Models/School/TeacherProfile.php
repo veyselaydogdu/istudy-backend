@@ -2,9 +2,9 @@
 
 namespace App\Models\School;
 
+use App\Models\Academic\SchoolClass;
 use App\Models\Base\BaseModel;
 use App\Models\User;
-use App\Models\Academic\SchoolClass;
 
 class TeacherProfile extends BaseModel
 {
@@ -19,7 +19,7 @@ class TeacherProfile extends BaseModel
         'languages',
         'certifications',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [
@@ -47,6 +47,6 @@ class TeacherProfile extends BaseModel
     public function classes()
     {
         return $this->belongsToMany(SchoolClass::class, 'class_teacher_assignments', 'teacher_profile_id', 'class_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 }

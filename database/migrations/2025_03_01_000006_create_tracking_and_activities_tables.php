@@ -57,8 +57,8 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();
-            
-             $table->index(['child_id', 'attendance_date']);
+
+            $table->index(['child_id', 'attendance_date']);
         });
 
         Schema::create('attendances_histories', function (Blueprint $table) {
@@ -145,7 +145,7 @@ return new class extends Migration
         });
 
         // --- PIVOTS ---
-        
+
         // CHILD_ACTIVITY_ENROLLMENTS
         Schema::create('child_activity_enrollments', function (Blueprint $table) {
             $table->id();

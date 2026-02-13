@@ -2,12 +2,11 @@
 
 namespace App\Models\School;
 
-use App\Models\Base\BaseModel;
-use App\Models\Tenant\Tenant;
 use App\Models\Academic\AcademicYear;
 use App\Models\Academic\SchoolClass;
-use App\Models\School\TeacherProfile;
+use App\Models\Base\BaseModel;
 use App\Models\Child\Child;
+use App\Models\Tenant\Tenant;
 
 class School extends BaseModel
 {
@@ -24,7 +23,7 @@ class School extends BaseModel
         'timezone',
         'is_active',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [

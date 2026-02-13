@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-12
+> **Son Güncelleme:** 2026-02-12 (B2B Paket Sistemi + Auth eklendi)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -75,134 +75,82 @@ istudy-backend/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/
+│   │   │   ├── Auth/
+│   │   │   │   └── AuthController.php           ← Register, Login, Logout, Me
+│   │   │   ├── Admin/
+│   │   │   │   └── PackageController.php         ← Paket CRUD (Super Admin)
 │   │   │   ├── Base/
-│   │   │   │   └── BaseController.php          ← Tüm controller'ların atası
+│   │   │   │   └── BaseController.php            ← Tüm controller'ların atası
 │   │   │   ├── Schools/
-│   │   │   │   ├── BaseSchoolController.php     ← Okul controller'larının atası
+│   │   │   │   ├── BaseSchoolController.php
 │   │   │   │   ├── SchoolController.php
 │   │   │   │   ├── ClassController.php
 │   │   │   │   ├── ChildController.php
 │   │   │   │   ├── ActivityController.php
 │   │   │   │   └── FamilyProfileController.php
 │   │   │   ├── Tenant/
-│   │   │   │   ├── BaseTenantController.php     ← Tenant controller'larının atası
+│   │   │   │   ├── BaseTenantController.php
 │   │   │   │   ├── TenantController.php
-│   │   │   │   └── SubscriptionController.php
+│   │   │   │   ├── SubscriptionController.php     ← Aile abonelikleri (B2C)
+│   │   │   │   └── PackageSelectionController.php ← Paket satın alma (B2B)
 │   │   │   ├── Parents/
-│   │   │   │   └── BaseParentController.php     ← Veli controller'larının atası
+│   │   │   │   └── BaseParentController.php
 │   │   │   └── Teachers/
-│   │   │       └── BaseTeacherController.php    ← Öğretmen controller'larının atası
+│   │   │       └── BaseTeacherController.php
+│   │   ├── Middleware/
+│   │   │   └── EnsureActiveSubscription.php      ← Abonelik kontrolü middleware
 │   │   ├── Requests/
+│   │   │   ├── Auth/
+│   │   │   │   ├── RegisterRequest.php
+│   │   │   │   └── LoginRequest.php
+│   │   │   ├── Package/
+│   │   │   │   ├── StorePackageRequest.php
+│   │   │   │   └── UpdatePackageRequest.php
 │   │   │   ├── Activity/
 │   │   │   │   ├── StoreActivityRequest.php
 │   │   │   │   └── UpdateActivityRequest.php
-│   │   │   ├── Child/
-│   │   │   │   ├── StoreChildRequest.php
-│   │   │   │   └── UpdateChildRequest.php
-│   │   │   ├── FamilyProfile/
-│   │   │   │   ├── StoreFamilyProfileRequest.php
-│   │   │   │   └── UpdateFamilyProfileRequest.php
-│   │   │   ├── School/
-│   │   │   │   ├── StoreSchoolRequest.php
-│   │   │   │   └── UpdateSchoolRequest.php
-│   │   │   ├── SchoolClass/
-│   │   │   │   ├── StoreSchoolClassRequest.php
-│   │   │   │   └── UpdateSchoolClassRequest.php
-│   │   │   ├── Subscription/
-│   │   │   │   ├── StoreSubscriptionRequest.php
-│   │   │   │   └── UpdateSubscriptionRequest.php
-│   │   │   └── Tenant/
-│   │   │       ├── StoreTenantRequest.php
-│   │   │       └── UpdateTenantRequest.php
+│   │   │   ├── Child/  ... School/  ... SchoolClass/  ... Subscription/  ... Tenant/
 │   │   └── Resources/
-│   │       ├── AcademicYearResource.php
-│   │       ├── ActivityResource.php
-│   │       ├── ChildResource.php
-│   │       ├── FamilyProfileResource.php
-│   │       ├── SchoolClassResource.php
-│   │       ├── SchoolResource.php
-│   │       ├── SubscriptionResource.php
-│   │       ├── TeacherProfileResource.php
-│   │       └── TenantResource.php
+│   │       ├── PackageResource.php               ← Paket (limit label'ları + yıllık indirim %)
+│   │       ├── TenantSubscriptionResource.php    ← Abonelik (durum etiketi)
+│   │       ├── TenantPaymentResource.php         ← Ödeme kaydı
+│   │       ├── UserResource.php                  ← Kullanıcı bilgisi
+│   │       ├── AcademicYearResource.php ... SchoolResource.php ... TenantResource.php
 │   ├── Models/
-│   │   ├── Base/
-│   │   │   ├── BaseModel.php                    ← Tüm model'lerin atası
-│   │   │   ├── Role.php
-│   │   │   └── Permission.php
-│   │   ├── Tenant/
-│   │   │   └── Tenant.php
-│   │   ├── School/
-│   │   │   ├── School.php
-│   │   │   └── TeacherProfile.php
-│   │   ├── Academic/
-│   │   │   ├── AcademicYear.php
-│   │   │   └── SchoolClass.php
-│   │   ├── Child/
-│   │   │   ├── Child.php
-│   │   │   ├── FamilyProfile.php
-│   │   │   └── FamilyMember.php
-│   │   ├── Activity/
-│   │   │   ├── Activity.php
-│   │   │   ├── Attendance.php
-│   │   │   ├── DailyChildReport.php
-│   │   │   └── Event.php
-│   │   ├── Health/
-│   │   │   ├── Allergen.php
-│   │   │   ├── FoodIngredient.php
-│   │   │   ├── Meal.php
-│   │   │   ├── MedicalCondition.php
-│   │   │   └── Medication.php
-│   │   ├── Billing/
-│   │   │   ├── FamilySubscription.php
-│   │   │   ├── Payment.php
-│   │   │   ├── RevenueShare.php
-│   │   │   └── SubscriptionPlan.php
+│   │   ├── Base/     (BaseModel, Role, Permission)
+│   │   ├── Tenant/   (Tenant)                    ← + activeSubscription(), canCreateSchool(), canEnrollStudent()
+│   │   ├── Package/                               ← YENİ: B2B Paket Sistemi
+│   │   │   ├── Package.php                        ← Limitler + fiyat + features
+│   │   │   ├── TenantSubscription.php             ← Abonelik durumu + dönem
+│   │   │   └── TenantPayment.php                  ← Ödeme kaydı
+│   │   ├── School/  ... Academic/  ... Child/  ... Activity/  ... Health/  ... Billing/
 │   │   └── User.php
-│   ├── Observers/
-│   │   └── HistoryObserver.php                  ← Tüm modellerde geçmiş kaydı tutar
-│   ├── Policies/
-│   │   ├── BasePolicy.php                       ← Super Admin bypass
-│   │   ├── SchoolPolicy.php
-│   │   ├── SchoolClassPolicy.php
-│   │   ├── ChildPolicy.php
-│   │   ├── ActivityPolicy.php
-│   │   ├── FamilyProfilePolicy.php
-│   │   ├── TenantPolicy.php
-│   │   └── FamilySubscriptionPolicy.php
-│   ├── Providers/
-│   │   └── AppServiceProvider.php               ← Policy kayıtları burada
+│   ├── Observers/    (HistoryObserver)
+│   ├── Policies/     (Base + School + SchoolClass + Child + Activity + FamilyProfile + Tenant + FamilySubscription + Package)
+│   ├── Providers/    (AppServiceProvider ← Policy + Package policy kayıtları)
 │   ├── Services/
-│   │   ├── BaseService.php                      ← Ortak CRUD mantığı
-│   │   ├── SchoolService.php
-│   │   ├── ClassService.php
-│   │   ├── ChildService.php
-│   │   ├── ActivityService.php
-│   │   ├── FamilyProfileService.php
-│   │   ├── TenantService.php
-│   │   └── SubscriptionService.php
-│   └── Traits/                                  ← (Genişlemeye açık)
+│   │   ├── AuthService.php                       ← Register + Login + Logout
+│   │   ├── PackageService.php                    ← Paket CRUD + aktif paket listesi
+│   │   ├── TenantSubscriptionService.php         ← Abonelik oluşturma + iptal + usage raporu
+│   │   ├── BaseService.php  ... SchoolService  ... ClassService  ... ChildService  ... etc.
+│   └── Traits/
+│       └── ChecksPackageLimits.php               ← Okul/Sınıf/Öğrenci limit kontrolü
 ├── database/
-│   └── migrations/
-│       ├── 000001_create_auth_tables.php         ← Users, Roles, Permissions
-│       ├── 000002_create_institutions_tables.php ← Tenants, Schools, AcademicYears
-│       ├── 000003_create_people_tables.php       ← TeacherProfiles, FamilyProfiles, Children
-│       ├── 000004_create_academic_structures.php ← Classes, ChildClassAssignments
-│       ├── 000005_create_health_and_meals.php    ← Allergens, Meals, Medications, Pivots
-│       ├── 000006_create_tracking_activities.php ← DailyReports, Attendances, Activities, Events, Materials
-│       ├── 000007_create_finance_tables.php      ← SubscriptionPlans, Payments, RevenueShares
-│       └── 000008_create_missing_tables.php      ← users.tenant_id + class_teacher_assignments
+│   ├── migrations/
+│   │   ├── 000001 → 000008 (mevcut migration'lar)
+│   │   └── 000009_create_package_system_tables.php ← packages + tenant_subscriptions + tenant_payments + histories
+│   └── seeders/
+│       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
+│       ├── RoleSeeder.php                        ← 5 temel rol
+│       └── PackageSeeder.php                     ← 3 varsayılan paket
 ├── routes/
-│   ├── api.php                                  ← Tüm API endpoint'leri (auth:sanctum)
-│   ├── web.php                                  ← Sadece welcome sayfası
-│   └── console.php                              ← Artisan komutları
-├── config/
-│   ├── app.php
-│   ├── auth.php                                 ← Sanctum + Eloquent provider
-│   └── ... (standart Laravel config)
+│   ├── api.php                                   ← 4 katmanlı erişim: Public → Auth → Subscription → Admin
+│   ├── web.php
+│   └── console.php
 ├── bootstrap/
-│   ├── app.php                                  ← Middleware, routing (web + api + commands)
-│   └── providers.php                            ← Service Provider registrations
-└── CLAUDE.md                                    ← Laravel Boost AI kuralları
+│   ├── app.php                                   ← + subscription.active middleware alias
+│   └── providers.php
+└── CLAUDE.md
 ```
 
 ---
@@ -346,11 +294,151 @@ FamilySubscription ┬── belongsTo ──── FamilyProfile
 Payment ──── belongsTo ──── FamilySubscription
 RevenueShare ┬── belongsTo ──── Payment
              └── belongsTo ──── School
+
+── B2B Paket Sistemi ──────────────────────────────────
+Package ────── hasMany ──── TenantSubscription
+
+TenantSubscription ┬── belongsTo ──── Tenant
+                   ├── belongsTo ──── Package
+                   └── hasMany ──── TenantPayment
+
+TenantPayment ──── belongsTo ──── TenantSubscription
+
+Tenant ────────┬── hasOne(active) ──── TenantSubscription
+              └── hasMany ──────── TenantSubscription
 ```
 
 ---
 
-## ⚙️ 5. Temel Mimari Bileşenler
+## 💰 5. B2B Paket Sistemi (Platform Abonelikleri)
+
+### 5.1 İş Akışı
+
+```
+┌─── KAYIT ──────────────────────────────────────────────┐
+│ 1. POST /api/auth/register                             │
+│    → User + Tenant oluşturulur                         │
+│    → tenant_owner rolü atanır                          │
+│    → Sanctum token döner                               │
+└──────────────────────────────────────────────┬──────────┘
+                                               │
+┌─── PAKET SEÇİMİ ────────────────────────────┼──────────┐
+│ 2. GET /api/packages                         │          │
+│    → Aktif paketler listelenir               │          │
+│ 3. POST /api/tenant/subscribe                │          │
+│    → Paket seçilir, abonelik + ödeme         │          │
+│      kaydı oluşturulur                       │          │
+└──────────────────────────────────────────────┬──────────┘
+                                               │
+┌─── SİSTEM ERİŞİMİ ──────────────────────────┼──────────┐
+│ 4. Aktif abonelik varsa → Okul, Sınıf,       │          │
+│    Öğrenci oluşturabilir (limit dahilinde)   │          │
+│    Middleware: subscription.active            │          │
+└────────────────────────────────────────────────────────┘
+```
+
+### 5.2 Paket Yapısı
+
+| Paket | Okul Limiti | Sınıf/Okul | Öğrenci | Aylık ₺ | Yıllık ₺ |
+|-------|------------|------------|---------|---------|----------|
+| **Başlangıç** | 1 | 3 | 30 | 299 | 2.990 |
+| **Profesyonel** | 3 | 10 | 200 | 799 | 7.990 |
+| **Kurumsal** | ∞ | ∞ | ∞ | 1.999 | 19.990 |
+
+> `0` = sınırsız. Limitler `packages` tablosunda `max_schools`, `max_classes_per_school`, `max_students` sütunlarında saklanır.
+
+### 5.3 Limit Kontrolü
+
+Tenant modelinde 3 helper metod:
+- `canCreateSchool()` → Okul oluşturulabilir mi?
+- `canCreateClass(schoolId)` → Bu okulda sınıf oluşturulabilir mi?
+- `canEnrollStudent()` → Tenant genelinde öğrenci kaydedilebilir mi?
+
+`ChecksPackageLimits` trait'i Controller/Service'lerde kullanılır:
+```php
+use App\Traits\ChecksPackageLimits;
+
+class SchoolController {
+    use ChecksPackageLimits;
+    
+    public function store(...) {
+        $this->checkSchoolLimit($tenant); // Limitaşıldıysa exception fırlatır
+    }
+}
+```
+
+### 5.4 Veritabanı Tabloları
+
+| Tablo | Model | Açıklama |
+|-------|-------|----------|
+| `packages` | `App\Models\Package\Package` | Platform paketleri (limitler + fiyat + features) |
+| `tenant_subscriptions` | `App\Models\Package\TenantSubscription` | Tenant abonelikleri (dönem + durum) |
+| `tenant_payments` | `App\Models\Package\TenantPayment` | Ödeme kayıtları |
+| `packages_histories` | — | Paket geçmişi |
+| `tenant_subscriptions_histories` | — | Abonelik geçmişi |
+| `tenant_payments_histories` | — | Ödeme geçmişi |
+
+---
+
+## 🔐 6. Auth Sistemi
+
+### 6.1 Endpoint'ler
+
+| Method | Endpoint | Açıklama | Auth |
+|--------|----------|----------|------|
+| POST | `/api/auth/register` | Kayıt (User + Tenant) | ❌ |
+| POST | `/api/auth/login` | Giriş (Token döner) | ❌ |
+| POST | `/api/auth/logout` | Çıkış (Token silinir) | ✅ |
+| GET | `/api/auth/me` | Profil bilgileri | ✅ |
+
+### 6.2 Kayıt Akışı Detay
+
+1. `RegisterRequest` ile validation
+2. `AuthService::register()` ile:
+   - User oluşturulur (password otomatik hash)
+   - `tenant_owner` rolü atanır
+   - Tenant oluşturulur (`institution_name` → `tenants.name`)
+   - User'a `tenant_id` atanır
+   - Sanctum token oluşturulur
+
+---
+
+## 🛣️ 7. API Route Yapısı (4 Katmanlı)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ 1️⃣ HERKESE AÇIK                                         │
+│   GET  /api/health                                      │
+│   POST /api/auth/register                               │
+│   POST /api/auth/login                                  │
+│   GET  /api/packages                                    │
+├──────────────────────────────────────────────────────────┤
+│ 2️⃣ AUTH GEREKLİ (token, abonelik gerekmez)              │
+│   POST /api/auth/logout                                 │
+│   GET  /api/auth/me                                     │
+│   POST /api/tenant/subscribe                            │
+│   GET  /api/tenant/subscription                         │
+│   GET  /api/tenant/subscription/history                 │
+│   GET  /api/tenant/subscription/usage                   │
+│   POST /api/tenant/subscription/cancel                  │
+│   apiResource: tenants (except store)                   │
+├──────────────────────────────────────────────────────────┤
+│ 3️⃣ ABONELİK GEREKLİ (middleware: subscription.active)   │
+│   apiResource: schools                                  │
+│   apiResource: schools/{id}/classes                     │
+│   apiResource: schools/{id}/children                    │
+│   apiResource: schools/{id}/activities                  │
+│   apiResource: schools/{id}/families                    │
+│   apiResource: subscriptions (B2C)                      │
+├──────────────────────────────────────────────────────────┤
+│ 4️⃣ ADMIN ONLY (Super Admin)                              │
+│   apiResource: admin/packages                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⚙️ 8. Temel Mimari Bileşenler
 
 ### 5.1 BaseModel (`app/Models/Base/BaseModel.php`)
 
@@ -552,51 +640,55 @@ Her ana tabloda aşağıdaki standart alanlar bulunur:
 
 ---
 
-## 📌 8. Önemli Notlar ve Dikkat Edilecekler
+## 📌 10. Önemli Notlar ve Dikkat Edilecekler
 
-### 8.1 Bilinen Mimari Kararlar
+### 10.1 Bilinen Mimari Kararlar
 
 1. **`SchoolClass` isimlendirmesi:** PHP'de `Class` reserved keyword olduğu için model `SchoolClass` olarak adlandırılmıştır. Veritabanı tablosu `classes`'tır.
 
 2. **`User` modeli `BaseModel`'den türemez:** Authenticatable sınıfından türediği için BaseModel'deki tenant scope, history observer gibi özellikler User'a otomatik uygulanmaz.
 
-3. **Tenant ilişkisi `User` üzerinde:** `User->tenants()` ilişkisi `hasMany(Tenant::class, 'owner_user_id')` olarak tanımlı. Bu yalnızca tenant **sahipliği** demektir, kullanıcının hangi tenant altında olduğu `tenant_id` ile belirlenir.
+3. **İki ayrı abonelik sistemi:**
+   - **B2B (Platform ↔ Tenant):** `packages` + `tenant_subscriptions` + `tenant_payments` — Admin'in kurumsal müşterilere sattığı paketler.
+   - **B2C (Okul ↔ Aile):** `subscription_plans` + `family_subscriptions` + `payments` — Okulların ailelere sunduğu abonelikler.
 
-4. **İlk User seed problemi:** `created_by` alanı `users` tablosunda nullable çünkü ilk kullanıcı oluşturulurken henüz auth yoktur.
+4. **Seeder ve auth bağımlılığı:** `DatabaseSeeder` önce User oluşturur, sonra `auth()->login()` ile context simüle eder ki `BaseModel`'in `created_by` otomatik ataması çalışsın.
 
-5. **Policy yapısı:** `BasePolicy` → `before()` hook ile Super Admin tüm işlemlere izinlidir. Alt policy'ler basit tutulmuştur; tenant/school scope izolasyonu zaten BaseModel ve BaseSchoolController'da sağlanmaktadır.
+5. **EnsureActiveSubscription middleware:** Route seviyesinde çalışır (`subscription.active` alias). Super Admin bypass'ı yapar. Yalnızca okul/sınıf/öğrenci gibi kaynakları korur; paket seçimi ve auth endpoint'leri korumasızdır.
 
-6. **Service yapısı:** `BaseService` ortak CRUD sağlar. Her service sadece `model()` ve opsiyonel `applyFilters()` override eder. Karmaşık iş mantığı gerektiğinde ilgili service'e eklenir.
+6. **ChecksPackageLimits trait:** Controller veya Service'lerde `use` edilir. Limit aşıldığında açıklayıcı Türkçe hata mesajı ile exception fırlatır.
 
-### 8.2 Tamamlanan ve Kalan Eksiklikler
+### 10.2 Tamamlanan ve Kalan Eksiklikler
 
 | Durum | Açıklama |
 |-------|----------|
-| ✅ **API Routes** | `routes/api.php` oluşturuldu, `bootstrap/app.php`'ye kaydedildi. |
-| ✅ **Service katmanı** | `BaseService` + 7 somut service oluşturuldu. |
-| ✅ **API Resources** | 9 Resource sınıfı oluşturuldu. |
-| ✅ **Policies** | `BasePolicy` + 7 policy oluşturuldu, `AppServiceProvider`'a kaydedildi. |
-| ✅ **FormRequests** | Tüm controller'ların ihtiyaç duyduğu 12 FormRequest oluşturuldu. |
-| ✅ **Migration eksikleri** | `class_teacher_assignments` pivot + `users.tenant_id` sütunu eklendi. |
+| ✅ **API Routes** | 4 katmanlı erişim yapısı: Public → Auth → Subscription → Admin |
+| ✅ **Auth Sistemi** | Register/Login/Logout/Me endpoint'leri + AuthService + Sanctum token |
+| ✅ **B2B Paket Sistemi** | Package/TenantSubscription/TenantPayment modelleri, controller, service, seeder |
+| ✅ **Middleware** | `EnsureActiveSubscription` — aktif abonelik kontrolü |
+| ✅ **Seeders** | RoleSeeder (5 rol) + PackageSeeder (3 paket) + Super Admin |
+| ✅ **Service katmanı** | BaseService + 10 somut service |
+| ✅ **API Resources** | 13 Resource sınıfı |
+| ✅ **Policies** | BasePolicy + 8 policy |
+| ✅ **FormRequests** | 16 FormRequest (Auth + Package + mevcut modeller) |
+| ✅ **Trait** | `ChecksPackageLimits` — limit kontrolü trait'i |
 | ⚠️ **Tests** | Test dosyaları henüz yazılmamış. |
-| ⚠️ **Auth/Login controller** | Login/Register endpoint'leri henüz yok. |
-| ⚠️ **Seeders** | Varsayılan roller ve test verileri için seeder'lar yazılmalı. |
+| ⚠️ **Ödeme entegrasyonu** | Şimdilik simüle, iyzico/Stripe entegrasyonu eklenecek. |
 
-### 8.3 Naming Conventions
+### 10.3 Naming Conventions
 
 | Konu | Kural | Örnek |
 |------|-------|-------|
-| **Model** | PascalCase, tekil | `SchoolClass`, `FamilyProfile` |
-| **Tablo** | snake_case, çoğul | `school_classes`, `family_profiles` |
-| **Controller** | PascalCase + Controller | `ClassController`, `SchoolController` |
-| **FormRequest** | Store/Update + Model + Request | `StoreSchoolClassRequest` |
-| **Service** | Model + Service | `SchoolService`, `ClassService` |
-| **Policy** | Model + Policy | `SchoolPolicy`, `ChildPolicy` |
-| **Resource** | Model + Resource | `SchoolResource`, `ChildResource` |
-| **Pivot tablo** | Anlamlı isim | `child_class_assignments`, `role_user` |
-| **History tablo** | {tablo_adı}_histories | `users_histories`, `schools_histories` |
-| **FK sütunlar** | model_id (snake_case) | `school_id`, `tenant_id`, `owner_user_id` |
-| **Namespace** | Modüler gruplandırma | `App\Models\School\`, `App\Http\Controllers\Schools\` |
+| **Model** | PascalCase, tekil | `SchoolClass`, `Package` |
+| **Tablo** | snake_case, çoğul | `packages`, `tenant_subscriptions` |
+| **Controller** | PascalCase + Controller | `PackageController`, `AuthController` |
+| **FormRequest** | Store/Update + Model + Request | `StorePackageRequest` |
+| **Service** | Model + Service | `AuthService`, `PackageService` |
+| **Policy** | Model + Policy | `PackagePolicy` |
+| **Resource** | Model + Resource | `PackageResource` |
+| **Middleware** | EnsureXxx / CheckXxx | `EnsureActiveSubscription` |
+| **Trait** | ChecksXxx / HasXxx | `ChecksPackageLimits` |
+| **Seeder** | Model + Seeder | `RoleSeeder`, `PackageSeeder` |
 
 ---
 

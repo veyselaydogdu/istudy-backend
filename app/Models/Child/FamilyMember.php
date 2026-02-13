@@ -14,7 +14,7 @@ class FamilyMember extends BaseModel
         'user_id',
         'relation_type',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function familyProfile()

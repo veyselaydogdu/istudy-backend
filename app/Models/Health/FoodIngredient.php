@@ -13,9 +13,9 @@ class FoodIngredient extends BaseModel
         'name',
         'allergen_info',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
-    
+
     // Reverse relation
     public function meals()
     {

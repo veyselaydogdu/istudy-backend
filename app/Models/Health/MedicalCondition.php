@@ -14,7 +14,7 @@ class MedicalCondition extends BaseModel
         'name',
         'description',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function children()

@@ -98,8 +98,8 @@ return new class extends Migration
             $table->foreignId('family_profile_id')->constrained()->cascadeOnDelete();
             $table->foreignId('school_id')->constrained()->cascadeOnDelete();
             // academic_year_id can represent enrollment year or current assigned academic year default
-            $table->foreignId('academic_year_id')->constrained()->cascadeOnDelete(); 
-            
+            $table->foreignId('academic_year_id')->constrained()->cascadeOnDelete();
+
             $table->string('first_name');
             $table->string('last_name');
             $table->date('birth_date');

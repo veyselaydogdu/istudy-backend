@@ -15,14 +15,21 @@ class RevenueShare extends BaseModel
         'percentage',
         'amount',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [
         'percentage' => 'decimal:2',
         'amount' => 'decimal:2',
     ];
-    
-    public function school() { return $this->belongsTo(School::class)->withDefault(); }
-    public function payment() { return $this->belongsTo(Payment::class)->withDefault(); }
+
+    public function school()
+    {
+        return $this->belongsTo(School::class)->withDefault();
+    }
+
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class)->withDefault();
+    }
 }

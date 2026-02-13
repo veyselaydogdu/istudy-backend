@@ -2,11 +2,10 @@
 
 namespace App\Observers;
 
-use App\Models\Base\BaseModel;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Eloquent\Model;
 
 class HistoryObserver
 {
@@ -42,7 +41,7 @@ class HistoryObserver
         }
 
         $tableName = $model->getTable();
-        $historyTable = $tableName . '_histories';
+        $historyTable = $tableName.'_histories';
 
         // History tablosu var mı kontrolü (Performans için cache gerekebilir ama şimdilik en güvenli yol)
         // Schema::hasTable yavaş olabilir, bunu bir config array veya cache ile yönetmek daha iyidir.
@@ -60,7 +59,7 @@ class HistoryObserver
             ]);
         } catch (\Exception $e) {
             // History tablosu yoksa veya hata oluşursa loga yaz, işlemi durdurma
-            logger()->error("History log failed for table {$tableName}: " . $e->getMessage());
+            logger()->error("History log failed for table {$tableName}: ".$e->getMessage());
         }
     }
 }

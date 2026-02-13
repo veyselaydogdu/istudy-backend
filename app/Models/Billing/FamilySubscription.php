@@ -16,7 +16,7 @@ class FamilySubscription extends BaseModel
         'end_date',
         'status',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [

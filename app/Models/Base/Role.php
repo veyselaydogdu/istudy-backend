@@ -2,7 +2,6 @@
 
 namespace App\Models\Base;
 
-use App\Models\Base\BaseModel;
 use App\Models\User;
 
 class Role extends BaseModel
@@ -13,7 +12,7 @@ class Role extends BaseModel
         'name',
         'label',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function users()

@@ -33,7 +33,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
         });
-        
+
         Schema::create('allergens_histories', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('original_id')->index();
@@ -100,7 +100,7 @@ return new class extends Migration
             $table->softDeletes();
         });
 
-         Schema::create('food_ingredients_histories', function (Blueprint $table) {
+        Schema::create('food_ingredients_histories', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');

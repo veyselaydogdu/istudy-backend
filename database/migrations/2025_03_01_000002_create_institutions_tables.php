@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('owner_user_id')->constrained('users')->cascadeOnDelete()->comment('Kurum Sahibi');
             $table->string('country')->default('TR')->comment('Ülke');
             $table->string('currency')->default('TRY')->comment('Para Birimi');
-            
+
             $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
             $table->timestamps();

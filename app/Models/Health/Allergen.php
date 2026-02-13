@@ -15,7 +15,7 @@ class Allergen extends BaseModel
         'description',
         'risk_level',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function children()

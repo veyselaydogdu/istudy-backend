@@ -17,7 +17,7 @@ class Payment extends BaseModel
         'paid_at',
         'status',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [

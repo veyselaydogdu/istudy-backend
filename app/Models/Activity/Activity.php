@@ -2,10 +2,10 @@
 
 namespace App\Models\Activity;
 
-use App\Models\Base\BaseModel;
-use App\Models\School\School;
 use App\Models\Academic\AcademicYear;
+use App\Models\Base\BaseModel;
 use App\Models\Child\Child;
+use App\Models\School\School;
 
 class Activity extends BaseModel
 {
@@ -19,7 +19,7 @@ class Activity extends BaseModel
         'is_paid',
         'price',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [
@@ -31,7 +31,14 @@ class Activity extends BaseModel
     {
         return $this->belongsToMany(Child::class, 'child_activity_enrollments', 'activity_id', 'child_id')->withTimestamps();
     }
-    
-    public function school() { return $this->belongsTo(School::class)->withDefault(); }
-    public function academicYear() { return $this->belongsTo(AcademicYear::class)->withDefault(); }
+
+    public function school()
+    {
+        return $this->belongsTo(School::class)->withDefault();
+    }
+
+    public function academicYear()
+    {
+        return $this->belongsTo(AcademicYear::class)->withDefault();
+    }
 }

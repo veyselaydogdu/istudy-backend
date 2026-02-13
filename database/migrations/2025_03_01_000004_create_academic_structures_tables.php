@@ -31,7 +31,7 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();
-            
+
             $table->index(['school_id', 'academic_year_id']);
         });
 

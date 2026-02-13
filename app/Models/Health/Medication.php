@@ -14,7 +14,7 @@ class Medication extends BaseModel
         'name',
         'usage_notes',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function children()
