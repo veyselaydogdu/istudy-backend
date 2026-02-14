@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-13 (Eğitim Yılı Yönetimi, Süper Admin Panel Backend, Audit Log, Gelişmiş Özellikler: Kayıt Talebi, Yetkili Alıcı, Roller, Bildirimler, Ödevler, Yemek Takvimi, Duyurular)
+> **Son Güncelleme:** 2026-02-14 (Para Birimi & Döviz Kuru Sistemi, Fatura Modülü, Transaction Sistemi, Sanal POS Entegrasyonu, Eğitim Yılı Yönetimi, Süper Admin Panel Backend)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---

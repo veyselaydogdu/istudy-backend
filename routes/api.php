@@ -34,6 +34,25 @@ Route::get('/packages', [\App\Http\Controllers\Tenant\PackageSelectionController
 // Kayıt kodu ile okul ara (veli tarafı, auth gerekmez arama için)
 Route::post('/schools/search', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'searchSchool']);
 
+// ───────────────────────────────────────────────────
+// SANAL POS CALLBACK (Auth gerektirmez — webhook endpoint'leri)
+// ───────────────────────────────────────────────────
+Route::prefix('payment')->group(function () {
+    Route::post('/callback', [\App\Http\Controllers\Billing\InvoiceController::class, 'paymentCallback']);
+    Route::post('/success', [\App\Http\Controllers\Billing\InvoiceController::class, 'paymentSuccess']);
+    Route::post('/fail', [\App\Http\Controllers\Billing\InvoiceController::class, 'paymentFail']);
+});
+
+// ───────────────────────────────────────────────────
+// PARA BİRİMİ & DÖVİZ KURLARI (Herkese açık)
+// ───────────────────────────────────────────────────
+Route::prefix('currencies')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Billing\CurrencyController::class, 'index']);
+    Route::get('/rates', [\App\Http\Controllers\Billing\CurrencyController::class, 'rates']);
+    Route::get('/convert', [\App\Http\Controllers\Billing\CurrencyController::class, 'convert']);
+    Route::get('/history/{code}', [\App\Http\Controllers\Billing\CurrencyController::class, 'history']);
+});
+
 // ═══════════════════════════════════════════════════════════
 // 2️⃣ AUTH GEREKLİ (Abonelik gerektirmez)
 // ═══════════════════════════════════════════════════════════
@@ -79,6 +98,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/read-all', [\App\Http\Controllers\Schools\NotificationController::class, 'markAllAsRead']);
         Route::get('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'preferences']);
         Route::put('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'updatePreferences']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // FATURA & ÖDEME SİSTEMİ
+    // ───────────────────────────────────────────────────
+    Route::prefix('invoices')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Billing\InvoiceController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Billing\InvoiceController::class, 'store']);
+        Route::get('/tenant', [\App\Http\Controllers\Billing\InvoiceController::class, 'tenantInvoices']);
+        Route::get('/{invoice}', [\App\Http\Controllers\Billing\InvoiceController::class, 'show']);
+        Route::get('/{invoice}/transactions', [\App\Http\Controllers\Billing\InvoiceController::class, 'transactions']);
+        Route::post('/{invoice}/pay', [\App\Http\Controllers\Billing\InvoiceController::class, 'initiatePayment']);
     });
 
     // ═══════════════════════════════════════════════════════
@@ -259,6 +290,40 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/announcements', [\App\Http\Controllers\Admin\AdminSystemController::class, 'announcements']);
             Route::get('/enrollments/pending', [\App\Http\Controllers\Admin\AdminSystemController::class, 'pendingEnrollments']);
             Route::get('/enrollments', [\App\Http\Controllers\Admin\AdminSystemController::class, 'allEnrollments']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // FATURA & TRANSACTION YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('transactions')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'index']);
+            Route::get('/stats', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'stats']);
+            Route::get('/monthly', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'monthlyStats']);
+            Route::get('/school/{schoolId}', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'schoolTransactions']);
+            Route::get('/{id}', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'show']);
+        });
+
+        Route::prefix('invoices')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'invoices']);
+            Route::get('/stats', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'invoiceStats']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // PARA BİRİMİ & DÖVİZ KURU YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('currencies')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'store']);
+            Route::get('/stats', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'stats']);
+            Route::get('/logs', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'logs']);
+            Route::post('/fetch-rates', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'fetchRates']);
+            Route::post('/rates', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'setRate']);
+            Route::post('/rates/bulk', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'setBulkRates']);
+            Route::get('/{currency}', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'show']);
+            Route::put('/{currency}', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'update']);
+            Route::delete('/{currency}', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'destroy']);
+            Route::patch('/{currency}/toggle-status', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'toggleStatus']);
+            Route::patch('/{currency}/set-base', [\App\Http\Controllers\Admin\AdminCurrencyController::class, 'setBase']);
         });
 
         // ───────────────────────────────────────────────────

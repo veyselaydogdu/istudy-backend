@@ -35,4 +35,23 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Sanal POS Ayarları
+    |--------------------------------------------------------------------------
+    | Ödeme işlemleri için sanal POS konfigürasyonu.
+    | Desteklenen ağ geçitleri: paytr, iyzico, param, stripe
+    */
+    'virtual_pos' => [
+        'default_gateway' => env('VPOS_DEFAULT_GATEWAY', 'paytr'),
+        'merchant_id'     => env('VPOS_MERCHANT_ID', ''),
+        'merchant_key'    => env('VPOS_MERCHANT_KEY', ''),
+        'merchant_salt'   => env('VPOS_MERCHANT_SALT', ''),
+        'payment_url'     => env('VPOS_PAYMENT_URL', ''),
+        'success_url'     => env('VPOS_SUCCESS_URL', ''),
+        'fail_url'        => env('VPOS_FAIL_URL', ''),
+        'callback_url'    => env('VPOS_CALLBACK_URL', ''),
+        'test_mode'       => env('VPOS_TEST_MODE', true),
+    ],
+
 ];
