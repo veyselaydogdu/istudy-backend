@@ -4,8 +4,13 @@ namespace App\Models\School;
 
 use App\Models\Academic\AcademicYear;
 use App\Models\Academic\SchoolClass;
+use App\Models\Activity\Homework;
+use App\Models\Activity\ReportTemplate;
 use App\Models\Base\BaseModel;
+use App\Models\Billing\ChildPricingSetting;
 use App\Models\Child\Child;
+use App\Models\Health\MealMenuSchedule;
+use App\Models\Notification\SystemNotification;
 use App\Models\Tenant\Tenant;
 
 class School extends BaseModel
@@ -15,10 +20,13 @@ class School extends BaseModel
     protected $fillable = [
         'tenant_id',
         'name',
+        'description',
         'code',
+        'registration_code',
         'address',
         'phone',
         'email',
+        'website',
         'logo',
         'timezone',
         'is_active',
@@ -59,5 +67,106 @@ class School extends BaseModel
     public function children()
     {
         return $this->hasMany(Child::class, 'school_id');
+    }
+
+    /**
+     * Okula gelen kayıt talepleri
+     */
+    public function enrollmentRequests()
+    {
+        return $this->hasMany(SchoolEnrollmentRequest::class, 'school_id');
+    }
+
+    /**
+     * Okula özel roller
+     */
+    public function schoolRoles()
+    {
+        return $this->hasMany(SchoolRole::class, 'school_id');
+    }
+
+    /**
+     * Okul duyuruları
+     */
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class, 'school_id');
+    }
+
+    /**
+     * Okul ödevleri
+     */
+    public function homework()
+    {
+        return $this->hasMany(Homework::class, 'school_id');
+    }
+
+    /**
+     * Yemek menü takvimi
+     */
+    public function mealSchedules()
+    {
+        return $this->hasMany(MealMenuSchedule::class, 'school_id');
+    }
+
+    /**
+     * Rapor şablonları
+     */
+    public function reportTemplates()
+    {
+        return $this->hasMany(ReportTemplate::class, 'school_id');
+    }
+
+    /**
+     * Bildirimler
+     */
+    public function notifications()
+    {
+        return $this->hasMany(SystemNotification::class, 'school_id');
+    }
+
+    /**
+     * Çocuk fiyatlandırma ayarları
+     */
+    public function pricingSettings()
+    {
+        return $this->hasMany(ChildPricingSetting::class, 'school_id');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Kayıt kodu ile okul ara
+     */
+    public static function findByRegistrationCode(string $code): ?self
+    {
+        return static::where('registration_code', $code)->active()->first();
+    }
+
+    /**
+     * Benzersiz kayıt kodu oluştur
+     */
+    public static function generateRegistrationCode(): string
+    {
+        do {
+            $code = strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
+        } while (static::where('registration_code', $code)->exists());
+
+        return $code;
     }
 }

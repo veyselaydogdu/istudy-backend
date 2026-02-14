@@ -31,6 +31,9 @@ Route::prefix('auth')->group(function () {
 // Aktif paketleri listele (kayıt öncesi gösterilir)
 Route::get('/packages', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'availablePackages']);
 
+// Kayıt kodu ile okul ara (veli tarafı, auth gerekmez arama için)
+Route::post('/schools/search', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'searchSchool']);
+
 // ═══════════════════════════════════════════════════════════
 // 2️⃣ AUTH GEREKLİ (Abonelik gerektirmez)
 // ═══════════════════════════════════════════════════════════
@@ -53,6 +56,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('tenants', \App\Http\Controllers\Tenant\TenantController::class)
         ->except(['store']);
 
+    // ───────────────────────────────────────────────────────
+    // VELİ TARAFI — Kayıt Talebi & Yetkili Alıcı
+    // ───────────────────────────────────────────────────────
+    Route::prefix('parent')->group(function () {
+        // Okul kayıt talebi gönder
+        Route::post('/enrollment-requests', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'store']);
+        Route::get('/enrollment-requests', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'index']);
+
+        // Yetkili alıcılar (çocuğu okuldan alacak kişiler)
+        Route::apiResource('authorized-pickups', \App\Http\Controllers\Parents\AuthorizedPickupController::class);
+    });
+
+    // ───────────────────────────────────────────────────────
+    // BİLDİRİM SİSTEMİ (Auth gerekli, abonelik gerekmez)
+    // ───────────────────────────────────────────────────────
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Schools\NotificationController::class, 'index']);
+        Route::get('/unread', [\App\Http\Controllers\Schools\NotificationController::class, 'unread']);
+        Route::get('/unread-count', [\App\Http\Controllers\Schools\NotificationController::class, 'unreadCount']);
+        Route::patch('/{notification}/read', [\App\Http\Controllers\Schools\NotificationController::class, 'markAsRead']);
+        Route::patch('/read-all', [\App\Http\Controllers\Schools\NotificationController::class, 'markAllAsRead']);
+        Route::get('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'preferences']);
+        Route::put('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'updatePreferences']);
+    });
+
     // ═══════════════════════════════════════════════════════
     // 3️⃣ ABONELİK GEREKLİ (Aktif paket zorunlu)
     // ═══════════════════════════════════════════════════════
@@ -63,6 +91,80 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Okul işlemleri
         Route::apiResource('schools', \App\Http\Controllers\Schools\SchoolController::class);
+
+        // ───────────────────────────────────────────────────
+        // KAYIT TALEPLERİ (Okul yöneticisi tarafı)
+        // ───────────────────────────────────────────────────
+        Route::prefix('enrollment-requests')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'index']);
+            Route::get('/pending', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'pending']);
+            Route::patch('/{enrollmentRequest}/approve', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'approve']);
+            Route::patch('/{enrollmentRequest}/reject', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'reject']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // OKUL BAZLI ROLLER VE YETKİLENDİRME
+        // ───────────────────────────────────────────────────
+        Route::prefix('school-roles')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\SchoolRoleController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\SchoolRoleController::class, 'store']);
+            Route::get('/{schoolRole}', [\App\Http\Controllers\Schools\SchoolRoleController::class, 'show']);
+            Route::put('/{schoolRole}', [\App\Http\Controllers\Schools\SchoolRoleController::class, 'update']);
+            Route::delete('/{schoolRole}', [\App\Http\Controllers\Schools\SchoolRoleController::class, 'destroy']);
+            Route::post('/assign', [\App\Http\Controllers\Schools\SchoolRoleController::class, 'assignRole']);
+            Route::post('/remove', [\App\Http\Controllers\Schools\SchoolRoleController::class, 'removeRole']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // RAPOR ŞABLONLARI
+        // ───────────────────────────────────────────────────
+        Route::apiResource('report-templates', \App\Http\Controllers\Schools\ReportTemplateController::class);
+
+        // ───────────────────────────────────────────────────
+        // ÖDEV YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::apiResource('homework', \App\Http\Controllers\Schools\HomeworkController::class);
+        Route::post('/homework/mark-completion', [\App\Http\Controllers\Schools\HomeworkController::class, 'markCompletion']);
+
+        // ───────────────────────────────────────────────────
+        // YEMEK MENÜ TAKVİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('meal-menus')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\MealMenuController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\MealMenuController::class, 'store']);
+            Route::post('/bulk', [\App\Http\Controllers\Schools\MealMenuController::class, 'bulkStore']);
+            Route::delete('/{id}', [\App\Http\Controllers\Schools\MealMenuController::class, 'destroy']);
+            Route::get('/daily', [\App\Http\Controllers\Schools\MealMenuController::class, 'daily']);
+            Route::get('/weekly', [\App\Http\Controllers\Schools\MealMenuController::class, 'weekly']);
+            Route::get('/monthly', [\App\Http\Controllers\Schools\MealMenuController::class, 'monthly']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // BİLDİRİM OLUŞTURMA (Okul yöneticisi/öğretmen tarafı)
+        // ───────────────────────────────────────────────────
+        Route::post('/notifications', [\App\Http\Controllers\Schools\NotificationController::class, 'store']);
+
+        // ───────────────────────────────────────────────────
+        // DUYURULAR
+        // ───────────────────────────────────────────────────
+        Route::apiResource('announcements', \App\Http\Controllers\Schools\AnnouncementController::class);
+
+        // ───────────────────────────────────────────────────
+        // EĞİTİM YILI YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('academic-years')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\AcademicYearController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\AcademicYearController::class, 'store']);
+            Route::get('/current', [\App\Http\Controllers\Schools\AcademicYearController::class, 'current']);
+            Route::get('/{academicYear}', [\App\Http\Controllers\Schools\AcademicYearController::class, 'show']);
+            Route::put('/{academicYear}', [\App\Http\Controllers\Schools\AcademicYearController::class, 'update']);
+            Route::delete('/{academicYear}', [\App\Http\Controllers\Schools\AcademicYearController::class, 'destroy']);
+            Route::patch('/{academicYear}/set-current', [\App\Http\Controllers\Schools\AcademicYearController::class, 'setCurrent']);
+            Route::patch('/{academicYear}/close', [\App\Http\Controllers\Schools\AcademicYearController::class, 'close']);
+            Route::post('/transition', [\App\Http\Controllers\Schools\AcademicYearController::class, 'transition']);
+            Route::post('/{academicYear}/classes', [\App\Http\Controllers\Schools\AcademicYearController::class, 'addClass']);
+            Route::delete('/{academicYear}/classes/{classId}', [\App\Http\Controllers\Schools\AcademicYearController::class, 'removeClass']);
+        });
 
         // Okul altındaki kaynaklar (nested routes)
         Route::prefix('schools/{school_id}')->group(function () {
@@ -76,7 +178,118 @@ Route::middleware('auth:sanctum')->group(function () {
     // ═══════════════════════════════════════════════════════
     // 4️⃣ ADMIN ONLY (Super Admin)
     // ═══════════════════════════════════════════════════════
-    Route::prefix('admin')->group(function () {
+    Route::prefix('admin')->middleware('super.admin')->group(function () {
+
+        // ───────────────────────────────────────────────────
+        // DASHBOARD — Sistem İstatistikleri
+        // ───────────────────────────────────────────────────
+        Route::prefix('dashboard')->group(function () {
+            Route::get('/stats', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'stats']);
+            Route::get('/revenue', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'revenue']);
+            Route::get('/growth', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'growth']);
+            Route::get('/top-schools', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'topSchools']);
+            Route::get('/package-distribution', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'packageDistribution']);
+            Route::get('/recent-activities', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'recentActivities']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // PAKET YÖNETİMİ
+        // ───────────────────────────────────────────────────
         Route::apiResource('packages', \App\Http\Controllers\Admin\PackageController::class);
+
+        // ───────────────────────────────────────────────────
+        // KULLANICI YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('users')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminUserController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Admin\AdminUserController::class, 'store']);
+            Route::get('/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'show']);
+            Route::put('/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'update']);
+            Route::delete('/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'destroy']);
+            Route::post('/{user}/assign-role', [\App\Http\Controllers\Admin\AdminUserController::class, 'assignRole']);
+            Route::post('/{user}/remove-role', [\App\Http\Controllers\Admin\AdminUserController::class, 'removeRole']);
+            Route::post('/{userId}/restore', [\App\Http\Controllers\Admin\AdminUserController::class, 'restore']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // TENANT YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('tenants')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminTenantController::class, 'index']);
+            Route::get('/{tenant}', [\App\Http\Controllers\Admin\AdminTenantController::class, 'show']);
+            Route::put('/{tenant}', [\App\Http\Controllers\Admin\AdminTenantController::class, 'update']);
+            Route::delete('/{tenant}', [\App\Http\Controllers\Admin\AdminTenantController::class, 'destroy']);
+            Route::get('/{tenant}/subscriptions', [\App\Http\Controllers\Admin\AdminTenantController::class, 'subscriptionHistory']);
+            Route::get('/{tenant}/schools', [\App\Http\Controllers\Admin\AdminTenantController::class, 'schools']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // OKUL YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('schools')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminSchoolController::class, 'index']);
+            Route::get('/{school}', [\App\Http\Controllers\Admin\AdminSchoolController::class, 'show']);
+            Route::put('/{school}', [\App\Http\Controllers\Admin\AdminSchoolController::class, 'update']);
+            Route::delete('/{school}', [\App\Http\Controllers\Admin\AdminSchoolController::class, 'destroy']);
+            Route::patch('/{school}/toggle-status', [\App\Http\Controllers\Admin\AdminSchoolController::class, 'toggleStatus']);
+            Route::get('/{school}/classes', [\App\Http\Controllers\Admin\AdminSchoolController::class, 'classes']);
+            Route::get('/{school}/children', [\App\Http\Controllers\Admin\AdminSchoolController::class, 'children']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // ABONELİK YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('subscriptions')->group(function () {
+            Route::get('/stats', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'stats']);
+            Route::get('/', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'store']);
+            Route::get('/{subscription}', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'show']);
+            Route::patch('/{subscription}/status', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'updateStatus']);
+            Route::patch('/{subscription}/extend', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'extend']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // SİSTEM YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('system')->group(function () {
+            Route::get('/health', [\App\Http\Controllers\Admin\AdminSystemController::class, 'healthCheck']);
+            Route::get('/settings', [\App\Http\Controllers\Admin\AdminSystemController::class, 'settings']);
+            Route::get('/notifications', [\App\Http\Controllers\Admin\AdminSystemController::class, 'notifications']);
+            Route::post('/notifications', [\App\Http\Controllers\Admin\AdminSystemController::class, 'sendSystemNotification']);
+            Route::get('/announcements', [\App\Http\Controllers\Admin\AdminSystemController::class, 'announcements']);
+            Route::get('/enrollments/pending', [\App\Http\Controllers\Admin\AdminSystemController::class, 'pendingEnrollments']);
+            Route::get('/enrollments', [\App\Http\Controllers\Admin\AdminSystemController::class, 'allEnrollments']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // ÇOCUK FİYATLANDIRMA AYARLARI (Platform geneli)
+        // ───────────────────────────────────────────────────
+        Route::prefix('pricing')->group(function () {
+            Route::get('/', function () {
+                return response()->json([
+                    'success' => true,
+                    'data' => \App\Models\Billing\ChildPricingSetting::platformLevel()->orderBy('child_order')->get(),
+                ]);
+            });
+            Route::post('/', function (\Illuminate\Http\Request $request) {
+                $request->validate([
+                    'child_order' => 'required|integer|min:1',
+                    'price' => 'required|numeric|min:0',
+                    'discount_percentage' => 'nullable|numeric|min:0|max:100',
+                ]);
+
+                $setting = \App\Models\Billing\ChildPricingSetting::updateOrCreate(
+                    ['school_id' => null, 'child_order' => $request->child_order],
+                    [
+                        'price' => $request->price,
+                        'discount_percentage' => $request->discount_percentage ?? 0,
+                        'is_active' => true,
+                        'created_by' => auth()->id(),
+                    ]
+                );
+
+                return response()->json(['success' => true, 'data' => $setting], 201);
+            });
+        });
     });
 });

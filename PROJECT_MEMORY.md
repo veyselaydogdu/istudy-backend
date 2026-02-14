@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-12 (B2B Paket Sistemi + Auth eklendi)
+> **Son Güncelleme:** 2026-02-13 (Eğitim Yılı Yönetimi, Süper Admin Panel Backend, Audit Log, Gelişmiş Özellikler: Kayıt Talebi, Yetkili Alıcı, Roller, Bildirimler, Ödevler, Yemek Takvimi, Duyurular)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -742,31 +742,53 @@ vendor/bin/pint
 
 ## 📊 11. Hızlı Referans — Model → Tablo → İlişkiler
 
+### Mevcut Modeller
 | Model | Tablo | belongsTo | hasMany | belongsToMany |
 |-------|-------|-----------|---------|---------------|
 | `User` | users | — | Tenant(owner), TeacherProfile, FamilyProfile | Role |
 | `Tenant` | tenants | User(owner) | School, User(tenant_id) | — |
-| `School` | schools | Tenant | AcademicYear, SchoolClass, TeacherProfile, Child | — |
+| `School` | schools | Tenant | AcademicYear, SchoolClass, TeacherProfile, Child, EnrollmentRequest, SchoolRole, Announcement, Homework, MealMenuSchedule, ReportTemplate, SystemNotification, ChildPricingSetting | — |
 | `AcademicYear` | academic_years | School | SchoolClass, Activity, Event | — |
 | `SchoolClass` | classes | School, AcademicYear | — | Child, TeacherProfile |
 | `TeacherProfile` | teacher_profiles | User, School | — | SchoolClass |
-| `FamilyProfile` | family_profiles | User(owner), Tenant | FamilyMember, Child, FamilySubscription | — |
+| `FamilyProfile` | family_profiles | User(owner), Tenant | FamilyMember, Child, FamilySubscription, AuthorizedPickup | — |
 | `FamilyMember` | family_members | FamilyProfile, User | — | — |
-| `Child` | children | FamilyProfile, School, AcademicYear | DailyChildReport, Attendance | SchoolClass, Allergen, Medication, MedicalCondition, Activity, Event |
-| `Activity` | activities | School, AcademicYear | — | Child |
-| `Event` | events | School, AcademicYear | — | Child |
+| `Child` | children | FamilyProfile, School, AcademicYear | DailyChildReport, Attendance, AuthorizedPickup, HomeworkCompletion, EventPayment, ActivityPayment | SchoolClass, Allergen, Medication, MedicalCondition, Activity, Event |
+| `Activity` | activities | School, AcademicYear | ActivityPayment | Child |
+| `Event` | events | School, AcademicYear | EventPayment | Child |
 | `Attendance` | attendances | Child | — | — |
-| `DailyChildReport` | daily_child_reports | Child | — | — |
+| `DailyChildReport` | daily_child_reports | Child, ReportTemplate | ReportInputValue | — |
 | `Allergen` | allergens | — | — | Child |
 | `Medication` | medications | — | — | Child |
 | `MedicalCondition` | medical_conditions | — | — | Child |
-| `Meal` | meals | School, AcademicYear | — | FoodIngredient |
+| `Meal` | meals | School, AcademicYear | MealMenuSchedule | FoodIngredient |
 | `SubscriptionPlan` | subscription_plans | — | — | — |
 | `FamilySubscription` | family_subscriptions | FamilyProfile, SubscriptionPlan | — | — |
 | `Payment` | payments | FamilySubscription | RevenueShare | — |
 | `RevenueShare` | revenue_shares | Payment, School | — | — |
 | `Role` | roles | — | — | User, Permission |
 | `Permission` | permissions | — | — | Role |
+
+### 🆕 Yeni Eklenen Modeller (2026-02-13)
+| Model | Tablo | Açıklama |
+|-------|-------|----------|
+| `SchoolEnrollmentRequest` | school_enrollment_requests | Veli okul kayıt talebi sistemi |
+| `AuthorizedPickup` | authorized_pickups | Çocuğu okuldan alabilecek yetkili kişiler |
+| `ReportTemplate` | report_templates | Okul bazlı dinamik rapor şablonları |
+| `ReportTemplateInput` | report_template_inputs | Rapor şablonu input tanımları |
+| `ReportInputValue` | report_input_values | Öğretmenlerin doldurduğu rapor değerleri |
+| `SchoolRole` | school_roles | Okul/sınıf bazlı özel roller |
+| `SchoolRolePermission` | school_role_permissions | Rol izinleri |
+| `SchoolUserRole` | school_user_roles | Kullanıcı-rol atamaları |
+| `SystemNotification` | system_notifications | Gelişmiş bildirim sistemi |
+| `NotificationPreference` | notification_preferences | Bildirim tercihleri |
+| `Homework` | homework | Ödev ve okul sonrası etkinlik |
+| `HomeworkCompletion` | homework_completions | Ödev tamamlama durumu |
+| `EventPayment` | event_payments | Etkinlik ödeme takibi |
+| `ActivityPayment` | activity_payments | Aktivite ödeme takibi |
+| `MealMenuSchedule` | meal_menu_schedules | Yemek menü takvimi |
+| `ChildPricingSetting` | child_pricing_settings | Kademeli çocuk fiyatlandırma |
+| `Announcement` | announcements | Okul/sınıf duyuruları |
 
 ---
 

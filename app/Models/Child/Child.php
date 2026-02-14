@@ -8,7 +8,10 @@ use App\Models\Activity\Activity;
 use App\Models\Activity\Attendance;
 use App\Models\Activity\DailyChildReport;
 use App\Models\Activity\Event;
+use App\Models\Activity\HomeworkCompletion;
 use App\Models\Base\BaseModel;
+use App\Models\Billing\ActivityPayment;
+use App\Models\Billing\EventPayment;
 use App\Models\Health\Allergen;
 use App\Models\Health\MedicalCondition;
 use App\Models\Health\Medication;
@@ -26,13 +29,18 @@ class Child extends BaseModel
         'last_name',
         'birth_date',
         'gender',
+        'blood_type',
         'profile_photo',
+        'enrollment_date',
+        'status',
+        'special_notes',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
+        'enrollment_date' => 'date',
     ];
 
     // Helper to get full name
@@ -94,11 +102,58 @@ class Child extends BaseModel
 
     public function activities()
     {
-        return $this->belongsToMany(Activity::class, 'child_activity_enrollments', 'child_id', 'activity_id')->withTimestamps();
+        return $this->belongsToMany(Activity::class, 'child_activity_enrollments', 'child_id', 'activity_id')
+            ->withPivot(['status', 'enrolled_at'])
+            ->withTimestamps();
     }
 
     public function events()
     {
-        return $this->belongsToMany(Event::class, 'child_event_participations', 'child_id', 'event_id')->withTimestamps();
+        return $this->belongsToMany(Event::class, 'child_event_participations', 'child_id', 'event_id')
+            ->withPivot(['status', 'payment_required', 'payment_completed'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Çocuğu okuldan alabilecek yetkili kişiler
+     */
+    public function authorizedPickups()
+    {
+        return $this->hasMany(AuthorizedPickup::class, 'child_id');
+    }
+
+    /**
+     * Ödev tamamlama durumları
+     */
+    public function homeworkCompletions()
+    {
+        return $this->hasMany(HomeworkCompletion::class, 'child_id');
+    }
+
+    /**
+     * Etkinlik ödemeleri
+     */
+    public function eventPayments()
+    {
+        return $this->hasMany(EventPayment::class, 'child_id');
+    }
+
+    /**
+     * Aktivite ödemeleri
+     */
+    public function activityPayments()
+    {
+        return $this->hasMany(ActivityPayment::class, 'child_id');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
     }
 }

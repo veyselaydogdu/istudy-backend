@@ -50,4 +50,12 @@ class FamilyProfile extends BaseModel
     {
         return $this->hasMany(FamilySubscription::class, 'family_profile_id');
     }
+
+    /**
+     * Yetkili alıcılar (çocukları okuldan alabilecek kişiler)
+     */
+    public function authorizedPickups()
+    {
+        return $this->hasMany(AuthorizedPickup::class, 'family_profile_id');
+    }
 }
