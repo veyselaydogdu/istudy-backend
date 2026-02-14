@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-14 (Para Birimi & Döviz Kuru Sistemi, Fatura Modülü, Transaction Sistemi, Sanal POS Entegrasyonu, Eğitim Yılı Yönetimi, Süper Admin Panel Backend)
+> **Son Güncelleme:** 2026-02-14 (Gelişmiş Activity Log & History Modülü, Para Birimi & Döviz Kuru Sistemi, Fatura Modülü, Transaction Sistemi, Sanal POS Entegrasyonu, Eğitim Yılı Yönetimi, Süper Admin Panel Backend)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -15,6 +15,7 @@
 | **API Tipi** | RESTful JSON API (Headless Backend) |
 | **Auth Mekanizması** | Laravel Sanctum (Token-based) |
 | **Veritabanı** | SQLite (Geliştirme), MySQL/PostgreSQL (Production) |
+| **Audit DB** | Ayrı veritabanı (`audit` connection) — ileride MongoDB'ye geçiş hazır |
 | **Dil** | Türkçe mesajlar ve yorumlar kullanılır |
 | **Proje Yolu** | `/Users/veysel.aydogdu/Desktop/WebProjects/iStudy/istudy-backend` |
 
@@ -117,36 +118,57 @@ istudy-backend/
 │   │       ├── UserResource.php                  ← Kullanıcı bilgisi
 │   │       ├── AcademicYearResource.php ... SchoolResource.php ... TenantResource.php
 │   ├── Models/
-│   │   ├── Base/     (BaseModel, Role, Permission)
+│   │   ├── Base/     (BaseModel, Role, Permission, AuditLog, ActivityLog)
 │   │   ├── Tenant/   (Tenant)                    ← + activeSubscription(), canCreateSchool(), canEnrollStudent()
-│   │   ├── Package/                               ← YENİ: B2B Paket Sistemi
+│   │   ├── Package/                               ← B2B Paket Sistemi
 │   │   │   ├── Package.php                        ← Limitler + fiyat + features
 │   │   │   ├── TenantSubscription.php             ← Abonelik durumu + dönem
 │   │   │   └── TenantPayment.php                  ← Ödeme kaydı
-│   │   ├── School/  ... Academic/  ... Child/  ... Activity/  ... Health/  ... Billing/
+│   │   ├── Billing/                               ← Finans Modülleri
+│   │   │   ├── Invoice.php / InvoiceItem.php      ← Fatura sistemi
+│   │   │   ├── Transaction.php                    ← Sanal POS işlemleri
+│   │   │   ├── Currency.php                       ← Para birimi tanımları (ISO 4217)
+│   │   │   ├── ExchangeRate.php                   ← Döviz kurları (günlük)
+│   │   │   └── ExchangeRateLog.php                ← API güncelleme logları
+│   │   ├── School/  ... Academic/  ... Child/  ... Activity/  ... Health/
 │   │   └── User.php
-│   ├── Observers/    (HistoryObserver)
+│   ├── Observers/
+│   │   └── HistoryObserver.php                    ← Gelişmiş: old_values, async, filtreleme, merkezi log
 │   ├── Policies/     (Base + School + SchoolClass + Child + Activity + FamilyProfile + Tenant + FamilySubscription + Package)
 │   ├── Providers/    (AppServiceProvider ← Policy + Package policy kayıtları)
+│   ├── Jobs/
+│   │   └── WriteActivityLog.php                   ← Asenkron activity log yazma (queue)
 │   ├── Services/
 │   │   ├── AuthService.php                       ← Register + Login + Logout
 │   │   ├── PackageService.php                    ← Paket CRUD + aktif paket listesi
 │   │   ├── TenantSubscriptionService.php         ← Abonelik oluşturma + iptal + usage raporu
+│   │   ├── InvoiceService.php                    ← Fatura oluşturma + ödeme başlatma
+│   │   ├── TransactionService.php                ← İşlem listeleme + filtreleme + istatistik
+│   │   ├── CurrencyService.php                   ← Para birimi CRUD + kur API + dönüşüm + cache
+│   │   ├── ActivityLogService.php                ← Activity log listeleme + istatistik + arşivleme
 │   │   ├── BaseService.php  ... SchoolService  ... ClassService  ... ChildService  ... etc.
 │   └── Traits/
-│       └── ChecksPackageLimits.php               ← Okul/Sınıf/Öğrenci limit kontrolü
+│       ├── ChecksPackageLimits.php               ← Okul/Sınıf/Öğrenci limit kontrolü
+│       └── Auditable.php                          ← Model bazlı audit özelleştirme trait
+├── config/
+│   ├── currency.php                               ← Para birimi & döviz kuru ayarları
+│   └── audit.php                                  ← Activity log sistemi konfigürasyonu
 ├── database/
 │   ├── migrations/
 │   │   ├── 000001 → 000008 (mevcut migration'lar)
-│   │   └── 000009_create_package_system_tables.php ← packages + tenant_subscriptions + tenant_payments + histories
+│   │   ├── 000009_create_package_system_tables.php ← packages + tenant_subscriptions + tenant_payments
+│   │   ├── 000012_create_invoice_and_transaction_tables.php ← invoices + items + transactions
+│   │   ├── 000013_create_currency_tables.php       ← currencies + exchange_rates + exchange_rate_logs
+│   │   └── 000014_create_activity_log_tables.php   ← activity_logs + archive + summaries (AUDIT DB)
 │   └── seeders/
 │       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
 │       ├── RoleSeeder.php                        ← 5 temel rol
-│       └── PackageSeeder.php                     ← 3 varsayılan paket
+│       ├── PackageSeeder.php                     ← 3 varsayılan paket
+│       └── CurrencySeeder.php                    ← 4 varsayılan para birimi (USD, TRY, EUR, GBP)
 ├── routes/
 │   ├── api.php                                   ← 4 katmanlı erişim: Public → Auth → Subscription → Admin
 │   ├── web.php
-│   └── console.php
+│   └── console.php                               ← Cron: currency:update-rates (09:00) + audit:maintain (03:00)
 ├── bootstrap/
 │   ├── app.php                                   ← + subscription.active middleware alias
 │   └── providers.php
@@ -223,8 +245,18 @@ istudy-backend/
 | `family_subscriptions` | `App\Models\Billing\FamilySubscription` | Aile abonelikleri (active, cancelled, expired) |
 | `payments` | `App\Models\Billing\Payment` | Ödemeler (Stripe, iyzico) |
 | `revenue_shares` | `App\Models\Billing\RevenueShare` | Gelir paylaşım/komisyon |
+| `invoices` | `App\Models\Billing\Invoice` | Faturalar (B2B/B2C) |
+| `invoice_items` | `App\Models\Billing\InvoiceItem` | Fatura kalemleri |
+| `transactions` | `App\Models\Billing\Transaction` | Sanal POS işlemleri (ödeme durumu + gateway) |
 
-#### 📜 History Tabloları (Geçmiş Kayıtları)
+#### � Para Birimi & Döviz Kuru Modülü
+| Tablo | Model | Açıklama |
+|-------|-------|----------|
+| `currencies` | `App\Models\Billing\Currency` | Para birimi tanımları (ISO 4217, sembol, format) |
+| `exchange_rates` | `App\Models\Billing\ExchangeRate` | Günlük döviz kurları (baz birime göre) |
+| `exchange_rate_logs` | `App\Models\Billing\ExchangeRateLog` | API güncelleme logları (kaynak, süre, hata) |
+
+#### �📜 History Tabloları (Eski Sistem — Geriye Dönük Uyumluluk)
 Her ana tablo için `{tablo_adı}_histories` tablosu mevcuttur:
 - `users_histories`, `roles_histories`, `permissions_histories`
 - `tenants_histories`, `schools_histories`, `academic_years_histories`
@@ -233,10 +265,31 @@ Her ana tablo için `{tablo_adı}_histories` tablosu mevcuttur:
 - `allergens_histories`, `medical_conditions_histories`, `medications_histories`, `food_ingredients_histories`, `meals_histories`
 - `daily_child_reports_histories`, `attendances_histories`, `activities_histories`, `events_histories`, `materials_histories`
 - `subscription_plans_histories`, `plan_tier_pricing_histories`, `family_subscriptions_histories`, `payments_histories`, `revenue_shares_histories`
+- `invoices_histories`, `transactions_histories`
 
-**History Yapısı (her tabloda aynı):**
+**Eski History Yapısı (her tabloda aynı):**
 ```
 id, original_id (index), operation_type (create/update/delete), snapshot (JSON), operated_by (FK→users), timestamps
+```
+
+#### 📊 Merkezi Activity Log (Yeni Sistem — Ayrı DB)
+> **Önemli:** Ayrı `audit` veritabanında çalışır. MongoDB geçişine hazır (FK yok, document-friendly).
+
+| Tablo | Veritabanı | Açıklama |
+|-------|-----------|----------|
+| `activity_logs` | AUDIT DB | Merkezi CRUD log (old/new values, changed fields, denormalize user) |
+| `activity_logs_archive` | AUDIT DB | Saklama süresi dolan logların arşivi |
+| `activity_log_summaries` | AUDIT DB | Günlük özet sayıları (dashboard performansı) |
+
+**Activity Log Yapısı:**
+```
+id, user_id, user_name, user_email (denormalize),
+model_type, model_label, model_id,
+action (created/updated/deleted/restored/force_deleted),
+old_values (JSON — sadece değişenler), new_values (JSON — sadece değişenler),
+changed_fields (JSON — alan isimleri listesi),
+tenant_id, school_id, ip_address, user_agent, url, method,
+created_at (INSERT-only, updated_at yok)
 ```
 
 ### 4.2 İlişki Haritası (ER Diagram - Metin)
@@ -306,6 +359,17 @@ TenantPayment ──── belongsTo ──── TenantSubscription
 
 Tenant ────────┬── hasOne(active) ──── TenantSubscription
               └── hasMany ──────── TenantSubscription
+
+── Fatura & İşlem Sistemi ─────────────────────────────
+Invoice ───────┬── belongsTo ──── User, Tenant, School
+               ├── hasMany ──── InvoiceItem
+               └── hasMany ──── Transaction
+
+Transaction ──── belongsTo ──── Invoice
+
+── Para Birimi & Döviz Kuru ───────────────────────────
+Currency ──────── hasMany ──── ExchangeRate
+ExchangeRate ──── belongsTo ──── Currency (base + target)
 ```
 
 ---
@@ -448,10 +512,11 @@ class SchoolController {
 |---------|----------|
 | **SoftDeletes** | `deleted_at` ile geri dönüşlü silme |
 | **HasFactory** | Factory desteği |
+| **Auditable (trait)** | Model bazlı audit özelleştirme (exclude/include fields, label) |
 | **Auto created_by** | `creating` event'inde `auth()->id()` ile doldurulur |
 | **Auto updated_by** | `updating` event'inde `auth()->id()` ile doldurulur |
 | **Tenant Global Scope** | Login olan kullanıcının `tenant_id`'sine göre otomatik filtreleme. Super Admin hariç. |
-| **History Observer** | Her create/update/delete'te `{tablo}_histories` tablosuna snapshot kaydeder |
+| **History Observer** | Her create/update/delete'te hem `activity_logs` (audit DB) hem `{tablo}_histories` (eski uyumluluk) kaydeder |
 | **createdBy() / updatedBy()** | User ilişkileri (belongsTo) |
 
 **⚠️ ÖNEMLİ:** `User` modeli `BaseModel`'den **türemez** (Authenticatable'dan türer). Dolayısıyla User için tenant scope ve history özelliği `BaseModel` üzerinden gelmez; ayrı implement edilmelidir gerektiğinde.
@@ -506,15 +571,32 @@ protected function paginatedResponse(mixed $collection): JsonResponse
 
 Tüm policy'lerin atası. `before()` hook'u ile **Super Admin** tüm işlemlere otomatik izinlidir.
 
-### 5.6 HistoryObserver (`app/Observers/HistoryObserver.php`)
+### 5.6 HistoryObserver (`app/Observers/HistoryObserver.php`) — Gelişmiş
 
-Her `BaseModel` türevi model'de otomatik çalışır:
-- **created** → `{tablo}_histories` tablosuna `operation_type: 'create'` kaydeder
-- **updated** → `{tablo}_histories` tablosuna `operation_type: 'update'` kaydeder
-- **deleted** → `{tablo}_histories` tablosuna `operation_type: 'delete'` kaydeder
-- `snapshot` alanı: Model'in o anki JSON hali
-- `operated_by`: İşlemi yapan kullanıcı ID'si
-- History tablosu yoksa hata loglanır ama işlem engellenmez
+Her `BaseModel` türevi model'de otomatik çalışır. **İki katmanlı loglama:**
+
+**Katman 1 — Merkezi Activity Log (Yeni, Ayrı DB):**
+- `created` → `activity_logs` tablosuna tüm yeni değerleri JSON olarak kaydeder
+- `updated` → `old_values` (önceki) + `new_values` (sonraki) + `changed_fields` kaydeder
+- `deleted` / `force_deleted` → Silinen kaydın tüm verilerini `old_values`'a kaydeder
+- `restored` → Geri yükleme işlemini loglar
+- Denormalize kullanıcı bilgisi (user_name, user_email) → JOIN gerektirmez
+- Hassas alanlar filtrelenir (password, token vb.)
+- JSON boyut kontrolü (64KB limit, auto-truncate)
+- Asenkron destek: `config/audit.php → async = true` olduğunda queue üzerinden yazar
+
+**Katman 2 — Eski _histories Tabloları (Geriye Dönük Uyumluluk):**
+- `{tablo}_histories` tablosuna `snapshot` (JSON) kaydeder (eski sistem)
+- History tablosu yoksa sessizce geçer
+
+**Auditable Trait ile Özelleştirme:**
+```php
+class School extends BaseModel {
+    protected array $auditExclude = ['cached_stats'];  // Bu alanları loglama
+    protected array $auditInclude = ['name', 'status']; // Sadece bunları logla
+    protected string $auditLabel = 'Okul';              // Okunabilir etiket
+}
+```
 
 ---
 
@@ -665,13 +747,17 @@ Her ana tabloda aşağıdaki standart alanlar bulunur:
 | ✅ **API Routes** | 4 katmanlı erişim yapısı: Public → Auth → Subscription → Admin |
 | ✅ **Auth Sistemi** | Register/Login/Logout/Me endpoint'leri + AuthService + Sanctum token |
 | ✅ **B2B Paket Sistemi** | Package/TenantSubscription/TenantPayment modelleri, controller, service, seeder |
+| ✅ **Fatura & İşlem Sistemi** | Invoice + InvoiceItem + Transaction modülleri, sanal POS entegrasyonu |
+| ✅ **Para Birimi & Döviz Kuru** | Currency + ExchangeRate + 4 API entegrasyonu + cron + cache |
+| ✅ **Gelişmiş Activity Log** | Merkezi activity_logs (ayrı DB) + arşivleme + özet + async queue |
 | ✅ **Middleware** | `EnsureActiveSubscription` — aktif abonelik kontrolü |
-| ✅ **Seeders** | RoleSeeder (5 rol) + PackageSeeder (3 paket) + Super Admin |
-| ✅ **Service katmanı** | BaseService + 10 somut service |
-| ✅ **API Resources** | 13 Resource sınıfı |
+| ✅ **Seeders** | RoleSeeder (5 rol) + PackageSeeder (3 paket) + CurrencySeeder (4 para birimi) |
+| ✅ **Service katmanı** | BaseService + 14 somut service |
+| ✅ **API Resources** | 17 Resource sınıfı |
 | ✅ **Policies** | BasePolicy + 8 policy |
 | ✅ **FormRequests** | 16 FormRequest (Auth + Package + mevcut modeller) |
-| ✅ **Trait** | `ChecksPackageLimits` — limit kontrolü trait'i |
+| ✅ **Traits** | `ChecksPackageLimits` + `Auditable` |
+| ✅ **Cron Jobs** | `currency:update-rates` (09:00) + `audit:maintain` (03:00) |
 | ⚠️ **Tests** | Test dosyaları henüz yazılmamış. |
 | ⚠️ **Ödeme entegrasyonu** | Şimdilik simüle, iyzico/Stripe entegrasyonu eklenecek. |
 
@@ -790,20 +876,151 @@ vendor/bin/pint
 | `ChildPricingSetting` | child_pricing_settings | Kademeli çocuk fiyatlandırma |
 | `Announcement` | announcements | Okul/sınıf duyuruları |
 
+### 🆕 Yeni Eklenen Modeller (2026-02-14)
+| Model | Tablo | Açıklama |
+|-------|-------|----------|
+| `Invoice` | invoices | B2B/B2C fatura sistemi |
+| `InvoiceItem` | invoice_items | Fatura kalemleri |
+| `Transaction` | transactions | Sanal POS işlemleri (ödeme durumu + hash) |
+| `Currency` | currencies | Para birimi tanımları (ISO 4217, baz birim, format) |
+| `ExchangeRate` | exchange_rates | Günlük döviz kurları (baz birime göre) |
+| `ExchangeRateLog` | exchange_rate_logs | API güncelleme logları |
+| `ActivityLog` | activity_logs (AUDIT DB) | Merkezi CRUD log (old/new values, denormalize) |
+
 ---
 
-## 🔑 12. Yeni Özellik Eklerken Kontrol Listesi
+## 💱 13. Para Birimi & Döviz Kuru Sistemi
 
-1. ✅ Migration oluştur (+ `{tablo}_histories` tablosu unutma!)
-2. ✅ Model oluştur (`BaseModel`'den türet, `$fillable`, `$casts`, ilişkiler)
-3. ✅ FormRequest oluştur (`StoreXxxRequest`, `UpdateXxxRequest`)
-4. ✅ API Resource oluştur (`XxxResource`)
-5. ✅ Service oluştur (`XxxService`)
-6. ✅ Policy oluştur (yetkilendirme kuralları)
-7. ✅ Controller oluştur (uygun Base Controller'dan türet)
-8. ✅ Route tanımla (`routes/api.php`)
-9. ✅ Test yaz (Feature + Unit)
-10. ✅ `vendor/bin/pint --dirty` çalıştır
+### 13.1 Mimari
+```
+BAZ PARA BİRİMİ (örn: USD, is_base=true)
+  │
+  ├── Tüm fiyatlar BAZ birim cinsinden saklanır
+  ├── Dönüşüm: tutar × kur = hedef para birimi
+  └── Örnek: 100 USD × 32.50 = ₺3,250.00 TRY
+```
+
+### 13.2 API Kaynakları
+| Kaynak | API Key | Özellik |
+|--------|---------|----------|
+| ExchangeRate-API | Opsiyonel | Varsayılan, en kolay |
+| Open Exchange Rates | Zorunlu | Popüler, güvenilir |
+| Fixer.io | Zorunlu | AB odaklı |
+| TCMB | ❌ Gereksiz | TRY bazlı, XML, limitsiz |
+
+### 13.3 Endpoint'ler
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| `GET` | `/api/currencies` | Aktif para birimleri |
+| `GET` | `/api/currencies/rates` | Güncel kurlar |
+| `GET` | `/api/currencies/convert?amount=100&from=USD&to=TRY` | Dönüşüm |
+| `GET` | `/api/currencies/history/{code}` | Kur geçmişi |
+| `POST` | `/api/admin/currencies` | Para birimi ekle |
+| `POST` | `/api/admin/currencies/fetch-rates` | API'den kur çek |
+| `PATCH` | `/api/admin/currencies/{id}/set-base` | Baz birim ayarla |
+
+### 13.4 Cron Job
+```bash
+currency:update-rates → Her gün 09:00 (config ile ayarlanabilir)
+```
+
+### 13.5 .env Değişkenleri
+```env
+CURRENCY_BASE=USD
+CURRENCY_API_SOURCE=exchangerate-api
+EXCHANGERATE_API_KEY=
+CURRENCY_AUTO_UPDATE=true
+CURRENCY_UPDATE_TIME=09:00
+```
+
+---
+
+## � 14. Gelişmiş Activity Log & History Modülü
+
+### 14.1 Çift Katmanlı Mimari
+```
+BaseModel (Auditable trait)
+  │
+  └── HistoryObserver
+        ├── 1. activity_logs (AUDIT DB) ← Merkezi, gelişmiş, ayrı DB
+        │     ├── old_values (güncelleme öncesi değerler)
+        │     ├── new_values (güncelleme sonrası değerler)
+        │     └── changed_fields (değişen alan isimleri)
+        │
+        └── 2. {table}_histories (ANA DB) ← Eski uyumluluk (snapshot)
+
+  Queue (async=true) ──→ WriteActivityLog Job
+  CronJob (03:00)    ──→ audit:maintain (arşiv + özet + temizleme)
+```
+
+### 14.2 Performans Stratejileri
+| Strateji | Açıklama |
+|----------|----------|
+| **Ayrı DB** | Ana uygulamanın performansını etkilemez |
+| **Denormalize** | user_name, user_email → JOIN gerektirmez |
+| **INSERT-only** | updated_at yok, sadece created_at |
+| **Composite Index** | (model_type, model_id), (user_id, created_at) |
+| **Async Queue** | `AUDIT_ASYNC=true` → ana response gecikmiyor |
+| **Only Dirty** | Sadece değişen alanlar kaydedilir |
+| **JSON Truncation** | 64KB limit, auto-truncate |
+| **Chunk Archive** | 1000'lik parçalarla arşivleme (bellek koruması) |
+| **Summary Table** | Günlük sayılar → dashboard sorguları hızlı |
+| **FK Yok** | MongoDB geçişine hazır |
+
+### 14.3 Admin Endpoint'leri
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| `GET` | `/api/admin/activity-logs` | Tüm loglar (12+ filtre) |
+| `GET` | `/api/admin/activity-logs/stats` | İstatistikler |
+| `GET` | `/api/admin/activity-logs/daily-summary` | Günlük özet (grafik) |
+| `GET` | `/api/admin/activity-logs/models` | Mevcut model türleri |
+| `POST` | `/api/admin/activity-logs/archive` | Arşivleme trigger |
+| `GET` | `/api/admin/activity-logs/user/{userId}` | Kullanıcı aktivitesi |
+| `GET` | `/api/admin/activity-logs/model/{type}/{id}` | Kayıt değişiklik geçmişi |
+| `GET` | `/api/admin/activity-logs/version/{type}/{id}/{logId}` | Versiyon detayı |
+| `GET` | `/api/admin/activity-logs/{id}` | Tek log detayı |
+
+### 14.4 Cron Job & Artisan
+```bash
+audit:maintain           → Her gün 03:00 (arşivleme + özet güncelleme)
+audit:maintain --archive-only
+audit:maintain --clean-archive --archive-days=730
+```
+
+### 14.5 .env Değişkenleri
+```env
+AUDIT_DB_DATABASE=istudy_audit  # Ayrı veritabanı
+AUDIT_ASYNC=false               # true → queue ile asenkron
+AUDIT_RETENTION_DAYS=365        # Arşivleme eşiği
+AUDIT_ONLY_DIRTY=true           # Sadece değişen alanlar
+AUDIT_MAX_JSON_SIZE=65535       # 64KB JSON limit
+```
+
+### 14.6 MongoDB Geçiş Planı
+```
+Mevcut (MySQL)              →  Gelecek (MongoDB)
+─────────────────────────      ─────────────────────
+config/database.php:audit  →  driver: mongodb
+activity_logs tablosu      →  activity_logs collection
+FK yok, JSON document      →  BSON document (native)
+Sadece config değişir      →  Kod değişikliği minimum
+```
+
+---
+
+## �🔑 15. Yeni Özellik Eklerken Kontrol Listesi
+
+1. ✅ Migration oluştur (+ `{tablo}_histories` tablosu opsiyonel — artık activity_logs merkezi log tutuyor)
+2. ✅ Model oluştur (`BaseModel`'den türet → otomatik activity log aktif)
+3. ✅ İsteğe bağlı: `$auditExclude`, `$auditLabel` ile audit özelleştir
+4. ✅ FormRequest oluştur (`StoreXxxRequest`, `UpdateXxxRequest`)
+5. ✅ API Resource oluştur (`XxxResource`)
+6. ✅ Service oluştur (`XxxService`)
+7. ✅ Policy oluştur (yetkilendirme kuralları)
+8. ✅ Controller oluştur (uygun Base Controller'dan türet)
+9. ✅ Route tanımla (`routes/api.php`)
+10. ✅ Test yaz (Feature + Unit)
+11. ✅ `vendor/bin/pint --dirty` çalıştır
 
 ---
 

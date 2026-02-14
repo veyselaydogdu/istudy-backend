@@ -27,3 +27,11 @@ if (config('currency.auto_update.enabled', true)) {
         default      => $schedule->dailyAt($time),
     };
 }
+
+// Activity log bakım işlemi (arşivleme + özet güncelleme)
+Schedule::command('audit:maintain')
+    ->dailyAt('03:00')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/audit-maintain.log'));
+

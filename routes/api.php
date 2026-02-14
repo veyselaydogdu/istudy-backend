@@ -327,6 +327,21 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         // ───────────────────────────────────────────────────
+        // ACTIVITY LOG & HİSTORY YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('activity-logs')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'index']);
+            Route::get('/stats', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'stats']);
+            Route::get('/daily-summary', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'dailySummary']);
+            Route::get('/models', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'availableModels']);
+            Route::post('/archive', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'archive']);
+            Route::get('/user/{userId}', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'userActivity']);
+            Route::get('/model/{modelType}/{modelId}', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'modelHistory']);
+            Route::get('/version/{modelType}/{modelId}/{logId}', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'version']);
+            Route::get('/{id}', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'show']);
+        });
+
+        // ───────────────────────────────────────────────────
         // ÇOCUK FİYATLANDIRMA AYARLARI (Platform geneli)
         // ───────────────────────────────────────────────────
         Route::prefix('pricing')->group(function () {
