@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-14 (Gelişmiş Activity Log & History Modülü, Para Birimi & Döviz Kuru Sistemi, Fatura Modülü, Transaction Sistemi, Sanal POS Entegrasyonu, Eğitim Yılı Yönetimi, Süper Admin Panel Backend)
+> **Son Güncelleme:** 2026-02-14 (Ülkeler Modülü, Öğretmen Profil CV Sistemi, Kullanıcı İletişim Numaraları, Activity Log, Para Birimi, Fatura, Transaction, Sanal POS, Eğitim Yılı, Süper Admin Panel)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -118,7 +118,7 @@ istudy-backend/
 │   │       ├── UserResource.php                  ← Kullanıcı bilgisi
 │   │       ├── AcademicYearResource.php ... SchoolResource.php ... TenantResource.php
 │   ├── Models/
-│   │   ├── Base/     (BaseModel, Role, Permission, AuditLog, ActivityLog)
+│   │   ├── Base/     (BaseModel, Role, Permission, AuditLog, ActivityLog, Country, UserContactNumber)
 │   │   ├── Tenant/   (Tenant)                    ← + activeSubscription(), canCreateSchool(), canEnrollStudent()
 │   │   ├── Package/                               ← B2B Paket Sistemi
 │   │   │   ├── Package.php                        ← Limitler + fiyat + features
@@ -130,8 +130,14 @@ istudy-backend/
 │   │   │   ├── Currency.php                       ← Para birimi tanımları (ISO 4217)
 │   │   │   ├── ExchangeRate.php                   ← Döviz kurları (günlük)
 │   │   │   └── ExchangeRateLog.php                ← API güncelleme logları
-│   │   ├── School/  ... Academic/  ... Child/  ... Activity/  ... Health/
-│   │   └── User.php
+│   │   ├── School/                                ← Okul + Öğretmen Profil
+│   │   │   ├── School.php, TeacherProfile.php     ← Genişletildi: CV, eğitim, sertifika, kurs, yetenek
+│   │   │   ├── TeacherEducation.php               ← Eğitim geçmişi (lisans, yüksek lisans vb.)
+│   │   │   ├── TeacherCertificate.php             ← Sertifikalar (okul onayı gerektirir)
+│   │   │   ├── TeacherCourse.php                  ← Kurs/Seminer katılımı (okul onayı gerektirir)
+│   │   │   └── TeacherSkill.php                   ← Yetenek/Uzmanlık alanları
+│   │   ├── Academic/  ... Child/  ... Activity/  ... Health/
+│   │   └── User.php                               ← + surname, country_id, contactNumbers(), fullName
 │   ├── Observers/
 │   │   └── HistoryObserver.php                    ← Gelişmiş: old_values, async, filtreleme, merkezi log
 │   ├── Policies/     (Base + School + SchoolClass + Child + Activity + FamilyProfile + Tenant + FamilySubscription + Package)
@@ -140,6 +146,8 @@ istudy-backend/
 │   │   └── WriteActivityLog.php                   ← Asenkron activity log yazma (queue)
 │   ├── Services/
 │   │   ├── AuthService.php                       ← Register + Login + Logout
+│   │   ├── CountryService.php                    ← RestCountries API sync + CRUD + telefon kodu/bölge listesi
+│   │   ├── TeacherProfileService.php             ← CV yönetimi + onay workflow (pending→approved/rejected)
 │   │   ├── PackageService.php                    ← Paket CRUD + aktif paket listesi
 │   │   ├── TenantSubscriptionService.php         ← Abonelik oluşturma + iptal + usage raporu
 │   │   ├── InvoiceService.php                    ← Fatura oluşturma + ödeme başlatma
@@ -159,7 +167,8 @@ istudy-backend/
 │   │   ├── 000009_create_package_system_tables.php ← packages + tenant_subscriptions + tenant_payments
 │   │   ├── 000012_create_invoice_and_transaction_tables.php ← invoices + items + transactions
 │   │   ├── 000013_create_currency_tables.php       ← currencies + exchange_rates + exchange_rate_logs
-│   │   └── 000014_create_activity_log_tables.php   ← activity_logs + archive + summaries (AUDIT DB)
+│   │   ├── 000014_create_activity_log_tables.php   ← activity_logs + archive + summaries (AUDIT DB)
+│   │   └── 000015_create_countries_contacts_teacher_cv_tables.php ← countries + user_contact_numbers + teacher CV tabloları
 │   └── seeders/
 │       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
 │       ├── RoleSeeder.php                        ← 5 temel rol
@@ -168,7 +177,7 @@ istudy-backend/
 ├── routes/
 │   ├── api.php                                   ← 4 katmanlı erişim: Public → Auth → Subscription → Admin
 │   ├── web.php
-│   └── console.php                               ← Cron: currency:update-rates (09:00) + audit:maintain (03:00)
+│   └── console.php                               ← Cron: currency:update-rates (09:00) + audit:maintain (03:00) + countries:sync
 ├── bootstrap/
 │   ├── app.php                                   ← + subscription.active middleware alias
 │   └── providers.php
@@ -197,10 +206,20 @@ istudy-backend/
 | `schools` | `App\Models\School\School` | Okullar/Şubeler |
 | `academic_years` | `App\Models\Academic\AcademicYear` | Eğitim dönemleri (2025-2026) |
 
+#### 🌍 Ülkeler Modülü (Countries)
+| Tablo | Model | Açıklama |
+|-------|-------|----------|
+| `countries` | `App\Models\Base\Country` | Ülkeler (RestCountries API'den senkronize) — ISO kodları, telefon kodları, para birimi, dil, bayrak, coğrafi veriler, `extra_data` JSON |
+
 #### 👥 Kişiler Modülü (People)
 | Tablo | Model | Açıklama |
 |-------|-------|----------|
-| `teacher_profiles` | `App\Models\School\TeacherProfile` | Öğretmen profilleri |
+| `teacher_profiles` | `App\Models\School\TeacherProfile` | Öğretmen profilleri (genişletildi: CV, eğitim, sertifika, kurs, yetenek) |
+| `teacher_educations` | `App\Models\School\TeacherEducation` | Öğretmen eğitim geçmişi (lisans, yüksek lisans vb.) |
+| `teacher_certificates` | `App\Models\School\TeacherCertificate` | Öğretmen sertifikaları (okul onayı gerektirir: pending→approved/rejected) |
+| `teacher_courses` | `App\Models\School\TeacherCourse` | Kurs/Seminer katılımı (okul onayı gerektirir) |
+| `teacher_skills` | `App\Models\School\TeacherSkill` | Yetenek/Uzmanlık alanları (8 kategori, 4 seviye) |
+| `user_contact_numbers` | `App\Models\Base\UserContactNumber` | Ek iletişim numaraları (WhatsApp, Telegram vb. — 12 tür) |
 | `family_profiles` | `App\Models\Child\FamilyProfile` | Aile profilleri |
 | `family_members` | `App\Models\Child\FamilyMember` | Aile üyeleri (anne, baba vb.) |
 | `children` | `App\Models\Child\Child` | Çocuklar (Öğrenciler) |

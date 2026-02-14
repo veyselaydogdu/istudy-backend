@@ -53,6 +53,15 @@ Route::prefix('currencies')->group(function () {
     Route::get('/history/{code}', [\App\Http\Controllers\Billing\CurrencyController::class, 'history']);
 });
 
+// ───────────────────────────────────────────────────
+// ÜLKELER (Herkese açık — dropdown, telefon kodu seçimi)
+// ───────────────────────────────────────────────────
+Route::prefix('countries')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Schools\CountryController::class, 'index']);
+    Route::get('/phone-codes', [\App\Http\Controllers\Schools\CountryController::class, 'phoneCodes']);
+    Route::get('/regions', [\App\Http\Controllers\Schools\CountryController::class, 'regions']);
+});
+
 // ═══════════════════════════════════════════════════════════
 // 2️⃣ AUTH GEREKLİ (Abonelik gerektirmez)
 // ═══════════════════════════════════════════════════════════
@@ -98,6 +107,50 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/read-all', [\App\Http\Controllers\Schools\NotificationController::class, 'markAllAsRead']);
         Route::get('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'preferences']);
         Route::put('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'updatePreferences']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // EK İLETİŞİM NUMARALARI (WhatsApp, Telegram vb.)
+    // ───────────────────────────────────────────────────
+    Route::prefix('contact-numbers')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Auth\UserContactController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Auth\UserContactController::class, 'store']);
+        Route::put('/{id}', [\App\Http\Controllers\Auth\UserContactController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Auth\UserContactController::class, 'destroy']);
+        Route::get('/types', [\App\Http\Controllers\Auth\UserContactController::class, 'types']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN PROFİLİ — Kendi CV/Özgeçmiş Yönetimi
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/profile')->group(function () {
+        // Profil
+        Route::get('/', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'myProfile']);
+        Route::put('/', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateMyProfile']);
+
+        // Eğitim Geçmişi
+        Route::get('/educations', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'educations']);
+        Route::post('/educations', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeEducation']);
+        Route::put('/educations/{educationId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateEducation']);
+        Route::delete('/educations/{educationId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyEducation']);
+
+        // Sertifikalar (onay gerektirir)
+        Route::get('/certificates', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'certificates']);
+        Route::post('/certificates', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeCertificate']);
+        Route::put('/certificates/{certificateId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateCertificate']);
+        Route::delete('/certificates/{certificateId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyCertificate']);
+
+        // Kurs & Seminer (onay gerektirir)
+        Route::get('/courses', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'courses']);
+        Route::post('/courses', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeCourse']);
+        Route::put('/courses/{courseId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateCourse']);
+        Route::delete('/courses/{courseId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyCourse']);
+
+        // Yetenekler
+        Route::get('/skills', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'skills']);
+        Route::post('/skills', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeSkill']);
+        Route::put('/skills/{skillId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateSkill']);
+        Route::delete('/skills/{skillId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroySkill']);
     });
 
     // ───────────────────────────────────────────────────
@@ -203,6 +256,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
             Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
             Route::apiResource('families', \App\Http\Controllers\Schools\FamilyProfileController::class);
+        });
+
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN ONAY İŞLEMLERİ (Okul Admin)
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher-approvals')->group(function () {
+            Route::get('/pending', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'pendingApprovals']);
+            Route::patch('/certificates/{certificateId}/approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'approveCertificate']);
+            Route::patch('/certificates/{certificateId}/reject', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'rejectCertificate']);
+            Route::patch('/courses/{courseId}/approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'approveCourse']);
+            Route::patch('/courses/{courseId}/reject', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'rejectCourse']);
+            Route::post('/bulk-approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'bulkApprove']);
         });
     });
 
@@ -339,6 +404,22 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/model/{modelType}/{modelId}', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'modelHistory']);
             Route::get('/version/{modelType}/{modelId}/{logId}', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'version']);
             Route::get('/{id}', [\App\Http\Controllers\Admin\AdminActivityLogController::class, 'show']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // ÜLKE YÖNETİMİ (RestCountries API Entegrasyonu)
+        // ───────────────────────────────────────────────────
+        Route::prefix('countries')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminCountryController::class, 'index']);
+            Route::get('/stats', [\App\Http\Controllers\Admin\AdminCountryController::class, 'stats']);
+            Route::get('/regions', [\App\Http\Controllers\Admin\AdminCountryController::class, 'regions']);
+            Route::post('/sync', [\App\Http\Controllers\Admin\AdminCountryController::class, 'syncFromApi']);
+            Route::post('/sync/{iso2}', [\App\Http\Controllers\Admin\AdminCountryController::class, 'syncCountry']);
+            Route::get('/{id}', [\App\Http\Controllers\Admin\AdminCountryController::class, 'show']);
+            Route::put('/{id}', [\App\Http\Controllers\Admin\AdminCountryController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminCountryController::class, 'destroy']);
+            Route::patch('/{id}/toggle-active', [\App\Http\Controllers\Admin\AdminCountryController::class, 'toggleActive']);
+            Route::patch('/{id}/sort-order', [\App\Http\Controllers\Admin\AdminCountryController::class, 'updateSortOrder']);
         });
 
         // ───────────────────────────────────────────────────

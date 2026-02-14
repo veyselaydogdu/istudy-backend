@@ -3,7 +3,9 @@
 namespace App\Models;
 
 // Illuminate\Foundation\Auth\User as Authenticatable
+use App\Models\Base\Country;
 use App\Models\Base\Role;
+use App\Models\Base\UserContactNumber;
 use App\Models\Child\FamilyProfile;
 use App\Models\School\TeacherProfile;
 use App\Models\Tenant\Tenant;
@@ -12,8 +14,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-
-// Role modelini ayrıca oluşturacağız veya User içinde tanımlı relation
 
 class User extends Authenticatable
 {
@@ -26,14 +26,16 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'surname',
         'email',
         'password',
         'phone',
+        'country_id',
         'locale',
         'last_login_at',
         'created_by',
         'updated_by',
-        'tenant_id', // Eğer user bir tenant'a bağlıysa
+        'tenant_id',
     ];
 
     /**
@@ -107,5 +109,35 @@ class User extends Authenticatable
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'role_user', 'user_id', 'role_id')->withTimestamps();
+    }
+
+    /**
+     * Ek iletişim numaraları (WhatsApp, Telegram vb.)
+     */
+    public function contactNumbers()
+    {
+        return $this->hasMany(UserContactNumber::class, 'user_id')->ordered();
+    }
+
+    /**
+     * Ülke
+     */
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'country_id');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Tam ad (name + surname)
+     */
+    public function getFullNameAttribute(): string
+    {
+        return trim("{$this->name} {$this->surname}");
     }
 }
