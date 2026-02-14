@@ -154,6 +154,16 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ───────────────────────────────────────────────────
+    // ÖĞRETMEN GÜNLÜK RAPORLAMA (Teacher Daily Report)
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/daily-reports')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'index']); // Liste
+        Route::get('/{childId}/{date}', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'show']); // Tekil detay + şablon
+        Route::post('/', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'store']); // Tekil Kayıt
+        Route::post('/bulk', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'bulkStore']); // Toplu Kayıt
+    });
+
+    // ───────────────────────────────────────────────────
     // FATURA & ÖDEME SİSTEMİ
     // ───────────────────────────────────────────────────
     Route::prefix('invoices')->group(function () {
@@ -256,6 +266,12 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
             Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
             Route::apiResource('families', \App\Http\Controllers\Schools\FamilyProfileController::class);
+
+            // ───────────────────────────────────────────────────
+            // YOKLAMA YÖNETİMİ (Attendance)
+            // ───────────────────────────────────────────────────
+            Route::get('/attendances', [\App\Http\Controllers\Schools\AttendanceController::class, 'index']);
+            Route::post('/attendances', [\App\Http\Controllers\Schools\AttendanceController::class, 'store']); // Toplu ve tekli kayıt
         });
 
         // ───────────────────────────────────────────────────

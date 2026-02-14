@@ -148,6 +148,8 @@ istudy-backend/
 │   │   ├── AuthService.php                       ← Register + Login + Logout
 │   │   ├── CountryService.php                    ← RestCountries API sync + CRUD + telefon kodu/bölge listesi
 │   │   ├── TeacherProfileService.php             ← CV yönetimi + onay workflow (pending→approved/rejected)
+│   │   ├── ReportTemplateService.php             ← Dinamik Rapor Şablonu (Key-Value-Type) yönetimi
+│   │   ├── MealMenuService.php                   ← Yemek Menü Planlama (Günlük/Haftalık/Aylık)
 │   │   ├── PackageService.php                    ← Paket CRUD + aktif paket listesi
 │   │   ├── TenantSubscriptionService.php         ← Abonelik oluşturma + iptal + usage raporu
 │   │   ├── InvoiceService.php                    ← Fatura oluşturma + ödeme başlatma
@@ -250,6 +252,9 @@ istudy-backend/
 | `daily_child_reports` | `App\Models\Activity\DailyChildReport` | Günlük çocuk raporları (mood, appetite, notlar) |
 | `attendances` | `App\Models\Activity\Attendance` | Yoklama (present, absent, late, excused) |
 | `activities` | `App\Models\Activity\Activity` | Etkinlikler (ücretli/ücretsiz) |
+| `report_templates` | `App\Models\Activity\ReportTemplate` | Dinamik Rapor Şablonları (Okul Yöneticisi tanımlar) |
+| `report_template_inputs` | `App\Models\Activity\ReportTemplateInput` | Şablon Alanları (Label, Type: select/text/rating, Options: JSON) |
+| `report_input_values` | `App\Models\Activity\ReportInputValue` | Girilen Değerler (Öğretmen doldurur) |
 | `events` | `App\Models\Activity\Event` | Takvim olayları |
 | `materials` | — | Materyaller |
 | `child_activity_enrollments` | — (Pivot) | Çocuk-Aktivite kayıtları (M2M) |
