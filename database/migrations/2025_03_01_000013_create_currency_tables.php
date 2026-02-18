@@ -55,7 +55,7 @@ return new class extends Migration
         // ──────────────────────────
         Schema::create('exchange_rates', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('currency_id')->constrained()->cascadeOnDelete()->comment('Hedef para birimi');
+            $table->foreignId('currency_id')->constrained()->restrictOnDelete()->comment('Hedef para birimi');
             $table->string('base_currency', 3)->default('USD')->comment('Baz para birimi kodu');
             $table->decimal('rate', 18, 8)->comment('1 baz birim = ? hedef birim');
             $table->decimal('buy_rate', 18, 8)->nullable()->comment('Alış kuru');

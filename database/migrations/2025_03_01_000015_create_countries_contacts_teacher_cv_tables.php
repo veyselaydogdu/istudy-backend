@@ -99,7 +99,7 @@ return new class extends Migration
 
         Schema::create('user_contact_numbers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
             $table->foreignId('country_id')->nullable()->constrained('countries')->nullOnDelete();
 
             // İletişim bilgileri
@@ -128,7 +128,7 @@ return new class extends Migration
 
         Schema::create('teacher_educations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('teacher_profile_id')->constrained('teacher_profiles')->cascadeOnDelete();
+            $table->foreignId('teacher_profile_id')->constrained('teacher_profiles')->restrictOnDelete();
 
             // Eğitim bilgileri
             $table->string('institution');               // Üniversite/Okul adı
@@ -155,7 +155,7 @@ return new class extends Migration
 
         Schema::create('teacher_certificates', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('teacher_profile_id')->constrained('teacher_profiles')->cascadeOnDelete();
+            $table->foreignId('teacher_profile_id')->constrained('teacher_profiles')->restrictOnDelete();
 
             // Sertifika bilgileri
             $table->string('name');                      // Sertifika adı
@@ -187,7 +187,7 @@ return new class extends Migration
 
         Schema::create('teacher_courses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('teacher_profile_id')->constrained('teacher_profiles')->cascadeOnDelete();
+            $table->foreignId('teacher_profile_id')->constrained('teacher_profiles')->restrictOnDelete();
 
             // Kurs / Seminer bilgileri
             $table->string('title');                     // Kurs/Seminer adı
@@ -223,7 +223,7 @@ return new class extends Migration
 
         Schema::create('teacher_skills', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('teacher_profile_id')->constrained('teacher_profiles')->cascadeOnDelete();
+            $table->foreignId('teacher_profile_id')->constrained('teacher_profiles')->restrictOnDelete();
 
             $table->string('name');                       // Yetenek adı
             $table->enum('level', ['beginner', 'intermediate', 'advanced', 'expert'])->default('intermediate');

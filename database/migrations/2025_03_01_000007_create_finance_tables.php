@@ -26,8 +26,8 @@ return new class extends Migration
             $table->string('billing_cycle'); // monthly, yearly
             $table->decimal('base_price', 10, 2);
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -37,19 +37,19 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 2. PLAN_TIER_PRICING (Fiyatlandırma kural tablosu olarak düşünülmüştür)
         Schema::create('plan_tier_pricing', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('plan_id')->constrained('subscription_plans')->cascadeOnDelete();
+            $table->foreignId('plan_id')->constrained('subscription_plans')->restrictOnDelete();
             $table->integer('child_order')->default(1); // 1. çocuk, 2. çocuk vb.
             $table->decimal('price', 10, 2);
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -59,21 +59,21 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 3. FAMILY_SUBSCRIPTIONS
         Schema::create('family_subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('family_profile_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('plan_id')->constrained('subscription_plans')->cascadeOnDelete();
+            $table->foreignId('family_profile_id')->constrained()->restrictOnDelete();
+            $table->foreignId('plan_id')->constrained('subscription_plans')->restrictOnDelete();
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->string('status')->default('active'); // active, cancelled, expired
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -85,14 +85,14 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 4. PAYMENTS
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('family_subscription_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('family_subscription_id')->constrained()->restrictOnDelete();
             $table->decimal('amount', 10, 2);
             $table->string('currency')->default('TRY');
             $table->string('payment_provider'); // strip, iyzico
@@ -100,8 +100,8 @@ return new class extends Migration
             $table->timestamp('paid_at')->nullable();
             $table->string('status'); // pending, success, failed
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -111,20 +111,20 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 5. REVENUE_SHARES
         Schema::create('revenue_shares', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('payment_id')->constrained('payments')->cascadeOnDelete();
-            $table->foreignId('school_id')->constrained('schools')->cascadeOnDelete();
+            $table->foreignId('payment_id')->constrained('payments')->restrictOnDelete();
+            $table->foreignId('school_id')->constrained('schools')->restrictOnDelete();
             $table->decimal('percentage', 5, 2); // % Komisyon
             $table->decimal('amount', 10, 2); // Net tutar
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -134,7 +134,7 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
     }

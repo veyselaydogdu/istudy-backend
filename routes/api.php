@@ -439,6 +439,35 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         // ───────────────────────────────────────────────────
+        // SAĞLIK & BESLENME VERİ YÖNETİMİ (Global havuz)
+        // ───────────────────────────────────────────────────
+        Route::prefix('allergens')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'allergenIndex']);
+            Route::post('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'allergenStore']);
+            Route::put('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'allergenUpdate']);
+            Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'allergenDestroy']);
+        });
+
+        Route::prefix('medical-conditions')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'conditionIndex']);
+            Route::post('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'conditionStore']);
+            Route::put('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'conditionUpdate']);
+            Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'conditionDestroy']);
+        });
+
+        Route::prefix('food-ingredients')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'ingredientIndex']);
+            Route::post('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'ingredientStore']);
+            Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'ingredientDestroy']);
+        });
+
+        Route::prefix('medications')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'medicationIndex']);
+            Route::post('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'medicationStore']);
+            Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'medicationDestroy']);
+        });
+
+        // ───────────────────────────────────────────────────
         // ÇOCUK FİYATLANDIRMA AYARLARI (Platform geneli)
         // ───────────────────────────────────────────────────
         Route::prefix('pricing')->group(function () {

@@ -51,7 +51,7 @@ return new class extends Migration
         // ─── Tenant Abonelikleri ───────────────────────────────
         Schema::create('tenant_subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('tenant_id')->constrained()->restrictOnDelete();
             $table->foreignId('package_id')->constrained('packages')->restrictOnDelete();
             $table->enum('billing_cycle', ['monthly', 'yearly'])->default('monthly');
             $table->decimal('price', 10, 2);
@@ -81,7 +81,7 @@ return new class extends Migration
         Schema::create('tenant_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_subscription_id')
-                ->constrained('tenant_subscriptions')->cascadeOnDelete();
+                ->constrained('tenant_subscriptions')->restrictOnDelete();
             $table->decimal('amount', 10, 2);
             $table->string('currency', 5)->default('TRY');
             $table->string('payment_method')->nullable()

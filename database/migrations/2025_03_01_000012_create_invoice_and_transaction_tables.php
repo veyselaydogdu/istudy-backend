@@ -30,7 +30,7 @@ return new class extends Migration
             $table->id();
             $table->string('invoice_no')->unique()->comment('Fatura numarası: INV-2026-000001');
             $table->foreignId('tenant_id')->nullable()->constrained()->nullOnDelete()->comment('B2B faturası ise tenant');
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete()->comment('Faturayı ödeyen kullanıcı');
+            $table->foreignId('user_id')->constrained()->restrictOnDelete()->comment('Faturayı ödeyen kullanıcı');
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete()->comment('İlgili okul (veli ödemesi için)');
 
             $table->string('type')->default('subscription')->comment('subscription, enrollment, manual, other');
@@ -52,8 +52,8 @@ return new class extends Migration
             $table->string('payable_type')->nullable()->comment('İlişkili model sınıfı');
             $table->unsignedBigInteger('payable_id')->nullable()->comment('İlişkili model ID');
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -68,7 +68,7 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
@@ -77,7 +77,7 @@ return new class extends Migration
         // ──────────────────────────
         Schema::create('invoice_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('invoice_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('invoice_id')->constrained()->restrictOnDelete();
             $table->string('description')->comment('Kalem açıklaması');
             $table->integer('quantity')->default(1);
             $table->decimal('unit_price', 12, 2)->default(0);
@@ -99,8 +99,8 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->string('order_id')->unique()->comment('Benzersiz sipariş/transaction ID — sanal POS a gönderilir');
-            $table->foreignId('invoice_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete()->comment('Ödemeyi yapan kullanıcı');
+            $table->foreignId('invoice_id')->constrained()->restrictOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete()->comment('Ödemeyi yapan kullanıcı');
             $table->foreignId('tenant_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete()->comment('Veli ödemesinde okul bilgisi');
 
@@ -131,8 +131,8 @@ return new class extends Migration
 
             $table->timestamp('completed_at')->nullable()->comment('İşlem tamamlanma zamanı');
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -149,7 +149,7 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
     }

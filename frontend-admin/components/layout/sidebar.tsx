@@ -9,16 +9,17 @@ import {
     CreditCard,
     Settings,
     LogOut,
-    MapPin,
-    HeartPulse,   // Health
-    Bell,         // Notifications
-    GraduationCap // Schools
+    HeartPulse,
+    Bell,
+    GraduationCap,
+    ClipboardList,
+    Activity,
 } from "lucide-react"
 
 const sidebarItems = [
     {
         title: "Dashboard",
-        href: "/",
+        href: "/tenants",
         icon: LayoutDashboard,
     },
     {
@@ -50,6 +51,16 @@ const sidebarItems = [
         title: "Finans & Ödemeler",
         href: "/finance",
         icon: CreditCard,
+    },
+    {
+        title: "Abonelikler",
+        href: "/subscriptions",
+        icon: ClipboardList,
+    },
+    {
+        title: "Aktivite Kayıtları",
+        href: "/activity-logs",
+        icon: Activity,
     },
     {
         title: "Bildirimler",

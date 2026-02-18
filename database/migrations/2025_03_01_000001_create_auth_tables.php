@@ -29,8 +29,8 @@ return new class extends Migration
                 $table->timestamp('last_login_at')->nullable()->comment('Son Giriş Tarihi');
 
                 // Standart Alanlar (Users tablosunda created_by nullable olmak zorunda: first seed için)
-                $table->foreignId('created_by')->nullable()->constrained('users')->cascadeOnDelete()->comment('Oluşturan Kullanıcı');
-                $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete()->comment('Güncelleyen Kullanıcı');
+                $table->foreignId('created_by')->nullable()->constrained('users')->restrictOnDelete()->comment('Oluşturan Kullanıcı');
+                $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete()->comment('Güncelleyen Kullanıcı');
                 $table->timestamps();
                 $table->softDeletes();
 
@@ -53,10 +53,10 @@ return new class extends Migration
                 }
 
                 if (! Schema::hasColumn('users', 'created_by')) {
-                    $table->foreignId('created_by')->nullable()->constrained('users')->cascadeOnDelete()->comment('Oluşturan Kullanıcı');
+                    $table->foreignId('created_by')->nullable()->constrained('users')->restrictOnDelete()->comment('Oluşturan Kullanıcı');
                 }
                 if (! Schema::hasColumn('users', 'updated_by')) {
-                    $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete()->comment('Güncelleyen Kullanıcı');
+                    $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete()->comment('Güncelleyen Kullanıcı');
                 }
                 if (! Schema::hasColumn('users', 'deleted_at')) {
                     $table->softDeletes();
@@ -70,7 +70,7 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type'); // create, update, delete
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
@@ -80,8 +80,8 @@ return new class extends Migration
             $table->string('name')->unique(); // super_admin, tenant_owner, etc.
             $table->string('label')->nullable();
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -92,7 +92,7 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
@@ -102,8 +102,8 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string('label')->nullable();
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -114,7 +114,7 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 

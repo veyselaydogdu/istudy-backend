@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-14 (Ülkeler Modülü, Öğretmen Profil CV Sistemi, Kullanıcı İletişim Numaraları, Activity Log, Para Birimi, Fatura, Transaction, Sanal POS, Eğitim Yılı, Süper Admin Panel)
+> **Son Güncelleme:** 2026-02-18 (Docker kurulumu, FK stratejisi: restrictOnDelete, Migration çakışma çözümü)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -14,8 +14,8 @@
 | **Framework** | Laravel 12 (PHP 8.4) |
 | **API Tipi** | RESTful JSON API (Headless Backend) |
 | **Auth Mekanizması** | Laravel Sanctum (Token-based) |
-| **Veritabanı** | SQLite (Geliştirme), MySQL/PostgreSQL (Production) |
-| **Audit DB** | Ayrı veritabanı (`audit` connection) — ileride MongoDB'ye geçiş hazır |
+| **Veritabanı** | MySQL 8 (Docker), MySQL/PostgreSQL (Production) |
+| **Audit DB** | Ayrı veritabanı (`audit` connection, `istudy_audit`) — Docker ortamında `AUDIT_DB_CONNECTION=mysql` ile ana DB kullanılır — ileride MongoDB'ye geçiş hazır |
 | **Dil** | Türkçe mesajlar ve yorumlar kullanılır |
 | **Proje Yolu** | `/Users/veysel.aydogdu/Desktop/WebProjects/iStudy/istudy-backend` |
 
@@ -167,9 +167,11 @@ istudy-backend/
 │   ├── migrations/
 │   │   ├── 000001 → 000008 (mevcut migration'lar)
 │   │   ├── 000009_create_package_system_tables.php ← packages + tenant_subscriptions + tenant_payments
+│   │   ├── 000010_create_enhanced_features_tables.php ← SADECE ödeme alanları: events.fee/payment_required + activities.fee/currency/payment_required
+│   │   ├── 000010_enhance_system_tables.php        ← Tüm yeni tablolar (school_enrollment_requests, report_templates, vb.) + mevcut tablo genişletmeleri (hasColumn guard'lı)
 │   │   ├── 000012_create_invoice_and_transaction_tables.php ← invoices + items + transactions
 │   │   ├── 000013_create_currency_tables.php       ← currencies + exchange_rates + exchange_rate_logs
-│   │   ├── 000014_create_activity_log_tables.php   ← activity_logs + archive + summaries (AUDIT DB)
+│   │   ├── 000014_create_activity_log_tables.php   ← activity_logs + archive + summaries (AUDIT_DB_CONNECTION ile)
 │   │   └── 000015_create_countries_contacts_teacher_cv_tables.php ← countries + user_contact_numbers + teacher CV tabloları
 │   └── seeders/
 │       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
@@ -731,7 +733,33 @@ class XxxController extends BaseSchoolController // veya BaseTenantController
 
 ---
 
-## 🏗️ 7. Standart Alanlar (Her Tabloda Bulunan)
+## 🔗 7a. Foreign Key Stratejisi
+
+### Genel Kural: `restrictOnDelete`
+
+Tüm modellerde **soft delete** kullanıldığından, foreign key'lerde `cascadeOnDelete()` yerine `restrictOnDelete()` tercih edilir.
+
+| Durum | Strateji | Neden |
+|-------|----------|-------|
+| **Soft-delete'li tablo FK** | `restrictOnDelete()` | Hard-delete engellensin; fiziksel silme yapılamaz |
+| **Pivot/junction tablo FK** | `cascadeOnDelete()` | Pivot satırı silindiğinde cascade doğal ve beklenen davranış |
+| **`nullOnDelete()`** | Bazı opsiyonel FK'lar | Referans silinince NULL'a set (örn. `picked_up_by`) |
+
+### Pivot Tablolar (cascadeOnDelete kalır)
+| Tablo | Dosya |
+|-------|-------|
+| `role_user` | 000001_create_auth_tables.php |
+| `permission_role` | 000001_create_auth_tables.php |
+| `school_role_permissions` | 000010_enhance_system_tables.php |
+| `homework_class_assignments` | 000010_enhance_system_tables.php |
+| `notification_user` | 000010_enhance_system_tables.php |
+| `food_ingredient_allergens` | 000010_enhance_system_tables.php |
+
+**Kural:** Yeni migration yazarken soft-delete'li tablolara FK ekliyorsan `->restrictOnDelete()` kullan. Yalnızca yukarıdaki pivot tablolar ve gerçek junction tabloları `->cascadeOnDelete()` alır.
+
+---
+
+## 🏗️ 7b. Standart Alanlar (Her Tabloda Bulunan)
 
 Her ana tabloda aşağıdaki standart alanlar bulunur:
 
@@ -763,6 +791,15 @@ Her ana tabloda aşağıdaki standart alanlar bulunur:
 5. **EnsureActiveSubscription middleware:** Route seviyesinde çalışır (`subscription.active` alias). Super Admin bypass'ı yapar. Yalnızca okul/sınıf/öğrenci gibi kaynakları korur; paket seçimi ve auth endpoint'leri korumasızdır.
 
 6. **ChecksPackageLimits trait:** Controller veya Service'lerde `use` edilir. Limit aşıldığında açıklayıcı Türkçe hata mesajı ile exception fırlatır.
+
+### 10.1b Migration 000010 Çakışması (Çözüldü)
+
+İki dosya aynı `000010` timestamp önekini paylaşıyordu ve çakışmaya neden oluyordu:
+
+- `000010_create_enhanced_features_tables.php` — **Sadece ödeme alanları** içerir (`events.fee/payment_required`, `activities.fee/currency/payment_required`). `hasColumn` guard'lı.
+- `000010_enhance_system_tables.php` — Tüm yeni tablo oluşturmaları + mevcut tablo genişletmeleri. **Tüm `Schema::table` blokları `hasColumn` guard'lıdır** (idempotent).
+
+**Kural:** Bu iki dosyaya yeni ekleme yaparken çakışmaya dikkat et. Yeni tablo → `enhance_system_tables.php`; sadece `events`/`activities` ödeme alanı → `create_enhanced_features_tables.php`.
 
 ### 10.2 Tamamlanan ve Kalan Eksiklikler
 
@@ -825,6 +862,7 @@ Her ana tabloda aşağıdaki standart alanlar bulunur:
 
 ## 🚀 10. Geliştirme Komutları
 
+### Yerel Geliştirme
 ```bash
 # Projeyi kurma
 composer setup
@@ -843,9 +881,61 @@ php artisan migrate
 
 # Yeni model oluşturma
 php artisan make:model ModelName --no-interaction
+```
 
-# Pint ile format kontrolü
-vendor/bin/pint
+### Docker ile Çalışma
+
+```bash
+cd dockerfiles
+
+# İlk kurulum (tüm servisleri build et + başlat)
+docker compose up -d --build
+
+# Sadece başlat (build olmadan)
+docker compose up -d
+
+# Durdur (container'ları sil)
+docker compose down
+
+# PHP/Laravel logları
+docker logs istudy-app
+
+# Laravel Artisan (container içinde)
+docker exec -it istudy-app php artisan migrate
+docker exec -it istudy-app php artisan db:seed
+
+# DB sıfırlama (geliştirme)
+docker exec istudy-db mysql -uroot -proot -e \
+  "DROP DATABASE IF EXISTS istudy; CREATE DATABASE istudy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON istudy.* TO 'istudy'@'%'; FLUSH PRIVILEGES;"
+docker restart istudy-app
+
+# Frontend admin yeniden build
+docker compose build frontend-admin && docker compose up -d frontend-admin
+```
+
+### Docker Servis Portları
+| Servis | Port | URL |
+|--------|------|-----|
+| Laravel API (HTTPS) | 443 | https://localhost/api |
+| Laravel API (HTTP→HTTPS) | 80 | http://localhost → redirect |
+| Frontend Admin | 3001 | http://localhost:3001 |
+| PHPMyAdmin | 8080 | http://localhost:8080 |
+
+### Docker .env Ayarları
+```env
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_PORT=3306
+DB_DATABASE=istudy
+DB_USERNAME=istudy
+DB_PASSWORD=password
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_CLIENT=phpredis
+
+# Docker'da audit logları ana DB'ye yazılır (istudy_audit ayrı DB yoktur)
+AUDIT_DB_CONNECTION=mysql
 ```
 
 ---
@@ -1013,7 +1103,12 @@ audit:maintain --clean-archive --archive-days=730
 
 ### 14.5 .env Değişkenleri
 ```env
-AUDIT_DB_DATABASE=istudy_audit  # Ayrı veritabanı
+# Production: Ayrı veritabanı
+AUDIT_DB_DATABASE=istudy_audit
+
+# Docker geliştirme: Ana DB'yi kullan (istudy_audit oluşturmaya gerek yok)
+AUDIT_DB_CONNECTION=mysql
+
 AUDIT_ASYNC=false               # true → queue ile asenkron
 AUDIT_RETENTION_DAYS=365        # Arşivleme eşiği
 AUDIT_ONLY_DIRTY=true           # Sadece değişen alanlar

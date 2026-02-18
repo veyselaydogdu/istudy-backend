@@ -22,12 +22,12 @@ return new class extends Migration
         Schema::create('tenants', function (Blueprint $table) {
             $table->id();
             $table->string('name')->comment('Kurum Adı');
-            $table->foreignId('owner_user_id')->constrained('users')->cascadeOnDelete()->comment('Kurum Sahibi');
+            $table->foreignId('owner_user_id')->constrained('users')->restrictOnDelete()->comment('Kurum Sahibi');
             $table->string('country')->default('TR')->comment('Ülke');
             $table->string('currency')->default('TRY')->comment('Para Birimi');
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -37,14 +37,14 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 2. SCHOOLS
         Schema::create('schools', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('tenant_id')->constrained()->restrictOnDelete();
             $table->string('name')->comment('Okul Adı');
             $table->string('code')->unique()->comment('Okul Kodu');
             $table->text('address')->nullable()->comment('Adres');
@@ -54,8 +54,8 @@ return new class extends Migration
             $table->string('timezone')->default('Europe/Istanbul')->comment('Zaman Dilimi');
             $table->boolean('is_active')->default(true)->comment('Aktiflik Durumu');
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -67,21 +67,21 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 3. ACADEMIC_YEARS
         Schema::create('academic_years', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('school_id')->constrained()->restrictOnDelete();
             $table->string('name')->comment('Okul Yılı Adı (2025-2026)');
             $table->date('start_date')->comment('Başlangıç Tarihi');
             $table->date('end_date')->comment('Bitiş Tarihi');
             $table->boolean('is_active')->default(true)->comment('Aktif Dönem mi?');
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -93,7 +93,7 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
     }
