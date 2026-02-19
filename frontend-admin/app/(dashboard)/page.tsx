@@ -43,10 +43,36 @@ export default function DashboardPage() {
                 ])
 
                 if (statsRes.status === "fulfilled" && statsRes.value.data?.data) {
-                    setStats(statsRes.value.data.data)
+                    const d = statsRes.value.data.data
+                    setStats({
+                        total_tenants: d.tenants?.total ?? 0,
+                        active_tenants: d.tenants?.with_active_subscription ?? 0,
+                        total_schools: d.schools?.total ?? 0,
+                        total_users: d.users?.total ?? 0,
+                        active_subscriptions: d.subscriptions?.active ?? 0,
+                        monthly_revenue: d.subscriptions?.total_revenue ?? 0,
+                        total_revenue: d.subscriptions?.total_revenue ?? 0,
+                        pending_payments: 0,
+                    })
                 }
                 if (activitiesRes.status === "fulfilled" && activitiesRes.value.data?.data) {
-                    setRecentActivities(activitiesRes.value.data.data)
+                    const raw = activitiesRes.value.data.data as Array<{
+                        type: string
+                        description: string
+                        data?: Record<string, unknown>
+                        timestamp: string
+                    }>
+                    setRecentActivities(
+                        raw.map((a, i) => ({
+                            id: i,
+                            user_name: a.type === "user_registered"
+                                ? String(a.data?.name ?? "—")
+                                : "Sistem",
+                            action: a.type.replace(/_/g, " "),
+                            model_label: a.description,
+                            created_at: a.timestamp,
+                        }))
+                    )
                 }
                 if (dailyRes.status === "fulfilled" && dailyRes.value.data?.data) {
                     setDailySummary(dailyRes.value.data.data)

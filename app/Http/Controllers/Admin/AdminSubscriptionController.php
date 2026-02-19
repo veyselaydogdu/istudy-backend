@@ -58,10 +58,10 @@ class AdminSubscriptionController extends BaseController
             $subscriptions = $query->latest()->paginate($perPage);
 
             return $this->paginatedResponse(
-                TenantSubscriptionResource::collection($subscriptions)->resource
+                TenantSubscriptionResource::collection($subscriptions)
             );
         } catch (\Throwable $e) {
-            Log::error('Admin abonelik listeleme hatası: ' . $e->getMessage());
+            Log::error('Admin abonelik listeleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Abonelikler listelenirken bir hata oluştu.', 500);
         }
@@ -86,7 +86,7 @@ class AdminSubscriptionController extends BaseController
                 'stats' => $stats,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Admin abonelik detay hatası: ' . $e->getMessage());
+            Log::error('Admin abonelik detay hatası: '.$e->getMessage());
 
             return $this->errorResponse('Abonelik detayı getirilirken bir hata oluştu.', 500);
         }
@@ -116,7 +116,7 @@ class AdminSubscriptionController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin abonelik durum güncelleme hatası: ' . $e->getMessage());
+            Log::error('Admin abonelik durum güncelleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Abonelik durumu güncellenirken bir hata oluştu.', 500);
         }
@@ -150,7 +150,7 @@ class AdminSubscriptionController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin abonelik uzatma hatası: ' . $e->getMessage());
+            Log::error('Admin abonelik uzatma hatası: '.$e->getMessage());
 
             return $this->errorResponse('Abonelik uzatılırken bir hata oluştu.', 500);
         }
@@ -198,7 +198,7 @@ class AdminSubscriptionController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin abonelik oluşturma hatası: ' . $e->getMessage());
+            Log::error('Admin abonelik oluşturma hatası: '.$e->getMessage());
 
             return $this->errorResponse('Abonelik oluşturulurken bir hata oluştu.', 500);
         }
@@ -230,7 +230,7 @@ class AdminSubscriptionController extends BaseController
 
             return $this->successResponse($stats, 'Abonelik istatistikleri.');
         } catch (\Throwable $e) {
-            Log::error('Admin abonelik istatistikleri hatası: ' . $e->getMessage());
+            Log::error('Admin abonelik istatistikleri hatası: '.$e->getMessage());
 
             return $this->errorResponse('İstatistikler getirilirken bir hata oluştu.', 500);
         }

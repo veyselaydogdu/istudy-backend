@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Admin — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-18 (Section 9: Tip düzeltmeleri, CSV export, Recharts grafikleri, Docker yapılandırması, FK stratejisi — v4)
+> **Son Güncelleme:** 2026-02-19 (API response format düzeltmesi: paginatedResponse uyumu, Dashboard stats/activities mapping, Auth akışından CSRF kaldırıldı — v5)
 > **Amaç:** Bu dosya, Frontend Admin panelinin geliştirilme sürecini, mimari kararlarını, kullanılan teknolojileri ve bileşen yapısını belgelemek için oluşturulmuştur.
 
 ---
@@ -37,7 +37,7 @@ frontend-admin/
 │   ├── (auth)/
 │   │   ├── layout.tsx             ← Merkezi layout (login için)
 │   │   └── login/
-│   │       └── page.tsx           ← Login sayfası (Zod + RHF, Sanctum CSRF, token → localStorage)
+│   │       └── page.tsx           ← Login sayfası (Zod + RHF, token → localStorage, CSRF yok — token-based auth)
 │   └── (dashboard)/
 │       ├── layout.tsx             ← Auth kontrolü (admin_token check), Sidebar + Header
 │       ├── page.tsx               ← Dashboard özet (gerçek API data: stats + recent activities)
@@ -197,8 +197,9 @@ const [mainRes, relatedRes] = await Promise.all([
    - Yok → /login'e yönlendir
 
 2. /login sayfası:
-   - CSRF: GET /sanctum/csrf-cookie
-   - Login: POST /auth/login
+   - CSRF çağrısı YOK (token-based auth, cookie/session değil)
+   - Login: POST /auth/login → { data: { token } }
+   - Token yolu: response.data.data.token
    - Token → localStorage.setItem('admin_token', token)
    - Başarıda → router.push('/')
 
@@ -217,8 +218,8 @@ const [mainRes, relatedRes] = await Promise.all([
 
 | Modül | Durum | Açıklama |
 |-------|-------|----------|
-| **Auth (Login/Logout)** | ✅ Tam | Sanctum CSRF, token yönetimi |
-| **Dashboard** | ✅ Tam | Gerçek API istatistikleri + son aktiviteler + Recharts grafikleri (AreaChart aktivite trendi, BarChart abonelik dağılımı) |
+| **Auth (Login/Logout)** | ✅ Tam | Token-based auth (CSRF yok), token → localStorage, response.data.data.token yolu |
+| **Dashboard** | ✅ Tam | Gerçek API istatistikleri (nested→flat mapping) + son aktiviteler (type/description→RecentActivity mapping) + Recharts grafikleri (AreaChart aktivite trendi, BarChart abonelik dağılımı) |
 | **Kurumlar (Tenants)** | ✅ Tam | Liste, yeni kurum, silme, /admin/tenants endpoint |
 | **Kurum Detayı** | ✅ Tam | Okul listesi + abonelik geçmişi tabları |
 | **Okullar** | ✅ Tam | Arama/filtre, durum toggle, silme, pagination |
@@ -260,6 +261,26 @@ const [mainRes, relatedRes] = await Promise.all([
 ### Subscriptions/Activity Logs Endpoints
 - Bu endpoint'lerin backend'de karşılığı olması gerekir.
 - Yoksa sayfalar empty state gösterir (graceful degradation).
+
+### API Response Format — Paginated Listeleme
+Backend `paginatedResponse()` her zaman şu formatta döner:
+```json
+{ "success": true, "message": "...", "data": [...], "meta": { "current_page": 1, "last_page": 1, "per_page": 15, "total": N } }
+```
+Frontend sayfalarda `res.data.data` → items dizisi, `res.data.meta` → pagination bilgisi.
+
+**Önceki hatırlatıcı:** `->resource` kaldırıldı. Admin controller'larında `Resource::collection($paginator)` direkt geçilir.
+
+### Dashboard Stats Mapping
+`/admin/dashboard/stats` nested yapı döner: `{ tenants: { total, with_active_subscription }, schools: { total }, ... }`
+Dashboard page bu yapıyı düz `DashboardStats` tipine map eder:
+- `d.tenants.total` → `total_tenants`
+- `d.tenants.with_active_subscription` → `active_tenants`
+- `d.subscriptions.total_revenue` → `monthly_revenue` ve `total_revenue`
+
+### Dashboard Recent Activities Mapping
+`/admin/dashboard/recent-activities` `{ type, description, data, timestamp }` formatında döner.
+Frontend `RecentActivity` tipine map edilir: `type.replace(/_/g, " ")` → `action`, `description` → `model_label`, `timestamp` → `created_at`.
 
 ---
 
@@ -379,7 +400,7 @@ docker compose build frontend-admin && docker compose up -d frontend-admin
 
 ### Önemli Notlar
 
-- **API URL**: Frontend admin `NEXT_PUBLIC_API_URL=https://localhost/api` kullanır (nginx üzerinden Laravel'e ulaşır)
+- **API URL**: Docker production'da `NEXT_PUBLIC_API_URL=https://localhost/api` (nginx SSL üzerinden). Yerel geliştirmede `http://localhost:8000/api` (`.env.local`). Nginx port 8000 plain HTTP olarak Laravel'e proxy eder.
 - **Frontend Port**: Host makinede `3001` portu kullanılır (`3001:3000`). Port 3000 başka proje tarafından kullanılıyor.
 - **Redis**: `REDIS_CLIENT=phpredis` — PHP Dockerfile'da PECL ile kurulur
 - **Healthcheck**: `app` servisi, `db` ve `redis` servisleri sağlıklı olana kadar bekler

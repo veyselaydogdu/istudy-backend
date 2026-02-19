@@ -48,18 +48,29 @@ abstract class BaseController extends BaseLaravelController
 
     /**
      * Sayfalı (Pagination) Response Helper
+     *
+     * ResourceCollection veya plain paginator kabul eder.
+     * data alanı her zaman düz dizi döner.
      */
     protected function paginatedResponse(mixed $collection): JsonResponse
     {
+        if ($collection instanceof \Illuminate\Http\Resources\Json\ResourceCollection) {
+            $paginator = $collection->resource;
+            $data = collect($collection->toArray(request())['data'] ?? []);
+        } else {
+            $paginator = $collection;
+            $data = collect($paginator->items());
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Veriler başarıyla listelendi.',
-            'data' => $collection,
+            'data' => $data,
             'meta' => [
-                'current_page' => $collection->currentPage(),
-                'last_page' => $collection->lastPage(),
-                'per_page' => $collection->perPage(),
-                'total' => $collection->total(),
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
             ],
         ], 200);
     }

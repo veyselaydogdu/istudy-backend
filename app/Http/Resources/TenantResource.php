@@ -21,6 +21,14 @@ class TenantResource extends JsonResource
                 'email' => $this->owner->email,
             ]),
             'schools_count' => $this->whenCounted('schools'),
+            'subscription' => $this->whenLoaded('activeSubscription', fn () => $this->activeSubscription ? [
+                'id' => $this->activeSubscription->id,
+                'status' => $this->activeSubscription->status,
+                'package' => $this->activeSubscription->package ? [
+                    'id' => $this->activeSubscription->package->id,
+                    'name' => $this->activeSubscription->package->name,
+                ] : null,
+            ] : null),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

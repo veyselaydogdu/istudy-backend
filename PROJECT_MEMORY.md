@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-18 (Docker kurulumu, FK stratejisi: restrictOnDelete, Migration çakışma çözümü)
+> **Son Güncelleme:** 2026-02-19 (API response format düzeltmesi: paginatedResponse, TenantResource/SchoolResource genişletmesi, Dashboard stats mapping)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -581,6 +581,7 @@ protected function successResponse(mixed $data, ?string $message, int $code = 20
 protected function errorResponse(string $message, int $code = 400): JsonResponse
 
 // Sayfalı response: { success: true, message: "...", data: [...], meta: {current_page, last_page, per_page, total} }
+// ResourceCollection veya plain paginator kabul eder. data her zaman düz dizi döner.
 protected function paginatedResponse(mixed $collection): JsonResponse
 ```
 
@@ -750,6 +751,15 @@ Tüm modellerde **soft delete** kullanıldığından, foreign key'lerde `cascade
 |-------|-------|
 | `role_user` | 000001_create_auth_tables.php |
 | `permission_role` | 000001_create_auth_tables.php |
+| `child_class_assignments` | 000004_create_academic_tables.php |
+| `meal_ingredient_pivot` | 000005_create_health_tables.php |
+| `child_allergens` | 000005_create_health_tables.php |
+| `child_medications` | 000005_create_health_tables.php |
+| `child_conditions` | 000005_create_health_tables.php |
+| `child_activity_enrollments` | 000006_create_activity_tables.php |
+| `child_event_participations` | 000006_create_activity_tables.php |
+| `child_material_trackings` | 000006_create_activity_tables.php |
+| `class_teacher_assignments` | 000008_create_teacher_tables.php |
 | `school_role_permissions` | 000010_enhance_system_tables.php |
 | `homework_class_assignments` | 000010_enhance_system_tables.php |
 | `notification_user` | 000010_enhance_system_tables.php |
@@ -791,6 +801,26 @@ Her ana tabloda aşağıdaki standart alanlar bulunur:
 5. **EnsureActiveSubscription middleware:** Route seviyesinde çalışır (`subscription.active` alias). Super Admin bypass'ı yapar. Yalnızca okul/sınıf/öğrenci gibi kaynakları korur; paket seçimi ve auth endpoint'leri korumasızdır.
 
 6. **ChecksPackageLimits trait:** Controller veya Service'lerde `use` edilir. Limit aşıldığında açıklayıcı Türkçe hata mesajı ile exception fırlatır.
+
+### 10.1c Admin Controller'larda paginatedResponse Kullanımı (Önemli)
+
+Admin controller'larında `paginatedResponse()` çağrısında **`->resource` kullanılmaz**:
+
+```php
+// ✅ DOĞRU — ResourceCollection direkt geçilir
+return $this->paginatedResponse(TenantResource::collection($tenants));
+
+// ❌ YANLIŞ — ->resource paginator'ı döndürür, resource dönüşümü kaybolur
+return $this->paginatedResponse(TenantResource::collection($tenants)->resource);
+```
+
+`BaseController::paginatedResponse()` artık `ResourceCollection` alabilir ve `toArray(request())['data']` ile resource dönüşümünü uygular. Plain paginator da desteklenir (fallback).
+
+### 10.1d Resource Sınıflarındaki Alanlar
+
+**TenantResource** ek alanlar: `subscription` (activeSubscription → package.name dahil)
+
+**SchoolResource** ek alanlar: `status` (is_active'den türetilir: "active"/"inactive"), `tenant` (id+name), `classes_count`, `children_count`
 
 ### 10.1b Migration 000010 Çakışması (Çözüldü)
 
@@ -918,6 +948,7 @@ docker compose build frontend-admin && docker compose up -d frontend-admin
 |--------|------|-----|
 | Laravel API (HTTPS) | 443 | https://localhost/api |
 | Laravel API (HTTP→HTTPS) | 80 | http://localhost → redirect |
+| Laravel API (HTTP, yerel geliştirme) | 8000 | http://localhost:8000/api |
 | Frontend Admin | 3001 | http://localhost:3001 |
 | PHPMyAdmin | 8080 | http://localhost:8080 |
 

@@ -45,10 +45,10 @@ class AdminTenantController extends BaseController
                 ->paginate($perPage);
 
             return $this->paginatedResponse(
-                TenantResource::collection($tenants)->resource
+                TenantResource::collection($tenants)
             );
         } catch (\Throwable $e) {
-            Log::error('Admin tenant listeleme hatası: ' . $e->getMessage());
+            Log::error('Admin tenant listeleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Tenant\'lar listelenirken bir hata oluştu.', 500);
         }
@@ -84,7 +84,7 @@ class AdminTenantController extends BaseController
                 'stats' => $stats,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Admin tenant detay hatası: ' . $e->getMessage());
+            Log::error('Admin tenant detay hatası: '.$e->getMessage());
 
             return $this->errorResponse('Tenant detayı getirilirken bir hata oluştu.', 500);
         }
@@ -116,7 +116,7 @@ class AdminTenantController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin tenant güncelleme hatası: ' . $e->getMessage());
+            Log::error('Admin tenant güncelleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Tenant güncellenirken bir hata oluştu.', 500);
         }
@@ -135,7 +135,7 @@ class AdminTenantController extends BaseController
 
             return $this->successResponse($subscriptions);
         } catch (\Throwable $e) {
-            Log::error('Admin tenant abonelik geçmişi hatası: ' . $e->getMessage());
+            Log::error('Admin tenant abonelik geçmişi hatası: '.$e->getMessage());
 
             return $this->errorResponse('Abonelik geçmişi getirilirken bir hata oluştu.', 500);
         }
@@ -153,7 +153,7 @@ class AdminTenantController extends BaseController
 
             return $this->successResponse($schools);
         } catch (\Throwable $e) {
-            Log::error('Admin tenant okullar hatası: ' . $e->getMessage());
+            Log::error('Admin tenant okullar hatası: '.$e->getMessage());
 
             return $this->errorResponse('Okullar getirilirken bir hata oluştu.', 500);
         }
@@ -181,7 +181,7 @@ class AdminTenantController extends BaseController
             return $this->successResponse(null, 'Tenant başarıyla silindi.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin tenant silme hatası: ' . $e->getMessage());
+            Log::error('Admin tenant silme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Tenant silinirken bir hata oluştu.', 500);
         }

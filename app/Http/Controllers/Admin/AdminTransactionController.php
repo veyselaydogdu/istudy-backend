@@ -39,7 +39,7 @@ class AdminTransactionController extends BaseController
             $transactions = $this->transactionService->listAll($filters);
 
             return $this->paginatedResponse(
-                TransactionResource::collection($transactions)->resource
+                TransactionResource::collection($transactions)
             );
         } catch (\Throwable $e) {
             Log::error('AdminTransactionController::index Error', [
@@ -67,7 +67,7 @@ class AdminTransactionController extends BaseController
         } catch (\Throwable $e) {
             Log::error('AdminTransactionController::show Error', [
                 'message' => $e->getMessage(),
-                'id'      => $id,
+                'id' => $id,
             ]);
 
             return $this->errorResponse($e->getMessage(), 500);
@@ -127,7 +127,7 @@ class AdminTransactionController extends BaseController
             $invoices = $this->invoiceService->listAll($filters);
 
             return $this->paginatedResponse(
-                InvoiceResource::collection($invoices)->resource
+                InvoiceResource::collection($invoices)
             );
         } catch (\Throwable $e) {
             Log::error('AdminTransactionController::invoices Error', [
@@ -168,11 +168,11 @@ class AdminTransactionController extends BaseController
             $transactions = $this->transactionService->listForSchool($schoolId, $filters);
 
             return $this->paginatedResponse(
-                TransactionResource::collection($transactions)->resource
+                TransactionResource::collection($transactions)
             );
         } catch (\Throwable $e) {
             Log::error('AdminTransactionController::schoolTransactions Error', [
-                'message'   => $e->getMessage(),
+                'message' => $e->getMessage(),
                 'school_id' => $schoolId,
             ]);
 

@@ -43,10 +43,10 @@ class AdminActivityLogController extends BaseController
             ]);
 
             $perPage = $request->input('per_page', 20);
-            $logs    = $this->activityLogService->list($filters, (int) $perPage);
+            $logs = $this->activityLogService->list($filters, (int) $perPage);
 
             return $this->paginatedResponse(
-                ActivityLogResource::collection($logs)->resource
+                ActivityLogResource::collection($logs)
             );
         } catch (\Throwable $e) {
             Log::error('AdminActivityLogController::index Error', ['message' => $e->getMessage()]);
@@ -85,12 +85,12 @@ class AdminActivityLogController extends BaseController
         try {
             // URL'den gelen encoded model type'ı decode et
             $modelType = urldecode($modelType);
-            $perPage   = $request->input('per_page', 20);
+            $perPage = $request->input('per_page', 20);
 
             $logs = $this->activityLogService->getModelHistory($modelType, $modelId, (int) $perPage);
 
             return $this->paginatedResponse(
-                ActivityLogResource::collection($logs)->resource
+                ActivityLogResource::collection($logs)
             );
         } catch (\Throwable $e) {
             Log::error('AdminActivityLogController::modelHistory Error', ['message' => $e->getMessage()]);
@@ -108,7 +108,7 @@ class AdminActivityLogController extends BaseController
     {
         try {
             $modelType = urldecode($modelType);
-            $version   = $this->activityLogService->getVersionAt($modelType, $modelId, $logId);
+            $version = $this->activityLogService->getVersionAt($modelType, $modelId, $logId);
 
             return $this->successResponse($version, 'Kayıt versiyonu.');
         } catch (\Throwable $e) {
@@ -125,10 +125,10 @@ class AdminActivityLogController extends BaseController
     {
         try {
             $perPage = $request->input('per_page', 20);
-            $logs    = $this->activityLogService->getUserActivity($userId, (int) $perPage);
+            $logs = $this->activityLogService->getUserActivity($userId, (int) $perPage);
 
             return $this->paginatedResponse(
-                ActivityLogResource::collection($logs)->resource
+                ActivityLogResource::collection($logs)
             );
         } catch (\Throwable $e) {
             Log::error('AdminActivityLogController::userActivity Error', ['message' => $e->getMessage()]);
@@ -144,7 +144,7 @@ class AdminActivityLogController extends BaseController
     {
         try {
             $filters = $request->only(['tenant_id', 'last_days']);
-            $stats   = $this->activityLogService->getStats($filters);
+            $stats = $this->activityLogService->getStats($filters);
 
             return $this->successResponse($stats, 'Activity log istatistikleri.');
         } catch (\Throwable $e) {
@@ -160,7 +160,7 @@ class AdminActivityLogController extends BaseController
     public function dailySummary(Request $request): JsonResponse
     {
         try {
-            $days     = $request->input('days', 30);
+            $days = $request->input('days', 30);
             $tenantId = $request->input('tenant_id');
 
             $summary = $this->activityLogService->getDailySummary(
@@ -204,7 +204,7 @@ class AdminActivityLogController extends BaseController
                 return $this->successResponse($result, 'Arşivleme tamamlandı.');
             }
 
-            return $this->errorResponse('Arşivleme hatası: ' . $result['error'], 500);
+            return $this->errorResponse('Arşivleme hatası: '.$result['error'], 500);
         } catch (\Throwable $e) {
             Log::error('AdminActivityLogController::archive Error', ['message' => $e->getMessage()]);
 

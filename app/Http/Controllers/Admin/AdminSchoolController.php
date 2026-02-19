@@ -31,9 +31,9 @@ class AdminSchoolController extends BaseController
             if ($search = $request->input('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%")
-                      ->orWhere('registration_code', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('registration_code', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
 
@@ -54,10 +54,10 @@ class AdminSchoolController extends BaseController
                 ->paginate($perPage);
 
             return $this->paginatedResponse(
-                SchoolResource::collection($schools)->resource
+                SchoolResource::collection($schools)
             );
         } catch (\Throwable $e) {
-            Log::error('Admin okul listeleme hatası: ' . $e->getMessage());
+            Log::error('Admin okul listeleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Okullar listelenirken bir hata oluştu.', 500);
         }
@@ -93,7 +93,7 @@ class AdminSchoolController extends BaseController
                 'stats' => $stats,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Admin okul detay hatası: ' . $e->getMessage());
+            Log::error('Admin okul detay hatası: '.$e->getMessage());
 
             return $this->errorResponse('Okul detayı getirilirken bir hata oluştu.', 500);
         }
@@ -129,7 +129,7 @@ class AdminSchoolController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin okul güncelleme hatası: ' . $e->getMessage());
+            Log::error('Admin okul güncelleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Okul güncellenirken bir hata oluştu.', 500);
         }
@@ -157,7 +157,7 @@ class AdminSchoolController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin okul durum değiştirme hatası: ' . $e->getMessage());
+            Log::error('Admin okul durum değiştirme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Okul durumu değiştirilirken bir hata oluştu.', 500);
         }
@@ -182,7 +182,7 @@ class AdminSchoolController extends BaseController
                 'Sınıflar listelendi.'
             );
         } catch (\Throwable $e) {
-            Log::error('Admin okul sınıflar hatası: ' . $e->getMessage());
+            Log::error('Admin okul sınıflar hatası: '.$e->getMessage());
 
             return $this->errorResponse('Sınıflar listelenirken bir hata oluştu.', 500);
         }
@@ -203,7 +203,7 @@ class AdminSchoolController extends BaseController
             if ($search = $request->input('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%");
                 });
             }
 
@@ -213,7 +213,7 @@ class AdminSchoolController extends BaseController
                 $query->latest()->paginate($perPage)
             );
         } catch (\Throwable $e) {
-            Log::error('Admin okul çocuklar hatası: ' . $e->getMessage());
+            Log::error('Admin okul çocuklar hatası: '.$e->getMessage());
 
             return $this->errorResponse('Çocuklar listelenirken bir hata oluştu.', 500);
         }
@@ -243,7 +243,7 @@ class AdminSchoolController extends BaseController
             return $this->successResponse(null, 'Okul başarıyla silindi.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin okul silme hatası: ' . $e->getMessage());
+            Log::error('Admin okul silme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Okul silinirken bir hata oluştu.', 500);
         }

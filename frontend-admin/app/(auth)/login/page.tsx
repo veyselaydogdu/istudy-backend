@@ -44,31 +44,19 @@ export default function LoginPage() {
     const onSubmit = async (data: LoginFormValues) => {
         setIsLoading(true)
         try {
-            // 1. Get CSRF Cookie (Sanctum)
-            await apiClient.get('/sanctum/csrf-cookie')
-
-            // 2. Login Request
             const response = await apiClient.post('/auth/login', data)
+            const token = response.data?.data?.token
 
-            if (response.data.success || response.status === 200) {
-                toast.success("Giriş başarılı!", {
-                    description: "Yönetim paneline yönlendiriliyorsunuz.",
-                })
-
-                // Store token if returned (optional, depends on backend config)
-                if (response.data.token) {
-                    localStorage.setItem('admin_token', response.data.token);
-                }
-
-                // Redirect to Dashboard
-                router.push("/")
+            if (!token) {
+                throw new Error("Token alınamadı.")
             }
+
+            localStorage.setItem('admin_token', token)
+            toast.success("Giriş başarılı!")
+            router.push("/")
         } catch (error: any) {
-            console.error(error)
-            const message = error.response?.data?.message || "Giriş yapılırken bir hata oluştu."
-            toast.error("Giriş Başarısız", {
-                description: message,
-            })
+            const message = error.response?.data?.message || "E-posta veya şifre hatalı."
+            toast.error("Giriş Başarısız", { description: message })
         } finally {
             setIsLoading(false)
         }

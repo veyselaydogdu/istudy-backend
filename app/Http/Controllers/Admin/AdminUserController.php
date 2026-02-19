@@ -31,8 +31,8 @@ class AdminUserController extends BaseController
             if ($search = $request->input('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
                 });
             }
 
@@ -61,10 +61,10 @@ class AdminUserController extends BaseController
                 ->paginate($perPage);
 
             return $this->paginatedResponse(
-                UserResource::collection($users)->resource
+                UserResource::collection($users)
             );
         } catch (\Throwable $e) {
-            Log::error('Admin kullanıcı listeleme hatası: ' . $e->getMessage());
+            Log::error('Admin kullanıcı listeleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Kullanıcılar listelenirken bir hata oluştu.', 500);
         }
@@ -96,7 +96,7 @@ class AdminUserController extends BaseController
                 'stats' => $stats,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Admin kullanıcı detay hatası: ' . $e->getMessage());
+            Log::error('Admin kullanıcı detay hatası: '.$e->getMessage());
 
             return $this->errorResponse('Kullanıcı detayı getirilirken bir hata oluştu.', 500);
         }
@@ -144,7 +144,7 @@ class AdminUserController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin kullanıcı oluşturma hatası: ' . $e->getMessage());
+            Log::error('Admin kullanıcı oluşturma hatası: '.$e->getMessage());
 
             return $this->errorResponse('Kullanıcı oluşturulurken bir hata oluştu.', 500);
         }
@@ -182,7 +182,7 @@ class AdminUserController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin kullanıcı güncelleme hatası: ' . $e->getMessage());
+            Log::error('Admin kullanıcı güncelleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Kullanıcı güncellenirken bir hata oluştu.', 500);
         }
@@ -210,7 +210,7 @@ class AdminUserController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin rol atama hatası: ' . $e->getMessage());
+            Log::error('Admin rol atama hatası: '.$e->getMessage());
 
             return $this->errorResponse('Rol atanırken bir hata oluştu.', 500);
         }
@@ -238,7 +238,7 @@ class AdminUserController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin rol kaldırma hatası: ' . $e->getMessage());
+            Log::error('Admin rol kaldırma hatası: '.$e->getMessage());
 
             return $this->errorResponse('Rol kaldırılırken bir hata oluştu.', 500);
         }
@@ -262,7 +262,7 @@ class AdminUserController extends BaseController
             return $this->successResponse(null, 'Kullanıcı başarıyla silindi.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin kullanıcı silme hatası: ' . $e->getMessage());
+            Log::error('Admin kullanıcı silme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Kullanıcı silinirken bir hata oluştu.', 500);
         }
@@ -286,7 +286,7 @@ class AdminUserController extends BaseController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin kullanıcı geri yükleme hatası: ' . $e->getMessage());
+            Log::error('Admin kullanıcı geri yükleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Kullanıcı geri yüklenirken bir hata oluştu.', 500);
         }
