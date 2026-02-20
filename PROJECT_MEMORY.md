@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-19 (API response format düzeltmesi: paginatedResponse, TenantResource/SchoolResource genişletmesi, Dashboard stats mapping)
+> **Son Güncelleme:** 2026-02-19 (Güvenlik düzeltmeleri: XSS koruması, stack trace kapatma, rate limiting, exception handler, BaseController ?User fix, revenue endpoint fix)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -99,7 +99,9 @@ istudy-backend/
 │   │   │   └── Teachers/
 │   │   │       └── BaseTeacherController.php
 │   │   ├── Middleware/
-│   │   │   └── EnsureActiveSubscription.php      ← Abonelik kontrolü middleware
+│   │   │   ├── EnsureActiveSubscription.php      ← Abonelik kontrolü middleware (super admin bypass dahil)
+│   │   │   ├── EnsureSuperAdmin.php              ← Super Admin erişim kontrolü
+│   │   │   └── ForceJsonResponse.php             ← Tüm /api/* rotalarında Accept: application/json zorlar
 │   │   ├── Requests/
 │   │   │   ├── Auth/
 │   │   │   │   ├── RegisterRequest.php
@@ -183,7 +185,7 @@ istudy-backend/
 │   ├── web.php
 │   └── console.php                               ← Cron: currency:update-rates (09:00) + audit:maintain (03:00) + countries:sync
 ├── bootstrap/
-│   ├── app.php                                   ← + subscription.active middleware alias
+│   ├── app.php                                   ← + subscription.active, super.admin middleware alias + ForceJsonResponse (api group) + Global API Exception Handler (401/422/404/HttpException/500)
 │   └── providers.php
 └── CLAUDE.md
 ```
@@ -571,8 +573,8 @@ Alt sınıflar sadece `model()` ve isteğe bağlı `applyFilters()` override ede
 **Tüm controller'ların atası.** Standart response helper'ları sağlar:
 
 ```php
-// Authenticated user helper
-protected function user(): User
+// Authenticated user helper — nullable (kimlik doğrulaması yapılmamış isteklerde null döner, TypeError olmaz)
+protected function user(): ?User
 
 // Başarılı response: { success: true, message: "...", data: {...} }
 protected function successResponse(mixed $data, ?string $message, int $code = 200): JsonResponse
@@ -831,6 +833,32 @@ return $this->paginatedResponse(TenantResource::collection($tenants)->resource);
 
 **Kural:** Bu iki dosyaya yeni ekleme yaparken çakışmaya dikkat et. Yeni tablo → `enhance_system_tables.php`; sadece `events`/`activities` ödeme alanı → `create_enhanced_features_tables.php`.
 
+### 10.1e Güvenlik Katmanları (2026-02-19 Güncelleme)
+
+Güvenlik raporu (`tests/SECURITY_AND_ERRORS_REPORT.md`) tüm maddeleri uygulandı. Özet:
+
+| Katman | Çözüm | Dosya |
+|--------|-------|-------|
+| **Stack Trace Kapatma** | `APP_DEBUG=false` | `.env` |
+| **Global Exception Handler** | AuthException→401, ValidationException→422, ModelNotFound/NotFound→404, HttpException→native status, Generic→500 | `bootstrap/app.php` |
+| **XSS Koruması** | `regex:/^[^<>&"\']*$/` tüm health text alanları | `AdminHealthController.php` |
+| **Rate Limiting** | `throttle:5,1` login, `throttle:10,1` register | `routes/api.php` |
+| **Force JSON Response** | `ForceJsonResponse` middleware — `api` group prepend | `ForceJsonResponse.php`, `bootstrap/app.php` |
+| **BaseController null** | `user(): ?User` nullable return type | `BaseController.php` |
+| **Teacher 404** | `first()` + manuel 404 (firstOrFail kaldırıldı) | `BaseTeacherController.php` |
+| **Admin Validation 422** | `$request->validate()` try-catch dışına alındı | Admin controllers |
+| **Dashboard Revenue fix** | `year` nullable, default `now()->year` | `AdminDashboardController.php` |
+| **Nginx Security Headers** | X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, HSTS | `nginx/conf.d/default.conf` |
+| **Super Admin Bypass** | `isSuperAdmin()` kontrolü zaten mevcut | `EnsureActiveSubscription.php` |
+| **Register 422 mesajı** | `attributes()` + açık `name` mesajı | `RegisterRequest.php` |
+
+**Kural:** Yeni controller yazarken:
+1. `$request->validate()` her zaman try-catch **dışında** olmalı → 422 garantisi
+2. `firstOrFail()` yerine `first() + null kontrolü` kullan → 404 garantisi
+3. Catch bloğunda `$e->getMessage()` response'a yazılmamalı → generic mesaj
+
+---
+
 ### 10.2 Tamamlanan ve Kalan Eksiklikler
 
 | Durum | Açıklama |
@@ -849,7 +877,9 @@ return $this->paginatedResponse(TenantResource::collection($tenants)->resource);
 | ✅ **FormRequests** | 16 FormRequest (Auth + Package + mevcut modeller) |
 | ✅ **Traits** | `ChecksPackageLimits` + `Auditable` |
 | ✅ **Cron Jobs** | `currency:update-rates` (09:00) + `audit:maintain` (03:00) |
-| ⚠️ **Tests** | Test dosyaları henüz yazılmamış. |
+| ✅ **Güvenlik** | 13/13 güvenlik açığı kapatıldı (XSS, stack trace, rate limit, exception handler, nginx headers, vb.) |
+| ✅ **E2E Testler** | Playwright E2E testleri yazıldı (`tests/e2e/` — 273/273 geçti). Unit testler: Vitest (`tests/unit/` — 19/19). |
+| ⚠️ **PHPUnit Tests** | Backend PHP unit/feature test dosyaları henüz yazılmamış. |
 | ⚠️ **Ödeme entegrasyonu** | Şimdilik simüle, iyzico/Stripe entegrasyonu eklenecek. |
 
 ### 10.3 Naming Conventions

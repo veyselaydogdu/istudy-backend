@@ -27,12 +27,26 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Ad soyad gereklidir.',
+            'name.required' => 'Ad soyad (name) alanı zorunludur.',
+            'name.max' => 'Ad soyad en fazla 255 karakter olabilir.',
             'email.required' => 'E-posta adresi gereklidir.',
             'email.unique' => 'Bu e-posta adresi zaten kayıtlı.',
             'password.min' => 'Şifre en az 8 karakter olmalıdır.',
             'password.confirmed' => 'Şifre tekrarı eşleşmiyor.',
             'institution_name.required' => 'Kurum adı gereklidir.',
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'name' => 'ad soyad',
+            'email' => 'e-posta',
+            'password' => 'şifre',
+            'institution_name' => 'kurum adı',
+            'phone' => 'telefon',
+            'country' => 'ülke',
+            'currency' => 'para birimi',
         ];
     }
 }

@@ -51,7 +51,7 @@ class AdminHealthController extends BaseController
         } catch (\Throwable $e) {
             Log::error('AdminHealthController::allergenIndex Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Alerjenler listelenirken bir hata oluştu.', 500);
         }
     }
 
@@ -61,11 +61,12 @@ class AdminHealthController extends BaseController
     public function allergenStore(Request $request): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
+            'description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
             'risk_level' => 'nullable|in:low,medium,high',
         ], [
             'name.required' => 'Alerjen adı zorunludur.',
+            'name.regex' => 'Alerjen adı HTML karakterleri içeremez.',
             'risk_level.in' => 'Risk seviyesi low, medium veya high olmalıdır.',
         ]);
 
@@ -76,7 +77,7 @@ class AdminHealthController extends BaseController
                 'name' => $request->name,
                 'description' => $request->description,
                 'risk_level' => $request->risk_level ?? 'medium',
-                'tenant_id' => null, // Global kayıt
+                'tenant_id' => null,
                 'created_by' => $this->user()->id,
             ]);
 
@@ -87,7 +88,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::allergenStore Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Alerjen oluşturulurken bir hata oluştu.', 500);
         }
     }
 
@@ -97,8 +98,8 @@ class AdminHealthController extends BaseController
     public function allergenUpdate(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string|max:1000',
+            'name' => ['sometimes', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
+            'description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
             'risk_level' => 'nullable|in:low,medium,high',
         ]);
 
@@ -118,7 +119,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::allergenUpdate Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Alerjen güncellenirken bir hata oluştu.', 500);
         }
     }
 
@@ -140,7 +141,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::allergenDestroy Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Alerjen silinirken bir hata oluştu.', 500);
         }
     }
 
@@ -165,7 +166,7 @@ class AdminHealthController extends BaseController
         } catch (\Throwable $e) {
             Log::error('AdminHealthController::conditionIndex Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Tıbbi durumlar listelenirken bir hata oluştu.', 500);
         }
     }
 
@@ -175,10 +176,11 @@ class AdminHealthController extends BaseController
     public function conditionStore(Request $request): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
+            'description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
         ], [
             'name.required' => 'Tıbbi durum adı zorunludur.',
+            'name.regex' => 'Tıbbi durum adı HTML karakterleri içeremez.',
         ]);
 
         try {
@@ -198,7 +200,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::conditionStore Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Tıbbi durum oluşturulurken bir hata oluştu.', 500);
         }
     }
 
@@ -208,8 +210,8 @@ class AdminHealthController extends BaseController
     public function conditionUpdate(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string|max:1000',
+            'name' => ['sometimes', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
+            'description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
         ]);
 
         try {
@@ -228,7 +230,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::conditionUpdate Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Tıbbi durum güncellenirken bir hata oluştu.', 500);
         }
     }
 
@@ -250,7 +252,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::conditionDestroy Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Tıbbi durum silinirken bir hata oluştu.', 500);
         }
     }
 
@@ -275,7 +277,7 @@ class AdminHealthController extends BaseController
         } catch (\Throwable $e) {
             Log::error('AdminHealthController::ingredientIndex Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Besin içerikleri listelenirken bir hata oluştu.', 500);
         }
     }
 
@@ -285,10 +287,11 @@ class AdminHealthController extends BaseController
     public function ingredientStore(Request $request): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'allergen_info' => 'nullable|string|max:1000',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
+            'allergen_info' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
         ], [
             'name.required' => 'Besin adı zorunludur.',
+            'name.regex' => 'Besin adı HTML karakterleri içeremez.',
         ]);
 
         try {
@@ -308,7 +311,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::ingredientStore Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Besin içeriği oluşturulurken bir hata oluştu.', 500);
         }
     }
 
@@ -330,7 +333,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::ingredientDestroy Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('Besin içeriği silinirken bir hata oluştu.', 500);
         }
     }
 
@@ -354,7 +357,7 @@ class AdminHealthController extends BaseController
         } catch (\Throwable $e) {
             Log::error('AdminHealthController::medicationIndex Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('İlaçlar listelenirken bir hata oluştu.', 500);
         }
     }
 
@@ -364,8 +367,8 @@ class AdminHealthController extends BaseController
     public function medicationStore(Request $request): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'usage_notes' => 'nullable|string|max:1000',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
+            'usage_notes' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
         ]);
 
         try {
@@ -385,7 +388,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::medicationStore Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('İlaç oluşturulurken bir hata oluştu.', 500);
         }
     }
 
@@ -407,7 +410,7 @@ class AdminHealthController extends BaseController
             DB::rollBack();
             Log::error('AdminHealthController::medicationDestroy Error', ['message' => $e->getMessage()]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('İlaç silinirken bir hata oluştu.', 500);
         }
     }
 }

@@ -161,18 +161,18 @@ class AdminSubscriptionController extends BaseController
      */
     public function store(Request $request): JsonResponse
     {
+        $request->validate([
+            'tenant_id' => 'required|exists:tenants,id',
+            'package_id' => 'required|exists:packages,id',
+            'billing_cycle' => 'required|in:monthly,yearly',
+            'price' => 'required|numeric|min:0',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'status' => 'nullable|string|in:active,pending',
+        ]);
+
         DB::beginTransaction();
         try {
-            $request->validate([
-                'tenant_id' => 'required|exists:tenants,id',
-                'package_id' => 'required|exists:packages,id',
-                'billing_cycle' => 'required|in:monthly,yearly',
-                'price' => 'required|numeric|min:0',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after:start_date',
-                'status' => 'nullable|string|in:active,pending',
-            ]);
-
             // Mevcut aktif aboneliği kapat
             TenantSubscription::where('tenant_id', $request->tenant_id)
                 ->where('status', 'active')

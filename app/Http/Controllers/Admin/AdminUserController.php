@@ -107,17 +107,17 @@ class AdminUserController extends BaseController
      */
     public function store(Request $request): JsonResponse
     {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8',
+            'phone' => 'nullable|string|max:20',
+            'tenant_id' => 'nullable|exists:tenants,id',
+            'role' => 'nullable|string',
+        ]);
+
         DB::beginTransaction();
         try {
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
-                'password' => 'required|string|min:8',
-                'phone' => 'nullable|string|max:20',
-                'tenant_id' => 'nullable|exists:tenants,id',
-                'role' => 'nullable|string',
-            ]);
-
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,

@@ -12,9 +12,9 @@ abstract class BaseController extends BaseLaravelController
 {
     use AuthorizesRequests, ValidatesRequests;
 
-    protected function user(): User
+    protected function user(): ?User
     {
-        /** @var User */
+        /** @var User|null */
         return auth('sanctum')->user();
     }
 

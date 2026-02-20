@@ -22,10 +22,10 @@ use Illuminate\Support\Facades\Route;
 // ═══════════════════════════════════════════════════════════
 Route::get('/health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()]));
 
-// Auth endpoint'leri
+// Auth endpoint'leri (rate limiting: brute-force koruması)
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [\App\Http\Controllers\Auth\AuthController::class, 'register']);
-    Route::post('/login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
+    Route::middleware('throttle:10,1')->post('/register', [\App\Http\Controllers\Auth\AuthController::class, 'register']);
+    Route::middleware('throttle:5,1')->post('/login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
 });
 
 // Aktif paketleri listele (kayıt öncesi gösterilir)

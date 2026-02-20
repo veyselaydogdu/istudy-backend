@@ -31,7 +31,7 @@ class AdminDashboardController extends BaseController
 
             return $this->successResponse($stats, 'Sistem istatistikleri getirildi.');
         } catch (\Throwable $e) {
-            Log::error('Admin dashboard stats hatası: ' . $e->getMessage());
+            Log::error('Admin dashboard stats hatası: '.$e->getMessage());
 
             return $this->errorResponse('İstatistikler getirilirken bir hata oluştu.', 500);
         }
@@ -42,20 +42,20 @@ class AdminDashboardController extends BaseController
      */
     public function revenue(Request $request): JsonResponse
     {
-        try {
-            $request->validate([
-                'year' => 'required|integer|min:2020',
-                'month' => 'nullable|integer|min:1|max:12',
-            ]);
+        $request->validate([
+            'year' => 'nullable|integer|min:2020|max:'.(now()->year + 1),
+            'month' => 'nullable|integer|min:1|max:12',
+        ]);
 
-            $report = $this->service->getRevenueReport(
-                $request->year,
-                $request->month
-            );
+        try {
+            $year = $request->integer('year', now()->year);
+            $month = $request->filled('month') ? $request->integer('month') : null;
+
+            $report = $this->service->getRevenueReport($year, $month);
 
             return $this->successResponse($report, 'Gelir raporu getirildi.');
         } catch (\Throwable $e) {
-            Log::error('Admin gelir raporu hatası: ' . $e->getMessage());
+            Log::error('Admin gelir raporu hatası: '.$e->getMessage());
 
             return $this->errorResponse('Gelir raporu getirilirken bir hata oluştu.', 500);
         }
@@ -71,7 +71,7 @@ class AdminDashboardController extends BaseController
 
             return $this->successResponse($trend, 'Büyüme trendi getirildi.');
         } catch (\Throwable $e) {
-            Log::error('Admin büyüme trendi hatası: ' . $e->getMessage());
+            Log::error('Admin büyüme trendi hatası: '.$e->getMessage());
 
             return $this->errorResponse('Büyüme trendi getirilirken bir hata oluştu.', 500);
         }
@@ -88,7 +88,7 @@ class AdminDashboardController extends BaseController
 
             return $this->successResponse($schools, 'En aktif okullar getirildi.');
         } catch (\Throwable $e) {
-            Log::error('Admin top schools hatası: ' . $e->getMessage());
+            Log::error('Admin top schools hatası: '.$e->getMessage());
 
             return $this->errorResponse('En aktif okullar getirilirken bir hata oluştu.', 500);
         }
@@ -104,7 +104,7 @@ class AdminDashboardController extends BaseController
 
             return $this->successResponse($distribution, 'Paket dağılımı getirildi.');
         } catch (\Throwable $e) {
-            Log::error('Admin paket dağılımı hatası: ' . $e->getMessage());
+            Log::error('Admin paket dağılımı hatası: '.$e->getMessage());
 
             return $this->errorResponse('Paket dağılımı getirilirken bir hata oluştu.', 500);
         }
@@ -121,7 +121,7 @@ class AdminDashboardController extends BaseController
 
             return $this->successResponse($activities, 'Son aktiviteler getirildi.');
         } catch (\Throwable $e) {
-            Log::error('Admin recent activities hatası: ' . $e->getMessage());
+            Log::error('Admin recent activities hatası: '.$e->getMessage());
 
             return $this->errorResponse('Son aktiviteler getirilirken bir hata oluştu.', 500);
         }

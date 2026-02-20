@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Base\BaseController;
+use App\Models\Notification\SystemNotification;
 use App\Models\School\Announcement;
 use App\Models\School\SchoolEnrollmentRequest;
-use App\Models\Notification\SystemNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +41,7 @@ class AdminSystemController extends BaseController
 
             return $this->paginatedResponse($requests);
         } catch (\Throwable $e) {
-            Log::error('Admin bekleyen kayıt talepleri hatası: ' . $e->getMessage());
+            Log::error('Admin bekleyen kayıt talepleri hatası: '.$e->getMessage());
 
             return $this->errorResponse('Kayıt talepleri listelenirken bir hata oluştu.', 500);
         }
@@ -69,7 +69,7 @@ class AdminSystemController extends BaseController
                 $query->latest()->paginate($perPage)
             );
         } catch (\Throwable $e) {
-            Log::error('Admin kayıt talepleri hatası: ' . $e->getMessage());
+            Log::error('Admin kayıt talepleri hatası: '.$e->getMessage());
 
             return $this->errorResponse('Kayıt talepleri listelenirken bir hata oluştu.', 500);
         }
@@ -80,17 +80,17 @@ class AdminSystemController extends BaseController
      */
     public function sendSystemNotification(Request $request): JsonResponse
     {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'body' => 'required|string',
+            'type' => 'required|string|in:general,maintenance,update,announcement',
+            'priority' => 'nullable|string|in:low,normal,high,urgent',
+            'target_roles' => 'nullable|array',
+            'school_id' => 'nullable|exists:schools,id',
+        ]);
+
         DB::beginTransaction();
         try {
-            $request->validate([
-                'title' => 'required|string|max:255',
-                'body' => 'required|string',
-                'type' => 'required|string|in:general,maintenance,update,announcement',
-                'priority' => 'nullable|string|in:low,normal,high,urgent',
-                'target_roles' => 'nullable|array',
-                'school_id' => 'nullable|exists:schools,id',
-            ]);
-
             $notification = SystemNotification::create([
                 'school_id' => $request->school_id,
                 'type' => $request->type,
@@ -107,7 +107,7 @@ class AdminSystemController extends BaseController
             return $this->successResponse($notification, 'Sistem bildirimi gönderildi.', 201);
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Admin sistem bildirim hatası: ' . $e->getMessage());
+            Log::error('Admin sistem bildirim hatası: '.$e->getMessage());
 
             return $this->errorResponse('Bildirim gönderilirken bir hata oluştu.', 500);
         }
@@ -135,7 +135,7 @@ class AdminSystemController extends BaseController
                 $query->paginate($perPage)
             );
         } catch (\Throwable $e) {
-            Log::error('Admin bildirimler hatası: ' . $e->getMessage());
+            Log::error('Admin bildirimler hatası: '.$e->getMessage());
 
             return $this->errorResponse('Bildirimler listelenirken bir hata oluştu.', 500);
         }
@@ -163,7 +163,7 @@ class AdminSystemController extends BaseController
                 $query->paginate($perPage)
             );
         } catch (\Throwable $e) {
-            Log::error('Admin duyurular hatası: ' . $e->getMessage());
+            Log::error('Admin duyurular hatası: '.$e->getMessage());
 
             return $this->errorResponse('Duyurular listelenirken bir hata oluştu.', 500);
         }
@@ -191,7 +191,7 @@ class AdminSystemController extends BaseController
                 'checks' => $checks,
             ], $allHealthy ? 'Sistem sağlıklı.' : 'Sistem sorunlu.');
         } catch (\Throwable $e) {
-            Log::error('Admin health check hatası: ' . $e->getMessage());
+            Log::error('Admin health check hatası: '.$e->getMessage());
 
             return $this->errorResponse('Sağlık kontrolü sırasında bir hata oluştu.', 500);
         }
@@ -220,7 +220,7 @@ class AdminSystemController extends BaseController
 
             return $this->successResponse($settings, 'Sistem ayarları getirildi.');
         } catch (\Throwable $e) {
-            Log::error('Admin sistem ayarları hatası: ' . $e->getMessage());
+            Log::error('Admin sistem ayarları hatası: '.$e->getMessage());
 
             return $this->errorResponse('Sistem ayarları getirilirken bir hata oluştu.', 500);
         }
@@ -274,7 +274,7 @@ class AdminSystemController extends BaseController
             return [
                 'status' => $writable ? 'ok' : 'error',
                 'message' => $writable ? 'Storage yazılabilir.' : 'Storage yazılamaz!',
-                'free_space' => round(disk_free_space(storage_path()) / 1073741824, 2) . ' GB',
+                'free_space' => round(disk_free_space(storage_path()) / 1073741824, 2).' GB',
             ];
         } catch (\Throwable $e) {
             return ['status' => 'error', 'message' => $e->getMessage()];

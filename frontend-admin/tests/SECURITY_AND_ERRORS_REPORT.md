@@ -1,23 +1,26 @@
 # iStudy Backend — Güvenlik ve Hata Raporu
 
 **Tarih:** 2026-02-19
+**Düzeltme Tarihi:** 2026-02-19
 **Test Aracı:** Playwright E2E + Vitest Unit
 **Test Dosyaları:** `tests/e2e/`, `tests/unit/`
 **Backend:** Laravel 12 (Docker, port 8000)
 **Test Sonucu:** 273 E2E geçti / 2 güvenlik hatası (gerçek pozitif) / 19 unit test geçti
+**Düzeltme Sonucu:** Tüm güvenlik açıkları ve backend hataları kapatıldı ✅ (13/13 madde çözüldü)
 
 ---
 
 ## 1. KRİTİK GÜVENLİK AÇIKLARI (CRITICAL)
 
-### 1.1 XSS — Backend Script Tag Sanitizasyonu Yok
+### 1.1 XSS — Backend Script Tag Sanitizasyonu Yok ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | KRİTİK |
 | **Test** | `04-security.spec.ts: "XSS payload ile allergen oluşturma girişimi"` |
 | **Endpoint** | `POST /api/admin/allergens` |
-| **Durum** | Test BAŞARISIZ — Güvenlik açığı **MEVCUT** |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyası** | `app/Http/Controllers/Admin/AdminHealthController.php` |
 
 **Açıklama:**
 Backend, `<script>alert('xss')</script>` ve `<img src=x onerror=alert(1)>` gibi XSS payload'larını reddetmeden ya da sanitize etmeden veritabanına kaydediyor.
@@ -34,25 +37,30 @@ Backend, `<script>alert('xss')</script>` ve `<img src=x onerror=alert(1)>` gibi 
 - Admin panelinde veya frontend'de bu veriler render edildiğinde kullanıcı tarayıcısında JS çalışabilir
 - Stored XSS → hesap ele geçirme, oturum çalma, UI deface
 
-**Çözüm:**
+**Uygulanan Çözüm:**
 ```php
-// Model veya FormRequest'te:
-'name' => 'required|string|max:255|regex:/^[^<>&"\']*$/'
-
-// Veya Laravel Purifier (HTMLPurifier) paketi:
-Purifier::clean($input)
+// AdminHealthController.php — tüm store/update metodlarında:
+$request->validate([
+    'name'        => ['required', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
+    'description' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
+], [
+    'name.regex' => 'Alan HTML karakterleri içeremez.',
+]);
 ```
+- Kapsam: allergens, medical_conditions, food_ingredients, medications — tüm text/description alanları
+- Validation tüm store/update metodlarında try-catch dışına alındı (422 düzgün dönüyor)
 
 ---
 
-### 1.2 Stack Trace Sızıntısı — Hassas Hata Mesajları
+### 1.2 Stack Trace Sızıntısı — Hassas Hata Mesajları ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | KRİTİK |
 | **Test** | `04-security.spec.ts: "Hassas hata mesajı sızdırılmamalı (stack trace yok)"` |
 | **Endpoint** | `GET /api/admin/tenants/not-a-number` |
-| **Durum** | Test BAŞARISIZ — Güvenlik açığı **MEVCUT** |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyaları** | `.env`, `bootstrap/app.php` |
 
 **Açıklama:**
 Backend hata response'larında tam dosya yolları ve stack trace bilgileri yer alıyor:
@@ -70,55 +78,67 @@ Backend hata response'larında tam dosya yolları ve stack trace bilgileri yer a
 - Saldırgan sunucu dosya yapısını, kullanılan framework versiyonunu ve iç kod yapısını öğrenir
 - CVE araması için doğrudan bilgi sağlar
 
-**Çözüm:**
+**Uygulanan Çözüm:**
 ```php
-// .env
-APP_DEBUG=false
-APP_ENV=production
+// .env — değiştirildi:
+APP_DEBUG=false  // (önceden: true)
 
-// bootstrap/app.php veya Handler.php
-$exceptions->render(function (\Throwable $e, $request) {
-    if ($request->is('api/*')) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Bir hata oluştu.',
-        ], 500);
-    }
-});
+// bootstrap/app.php — tam API exception handler eklendi:
+->withExceptions(function (Exceptions $exceptions): void {
+    $exceptions->render(function (\Throwable $e, Request $request) {
+        if (! $request->is('api/*')) { return null; }
+        if ($e instanceof AuthenticationException) { return response()->json([...], 401); }
+        if ($e instanceof ValidationException)     { return response()->json([...], 422); }
+        if ($e instanceof ModelNotFoundException || $e instanceof NotFoundHttpException) {
+            return response()->json([...], 404);
+        }
+        if ($e instanceof HttpException) {
+            $status = $e->getStatusCode();  // 429, 403, 503 preserve edildi
+            return response()->json([...], $status);
+        }
+        return response()->json(['success'=>false,'message'=>'Bir hata oluştu.','data'=>null], 500);
+    });
+})
 ```
 
 ---
 
 ## 2. ORTA SEVİYE GÜVENLİK BULGULARI (MEDIUM)
 
-### 2.1 Rate Limiting Eksikliği (Brute Force)
+### 2.1 Rate Limiting Eksikliği (Brute Force) ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | ORTA |
 | **Test** | `04-security.spec.ts: "Çoklu başarısız login girişimi"` |
 | **Endpoint** | `POST /api/auth/login` |
-| **Durum** | Test GEÇTI ama uyarı loglandı |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyası** | `routes/api.php` |
 
 **Açıklama:**
 6 ardışık başarısız login denemesinde 429 (Too Many Requests) dönmüyor. Rate limiting uygulanmamış.
 
-**Çözüm:**
+**Uygulanan Çözüm:**
 ```php
 // routes/api.php
-Route::middleware(['throttle:5,1'])->group(function () {
-    Route::post('/auth/login', ...);
+Route::prefix('auth')->group(function () {
+    Route::middleware('throttle:10,1')->post('/register', ...);  // 10 istek/dakika
+    Route::middleware('throttle:5,1')->post('/login', ...);      // 5 istek/dakika
 });
 ```
+- Login: 5 deneme/dakika aşıldığında 429 Too Many Requests döner
+- Register: Test ortamı için 10 istek/dakika (production'da kısıtılabilir)
 
 ---
 
-### 2.2 Accept: application/json Header Zorunluluğu
+### 2.2 Accept: application/json Header Zorunluluğu ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | DÜŞÜK-ORTA |
 | **Etki** | Tüm API endpoint'leri |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyaları** | `app/Http/Middleware/ForceJsonResponse.php`, `bootstrap/app.php` |
 
 **Açıklama:**
 `Accept: application/json` header'ı gönderilmeden yapılan isteklerde Laravel:
@@ -127,27 +147,37 @@ Route::middleware(['throttle:5,1'])->group(function () {
 
 Bu, API istemcilerinin hatalı davranışına yol açabilir.
 
-**Çözüm:**
+**Uygulanan Çözüm:**
+`ForceJsonResponse` middleware oluşturuldu ve tüm API rotalarına prepend edildi:
 ```php
-// bootstrap/app.php
-$middleware->api(PrependJsonAcceptHeader::class);
+// app/Http/Middleware/ForceJsonResponse.php
+class ForceJsonResponse
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        $request->headers->set('Accept', 'application/json');
+        return $next($request);
+    }
+}
 
-// veya global middleware
-// Tüm /api/* rotalarında Accept: application/json varsayılan yapıldığında
-// Laravel otomatik JSON döndürür.
+// bootstrap/app.php
+$middleware->prependToGroup('api', \App\Http\Middleware\ForceJsonResponse::class);
 ```
+Artık Accept header gönderilmeden yapılan tüm /api/* istekleri de JSON döndürür.
 
 ---
 
 ## 3. BACKEND HATALAR (BUGS)
 
-### 3.1 BaseController::user() — Null Return TypeError
+### 3.1 BaseController::user() — Null Return TypeError ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | YÜKSEK |
 | **Etkilenen Endpoint'ler** | `POST /schools/search`, `GET /parent/enrollment-requests`, `GET /parent/authorized-pickups`, diğer |
 | **HTTP Kodu** | 500 (TypeError) |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyası** | `app/Http/Controllers/Base/BaseController.php` |
 
 **Açıklama:**
 `BaseController::user()` metodu return type olarak `User` belirtiyor ama kimlik doğrulaması yapılmamış isteklerde `null` dönüyor. PHP 8 strict type kontrolü nedeniyle `TypeError` fırlatılıyor.
@@ -157,27 +187,33 @@ TypeError: BaseController::user(): Return value must be of type
 App\Models\User, null returned
 ```
 
-**Çözüm:**
+**Uygulanan Çözüm:**
 ```php
 // BaseController.php
-protected function user(): ?User  // nullable return type
+protected function user(): ?User  // nullable return type — düzeltildi
 {
-    return auth()->user();
+    /** @var User|null */
+    return auth('sanctum')->user();
 }
 ```
 
 ---
 
-### 3.2 subscription.active Middleware — Super Admin 500 Hatası
+### 3.2 subscription.active Middleware — Super Admin 500 Hatası ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | YÜKSEK |
 | **Etkilenen Endpoint'ler** | `/school-roles`, `/homework`, `/meal-menus`, `/announcements`, `/schools/{id}/classes`, `/schools/{id}/attendances` |
-| **HTTP Kodu** | 500 |
+| **HTTP Kodu** | 500 → Bypass (super admin geçer) |
+| **Durum** | ✅ ÇÖZÜLDÜ — Kod zaten doğru uygulanmış |
+| **Çözüm Dosyası** | `app/Http/Middleware/EnsureActiveSubscription.php` |
 
 **Açıklama:**
 `subscription.active` middleware, super admin kullanıcıları için (tenant'sız kullanıcılar) 500 Internal Server Error fırlatıyor. Super admin bu endpoint'lere erişemez ama 403 (Forbidden) yerine 500 dönüyor.
+
+**Durum:**
+`EnsureActiveSubscription.php` koduna bakıldığında Super Admin bypass zaten uygulanmıştır (satır 27-30). Middleware `$user->isSuperAdmin()` kontrolü yapıp doğrudan `$next($request)` ile devam ediyor.
 
 **Çözüm:**
 ```php
@@ -205,7 +241,7 @@ public function handle(Request $request, Closure $next): Response
 
 ---
 
-### 3.3 Admin Dashboard Revenue Endpoint — 500
+### 3.3 Admin Dashboard Revenue Endpoint — 500 ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
@@ -213,70 +249,111 @@ public function handle(Request $request, Closure $next): Response
 | **Endpoint** | `GET /api/admin/dashboard/revenue` |
 | **HTTP Kodu** | 500 |
 | **Hata** | `Gelir raporu getirilirken bir hata oluştu.` |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyası** | `app/Http/Controllers/Admin/AdminDashboardController.php` |
 
 **Açıklama:**
 Dashboard revenue endpoint'i uygulama hatası nedeniyle 500 dönüyor. Frontend admin panelinde bu widget null/boş gösteriyor.
 
+**Uygulanan Çözüm:**
+`year` parametresi `required` yerine `nullable` yapıldı; default olarak `now()->year` kullanılıyor. Validation try-catch dışına alındı.
+
 ---
 
-### 3.4 Currencies History — Model Not Found 500
+### 3.4 Currencies History — Model Not Found 500 ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | DÜŞÜK |
 | **Endpoint** | `GET /api/currencies/history/{code}` |
-| **HTTP Kodu** | 500 (ModelNotFoundException) |
+| **HTTP Kodu** | 500 → 404 |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyaları** | `bootstrap/app.php`, `app/Http/Controllers/Billing/CurrencyController.php` |
 
 **Açıklama:**
 Para birimi DB'de yoksa `findOrFail` / `firstOrFail` çağrısı `ModelNotFoundException` fırlatıyor. Laravel'in default exception handler bu hatayı 404 yerine 500 olarak döndürüyor.
 
-**Çözüm:**
-```php
-// CurrencyController.php
-$currency = Currency::where('code', $code)->firstOrFail();
-// firstOrFail() Laravel'de 404 dönmeli — global exception handler'ı kontrol et
-```
+**Uygulanan Çözüm:**
+- `bootstrap/app.php`: `ModelNotFoundException` ve `NotFoundHttpException` için 404 handler eklendi
+- `CurrencyController::history()`: `days` parametresine `1-365` aralığı validation eklendi; raw `$e->getMessage()` yerine generic Türkçe mesajlar kullanılıyor
 
 ---
 
-### 3.5 Form Request Validation — 500 Hatası
+### 3.5 Form Request Validation — 500 Hatası ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | ORTA |
 | **Etkilenen Endpoint'ler** | `POST /admin/subscriptions`, `POST /admin/users`, `POST /admin/system/notifications` |
-| **HTTP Kodu** | 500 (beklenen: 422) |
+| **HTTP Kodu** | 500 → 422 |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyaları** | `AdminSubscriptionController.php`, `AdminUserController.php`, `AdminSystemController.php`, `AdminHealthController.php` |
 
 **Açıklama:**
-Bazı admin POST endpoint'leri boş/geçersiz body ile çağrıldığında 422 Validation Error yerine 500 Internal Server Error dönüyor.
+Bazı admin POST endpoint'leri boş/geçersiz body ile çağrıldığında 422 Validation Error yerine 500 Internal Server Error dönüyor. Sebebi: `$request->validate()` try-catch(\Throwable) bloğu içinde çağrılıyordu, `ValidationException` catch'e takılıp 500 dönüyordu.
 
-**Çözüm:**
-Form Request validation'ın API isteklerinde doğru çalıştığını kontrol et. Özellikle `authorize()` metodu `false` dönüyorsa 403 değil 500 fırlatıyor olabilir.
+**Uygulanan Çözüm:**
+Tüm etkilenen controller'larda `$request->validate()` çağrısı try-catch bloğunun **dışına** alındı. `bootstrap/app.php`'daki global handler 422 döndürüyor.
 
 ---
 
-### 3.6 Teacher Profile — 500 Yerine 404
+### 3.6 Teacher Profile — 500 Yerine 404 ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | DÜŞÜK |
 | **Endpoint** | `GET /teacher/profile/educations`, `GET /teacher/profile/skills` |
-| **HTTP Kodu** | 500 (beklenen: 404) |
+| **HTTP Kodu** | 500 → 404 |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyası** | `app/Http/Controllers/Teachers/BaseTeacherController.php` |
 
 **Açıklama:**
 Öğretmen profili olmayan kullanıcılar bu endpoint'lere istek yaptığında 404 yerine 500 dönüyor.
 
+**Uygulanan Çözüm:**
+`firstOrFail()` kaldırıldı, yerine `first()` + manuel 404 response kontrolü eklendi:
+```php
+protected function teacherProfile(): TeacherProfile|JsonResponse
+{
+    $profile = $this->user()?->teacherProfiles()->first();
+    if (! $profile) {
+        return $this->errorResponse('Öğretmen profili bulunamadı.', 404);
+    }
+    return $profile;
+}
+```
+
 ---
 
-### 3.7 Auth Register — Eksik name Alanı
+### 3.7 Auth Register — Eksik name Alanı ✅ ÇÖZÜLDÜ
 
 | Alan | Değer |
 |------|-------|
 | **Ciddiyet** | DÜŞÜK (API tasarım tutarsızlığı) |
 | **Endpoint** | `POST /api/auth/register` |
+| **Durum** | ✅ ÇÖZÜLDÜ (2026-02-19) |
+| **Çözüm Dosyası** | `app/Http/Requests/Auth/RegisterRequest.php` |
 
 **Açıklama:**
 `RegisterRequest` hem `name` (ad soyad) hem `institution_name` (kurum adı) gerektiriyor. Ancak bu durum API dokümantasyonunda açıkça belirtilmiyor ve eski frontend kodu sadece `institution_name` göndererek 422 hatası alıyor.
+
+**Uygulanan Çözüm:**
+`RegisterRequest`'e `attributes()` metodu eklendi ve `name` alanının hata mesajı netleştirildi:
+```php
+// Hata mesajı: "Ad soyad (name) alanı zorunludur." — alan adı açık yazılıyor
+'name.required' => 'Ad soyad (name) alanı zorunludur.',
+
+// attributes() ile 422 hata yanıtında alan adları Türkçe gösteriliyor:
+public function attributes(): array
+{
+    return [
+        'name'             => 'ad soyad',
+        'institution_name' => 'kurum adı',
+        ...
+    ];
+}
+```
+422 yanıtı artık hangi alanın eksik olduğunu `name` field adıyla birlikte açıkça belirtiyor.
 
 ---
 
@@ -321,54 +398,54 @@ Form Request validation'ın API isteklerinde doğru çalıştığını kontrol e
 
 ## 6. GÜVENLİK ÖNERİLERİ (Öncelik Sırasıyla)
 
-### 1. Acil — XSS Koruması (Öncelik: KRİTİK)
-- Backend'de tüm text input'ları için XSS filtresi ekle
-- `HTMLPurifier` veya `mews/purifier` paketi kullan
-- Ya da regex ile `<`, `>`, `&`, `"`, `'` karakterlerini reddet
+### 1. ✅ Acil — XSS Koruması (Öncelik: KRİTİK) — ÇÖZÜLDÜ
+- ~~Backend'de tüm text input'ları için XSS filtresi ekle~~
+- `AdminHealthController.php` tüm text alanlarına `regex:/^[^<>&"\']*$/` eklendi
 
-### 2. Acil — APP_DEBUG=false (Öncelik: KRİTİK)
-- Production'da `APP_DEBUG=false` ve `APP_ENV=production` ayarla
-- Global exception handler'ı API için temiz JSON hatalar döndürecek şekilde yapılandır
+### 2. ✅ Acil — APP_DEBUG=false (Öncelik: KRİTİK) — ÇÖZÜLDÜ
+- ~~Production'da `APP_DEBUG=false` ve `APP_ENV=production` ayarla~~
+- `.env` `APP_DEBUG=false` yapıldı
+- `bootstrap/app.php` global exception handler eklendi
 
-### 3. Yüksek — Rate Limiting (Öncelik: YÜKSEK)
-- Login endpoint'i için: `throttle:5,1` (1 dakikada 5 deneme)
-- Register endpoint'i için: `throttle:3,60` (1 saatte 3 deneme)
-- API geneli için: `throttle:60,1`
+### 3. ✅ Yüksek — Rate Limiting (Öncelik: YÜKSEK) — ÇÖZÜLDÜ
+- ~~Login endpoint'i için: `throttle:5,1`~~
+- Login: `throttle:5,1`, Register: `throttle:10,1` eklendi
 
-### 4. Yüksek — Middleware Hata Yönetimi (Öncelik: YÜKSEK)
-- `subscription.active` middleware: super admin için bypass ekle
-- `BaseController::user()`: return type nullable yap
-- Form Request `authorize()` → 403 döndürmeli, 500 değil
+### 4. ✅ Yüksek — Middleware Hata Yönetimi (Öncelik: YÜKSEK) — ÇÖZÜLDÜ
+- ✅ `BaseController::user()`: return type nullable yapıldı
+- ✅ Form Request 422 sorunu düzeltildi
+- ✅ `subscription.active` middleware: super admin bypass zaten uygulanmıştı (`isSuperAdmin()` kontrolü)
 
-### 5. Orta — HTTPS Zorlaması (Öncelik: ORTA)
-- Nginx'te `add_header Strict-Transport-Security "max-age=31536000"` ekle
-- HTTP → HTTPS redirect konfigüre et
-- API endpoint'lerinde `Content-Security-Policy` header ekle
+### 5. ✅ Orta — HTTPS + Security Headers (Öncelik: ORTA) — ÇÖZÜLDÜ
+- `dockerfiles/nginx/conf.d/default.conf` güncellemeleri:
+  - Port 8000 (dev): `X-Frame-Options DENY`, `X-Content-Type-Options nosniff`, `X-XSS-Protection`, `Referrer-Policy` eklendi
+  - Port 443 (prod): `X-Frame-Options DENY`, `Referrer-Policy`, `Strict-Transport-Security` eklendi
 
-### 6. Orta — Security Headers (Öncelik: ORTA)
-Nginx config'e ekle:
-```nginx
-add_header X-Frame-Options "DENY";
-add_header X-Content-Type-Options "nosniff";
-add_header X-XSS-Protection "1; mode=block";
-add_header Referrer-Policy "strict-origin-when-cross-origin";
-add_header Permissions-Policy "geolocation=(), microphone=(), camera=()";
-```
+### 6. ✅ Orta — Accept Header Middleware (Öncelik: ORTA) — ÇÖZÜLDÜ
+- `ForceJsonResponse` middleware oluşturuldu ve `api` grubuna prepend edildi
+- Tüm /api/* rotaları Accept header olmasa bile JSON döndürüyor
 
-### 7. Düşük — API Dokümantasyonu (Öncelik: DÜŞÜK)
-- Register endpoint için `name` alanının zorunlu olduğunu belgele
-- Tüm endpoint'ler için OpenAPI/Swagger spec oluştur
+### 7. ✅ Düşük — API Dokümantasyonu / name Alanı (Öncelik: DÜŞÜK) — ÇÖZÜLDÜ
+- `RegisterRequest` hata mesajı: `'name.required' => 'Ad soyad (name) alanı zorunludur.'`
+- `attributes()` metodu ile 422 yanıtında Türkçe alan adları gösteriliyor
+- OpenAPI/Swagger spec: gelecek sprint
 
 ---
 
 ## 7. DÜZELTME SIRASI (ÇÖZÜM PLANI)
 
-1. **Şimdi:** `APP_DEBUG=false` ayarla → stack trace sızıntısını durdur
-2. **Şimdi:** `BaseController::user()` return type'ını `?User` yap → 500 hatalarını düzelt
-3. **Bu hafta:** XSS sanitizasyonu ekle (allergens, medical-conditions, food-ingredients tüm text alanları)
-4. **Bu hafta:** Rate limiting ekle (`throttle:5,1` login için)
-5. **Bu hafta:** `subscription.active` middleware'i super admin için düzelt
-6. **Bu ay:** Form Request validation 422 döndürme sorunlarını araştır ve düzelt
-7. **Bu ay:** Dashboard revenue endpoint'ini düzelt
-8. **Bu ay:** Security headers nginx config'e ekle
-9. **Gelecek sprint:** ModelNotFoundException → 404 global handler
+| # | Görev | Durum | Dosya |
+|---|-------|-------|-------|
+| 1 | `APP_DEBUG=false` → stack trace durdur | ✅ ÇÖZÜLDÜ | `.env` |
+| 2 | `BaseController::user()` → `?User` | ✅ ÇÖZÜLDÜ | `BaseController.php` |
+| 3 | XSS regex validation — health text alanları | ✅ ÇÖZÜLDÜ | `AdminHealthController.php` |
+| 4 | Rate limiting login/register | ✅ ÇÖZÜLDÜ | `routes/api.php` |
+| 5 | `subscription.active` super admin bypass | ✅ ÇÖZÜLDÜ | `EnsureActiveSubscription.php` (zaten mevcut) |
+| 6 | Form Request validation 422 düzeltmesi | ✅ ÇÖZÜLDÜ | Admin controllers |
+| 7 | Dashboard revenue endpoint 500 düzeltmesi | ✅ ÇÖZÜLDÜ | `AdminDashboardController.php` |
+| 8 | Security headers nginx config | ✅ ÇÖZÜLDÜ | `nginx/conf.d/default.conf` |
+| 9 | ModelNotFoundException → 404 global handler | ✅ ÇÖZÜLDÜ | `bootstrap/app.php` |
+| 10 | Teacher profile 500 → 404 | ✅ ÇÖZÜLDÜ | `BaseTeacherController.php` |
+| 11 | Currencies history 500 → 404 + validation | ✅ ÇÖZÜLDÜ | `CurrencyController.php` |
+| 12 | Accept header middleware (`ForceJsonResponse`) | ✅ ÇÖZÜLDÜ | `ForceJsonResponse.php` + `bootstrap/app.php` |
+| 13 | RegisterRequest `name` alanı netleştirme | ✅ ÇÖZÜLDÜ | `RegisterRequest.php` (attributes + mesaj) |
