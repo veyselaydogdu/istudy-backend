@@ -16,9 +16,10 @@ import * as z from "zod"
 
 const notificationSchema = z.object({
     title: z.string().min(3, "Başlık en az 3 karakter olmalıdır"),
-    message: z.string().min(10, "Mesaj en az 10 karakter olmalıdır"),
-    target: z.string().min(1, "Hedef kitle seçiniz"),
-    type: z.string().min(1, "Bildirim tipi seçiniz"),
+    body: z.string().min(10, "Mesaj en az 10 karakter olmalıdır"),
+    type: z.enum(["general", "maintenance", "update", "announcement"]),
+    priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+    target_roles: z.array(z.string()).optional(),
 })
 
 type NotificationFormValues = z.infer<typeof notificationSchema>
@@ -26,33 +27,40 @@ type NotificationFormValues = z.infer<typeof notificationSchema>
 type SentNotification = {
     id: number
     title: string
-    message: string
-    target: string
+    body: string
+    target_roles?: string[]
     type: string
+    priority?: string
     sent_at: string
     recipient_count?: number
 }
 
 const TARGET_OPTIONS = [
-    { value: "all", label: "Tüm Kullanıcılar" },
-    { value: "tenant_owners", label: "Kurum Sahipleri" },
-    { value: "school_admins", label: "Okul Yöneticileri" },
-    { value: "teachers", label: "Öğretmenler" },
-    { value: "parents", label: "Veliler" },
+    { value: "tenant_owner", label: "Kurum Sahipleri" },
+    { value: "school_admin", label: "Okul Yöneticileri" },
+    { value: "teacher", label: "Öğretmenler" },
+    { value: "parent", label: "Veliler" },
 ]
 
 const TYPE_OPTIONS = [
-    { value: "info", label: "Bilgi" },
-    { value: "warning", label: "Uyarı" },
-    { value: "success", label: "Başarı" },
-    { value: "error", label: "Hata" },
+    { value: "general", label: "Genel" },
+    { value: "maintenance", label: "Bakım" },
+    { value: "update", label: "Güncelleme" },
+    { value: "announcement", label: "Duyuru" },
+]
+
+const PRIORITY_OPTIONS = [
+    { value: "low", label: "Düşük" },
+    { value: "normal", label: "Normal" },
+    { value: "high", label: "Yüksek" },
+    { value: "urgent", label: "Acil" },
 ]
 
 const TYPE_VARIANT_MAP: Record<string, "default" | "warning" | "success" | "danger" | "secondary"> = {
-    info: "default",
-    warning: "warning",
-    success: "success",
-    error: "danger",
+    general: "default",
+    maintenance: "warning",
+    update: "success",
+    announcement: "secondary",
 }
 
 export default function NotificationsPage() {
@@ -65,7 +73,7 @@ export default function NotificationsPage() {
         formState: { errors, isSubmitting },
     } = useForm<NotificationFormValues>({
         resolver: zodResolver(notificationSchema),
-        defaultValues: { title: "", message: "", target: "", type: "info" },
+        defaultValues: { title: "", body: "", type: "general", priority: "normal", target_roles: [] },
     })
 
     useEffect(() => {
@@ -93,9 +101,10 @@ export default function NotificationsPage() {
                     {
                         id: Date.now(),
                         title: data.title,
-                        message: data.message,
-                        target: data.target,
+                        body: data.body,
+                        target_roles: data.target_roles,
                         type: data.type,
+                        priority: data.priority,
                         sent_at: new Date().toISOString(),
                     },
                     ...prev,
@@ -103,8 +112,14 @@ export default function NotificationsPage() {
                 setTimeout(() => setSent(false), 3000)
             }
         } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string } } }
-            toast.error(error.response?.data?.message ?? "Bildirim gönderilemedi.")
+            const error = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+            const errorMsg = error.response?.data?.message ?? "Bildirim gönderilemedi."
+            const errors = error.response?.data?.errors
+            if (errors) {
+                toast.error(errorMsg, { description: Object.values(errors).flat().join(", ") })
+            } else {
+                toast.error(errorMsg)
+            }
         }
     }
 
@@ -133,19 +148,6 @@ export default function NotificationsPage() {
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Hedef Kitle</Label>
-                                    <select
-                                        {...register("target")}
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                                    >
-                                        <option value="">Seçin...</option>
-                                        {TARGET_OPTIONS.map((opt) => (
-                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                    </select>
-                                    {errors.target && <p className="text-xs text-red-500">{errors.target.message}</p>}
-                                </div>
-                                <div className="space-y-2">
                                     <Label>Bildirim Tipi</Label>
                                     <select
                                         {...register("type")}
@@ -155,7 +157,33 @@ export default function NotificationsPage() {
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
                                     </select>
+                                    {errors.type && <p className="text-xs text-red-500">{errors.type.message}</p>}
                                 </div>
+                                <div className="space-y-2">
+                                    <Label>Öncelik</Label>
+                                    <select
+                                        {...register("priority")}
+                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                    >
+                                        {PRIORITY_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Hedef Roller (Opsiyonel, çoklu seçim)</Label>
+                                <select
+                                    multiple
+                                    {...register("target_roles")}
+                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                >
+                                    {TARGET_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-muted-foreground">Boş bırakılırsa tüm kullanıcılara gönderilir. Ctrl/Cmd tuşuyla çoklu seçim yapabilirsiniz.</p>
                             </div>
 
                             <div className="space-y-2">
@@ -169,9 +197,9 @@ export default function NotificationsPage() {
                                 <Textarea
                                     placeholder="Bildirim içeriğini yazın..."
                                     rows={5}
-                                    {...register("message")}
+                                    {...register("body")}
                                 />
-                                {errors.message && <p className="text-xs text-red-500">{errors.message.message}</p>}
+                                {errors.body && <p className="text-xs text-red-500">{errors.body.message}</p>}
                             </div>
 
                             <Button type="submit" className="w-full" disabled={isSubmitting}>
@@ -221,10 +249,12 @@ export default function NotificationsPage() {
                                                 {TYPE_OPTIONS.find((t) => t.value === notif.type)?.label ?? notif.type}
                                             </Badge>
                                         </div>
-                                        <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
+                                        <p className="text-xs text-muted-foreground line-clamp-2">{notif.body}</p>
                                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                                             <span>
-                                                {TARGET_OPTIONS.find((t) => t.value === notif.target)?.label ?? notif.target}
+                                                {notif.target_roles && notif.target_roles.length > 0
+                                                    ? notif.target_roles.map(r => TARGET_OPTIONS.find(t => t.value === r)?.label ?? r).join(", ")
+                                                    : "Tüm kullanıcılar"}
                                                 {notif.recipient_count !== undefined && ` • ${notif.recipient_count} alıcı`}
                                             </span>
                                             <span>

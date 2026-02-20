@@ -33,7 +33,8 @@ import { exportToCsv } from "@/lib/exportUtils"
 type Meta = { current_page: number; last_page: number; per_page: number; total: number }
 
 const newTenantSchema = z.object({
-    name: z.string().min(2, "Kurum adı en az 2 karakter olmalıdır"),
+    full_name: z.string().min(2, "Yönetici adı soyadı gereklidir"),
+    institution_name: z.string().min(2, "Kurum adı en az 2 karakter olmalıdır"),
     email: z.string().email("Geçerli bir e-posta adresi giriniz"),
     password: z.string().min(6, "Şifre en az 6 karakter olmalıdır"),
 })
@@ -76,7 +77,8 @@ export default function TenantsPage() {
     const onSubmit = async (data: NewTenantFormValues) => {
         try {
             await apiClient.post("/auth/register", {
-                institution_name: data.name,
+                name: data.full_name,
+                institution_name: data.institution_name,
                 email: data.email,
                 password: data.password,
                 password_confirmation: data.password,
@@ -138,9 +140,14 @@ export default function TenantsPage() {
                         <form onSubmit={handleSubmit(onSubmit)}>
                             <div className="grid gap-4 py-4">
                                 <div className="space-y-2">
+                                    <Label>Yönetici Adı Soyadı</Label>
+                                    <Input placeholder="Örn: Ahmet Yılmaz" {...register("full_name")} />
+                                    {errors.full_name && <p className="text-xs text-red-500">{errors.full_name.message}</p>}
+                                </div>
+                                <div className="space-y-2">
                                     <Label>Kurum Adı</Label>
-                                    <Input placeholder="Örn: Bilge Kağan Koleji" {...register("name")} />
-                                    {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+                                    <Input placeholder="Örn: Bilge Kağan Koleji" {...register("institution_name")} />
+                                    {errors.institution_name && <p className="text-xs text-red-500">{errors.institution_name.message}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Yönetici E-posta</Label>

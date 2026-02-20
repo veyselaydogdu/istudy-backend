@@ -53,6 +53,7 @@ export default function ActivityLogsPage() {
 
     const fetchLogs = useCallback(async () => {
         setLoading(true)
+        setLogs([]) // Önceki veriyi temizle
         try {
             const params: Record<string, string | number> = { page, per_page: 20 }
             if (search) params.search = search
@@ -61,9 +62,14 @@ export default function ActivityLogsPage() {
             if (res.data?.data) {
                 setLogs(res.data.data)
                 setMeta(res.data.meta ?? null)
+            } else {
+                setLogs([])
+                setMeta(null)
             }
         } catch {
             toast.error("Aktivite kayıtları yüklenirken hata oluştu.")
+            setLogs([])
+            setMeta(null)
         } finally {
             setLoading(false)
         }

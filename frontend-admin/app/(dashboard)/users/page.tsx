@@ -67,6 +67,7 @@ export default function UsersPage() {
 
     const fetchUsers = useCallback(async () => {
         setLoading(true)
+        setUsers([]) // Önceki veriyi temizle
         try {
             const role = ROLE_FILTERS[activeTab]
             const params: Record<string, string | number> = { page, per_page: 15 }
@@ -77,9 +78,14 @@ export default function UsersPage() {
             if (res.data?.data) {
                 setUsers(res.data.data)
                 setMeta(res.data.meta ?? null)
+            } else {
+                setUsers([])
+                setMeta(null)
             }
         } catch {
             toast.error("Kullanıcılar yüklenirken hata oluştu.")
+            setUsers([])
+            setMeta(null)
         } finally {
             setLoading(false)
         }

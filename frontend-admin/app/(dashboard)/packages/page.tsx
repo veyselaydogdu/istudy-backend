@@ -45,11 +45,11 @@ type Package = {
 
 const packageSchema = z.object({
     name: z.string().min(2, "Paket adı gereklidir"),
-    max_schools: z.coerce.number().min(0), // 0 for unlimited
-    max_classes_per_school: z.coerce.number().min(0),
-    max_students: z.coerce.number().min(0),
-    price_monthly: z.coerce.number().min(0),
-    price_yearly: z.coerce.number().min(0),
+    max_schools: z.coerce.number().min(0, "Okul sayısı 0 veya üzeri olmalıdır"),
+    max_classes_per_school: z.coerce.number().min(0, "Sınıf sayısı 0 veya üzeri olmalıdır"),
+    max_students: z.coerce.number().min(0, "Öğrenci sayısı 0 veya üzeri olmalıdır"),
+    price_monthly: z.coerce.number().min(0.01, "Aylık fiyat giriniz"),
+    price_yearly: z.coerce.number().min(0.01, "Yıllık fiyat giriniz"),
 })
 
 type PackageFormValues = z.infer<typeof packageSchema>
@@ -103,17 +103,27 @@ export default function PackagesPage() {
 
     useEffect(() => {
         if (editingPackage) {
-            setValue("name", editingPackage.name)
-            setValue("max_schools", editingPackage.max_schools)
-            setValue("max_classes_per_school", editingPackage.max_classes_per_school)
-            setValue("max_students", editingPackage.max_students)
-            setValue("price_monthly", editingPackage.price_monthly)
-            setValue("price_yearly", editingPackage.price_yearly)
+            // Önce formu temizle
+            reset({
+                name: editingPackage.name,
+                max_schools: editingPackage.max_schools,
+                max_classes_per_school: editingPackage.max_classes_per_school,
+                max_students: editingPackage.max_students,
+                price_monthly: editingPackage.price_monthly,
+                price_yearly: editingPackage.price_yearly,
+            })
             setIsDialogOpen(true)
         } else {
-            reset()
+            reset({
+                name: "",
+                max_schools: 0,
+                max_classes_per_school: 0,
+                max_students: 0,
+                price_monthly: 0,
+                price_yearly: 0,
+            })
         }
-    }, [editingPackage, setValue, reset])
+    }, [editingPackage, reset])
 
     const onSubmit = async (data: PackageFormValues) => {
         try {
@@ -197,10 +207,12 @@ export default function PackagesPage() {
                                     <div className="space-y-2 relative">
                                         <Label htmlFor="price_monthly">Aylık Fiyat (₺)</Label>
                                         <Input id="price_monthly" type="number" step="0.01" {...register("price_monthly")} />
+                                        {errors.price_monthly && <p className="text-xs text-red-500">{errors.price_monthly.message}</p>}
                                     </div>
                                     <div className="space-y-2 relative">
                                         <Label htmlFor="price_yearly">Yıllık Fiyat (₺)</Label>
                                         <Input id="price_yearly" type="number" step="0.01" {...register("price_yearly")} />
+                                        {errors.price_yearly && <p className="text-xs text-red-500">{errors.price_yearly.message}</p>}
                                     </div>
                                 </div>
                             </div>
