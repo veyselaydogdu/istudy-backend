@@ -17,7 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import {
     Plus, Loader2, Trash2, AlertTriangle, Stethoscope, Apple, Pill,
-    ChevronLeft, ChevronRight, Search,
+    ChevronLeft, ChevronRight, Search, Pencil,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useForm } from "react-hook-form"
@@ -244,13 +244,25 @@ function IngredientTab() {
     const [meta, setMeta] = useState<Meta | null>(null)
     const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [editItem, setEditItem] = useState<FoodIngredient | null>(null)
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [search, setSearch] = useState("")
     const [page, setPage] = useState(1)
 
     const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
         useForm({ resolver: zodResolver(ingredientSchema) })
 
+    const {
+        register: registerEdit,
+        handleSubmit: handleSubmitEdit,
+        reset: resetEdit,
+        setValue: setEditValue,
+        watch: watchEdit,
+        formState: { errors: editErrors, isSubmitting: isEditSubmitting },
+    } = useForm({ resolver: zodResolver(ingredientSchema) })
+
     const selectedAllergenIds = watch("allergen_ids") || []
+    const selectedEditAllergenIds = watchEdit("allergen_ids") || []
 
     const fetchItems = useCallback(async () => {
         setLoading(true)
@@ -310,12 +322,47 @@ function IngredientTab() {
         }
     }
 
+    const handleOpenEdit = (item: FoodIngredient) => {
+        setEditItem(item)
+        resetEdit({
+            name: item.name,
+            allergen_info: item.allergen_info ?? "",
+            allergen_ids: item.allergens?.map((a) => a.id) ?? [],
+        })
+        setIsEditDialogOpen(true)
+    }
+
+    const onEditSubmit = async (data: { name: string; allergen_info?: string; allergen_ids?: number[] }) => {
+        if (!editItem) { return }
+        try {
+            const res = await apiClient.put(`/admin/food-ingredients/${editItem.id}`, data)
+            if (res.data?.success !== false) {
+                toast.success("Besin içeriği güncellendi.")
+                setIsEditDialogOpen(false)
+                setEditItem(null)
+                fetchItems()
+            }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } }
+            toast.error(error.response?.data?.message ?? "Besin güncellenemedi.")
+        }
+    }
+
     const toggleAllergen = (allergenId: number) => {
         const current = selectedAllergenIds as number[]
         if (current.includes(allergenId)) {
             setValue("allergen_ids", current.filter((id) => id !== allergenId))
         } else {
             setValue("allergen_ids", [...current, allergenId])
+        }
+    }
+
+    const toggleEditAllergen = (allergenId: number) => {
+        const current = selectedEditAllergenIds as number[]
+        if (current.includes(allergenId)) {
+            setEditValue("allergen_ids", current.filter((id) => id !== allergenId))
+        } else {
+            setEditValue("allergen_ids", [...current, allergenId])
         }
     }
 
@@ -446,13 +493,22 @@ function IngredientTab() {
                                             {new Date(item.created_at).toLocaleDateString("tr-TR")}
                                         </TableCell>
                                         <TableCell>
-                                            <Button
-                                                variant="ghost" size="icon"
-                                                className="h-8 w-8 text-red-500 hover:text-red-700"
-                                                onClick={() => handleDelete(item.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="ghost" size="icon"
+                                                    className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                                    onClick={() => handleOpenEdit(item)}
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost" size="icon"
+                                                    className="h-8 w-8 text-red-500 hover:text-red-700"
+                                                    onClick={() => handleDelete(item.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -483,6 +539,66 @@ function IngredientTab() {
                     </>
                 )}
             </CardContent>
+
+            {/* Düzenle Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={(o) => { if (!o) { setIsEditDialogOpen(false); setEditItem(null) } }}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Besin Düzenle</DialogTitle>
+                        <DialogDescription>
+                            Besin içeriği bilgilerini güncelleyin.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmitEdit(onEditSubmit)}>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Besin Adı *</Label>
+                                <Input {...registerEdit("name")} />
+                                {editErrors.name && (
+                                    <p className="text-xs text-red-500">{(editErrors.name as { message?: string })?.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Alerjen Bilgisi</Label>
+                                <Textarea rows={2} {...registerEdit("allergen_info")} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>İçerdiği Alerjenler (Seçmeli)</Label>
+                                <div className="border rounded-md p-3 max-h-48 overflow-y-auto">
+                                    {allergens.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">Alerjen bulunamadı</p>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {allergens.map((allergen) => (
+                                                <label key={allergen.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-2 rounded">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={(selectedEditAllergenIds as number[]).includes(allergen.id)}
+                                                        onChange={() => toggleEditAllergen(allergen.id)}
+                                                        className="rounded border-gray-300"
+                                                    />
+                                                    <span className="text-sm">{allergen.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {(selectedEditAllergenIds as number[]).length} alerjen seçildi
+                                </p>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditItem(null) }}>
+                                İptal
+                            </Button>
+                            <Button type="submit" disabled={isEditSubmitting}>
+                                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Kaydet
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </Card>
     )
 }

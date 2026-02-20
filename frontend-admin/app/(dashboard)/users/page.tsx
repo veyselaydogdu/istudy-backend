@@ -17,7 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Loader2, MoreHorizontal, Plus, UserCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Loader2, MoreHorizontal, Plus, UserCircle, ChevronLeft, ChevronRight, Mail, Building, Calendar } from "lucide-react"
 import { toast } from "sonner"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -64,6 +64,8 @@ export default function UsersPage() {
     const [search, setSearch] = useState("")
     const [page, setPage] = useState(1)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [profileUser, setProfileUser] = useState<User | null>(null)
+    const [isProfileOpen, setIsProfileOpen] = useState(false)
 
     const fetchUsers = useCallback(async () => {
         setLoading(true)
@@ -305,7 +307,7 @@ export default function UsersPage() {
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end">
                                                                     <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
-                                                                    <DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => { setProfileUser(user); setIsProfileOpen(true) }}>
                                                                         <UserCircle className="mr-2 h-4 w-4" /> Profili Gör
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
@@ -360,6 +362,54 @@ export default function UsersPage() {
                     </TabsContent>
                 ))}
             </Tabs>
+
+            {/* Kullanıcı Profili Dialog */}
+            <Dialog open={isProfileOpen} onOpenChange={(o) => { if (!o) { setIsProfileOpen(false); setProfileUser(null) } }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Kullanıcı Profili</DialogTitle>
+                        <DialogDescription>Kullanıcı detay bilgileri</DialogDescription>
+                    </DialogHeader>
+                    {profileUser && (
+                        <div className="space-y-4 py-2">
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xl font-bold">
+                                    {profileUser.name?.[0]?.toUpperCase()}{profileUser.surname?.[0]?.toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="text-lg font-semibold">{profileUser.name} {profileUser.surname ?? ""}</p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        {profileUser.roles?.map((role) => (
+                                            <Badge key={role.id} variant={getRoleVariant(role.name)}>
+                                                {ROLE_LABELS[role.name] ?? role.name}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid gap-3 border rounded-md p-4 bg-muted/30">
+                                <div className="flex items-center gap-3 text-sm">
+                                    <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span>{profileUser.email}</span>
+                                </div>
+                                {profileUser.tenant?.name && (
+                                    <div className="flex items-center gap-3 text-sm">
+                                        <Building className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <span>{profileUser.tenant.name}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-3 text-sm">
+                                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span>Kayıt: {new Date(profileUser.created_at).toLocaleDateString("tr-TR")}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setIsProfileOpen(false); setProfileUser(null) }}>Kapat</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

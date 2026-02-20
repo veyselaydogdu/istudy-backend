@@ -34,9 +34,15 @@ export default function TenantDetailPage() {
                     apiClient.get(`/admin/tenants/${id}/schools`).catch(() => ({ data: { data: [] } })),
                     apiClient.get(`/admin/tenants/${id}/subscriptions`).catch(() => ({ data: { data: [] } })),
                 ])
-                if (tenantRes.data?.data) setTenant(tenantRes.data.data)
-                if (schoolsRes.data?.data) setSchools(schoolsRes.data.data)
-                if (subsRes.data?.data) setSubscriptions(subsRes.data.data)
+                // Backend show() { tenant: {...}, stats: {...} } nested döndürür
+                const rawData = tenantRes.data?.data
+                if (rawData?.tenant) {
+                    setTenant(rawData.tenant as Tenant)
+                } else if (rawData) {
+                    setTenant(rawData as Tenant)
+                }
+                if (Array.isArray(schoolsRes.data?.data)) setSchools(schoolsRes.data.data)
+                if (Array.isArray(subsRes.data?.data)) setSubscriptions(subsRes.data.data)
             } catch {
                 toast.error("Kurum bilgileri yüklenemedi.")
                 router.push("/tenants")

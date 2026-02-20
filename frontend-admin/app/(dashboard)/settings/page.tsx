@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import {
-    Globe, DollarSign, Loader2, RefreshCw, Plus, Search, ChevronLeft, ChevronRight, Star,
+    Globe, DollarSign, Loader2, RefreshCw, Plus, Search, ChevronLeft, ChevronRight, Star, Pencil, Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useForm } from "react-hook-form"
@@ -204,6 +204,8 @@ function CurrenciesTab() {
     const [loading, setLoading] = useState(true)
     const [fetchingRates, setFetchingRates] = useState(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [editCurrency, setEditCurrency] = useState<Currency | null>(null)
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
     const {
         register, handleSubmit, reset,
@@ -212,6 +214,16 @@ function CurrenciesTab() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         resolver: zodResolver(currencySchema) as any,
         defaultValues: { code: "", name: "", symbol: "", decimal_places: 2 },
+    })
+
+    const {
+        register: registerEdit,
+        handleSubmit: handleSubmitEdit,
+        reset: resetEdit,
+        formState: { errors: editErrors, isSubmitting: isEditSubmitting },
+    } = useForm<Omit<CurrencyFormValues, "code">>({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resolver: zodResolver(currencySchema.omit({ code: true })) as any,
     })
 
     const fetchCurrencies = useCallback(async () => {
@@ -274,6 +286,44 @@ function CurrenciesTab() {
             )
         } catch {
             toast.error("Durum güncellenemedi.")
+        }
+    }
+
+    const handleOpenEdit = (currency: Currency) => {
+        setEditCurrency(currency)
+        resetEdit({ name: currency.name, symbol: currency.symbol, decimal_places: currency.decimal_places })
+        setIsEditDialogOpen(true)
+    }
+
+    const onEditSubmit = async (data: Omit<CurrencyFormValues, "code">) => {
+        if (!editCurrency) { return }
+        try {
+            const res = await apiClient.put(`/admin/currencies/${editCurrency.id}`, data)
+            if (res.data?.success) {
+                toast.success("Para birimi güncellendi.")
+                setIsEditDialogOpen(false)
+                setEditCurrency(null)
+                fetchCurrencies()
+            }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } }
+            toast.error(error.response?.data?.message ?? "Hata oluştu.")
+        }
+    }
+
+    const handleDelete = async (currency: Currency) => {
+        if (currency.is_base) {
+            toast.error("Baz para birimi silinemez.")
+            return
+        }
+        if (!confirm(`"${currency.code}" para birimini silmek istediğinizden emin misiniz?`)) { return }
+        try {
+            await apiClient.delete(`/admin/currencies/${currency.id}`)
+            toast.success("Para birimi silindi.")
+            setCurrencies((prev) => prev.filter((c) => c.id !== currency.id))
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } }
+            toast.error(error.response?.data?.message ?? "Para birimi silinemedi.")
         }
     }
 
@@ -388,14 +438,32 @@ function CurrenciesTab() {
                                         </button>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {!currency.is_base && (
+                                        <div className="flex items-center justify-end gap-1">
+                                            {!currency.is_base && (
+                                                <Button
+                                                    variant="ghost" size="sm"
+                                                    onClick={() => handleSetBase(currency.id)}
+                                                >
+                                                    Baz Yap
+                                                </Button>
+                                            )}
                                             <Button
-                                                variant="ghost" size="sm"
-                                                onClick={() => handleSetBase(currency.id)}
+                                                variant="ghost" size="icon"
+                                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                                onClick={() => handleOpenEdit(currency)}
                                             >
-                                                Baz Yap
+                                                <Pencil className="h-4 w-4" />
                                             </Button>
-                                        )}
+                                            {!currency.is_base && (
+                                                <Button
+                                                    variant="ghost" size="icon"
+                                                    className="h-8 w-8 text-red-500 hover:text-red-700"
+                                                    onClick={() => handleDelete(currency)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -410,6 +478,44 @@ function CurrenciesTab() {
                     </Table>
                 )}
             </CardContent>
+
+            {/* Düzenle Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={(o) => { if (!o) { setIsEditDialogOpen(false); setEditCurrency(null) } }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Para Birimi Düzenle — {editCurrency?.code}</DialogTitle>
+                        <DialogDescription>Para birimi bilgilerini güncelleyin.</DialogDescription>
+                    </DialogHeader>
+                    {/* @ts-ignore */}
+                    <form onSubmit={handleSubmitEdit(onEditSubmit as any)}>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Para Birimi Adı</Label>
+                                    <Input {...registerEdit("name")} />
+                                    {editErrors.name && <p className="text-xs text-red-500">{editErrors.name.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Sembol</Label>
+                                    <Input {...registerEdit("symbol")} />
+                                    {editErrors.symbol && <p className="text-xs text-red-500">{editErrors.symbol.message}</p>}
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Ondalık Basamak</Label>
+                                <Input type="number" min={0} max={6} {...registerEdit("decimal_places")} />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditCurrency(null) }}>İptal</Button>
+                            <Button type="submit" disabled={isEditSubmitting}>
+                                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Kaydet
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </Card>
     )
 }

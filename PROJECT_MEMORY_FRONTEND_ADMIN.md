@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Admin — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-20 (Package Features CRUD eklendi: pivot tablo yapısı, Tabs UI, özellik yönetimi — v6)
+> **Son Güncelleme:** 2026-02-20 (ActivityLog nested tip düzeltmesi, kurum detay fix, besin düzenle, para birimi edit/sil, kullanıcı profili dialog — v7)
 > **Amaç:** Bu dosya, Frontend Admin panelinin geliştirilme sürecini, mimari kararlarını, kullanılan teknolojileri ve bileşen yapısını belgelemek için oluşturulmuştur.
 
 ---
@@ -116,7 +116,7 @@ frontend-admin/
 | **Activity Logs** | `GET /admin/activity-logs`, `GET /admin/activity-logs/stats` |
 | **Notifications** | `GET /admin/system/notifications`, `POST /admin/system/notifications` |
 | **Settings/Countries** | `GET /admin/countries`, `POST /admin/countries/sync`, `PATCH /admin/countries/:id/toggle-active` |
-| **Settings/Currencies** | `GET /admin/currencies`, `POST /admin/currencies`, `POST /admin/currencies/fetch-rates`, `PATCH /admin/currencies/:id/set-base`, `PATCH /admin/currencies/:id/toggle-status` |
+| **Settings/Currencies** | `GET /admin/currencies`, `POST /admin/currencies`, `PUT /admin/currencies/:id`, `DELETE /admin/currencies/:id`, `POST /admin/currencies/fetch-rates`, `PATCH /admin/currencies/:id/set-base`, `PATCH /admin/currencies/:id/toggle-status` |
 
 ---
 
@@ -229,10 +229,10 @@ const [mainRes, relatedRes] = await Promise.all([
 | **Finans** | ✅ Tam | Fatura listesi + POS işlemleri + istatistik kartları |
 | **Sağlık & Beslenme** | ✅ Tam | Alerjen + Tıbbi Durum + Besin + İlaç CRUD (generic CrudTab) |
 | **Abonelikler** | ✅ Tam | Liste, durum filtresi, uzatma, iptal, istatistikler |
-| **Aktivite Kayıtları** | ✅ Tam | Filtre, değişiklik detayı dialog, istatistikler |
+| **Aktivite Kayıtları** | ✅ Tam | Filtre, değişiklik detayı dialog, istatistikler — ActivityLogResource nested yapıya (user.name, model.label, context.ip_address, changes.old_values) güncellendi |
 | **Bildirimler** | ✅ Tam | Form + geçmiş listesi, hedef kitle seçimi |
 | **Ayarlar - Ülkeler** | ✅ Tam | Tablo, API sync, aktif/pasif toggle |
-| **Ayarlar - Para Birimleri** | ✅ Tam | CRUD, kur güncelleme, baz birim seçimi |
+| **Ayarlar - Para Birimleri** | ✅ Tam | CRUD (edit + sil dahil), kur güncelleme, baz birim seçimi — baz birim silinemez (guard mevcut) |
 | **Dark Mode** | ✅ Tam | next-themes, header toggle, system default |
 | **useDebounce Hook** | ✅ Tam | hooks/useDebounce.ts |
 | **Select Component** | ✅ Tam | Radix UI Select wrapper |
@@ -249,6 +249,18 @@ const [mainRes, relatedRes] = await Promise.all([
 - `app/page.tsx` ve `app/(dashboard)/page.tsx` aynı `/` URL'sini çözebilirdi.
 - `app/page.tsx` → client-side auth check + redirect (localStorage → /tenants veya /login)
 - Sidebar "Dashboard" linki `/tenants`'a işaret eder (çakışmayı önler)
+
+### ActivityLogResource — Nested Yapı (ÖNEMLİ)
+`ActivityLogResource` düz (flat) değil **nested** yapı döndürür. `ActivityLog` TypeScript tipi bu yapıya göre tanımlanmıştır:
+- `log.user.name`, `log.user.email` (flat `user_name` değil)
+- `log.model.label`, `log.model.type`, `log.model.id`
+- `log.context.ip_address`, `log.context.url`, `log.context.method`
+- `log.changes.old_values`, `log.changes.new_values`, `log.changes.changed_fields`
+- `log.action_label`, `log.description`, `log.time_ago`
+
+### AdminTenantController::show() — Nested Response
+`GET /admin/tenants/:id` endpoint'i `{ tenant: TenantResource, stats: {...} }` nested döndürür.
+Frontend'de `tenantRes.data.data.tenant` ile Tenant nesnesi çıkarılır.
 
 ### Health Endpoint'leri (Backend)
 - `/admin/allergens`, `/admin/medical-conditions`, `/admin/food-ingredients`, `/admin/medications` backend'de `AdminHealthController`'a bağlandı.
@@ -337,6 +349,30 @@ npx tsc --noEmit
 - **Abonelik Dağılım Grafiği** — `BarChart` + `Cell` ile renk kodlu (aktif/iptal/dolmuş/askıda)
 - Dashboard layout: stats grid → aktivite trend → [abonelik bar | son aktiviteler]
 - Grafik verileri yoksa (API dönmüyorsa) bölüm render edilmez (graceful degradation)
+
+### 9.5 Bug Düzeltmeleri & Yeni Özellikler (v7)
+
+**Kurum Detay Fix:**
+- `GET /admin/tenants/:id` nested `{ tenant, stats }` response'u doğru parse edildi
+- `tenantRes.data.data.tenant` ile Tenant nesnesi çıkarılıyor
+
+**ActivityLog Nested Tip Düzeltmesi:**
+- `ActivityLogResource` nested yapı döndürdüğü için `ActivityLog` TypeScript tipi güncellendi
+- `activity-logs/page.tsx` tüm alan erişimleri düzeltildi (`log.user?.name`, `log.context?.ip_address` vb.)
+
+**Besin Düzenle Özelliği (IngredientTab):**
+- Düzenle butonu (Pencil ikonu) eklendi
+- Edit dialog: isim, alerjen bilgisi, alerjen çoklu seçim pre-fill ile
+- `PUT /admin/food-ingredients/:id` API çağrısı
+
+**Para Birimi Düzenle/Sil (CurrenciesTab):**
+- Düzenle butonu (Pencil) + Edit dialog eklendi → `PUT /admin/currencies/:id`
+- Sil butonu (Trash2) eklendi → `DELETE /admin/currencies/:id`
+- Baz para birimi (`is_base=true`) silme butonu gösterilmez
+
+**Kullanıcı Profili Dialog (users/page.tsx):**
+- "Profili Gör" dropdown item'ına onClick bağlandı
+- Avatar, ad-soyad, roller (renkli badge), kurum adı, kayıt tarihi gösterilen profil dialog'u
 
 ### 9.4 Package Features CRUD (v6)
 

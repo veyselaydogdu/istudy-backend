@@ -271,22 +271,33 @@ export type FoodIngredient = {
 
 export type ActivityLog = {
     id: number
-    user_id?: number
-    user_name?: string
-    user_email?: string
-    model_type?: string
-    model_label?: string
-    model_id?: number
+    user: {
+        id?: number
+        name?: string
+        email?: string
+    }
+    model: {
+        type?: string
+        label?: string
+        id?: number
+    }
     action: 'created' | 'updated' | 'deleted' | 'restored' | 'force_deleted'
-    old_values?: Record<string, unknown>
-    new_values?: Record<string, unknown>
-    changed_fields?: string[]
-    tenant_id?: number
-    school_id?: number
-    ip_address?: string
-    url?: string
-    method?: string
+    action_label?: string
+    description?: string
+    changes: {
+        old_values?: Record<string, unknown>
+        new_values?: Record<string, unknown>
+        changed_fields?: string[]
+    }
+    context: {
+        tenant_id?: number
+        school_id?: number
+        ip_address?: string
+        method?: string
+        url?: string
+    }
     created_at: string
+    time_ago?: string
 }
 
 export type ActivityLogStats = {

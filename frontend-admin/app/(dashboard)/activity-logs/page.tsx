@@ -183,9 +183,9 @@ export default function ActivityLogsPage() {
                                         return (
                                             <TableRow key={log.id}>
                                                 <TableCell>
-                                                    <div className="font-medium text-sm">{log.user_name ?? "—"}</div>
-                                                    {log.user_email && (
-                                                        <div className="text-xs text-muted-foreground">{log.user_email}</div>
+                                                    <div className="font-medium text-sm">{log.user?.name ?? "—"}</div>
+                                                    {log.user?.email && (
+                                                        <div className="text-xs text-muted-foreground">{log.user.email}</div>
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
@@ -194,17 +194,17 @@ export default function ActivityLogsPage() {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-sm">
-                                                    {log.model_label ?? log.model_type ?? "—"}
-                                                    {log.model_id && <span className="text-muted-foreground ml-1">#{log.model_id}</span>}
+                                                    {log.model?.label ?? log.model?.type ?? "—"}
+                                                    {log.model?.id && <span className="text-muted-foreground ml-1">#{log.model.id}</span>}
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground font-mono">
-                                                    {log.ip_address ?? "—"}
+                                                    {log.context?.ip_address ?? "—"}
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
                                                     {new Date(log.created_at).toLocaleString("tr-TR")}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {(log.old_values || log.new_values) && (
+                                                    {(log.changes?.old_values || log.changes?.new_values) && (
                                                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setDetailLog(log)}>
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
@@ -244,31 +244,31 @@ export default function ActivityLogsPage() {
             <Dialog open={!!detailLog} onOpenChange={(o) => !o && setDetailLog(null)}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Değişiklik Detayı — {detailLog?.model_label} #{detailLog?.model_id}</DialogTitle>
+                        <DialogTitle>Değişiklik Detayı — {detailLog?.model?.label} #{detailLog?.model?.id}</DialogTitle>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-auto">
-                        {detailLog?.old_values && (
+                        {detailLog?.changes?.old_values && (
                             <div>
                                 <p className="text-sm font-semibold text-red-600 mb-2">Önceki Değerler</p>
                                 <pre className="text-xs bg-red-50 dark:bg-red-950/20 rounded-md p-3 overflow-auto border border-red-200 dark:border-red-900">
-                                    {JSON.stringify(detailLog.old_values, null, 2)}
+                                    {JSON.stringify(detailLog.changes.old_values, null, 2)}
                                 </pre>
                             </div>
                         )}
-                        {detailLog?.new_values && (
+                        {detailLog?.changes?.new_values && (
                             <div>
                                 <p className="text-sm font-semibold text-green-600 mb-2">Yeni Değerler</p>
                                 <pre className="text-xs bg-green-50 dark:bg-green-950/20 rounded-md p-3 overflow-auto border border-green-200 dark:border-green-900">
-                                    {JSON.stringify(detailLog.new_values, null, 2)}
+                                    {JSON.stringify(detailLog.changes.new_values, null, 2)}
                                 </pre>
                             </div>
                         )}
                     </div>
-                    {detailLog?.changed_fields && detailLog.changed_fields.length > 0 && (
+                    {detailLog?.changes?.changed_fields && detailLog.changes.changed_fields.length > 0 && (
                         <div className="mt-2">
                             <p className="text-sm font-medium text-muted-foreground mb-1">Değişen Alanlar:</p>
                             <div className="flex flex-wrap gap-1">
-                                {detailLog.changed_fields.map((f) => (
+                                {detailLog.changes.changed_fields.map((f) => (
                                     <Badge key={f} variant="secondary">{f}</Badge>
                                 ))}
                             </div>
