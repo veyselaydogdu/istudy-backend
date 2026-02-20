@@ -308,6 +308,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // PAKET YÖNETİMİ
         // ───────────────────────────────────────────────────
         Route::apiResource('packages', \App\Http\Controllers\Admin\PackageController::class);
+        Route::apiResource('package-features', \App\Http\Controllers\Admin\PackageFeatureController::class);
 
         // ───────────────────────────────────────────────────
         // KULLANICI YÖNETİMİ
@@ -458,6 +459,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('food-ingredients')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'ingredientIndex']);
             Route::post('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'ingredientStore']);
+            Route::put('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'ingredientUpdate']);
             Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'ingredientDestroy']);
         });
 

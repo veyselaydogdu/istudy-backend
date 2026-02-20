@@ -16,6 +16,12 @@ class FoodIngredient extends BaseModel
         'updated_by',
     ];
 
+    // Allergen relation
+    public function allergens()
+    {
+        return $this->belongsToMany(Allergen::class, 'food_ingredient_allergens', 'ingredient_id', 'allergen_id');
+    }
+
     // Reverse relation
     public function meals()
     {

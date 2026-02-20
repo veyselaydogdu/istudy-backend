@@ -24,6 +24,9 @@ class StorePackageRequest extends FormRequest
             'is_active' => ['nullable', 'boolean'],
             'features' => ['nullable', 'array'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
+            'package_features' => ['nullable', 'array'],
+            'package_features.*.feature_id' => ['required', 'exists:package_features,id'],
+            'package_features.*.value' => ['nullable', 'string'],
         ];
     }
 

@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Admin — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-19 (API response format düzeltmesi: paginatedResponse uyumu, Dashboard stats/activities mapping, Auth akışından CSRF kaldırıldı — v5)
+> **Son Güncelleme:** 2026-02-20 (Package Features CRUD eklendi: pivot tablo yapısı, Tabs UI, özellik yönetimi — v6)
 > **Amaç:** Bu dosya, Frontend Admin panelinin geliştirilme sürecini, mimari kararlarını, kullanılan teknolojileri ve bileşen yapısını belgelemek için oluşturulmuştur.
 
 ---
@@ -109,7 +109,7 @@ frontend-admin/
 | **Schools** | `GET /admin/schools`, `PATCH /admin/schools/:id/toggle-status`, `DELETE /admin/schools/:id` |
 | **School Detay** | `GET /admin/schools/:id`, `GET /admin/schools/:id/classes`, `GET /admin/schools/:id/children` |
 | **Users** | `GET /admin/users` (?role, ?search, ?page), `POST /admin/users`, `DELETE /admin/users/:id` |
-| **Packages** | `GET /packages`, `POST /admin/packages`, `PUT /admin/packages/:id` |
+| **Packages** | `GET /packages`, `POST /admin/packages`, `PUT /admin/packages/:id`, `GET/POST/PUT/DELETE /admin/package-features` |
 | **Finance** | `GET /admin/invoices`, `GET /admin/transactions`, `GET /admin/transactions/stats` |
 | **Health** | `GET/POST/PUT/DELETE /admin/allergens`, `/admin/medical-conditions`, `/admin/food-ingredients`, `/admin/medications` |
 | **Subscriptions** | `GET /admin/subscriptions`, `GET /admin/subscriptions/stats`, `PATCH /admin/subscriptions/:id/status`, `PATCH /admin/subscriptions/:id/extend` |
@@ -225,7 +225,7 @@ const [mainRes, relatedRes] = await Promise.all([
 | **Okullar** | ✅ Tam | Arama/filtre, durum toggle, silme, pagination |
 | **Okul Detayı** | ✅ Tam | Sınıflar + öğrenciler tabları |
 | **Kullanıcılar** | ✅ Tam | Tab bazlı (öğretmen/veli/öğrenci/tümü), arama, pagination |
-| **Paketler** | ✅ Tam | Kart görünümü, CRUD, limit formatı |
+| **Paketler** | ✅ Tam | Kart görünümü, CRUD, limit formatı, Tab-based UI (Paketler + Özellikler), Feature pivot tablo yapısı, özellik yönetimi (key, label, value_type, display_order) |
 | **Finans** | ✅ Tam | Fatura listesi + POS işlemleri + istatistik kartları |
 | **Sağlık & Beslenme** | ✅ Tam | Alerjen + Tıbbi Durum + Besin + İlaç CRUD (generic CrudTab) |
 | **Abonelikler** | ✅ Tam | Liste, durum filtresi, uzatma, iptal, istatistikler |
@@ -337,6 +337,29 @@ npx tsc --noEmit
 - **Abonelik Dağılım Grafiği** — `BarChart` + `Cell` ile renk kodlu (aktif/iptal/dolmuş/askıda)
 - Dashboard layout: stats grid → aktivite trend → [abonelik bar | son aktiviteler]
 - Grafik verileri yoksa (API dönmüyorsa) bölüm render edilmez (graceful degradation)
+
+### 9.4 Package Features CRUD (v6)
+
+**Backend:**
+- `PackageFeatureController` — full CRUD (`/admin/package-features`)
+- `package_features` tablosu: `id`, `key` (unique, regex: `^[a-z0-9_]+$`), `label`, `value_type` ('bool' | 'text'), `description`, `display_order`
+- `package_feature_pivot` tablosu: `package_id`, `package_feature_id`, `value` (dinamik: checkbox → "1", text → kullanıcı girişi)
+- Validation: key benzersizlik, value_type enum, kullanımda olan feature silinemiyor
+- PackageService: `syncPackageFeatures()` metoduyla pivot senkronizasyonu
+
+**Frontend:**
+- `packages/page.tsx` Tabs ile 2 sekmeye ayrıldı: **Paketler** (mevcut kart UI) + **Özellikler** (yeni CRUD)
+- `FeaturesManagement` component: tablo, create/edit dialog, delete butonları
+- Paket formlarında dinamik özellik seçimi:
+  - `value_type='bool'` → Checkbox (label gösterilir)
+  - `value_type='text'` → Text Input (kullanıcı değer girer, ör: "500 GB")
+- TypeScript: `PackageFeature` tipi güncellendi (`description`, `display_order` eklendi)
+- Badge: Özellik value_type görsel gösterimi (Checkbox | Text)
+
+**Pivot Yapı:**
+- Paketler → Features ilişkisi many-to-many
+- Her paket birden fazla feature barındırabilir
+- Feature değeri pivot tabloda saklanır (esnek yapı)
 
 ---
 

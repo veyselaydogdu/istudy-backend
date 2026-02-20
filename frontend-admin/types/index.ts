@@ -56,16 +56,29 @@ export type Tenant = {
 
 // ─── Package ─────────────────────────────────────────────────────────────────
 
+export type PackageFeature = {
+    id: number
+    key: string
+    label: string
+    value_type: 'bool' | 'text'
+    value?: string | null
+    description?: string
+    display_order?: number
+}
+
 export type Package = {
     id: number
     name: string
+    description?: string
     max_schools: number
     max_classes_per_school: number
     max_students: number
-    price_monthly: number
-    price_yearly: number
+    monthly_price: number
+    yearly_price: number
     is_active: boolean
     features?: string[]
+    sort_order?: number
+    package_features?: PackageFeature[]
     yearly_discount_percentage?: number
     created_at: string
     updated_at: string
@@ -249,6 +262,7 @@ export type FoodIngredient = {
     id: number
     name: string
     allergen_info?: string
+    allergens?: { id: number; name: string }[]
     tenant_id?: number | null
     created_at: string
 }

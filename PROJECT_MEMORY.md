@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-19 (Güvenlik düzeltmeleri: XSS koruması, stack trace kapatma, rate limiting, exception handler, BaseController ?User fix, revenue endpoint fix)
+> **Son Güncelleme:** 2026-02-20 (Paket sistemi: Package features pivot yapısı, description/sort_order alanları, düzenleme düzeltmesi, frontend form güncellemesi)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -439,6 +439,27 @@ ExchangeRate ──── belongsTo ──── Currency (base + target)
 
 > `0` = sınırsız. Limitler `packages` tablosunda `max_schools`, `max_classes_per_school`, `max_students` sütunlarında saklanır.
 
+**Paket Alanları:**
+- `name` (string): Paket adı
+- `description` (text, nullable): Paket açıklaması
+- `max_schools`, `max_classes_per_school`, `max_students` (int): Limitler (0 = sınırsız)
+- `monthly_price`, `yearly_price` (decimal): Fiyatlar
+- `is_active` (boolean): Aktif/pasif durumu
+- `sort_order` (int): Gösterim sırası
+- `features` (json, deprecated): Eski özellikler alanı (kullanım dışı)
+
+**Paket Özellikleri (Package Features) — Yeni Yapı:**
+- Her paket, dinamik özellikler (features) içerebilir
+- Özellikler `package_features` tablosunda tanımlanır:
+  - `key` (string): Özellik anahtarı (örn: "unlimited_users", "24_7_support")
+  - `value_type` (enum: 'bool'|'text'): Özellik tipi
+  - `label` (string): Görüntülenen ad
+  - `display_order` (int): Sıralama
+- Paket-özellik ilişkisi `package_feature_pivot` tablosunda saklanır:
+  - `package_id`, `package_feature_id`
+  - `value` (text): bool için "1"/"0", text için özel metin (örn: "10 GB")
+- İlişki: `Package::packageFeatures()` (many-to-many with pivot)
+
 ### 5.3 Limit Kontrolü
 
 Tenant modelinde 3 helper metod:
@@ -463,7 +484,9 @@ class SchoolController {
 
 | Tablo | Model | Açıklama |
 |-------|-------|----------|
-| `packages` | `App\Models\Package\Package` | Platform paketleri (limitler + fiyat + features) |
+| `packages` | `App\Models\Package\Package` | Platform paketleri (limitler + fiyat + description + sort_order) |
+| `package_features` | `App\Models\PackageFeature` | Paket özellik tanımları (key, value_type, label, display_order) |
+| `package_feature_pivot` | — | Paket-özellik ilişkisi (package_id, package_feature_id, value) |
 | `tenant_subscriptions` | `App\Models\Package\TenantSubscription` | Tenant abonelikleri (dönem + durum) |
 | `tenant_payments` | `App\Models\Package\TenantPayment` | Ödeme kayıtları |
 | `packages_histories` | — | Paket geçmişi |

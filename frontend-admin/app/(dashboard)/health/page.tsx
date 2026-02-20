@@ -236,6 +236,257 @@ function CrudTab<T extends { id: number; name: string; created_at: string }>({
     )
 }
 
+// ─── Ingredient Tab with Allergen Support ────────────────────────────────────
+
+function IngredientTab() {
+    const [items, setItems] = useState<FoodIngredient[]>([])
+    const [allergens, setAllergens] = useState<Allergen[]>([])
+    const [meta, setMeta] = useState<Meta | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [search, setSearch] = useState("")
+    const [page, setPage] = useState(1)
+
+    const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
+        useForm({ resolver: zodResolver(ingredientSchema) })
+
+    const selectedAllergenIds = watch("allergen_ids") || []
+
+    const fetchItems = useCallback(async () => {
+        setLoading(true)
+        try {
+            const params: Record<string, string | number> = { page, per_page: 15 }
+            if (search) { params.search = search }
+            const res = await apiClient.get("/admin/food-ingredients", { params })
+            if (res.data?.data) {
+                setItems(res.data.data)
+                setMeta(res.data.meta ?? null)
+            }
+        } catch {
+            toast.error("Veriler yüklenirken hata oluştu.")
+        } finally {
+            setLoading(false)
+        }
+    }, [page, search])
+
+    const fetchAllergens = useCallback(async () => {
+        try {
+            const res = await apiClient.get("/admin/allergens?per_page=100")
+            if (res.data?.data) {
+                setAllergens(res.data.data)
+            }
+        } catch {
+            // Silent failure - allergens are optional
+        }
+    }, [])
+
+    useEffect(() => { setPage(1) }, [search])
+    useEffect(() => { fetchItems() }, [fetchItems])
+    useEffect(() => { fetchAllergens() }, [fetchAllergens])
+
+    const onSubmit = async (data: { name: string; allergen_info?: string; allergen_ids?: number[] }) => {
+        try {
+            const res = await apiClient.post("/admin/food-ingredients", data)
+            if (res.data?.success !== false) {
+                toast.success("Besin içeriği başarıyla eklendi.")
+                setIsDialogOpen(false)
+                reset()
+                fetchItems()
+            }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } }
+            toast.error(error.response?.data?.message ?? "Besin eklenemedi.")
+        }
+    }
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Bu kaydı silmek istediğinizden emin misiniz?")) { return }
+        try {
+            await apiClient.delete(`/admin/food-ingredients/${id}`)
+            toast.success("Besin silindi.")
+            setItems((prev) => prev.filter((i) => i.id !== id))
+        } catch {
+            toast.error("Besin silinemedi.")
+        }
+    }
+
+    const toggleAllergen = (allergenId: number) => {
+        const current = selectedAllergenIds as number[]
+        if (current.includes(allergenId)) {
+            setValue("allergen_ids", current.filter((id) => id !== allergenId))
+        } else {
+            setValue("allergen_ids", [...current, allergenId])
+        }
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2">
+                            <Apple className="h-5 w-5 text-green-500" /> Besin & Yemek İçerikleri
+                        </CardTitle>
+                        <CardDescription>Menülerde kullanılan standart besin tanımları.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                className="pl-8 w-40"
+                                placeholder="Ara..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm"><Plus className="mr-2 h-4 w-4" />Besin Ekle</Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>Besin Ekle</DialogTitle>
+                                    <DialogDescription>
+                                        Sisteme yeni besin içeriği ekleyin. İçerdiği alerjenleri seçebilirsiniz.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSubmit(onSubmit)}>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label>Besin Adı *</Label>
+                                            <Input {...register("name")} />
+                                            {errors.name && (
+                                                <p className="text-xs text-red-500">{errors.name.message}</p>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label>Alerjen Bilgisi</Label>
+                                            <Textarea rows={2} {...register("allergen_info")} />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label>İçerdiği Alerjenler (Seçmeli)</Label>
+                                            <div className="border rounded-md p-3 max-h-48 overflow-y-auto">
+                                                {allergens.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground">Alerjen bulunamadı</p>
+                                                ) : (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {allergens.map((allergen) => (
+                                                            <label key={allergen.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-2 rounded">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={(selectedAllergenIds as number[]).includes(allergen.id)}
+                                                                    onChange={() => toggleAllergen(allergen.id)}
+                                                                    className="rounded border-gray-300"
+                                                                />
+                                                                <span className="text-sm">{allergen.name}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {(selectedAllergenIds as number[]).length} alerjen seçildi
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); reset() }}>
+                                            İptal
+                                        </Button>
+                                        <Button type="submit" disabled={isSubmitting}>
+                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ekle
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                    <div className="flex h-32 items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                    </div>
+                ) : (
+                    <>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Besin Adı</TableHead>
+                                    <TableHead>Alerjenler</TableHead>
+                                    <TableHead>Alerjen Bilgisi</TableHead>
+                                    <TableHead>Eklenme</TableHead>
+                                    <TableHead className="w-12" />
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {items.map((item) => (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium">{item.name}</TableCell>
+                                        <TableCell>
+                                            {item.allergens && item.allergens.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {item.allergens.map((a) => (
+                                                        <Badge key={a.id} variant="warning" className="text-xs">
+                                                            {a.name}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground text-sm">—</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {item.allergen_info ?? "—"}
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {new Date(item.created_at).toLocaleDateString("tr-TR")}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Button
+                                                variant="ghost" size="icon"
+                                                className="h-8 w-8 text-red-500 hover:text-red-700"
+                                                onClick={() => handleDelete(item.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {items.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                            Besin içeriği bulunamadı.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                        {meta && meta.last_page > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Sayfa {meta.current_page} / {meta.last_page} — {meta.total} kayıt
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" disabled={meta.current_page === 1} onClick={() => setPage((p) => p - 1)}>
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="outline" size="sm" disabled={meta.current_page === meta.last_page} onClick={() => setPage((p) => p + 1)}>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
 // ─── Ana Sayfa ────────────────────────────────────────────────────────────────
 
 const allergenSchema = z.object({
@@ -252,6 +503,7 @@ const conditionSchema = z.object({
 const ingredientSchema = z.object({
     name: z.string().min(2, "Ad en az 2 karakter olmalıdır"),
     allergen_info: z.string().optional(),
+    allergen_ids: z.array(z.number()).optional(),
 })
 
 const medicationSchema = z.object({
@@ -334,26 +586,7 @@ export default function HealthPage() {
                 </TabsContent>
 
                 <TabsContent value="ingredients">
-                    <CrudTab<FoodIngredient>
-                        endpoint="food-ingredients"
-                        schema={ingredientSchema}
-                        title="Besin & Yemek İçerikleri"
-                        description="Menülerde kullanılan standart besin tanımları."
-                        icon={<Apple className="h-5 w-5 text-green-500" />}
-                        addLabel="Besin Ekle"
-                        columns={[
-                            { key: "name", label: "Besin Adı", render: (i) => <span className="font-medium">{i.name}</span> },
-                            { key: "allergen_info", label: "Alerjen Bilgisi", render: (i: FoodIngredient) => <span className="text-muted-foreground">{i.allergen_info ?? "—"}</span> },
-                            {
-                                key: "created_at", label: "Eklenme",
-                                render: (i) => <span className="text-muted-foreground">{new Date(i.created_at).toLocaleDateString("tr-TR")}</span>,
-                            },
-                        ]}
-                        formFields={[
-                            { name: "name", label: "Besin Adı", required: true },
-                            { name: "allergen_info", label: "Alerjen Bilgisi", type: "textarea" },
-                        ]}
-                    />
+                    <IngredientTab />
                 </TabsContent>
 
                 <TabsContent value="medications">

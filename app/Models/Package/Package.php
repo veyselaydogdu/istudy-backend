@@ -45,6 +45,13 @@ class Package extends BaseModel
         return $this->hasMany(TenantSubscription::class, 'package_id');
     }
 
+    public function packageFeatures()
+    {
+        return $this->belongsToMany(\App\Models\PackageFeature::class, 'package_feature_pivot')
+            ->withPivot('value')
+            ->withTimestamps();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers

@@ -27,6 +27,15 @@ class PackageResource extends JsonResource
             'is_active' => $this->is_active,
             'features' => $this->features,
             'sort_order' => $this->sort_order,
+            'package_features' => $this->whenLoaded('packageFeatures', function () {
+                return $this->packageFeatures->map(fn ($feature) => [
+                    'id' => $feature->id,
+                    'key' => $feature->key,
+                    'label' => $feature->label,
+                    'value_type' => $feature->value_type,
+                    'value' => $feature->pivot->value,
+                ]);
+            }),
             'subscriptions_count' => $this->whenCounted('subscriptions'),
             'created_at' => $this->created_at?->toISOString(),
         ];

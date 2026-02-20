@@ -51,7 +51,7 @@ class PackageController extends BaseController
     {
         try {
             return $this->successResponse(
-                PackageResource::make($package->loadCount('subscriptions')),
+                PackageResource::make($package->load('packageFeatures')->loadCount('subscriptions')),
                 'Paket detayı.'
             );
         } catch (Throwable $e) {
@@ -150,6 +150,24 @@ class PackageController extends BaseController
             Log::error('PackageController::destroy Error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Mevcut paket özelliklerini listele
+     */
+    public function getPackageFeatures(): JsonResponse
+    {
+        try {
+            $features = \App\Models\PackageFeature::orderBy('display_order')->get();
+
+            return $this->successResponse($features);
+        } catch (Throwable $e) {
+            Log::error('PackageController::getPackageFeatures Error', [
+                'message' => $e->getMessage(),
             ]);
 
             return $this->errorResponse($e->getMessage());

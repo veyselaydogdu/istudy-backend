@@ -265,6 +265,7 @@ class AdminHealthController extends BaseController
     {
         try {
             $query = FoodIngredient::withoutGlobalScopes()
+                ->with('allergens:id,name')
                 ->orderBy('name');
 
             if ($request->filled('search')) {
@@ -289,9 +290,13 @@ class AdminHealthController extends BaseController
         $request->validate([
             'name' => ['required', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
             'allergen_info' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
+            'allergen_ids' => 'nullable|array',
+            'allergen_ids.*' => 'exists:allergens,id',
         ], [
             'name.required' => 'Besin adı zorunludur.',
             'name.regex' => 'Besin adı HTML karakterleri içeremez.',
+            'allergen_ids.array' => 'Alerjen IDleri dizi olmalıdır.',
+            'allergen_ids.*.exists' => 'Seçilen alerjen bulunamadı.',
         ]);
 
         try {
@@ -304,6 +309,14 @@ class AdminHealthController extends BaseController
                 'created_by' => $this->user()->id,
             ]);
 
+            // Sync allergens if provided
+            if ($request->filled('allergen_ids')) {
+                $ingredient->allergens()->sync($request->allergen_ids);
+            }
+
+            // Load allergens for response
+            $ingredient->load('allergens:id,name');
+
             DB::commit();
 
             return $this->successResponse($ingredient, 'Besin içeriği başarıyla oluşturuldu.', 201);
@@ -312,6 +325,46 @@ class AdminHealthController extends BaseController
             Log::error('AdminHealthController::ingredientStore Error', ['message' => $e->getMessage()]);
 
             return $this->errorResponse('Besin içeriği oluşturulurken bir hata oluştu.', 500);
+        }
+    }
+
+    /**
+     * Besin içeriği güncelle.
+     */
+    public function ingredientUpdate(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'name' => ['sometimes', 'string', 'max:255', 'regex:/^[^<>&"\']*$/'],
+            'allergen_info' => ['nullable', 'string', 'max:1000', 'regex:/^[^<>]*$/'],
+            'allergen_ids' => 'nullable|array',
+            'allergen_ids.*' => 'exists:allergens,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $ingredient = FoodIngredient::withoutGlobalScopes()->findOrFail($id);
+            $ingredient->update(array_merge(
+                $request->only(['name', 'allergen_info']),
+                ['updated_by' => $this->user()->id]
+            ));
+
+            // Sync allergens if provided
+            if ($request->has('allergen_ids')) {
+                $ingredient->allergens()->sync($request->allergen_ids ?? []);
+            }
+
+            // Load allergens for response
+            $ingredient->load('allergens:id,name');
+
+            DB::commit();
+
+            return $this->successResponse($ingredient, 'Besin içeriği güncellendi.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('AdminHealthController::ingredientUpdate Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Besin içeriği güncellenirken bir hata oluştu.', 500);
         }
     }
 
