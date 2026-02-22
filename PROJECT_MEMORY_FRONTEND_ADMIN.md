@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Admin — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-20 (ActivityLog nested tip düzeltmesi, kurum detay fix, besin düzenle, para birimi edit/sil, kullanıcı profili dialog — v7)
+> **Son Güncelleme:** 2026-02-22 (Vristo tema entegrasyonu, Tailwind v3'e geçiş, yeni UI sayfaları, invoice, npm güvenlik fix — v8)
 > **Amaç:** Bu dosya, Frontend Admin panelinin geliştirilme sürecini, mimari kararlarını, kullanılan teknolojileri ve bileşen yapısını belgelemek için oluşturulmuştur.
 
 ---
@@ -13,15 +13,20 @@
 | **Tip** | Super Admin Yönetim Paneli |
 | **Framework** | Next.js 16 (App Router) |
 | **Dil** | TypeScript 5 |
-| **Styling** | Tailwind CSS v4 |
-| **UI Kütüphanesi** | Radix UI Primitives + Lucide Icons |
-| **State Management** | React State + Hooks (useState, useEffect, useCallback) |
+| **Styling** | **Tailwind CSS v3** (`tailwind.config.js` + `postcss.config.mjs`) — v4 DEĞİL |
+| **UI Tema** | **Vristo Tema** — `styles/globals.css` (.panel, .btn, .form-input, .sidebar, .badge vb.) |
+| **State Management** | **Redux** (`@reduxjs/toolkit` + `react-redux`) — `themeConfigSlice` ile tema/sidebar/RTL |
 | **API İletişimi** | Axios (Merkezi `apiClient` yapısı) |
 | **Form Yönetimi** | React Hook Form + Zod |
 | **Bildirimler** | Sonner (toast) |
-| **Tema** | next-themes (light/dark/system) |
-| **Grafikler** | Recharts 3 (AreaChart, BarChart, ResponsiveContainer) |
-| **CSV Export** | lib/exportUtils.ts (BOM destekli, Türkçe Excel uyumlu) |
+| **Tema Toggle** | Redux `themeConfig.theme` (Vristo built-in) — next-themes kaldırıldı |
+| **Grafikler** | **ApexCharts** (`react-apexcharts` — SSR için dynamic import zorunlu) |
+| **Popup/Dialog** | **SweetAlert2** (`sweetalert2`) + `@headlessui/react` (modal) |
+| **Dropdown** | `react-popper` + `@popperjs/core` — `components/dropdown.tsx` |
+| **Accordion** | `react-animate-height` |
+| **Scroll** | `react-perfect-scrollbar` |
+| **İkonlar** | `lucide-react` + Vristo custom SVG icon bileşenleri (`components/icon/`) |
+| **CSV Export** | `lib/exportUtils.ts` (BOM destekli, Türkçe Excel uyumlu) |
 | **Proje Yolu** | `/Users/veysel.aydogdu/Desktop/WebProjects/iStudy/istudy-backend/frontend-admin` |
 
 ---
@@ -32,70 +37,129 @@
 frontend-admin/
 ├── app/
 │   ├── page.tsx                   ← Root: auth kontrolü → /tenants veya /login yönlendirir
-│   ├── layout.tsx                 ← Root Layout (Geist font, ThemeProvider, Sonner Toaster, lang="tr")
-│   ├── globals.css                ← Tailwind v4 + CSS variables (light/dark mode)
+│   ├── layout.tsx                 ← Root Layout (Geist font, Sonner Toaster, lang="tr")
+│   ├── globals.css                ← Tailwind v3 (@tailwind base/components/utilities)
 │   ├── (auth)/
-│   │   ├── layout.tsx             ← Merkezi layout (login için)
+│   │   ├── layout.tsx             ← ⚠️ Sadece passthrough: return <>{children}</> — wrapper ekleme!
 │   │   └── login/
-│   │       └── page.tsx           ← Login sayfası (Zod + RHF, token → localStorage, CSRF yok — token-based auth)
+│   │       └── page.tsx           ← Vristo "Login Boxed" stili, RHF+Zod, apiClient
 │   └── (dashboard)/
 │       ├── layout.tsx             ← Auth kontrolü (admin_token check), Sidebar + Header
-│       ├── page.tsx               ← Dashboard özet (gerçek API data: stats + recent activities)
-│       ├── tenants/
-│       │   ├── page.tsx           ← Kurum CRUD (tablo + dialog form, /admin/tenants)
-│       │   └── [id]/
-│       │       └── page.tsx       ← Kurum detayı: okul listesi + abonelik geçmişi tabları
-│       ├── schools/
-│       │   ├── page.tsx           ← Okul listesi (tablo, filtre, durum toggle, /admin/schools)
-│       │   └── [id]/
-│       │       └── page.tsx       ← Okul detayı: sınıflar + öğrenciler tabları
-│       ├── users/
-│       │   └── page.tsx           ← Kullanıcı havuzu (tab: öğretmen/veli/öğrenci/tümü, pagination)
-│       ├── packages/
-│       │   └── page.tsx           ← B2B Paket CRUD (kart görünümü, /admin/packages)
-│       ├── finance/
-│       │   └── page.tsx           ← Fatura + POS İşlemleri tabları, istatistik kartları
-│       ├── health/
-│       │   └── page.tsx           ← Alerjenler + Tıbbi Durumlar + Besin İçerikleri + İlaçlar CRUD
-│       ├── subscriptions/
-│       │   └── page.tsx           ← Abonelik listesi, durum filtresi, uzatma dialog, istatistikler
-│       ├── activity-logs/
-│       │   └── page.tsx           ← Aktivite kayıtları, filtreler, değişiklik detay dialog
-│       ├── notifications/
-│       │   └── page.tsx           ← Bildirim gönderme formu + gönderim geçmişi
-│       └── settings/
-│           └── page.tsx           ← Ülkeler (sync + toggle) + Para Birimleri (CRUD + kur güncelleme)
+│       ├── page.tsx               ← Finance dashboard (ComponentsDashboardIStudy)
+│       ├── tenants/ ... schools/ ... users/ ... packages/ ... finance/ ... health/
+│       ├── subscriptions/ ... activity-logs/ ... notifications/ ... settings/
+│       ├── apps/
+│       │   └── invoice/
+│       │       ├── list/page.tsx  ← Fatura listesi, arama filtresi, tablo
+│       │       └── preview/page.tsx ← Fatura önizleme, yazdır, KDV hesaplama
+│       └── ui/
+│           ├── buttons/page.tsx
+│           ├── alerts/page.tsx
+│           ├── forms/page.tsx      ← form-input, form-select, form-checkbox, custom switch
+│           ├── tabs/page.tsx       ← State tabanlı tabs (headlessui Tab değil)
+│           ├── modals/page.tsx     ← @headlessui/react (Dialog, Transition)
+│           ├── accordions/page.tsx ← react-animate-height + IconCaretDown
+│           ├── dropdowns/page.tsx  ← Dropdown component (react-popper)
+│           ├── sweetalerts/page.tsx ← sweetalert2 — 11 örnek
+│           └── pricing/page.tsx   ← Aylık/Yıllık toggle, 3 plan kartı
 ├── components/
-│   ├── ui/
-│   │   ├── badge.tsx              ← Badge (variant: default/success/warning/danger/secondary/outline)
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── dialog.tsx
-│   │   ├── dropdown-menu.tsx
-│   │   ├── input.tsx
-│   │   ├── label.tsx
-│   │   ├── select.tsx             ← Radix UI Select (filter dropdowns için)
-│   │   ├── table.tsx
-│   │   ├── tabs.tsx
-│   │   └── textarea.tsx
-│   └── layout/
-│       ├── sidebar.tsx            ← Fixed sidebar, nav items (Abonelikler + Aktivite eklendi), logout
-│       └── header.tsx             ← Sticky header, dark mode toggle (next-themes), user avatar
+│   ├── dashboard/
+│   │   └── components-dashboard-istudy.tsx ← Finance dashboard (ApexCharts dynamic import)
+│   ├── icon/                      ← Vristo'dan kopyalanan SVG icon bileşenleri
+│   │   └── icon-*.tsx             ← x, caret-down, plus, edit, trash-lines, download,
+│   │                                  printer, send, arrow-left, bell, tag, eye,
+│   │                                  circle-check, info-circle, horizontal-dots,
+│   │                                  binance, bitcoin, ethereum, litecoin, solana, tether
+│   └── layouts/                   ← ⚠️ "layout" değil "layouts" (çoğul)
+│       ├── sidebar.tsx            ← Vristo sidebar (Redux toggle, 6 nav grubu)
+│       ├── header.tsx             ← Vristo header (tema toggle, kullanıcı dropdown)
+│       ├── setting.tsx            ← Vristo tema özelleştirme paneli
+│       └── provider-component.tsx ← Redux Provider + App wrapper
 ├── hooks/
-│   └── useDebounce.ts             ← Debounce hook (delay: 400ms default)
+│   └── useDebounce.ts
 ├── lib/
-│   ├── apiClient.ts               ← Axios instance (Bearer token, 401 redirect, CSRF)
-│   ├── exportUtils.ts             ← exportToCsv() helper (BOM, Türkçe Excel uyumlu)
-│   └── utils.ts                   ← cn() utility (clsx + tailwind-merge)
+│   ├── apiClient.ts               ← Axios (Bearer token, 401 redirect)
+│   ├── exportUtils.ts             ← exportToCsv() helper
+│   └── utils.ts                   ← cn() utility
 ├── types/
-│   └── index.ts                   ← Tüm TypeScript tipleri (User, Tenant, School, Invoice, ActivityLog, etc.)
+│   └── index.ts
+├── store/
+│   ├── index.tsx                  ← Redux store
+│   └── themeConfigSlice.tsx       ← Tema/sidebar/RTL/menü state
+├── styles/
+│   ├── globals.css                ← Vristo CSS sınıfları + Tailwind v3
+│   └── animate.css
 ├── public/
+│   └── assets/images/auth/        ← bg-gradient.png, map.png, coming-soon-object*.png, polygon-object.svg
+├── App.tsx                        ← ⚠️ Root div'de `relative` class OLMAMALI — login bg bozulur
+├── theme.config.tsx               ← Varsayılan tema
+├── i18n.ts                        ← i18n stub
 ├── .env.local                     ← NEXT_PUBLIC_API_URL=http://localhost:8000/api
+├── tailwind.config.js             ← Vristo renk paleti (v3)
+├── postcss.config.mjs             ← { tailwindcss: {}, autoprefixer: {} }
 ├── package.json
 ├── tsconfig.json
-├── next.config.ts
-└── postcss.config.mjs
+└── next.config.ts
 ```
+
+---
+
+## 🎨 2b. Vristo Tema Entegrasyonu (v8 — 2026-02-22)
+
+### Temel Kural
+**Yeni UI bileşeni gerektiğinde:** `frontend-template/vristo-next-starter/` veya `frontend-template/vristo-next-main/` içinde ilgili component'i bul, adapte et, `PanelCodeHighlight` wrapper'larını çıkar.
+
+### Kritik Dosyalar
+| Dosya | Açıklama |
+|-------|----------|
+| `tailwind.config.js` | Vristo renk paleti (primary, secondary, success, danger, warning, info...) |
+| `styles/globals.css` | `.panel`, `.btn`, `.btn-primary`, `.form-input`, `.form-checkbox`, `.sidebar`, `.badge`, `.table-responsive` vb. |
+| `store/themeConfigSlice.tsx` | Redux: theme, menu, layout, rtlClass, sidebar (toggle), semidark |
+| `App.tsx` | localStorage'dan tema okur, class'ları root div'e uygular — `relative` class OLMAMALI |
+| `components/layouts/provider-component.tsx` | Redux Provider + App wrapper |
+
+### ⚠️ Kritik Bug Fix'ler (Bir Daha Yapma)
+1. **`app/(auth)/layout.tsx`** mutlaka basit passthrough olmalı:
+   ```tsx
+   export default function AuthLayout({ children }) { return <>{children}</>; }
+   ```
+   Wrapper/max-width eklenirse login sayfası küçük kalır.
+
+2. **`App.tsx`** root div'de `relative` class OLMAMALI:
+   ```tsx
+   // Yanlış: className={`relative ${themeConfig.sidebar ? ...}`}
+   // Doğru: className={`${themeConfig.sidebar ? ...}`}
+   ```
+   `relative` varsa login sayfasındaki `absolute inset-0` arka plan küçük kalır.
+
+3. **ApexCharts SSR** — dynamic import zorunlu:
+   ```tsx
+   const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
+   ```
+
+### Sidebar Navigasyon Grupları
+```
+ANA MENÜ        → / (Dashboard)
+YÖNETİM        → /tenants, /schools, /users, /health
+FİNANS         → /packages, /finance, /subscriptions
+UYGULAMALAR    → /apps/invoice/list
+UI BİLEŞENLERİ → /ui/buttons, /ui/alerts, /ui/forms, /ui/tabs, /ui/modals,
+                   /ui/accordions, /ui/dropdowns, /ui/sweetalerts, /ui/pricing
+SİSTEM         → /activity-logs, /notifications, /settings
+```
+
+### npm Güvenlik Açığı Çözüm Yöntemi
+`eslint-config-next` eski `minimatch` getirdiğinde — `package.json`'a ekle:
+```json
+"overrides": { "minimatch": "^10.2.1" }
+```
+Ayrıca `eslint` → `^10.0.1` ve `typescript-eslint` → canary versiyona yükselt. Sonuç: 0 güvenlik açığı.
+
+### Vristo Bileşenlerinden Adapte Etme Notları
+- **`PanelCodeHighlight`** wrapper'larını çıkar (showcase wrapper, gerek yok)
+- **Tabs** için state tabanlı implementasyon kullan (`@headlessui/react` Tab component yerine) — daha basit
+- **Invoice** için `mantine-datatable` yerine plain HTML table + manuel search filtresi yeterli
+- Vristo'nun bazı ikonları `components/icon/` altında bulunamayabilir — `lucide-react` kullan
 
 ---
 
@@ -233,17 +297,29 @@ const [mainRes, relatedRes] = await Promise.all([
 | **Bildirimler** | ✅ Tam | Form + geçmiş listesi, hedef kitle seçimi |
 | **Ayarlar - Ülkeler** | ✅ Tam | Tablo, API sync, aktif/pasif toggle |
 | **Ayarlar - Para Birimleri** | ✅ Tam | CRUD (edit + sil dahil), kur güncelleme, baz birim seçimi — baz birim silinemez (guard mevcut) |
-| **Dark Mode** | ✅ Tam | next-themes, header toggle, system default |
+| **Dark Mode** | ✅ Tam | Redux `themeConfigSlice` (Vristo built-in) |
 | **useDebounce Hook** | ✅ Tam | hooks/useDebounce.ts |
-| **Select Component** | ✅ Tam | Radix UI Select wrapper |
-| **TypeScript Tipleri** | ✅ Tam | types/index.ts — tüm entity tipleri (`ActivityLogStats.total_logs`, `SubscriptionStats` güncellendi) |
-| **Badge Bileşeni** | ✅ Tam | 6 variant, dark mode uyumlu |
-| **CSV Export** | ✅ Tam | lib/exportUtils.ts — tenants/schools/subscriptions sayfalarında "CSV İndir" butonu |
-| **Recharts Grafikleri** | ✅ Tam | Dashboard'da aktivite trend (AreaChart) + abonelik dağılım (BarChart) |
+| **TypeScript Tipleri** | ✅ Tam | types/index.ts — tüm entity tipleri |
+| **CSV Export** | ✅ Tam | lib/exportUtils.ts — tenants/schools/subscriptions sayfalarında |
+| **ApexCharts Grafikleri** | ✅ Tam | Dashboard'da sparkline + area chart (dynamic import, SSR safe) |
+| **Vristo Tema** | ✅ Tam | Tailwind v3, Redux, CSS sınıf sistemi, sidebar/header tam entegrasyon |
+| **Login Sayfası** | ✅ Tam | Vristo "Login Boxed" stili, glassmorphism kart, gradient arka plan |
+| **Invoice Listesi** | ✅ Tam | `/apps/invoice/list` — arama, tablo, durum badge'leri |
+| **Invoice Önizleme** | ✅ Tam | `/apps/invoice/preview` — yazdır, KDV hesaplama, logo |
+| **UI Bileşenleri** | ✅ Tam | 9 sayfa: buttons, alerts, forms, tabs, modals, accordions, dropdowns, sweetalerts, pricing |
+| **npm Güvenlik** | ✅ Tam | 0 güvenlik açığı — eslint v10 + typescript-eslint canary + minimatch override |
 
 ---
 
 ## ⚠️ 7. Önemli Notlar
+
+### Tailwind v3 — Kesin Kural
+- `globals.css`: `@tailwind base/components/utilities` kullanır (v4'teki `@import "tailwindcss"` değil)
+- `postcss.config.mjs`: `{ plugins: { tailwindcss: {}, autoprefixer: {} } }`
+- Yeni paket kurarken Tailwind v4 bağımlılığı gelirse build çöker — dikkat
+
+### components/layouts vs components/layout
+- Dizin adı **`layouts`** (çoğul). `layout` değil. Import yollarında dikkat et.
 
 ### Route Çakışması Çözümü
 - `app/page.tsx` ve `app/(dashboard)/page.tsx` aynı `/` URL'sini çözebilirdi.

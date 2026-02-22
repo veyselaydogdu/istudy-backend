@@ -23,7 +23,7 @@ function App({ children }: PropsWithChildren) {
 
     return (
         <div
-            className={`${themeConfig.sidebar ? 'toggle-sidebar' : ''} ${themeConfig.menu} ${themeConfig.layout} ${themeConfig.rtlClass} main-section relative font-nunito text-sm font-normal antialiased`}
+            className={`${themeConfig.sidebar ? 'toggle-sidebar' : ''} ${themeConfig.menu} ${themeConfig.layout} ${themeConfig.rtlClass} main-section font-nunito text-sm font-normal antialiased`}
         >
             {isLoading ? <Loading /> : children}
         </div>

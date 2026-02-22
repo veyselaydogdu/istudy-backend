@@ -21,6 +21,16 @@ import {
     Settings,
     LogOut,
     ChevronDown,
+    MousePointer,
+    AlertCircle,
+    FormInput,
+    Layers,
+    Maximize2,
+    ChevronsDown,
+    ChevronDownSquare,
+    Siren,
+    Tag,
+    FileText,
 } from 'lucide-react';
 
 type NavItem = {
@@ -54,6 +64,26 @@ const navGroups: NavGroup[] = [
             { title: 'Paket Yönetimi', href: '/packages', icon: Package },
             { title: 'Finans & Ödemeler', href: '/finance', icon: CreditCard },
             { title: 'Abonelikler', href: '/subscriptions', icon: ClipboardList },
+        ],
+    },
+    {
+        label: 'UYGULAMALAR',
+        items: [
+            { title: 'Fatura Listesi', href: '/apps/invoice/list', icon: FileText },
+        ],
+    },
+    {
+        label: 'UI BİLEŞENLERİ',
+        items: [
+            { title: 'Butonlar', href: '/ui/buttons', icon: MousePointer },
+            { title: 'Uyarılar', href: '/ui/alerts', icon: AlertCircle },
+            { title: 'Formlar', href: '/ui/forms', icon: FormInput },
+            { title: 'Sekmeler', href: '/ui/tabs', icon: Layers },
+            { title: 'Modallar', href: '/ui/modals', icon: Maximize2 },
+            { title: 'Akordeonlar', href: '/ui/accordions', icon: ChevronsDown },
+            { title: 'Dropdown', href: '/ui/dropdowns', icon: ChevronDownSquare },
+            { title: 'SweetAlert', href: '/ui/sweetalerts', icon: Siren },
+            { title: 'Fiyatlandırma', href: '/ui/pricing', icon: Tag },
         ],
     },
     {
