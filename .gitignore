@@ -26,3 +26,4 @@ Thumbs.db
 dockerfiles/ssl/*.key
 dockerfiles/ssl/*.crt
 aiconfig.json
+frontend-template

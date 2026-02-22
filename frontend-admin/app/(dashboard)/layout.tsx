@@ -1,45 +1,52 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Header } from "@/components/layout/header"
-import { Loader2 } from "lucide-react"
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import ContentAnimation from '@/components/layouts/content-animation';
+import Footer from '@/components/layouts/footer';
+import Header from '@/components/layouts/header';
+import MainContainer from '@/components/layouts/main-container';
+import Overlay from '@/components/layouts/overlay';
+import ScrollToTop from '@/components/layouts/scroll-to-top';
+import Setting from '@/components/layouts/setting';
+import Sidebar from '@/components/layouts/sidebar';
+import { Loader2 } from 'lucide-react';
 
-export default function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
-    const router = useRouter()
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const router = useRouter();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
-        const token = localStorage.getItem("admin_token")
+        const token = localStorage.getItem('admin_token');
         if (!token) {
-            router.push("/login")
+            router.push('/login');
         } else {
-            setIsAuthenticated(true)
+            setIsAuthenticated(true);
         }
-    }, [router])
+    }, [router]);
 
     if (!isAuthenticated) {
         return (
-            <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-slate-900">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            <div className="flex h-screen w-full items-center justify-center bg-[#fafafa] dark:bg-[#060818]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-        )
+        );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900">
-            <Sidebar />
-            <div className="flex flex-col">
-                <Header />
-                <main className="flex-1 p-6 lg:ml-64">
-                    {children}
-                </main>
-            </div>
-        </div>
-    )
+        <>
+            <Overlay />
+            <ScrollToTop />
+            <Setting />
+
+            <MainContainer>
+                <Sidebar />
+                <div className="main-content flex min-h-screen flex-col">
+                    <Header />
+                    <ContentAnimation>{children}</ContentAnimation>
+                    <Footer />
+                </div>
+            </MainContainer>
+        </>
+    );
 }
