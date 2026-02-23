@@ -101,46 +101,40 @@ class TenantSubscriptionService
     /**
      * Tenant'ın limit bilgilerini al (usage raporu)
      */
-    public function getUsageReport(Tenant $tenant): array
+    public function getUsageReport(Tenant $tenant): ?array
     {
         $subscription = $tenant->activeSubscription?->load('package');
         $package = $subscription?->package;
 
         if (! $package) {
-            return [
-                'has_subscription' => false,
-                'limits' => null,
-                'usage' => null,
-            ];
+            return null;
         }
 
         $schoolCount = $tenant->schools()->count();
+
         $totalStudents = \App\Models\Child\Child::whereIn(
             'school_id',
             $tenant->schools()->pluck('id')
         )->count();
 
-        // Her okuldaki sınıf sayıları
-        $classesPerSchool = $tenant->schools()
-            ->withCount('classes')
-            ->get()
-            ->pluck('classes_count', 'id');
+        $totalClasses = \App\Models\Academic\SchoolClass::whereIn(
+            'school_id',
+            $tenant->schools()->pluck('id')
+        )->count();
+
+        // Sınıf limiti: okul başına sınıf * okul sayısı (0 = sınırsız)
+        $classLimit = ($package->max_classes_per_school > 0 && $schoolCount > 0)
+            ? $package->max_classes_per_school * $schoolCount
+            : 0;
 
         return [
             'has_subscription' => true,
             'package_name' => $package->name,
             'billing_cycle' => $subscription->billing_cycle,
             'end_date' => $subscription->end_date->toDateString(),
-            'limits' => [
-                'max_schools' => $package->max_schools ?: '∞',
-                'max_classes_per_school' => $package->max_classes_per_school ?: '∞',
-                'max_students' => $package->max_students ?: '∞',
-            ],
-            'usage' => [
-                'schools' => $schoolCount,
-                'total_students' => $totalStudents,
-                'classes_per_school' => $classesPerSchool,
-            ],
+            'schools' => ['used' => $schoolCount,    'limit' => $package->max_schools ?? 0],
+            'students' => ['used' => $totalStudents,  'limit' => $package->max_students ?? 0],
+            'classes' => ['used' => $totalClasses,   'limit' => $classLimit],
         ];
     }
 }

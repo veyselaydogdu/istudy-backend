@@ -31,6 +31,9 @@ Route::prefix('auth')->group(function () {
 // Aktif paketleri listele (kayıt öncesi gösterilir)
 Route::get('/packages', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'availablePackages']);
 
+// İletişim formu (herkese açık, rate limiting ile korunur)
+Route::middleware('throttle:10,1')->post('/contact', [\App\Http\Controllers\ContactRequestController::class, 'store']);
+
 // Kayıt kodu ile okul ara (veli tarafı, auth gerekmez arama için)
 Route::post('/schools/search', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'searchSchool']);
 
@@ -467,6 +470,17 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'medicationIndex']);
             Route::post('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'medicationStore']);
             Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'medicationDestroy']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // İLETİŞİM TALEPLERİ YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('contact-requests')->group(function () {
+            Route::get('/stats', [\App\Http\Controllers\Admin\AdminContactRequestController::class, 'stats']);
+            Route::get('/', [\App\Http\Controllers\Admin\AdminContactRequestController::class, 'index']);
+            Route::get('/{contactRequest}', [\App\Http\Controllers\Admin\AdminContactRequestController::class, 'show']);
+            Route::patch('/{contactRequest}/status', [\App\Http\Controllers\Admin\AdminContactRequestController::class, 'updateStatus']);
+            Route::delete('/{contactRequest}', [\App\Http\Controllers\Admin\AdminContactRequestController::class, 'destroy']);
         });
 
         // ───────────────────────────────────────────────────

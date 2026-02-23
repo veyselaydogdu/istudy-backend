@@ -1003,6 +1003,7 @@ docker compose build frontend-admin && docker compose up -d frontend-admin
 | Laravel API (HTTP→HTTPS) | 80 | http://localhost → redirect |
 | Laravel API (HTTP, yerel geliştirme) | 8000 | http://localhost:8000/api |
 | Frontend Admin | 3001 | http://localhost:3001 |
+| Frontend Tenant & Website | 3002 | http://localhost:3002 |
 | PHPMyAdmin | 8080 | http://localhost:8080 |
 
 ### Docker .env Ayarları

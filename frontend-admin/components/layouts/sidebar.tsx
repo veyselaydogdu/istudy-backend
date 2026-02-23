@@ -31,6 +31,7 @@ import {
     Siren,
     Tag,
     FileText,
+    MessageSquare,
 } from 'lucide-react';
 
 type NavItem = {
@@ -84,6 +85,12 @@ const navGroups: NavGroup[] = [
             { title: 'Dropdown', href: '/ui/dropdowns', icon: ChevronDownSquare },
             { title: 'SweetAlert', href: '/ui/sweetalerts', icon: Siren },
             { title: 'Fiyatlandırma', href: '/ui/pricing', icon: Tag },
+        ],
+    },
+    {
+        label: 'DESTEK',
+        items: [
+            { title: 'İletişim Talepleri', href: '/contact-requests', icon: MessageSquare },
         ],
     },
     {
@@ -143,31 +150,33 @@ const Sidebar = () => {
                                             {group.label}
                                         </span>
                                     </h2>
-                                    {group.items.map((item) => {
-                                        const Icon = item.icon;
-                                        const active = isActive(item.href);
-                                        return (
-                                            <li key={item.href} className="nav-item">
-                                                <Link
-                                                    href={item.href}
-                                                    className={`group ${active ? 'active' : ''}`}
-                                                    onClick={() => {
-                                                        // close mobile sidebar on navigate
-                                                        if (window.innerWidth < 1024) {
-                                                            dispatch(toggleSidebar());
-                                                        }
-                                                    }}
-                                                >
-                                                    <div className="flex items-center">
-                                                        <Icon className="h-5 w-5 shrink-0 group-hover:!text-primary" />
-                                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
-                                                            {item.title}
-                                                        </span>
-                                                    </div>
-                                                </Link>
-                                            </li>
-                                        );
-                                    })}
+                                    <ul>
+                                        {group.items.map((item) => {
+                                            const Icon = item.icon;
+                                            const active = isActive(item.href);
+                                            return (
+                                                <li key={item.href} className="nav-item">
+                                                    <Link
+                                                        href={item.href}
+                                                        className={`group ${active ? 'active' : ''}`}
+                                                        onClick={() => {
+                                                            // close mobile sidebar on navigate
+                                                            if (window.innerWidth < 1024) {
+                                                                dispatch(toggleSidebar());
+                                                            }
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center">
+                                                            <Icon className="h-5 w-5 shrink-0 group-hover:!text-primary" />
+                                                            <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
+                                                                {item.title}
+                                                            </span>
+                                                        </div>
+                                                    </Link>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
                                 </li>
                             ))}
 

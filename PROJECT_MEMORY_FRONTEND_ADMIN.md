@@ -1,7 +1,9 @@
 # 🧠 iStudy Frontend Admin — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-22 (Vristo tema entegrasyonu, Tailwind v3'e geçiş, yeni UI sayfaları, invoice, npm güvenlik fix — v8)
+> **Son Güncelleme:** 2026-02-22 (Vristo tema entegrasyonu, Tailwind v3'e geçiş, yeni UI sayfaları, invoice, npm güvenlik fix — v8; frontend-tenant-and-website projesi oluşturuldu)
 > **Amaç:** Bu dosya, Frontend Admin panelinin geliştirilme sürecini, mimari kararlarını, kullanılan teknolojileri ve bileşen yapısını belgelemek için oluşturulmuştur.
+
+> **İlgili Proje:** `frontend-tenant-and-website` (port 3002) — admin kopyasından üretildi. Token: `tenant_token`. Detaylar için bu repo'ya bakın.
 
 ---
 
