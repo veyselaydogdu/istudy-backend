@@ -9,6 +9,7 @@ import { Plus, Search, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type SchoolForm = {
     name: string;
+    code: string;
     address: string;
     phone: string;
     email: string;
@@ -21,7 +22,7 @@ export default function SchoolsPage() {
     const [page, setPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [showModal, setShowModal] = useState(false);
-    const [form, setForm] = useState<SchoolForm>({ name: '', address: '', phone: '', email: '' });
+    const [form, setForm] = useState<SchoolForm>({ name: '', code: '', address: '', phone: '', email: '' });
     const [saving, setSaving] = useState(false);
 
     const fetchSchools = useCallback(async () => {
@@ -48,7 +49,7 @@ export default function SchoolsPage() {
             await apiClient.post('/schools', form);
             toast.success('Okul oluşturuldu!');
             setShowModal(false);
-            setForm({ name: '', address: '', phone: '', email: '' });
+            setForm({ name: '', code: '', address: '', phone: '', email: '' });
             setPage(1);
             fetchSchools();
         } catch (err: unknown) {
@@ -199,6 +200,17 @@ export default function SchoolsPage() {
                                     className="form-input mt-1"
                                     value={form.name}
                                     onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Okul Kodu *</label>
+                                <input
+                                    type="text"
+                                    className="form-input mt-1"
+                                    placeholder="Örn: OKUL-001"
+                                    value={form.code}
+                                    onChange={(e) => setForm(f => ({ ...f, code: e.target.value }))}
                                     required
                                 />
                             </div>

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Base\Role;
 use App\Models\Tenant\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class AuthService
@@ -14,40 +15,42 @@ class AuthService
      */
     public function register(array $data): array
     {
-        // Kullanıcı oluştur
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'], // Model'de hashed cast var
-            'phone' => $data['phone'] ?? null,
-        ]);
+        return DB::transaction(function () use ($data) {
+            // Kullanıcı oluştur
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => $data['password'], // Model'de hashed cast var
+                'phone' => $data['phone'] ?? null,
+            ]);
 
-        // Tenant owner rolü ata
-        $tenantOwnerRole = Role::where('name', 'tenant_owner')->first();
-        if ($tenantOwnerRole) {
-            $user->roles()->attach($tenantOwnerRole->id);
-        }
+            // Tenant owner rolü ata
+            $tenantOwnerRole = Role::where('name', 'tenant_owner')->first();
+            if ($tenantOwnerRole) {
+                $user->roles()->attach($tenantOwnerRole->id);
+            }
 
-        // Tenant oluştur
-        $tenant = Tenant::create([
-            'name' => $data['institution_name'],
-            'owner_user_id' => $user->id,
-            'country' => $data['country'] ?? 'TR',
-            'currency' => $data['currency'] ?? 'TRY',
-            'created_by' => $user->id,
-        ]);
+            // Tenant oluştur
+            $tenant = Tenant::create([
+                'name' => $data['institution_name'],
+                'owner_user_id' => $user->id,
+                'country' => $data['country'] ?? 'TR',
+                'currency' => $data['currency'] ?? 'TRY',
+                'created_by' => $user->id,
+            ]);
 
-        // User'a tenant_id ata
-        $user->update(['tenant_id' => $tenant->id]);
+            // User'a tenant_id ata
+            $user->update(['tenant_id' => $tenant->id]);
 
-        // Sanctum token oluştur
-        $token = $user->createToken('auth_token')->plainTextToken;
+            // Sanctum token oluştur
+            $token = $user->createToken('auth_token')->plainTextToken;
 
-        return [
-            'user' => $user->fresh()->load('roles'),
-            'tenant' => $tenant,
-            'token' => $token,
-        ];
+            return [
+                'user' => $user->fresh()->load('roles'),
+                'tenant' => $tenant,
+                'token' => $token,
+            ];
+        });
     }
 
     /**

@@ -11,6 +11,14 @@ class StoreSchoolRequest extends FormRequest
         return true;
     }
 
+    /**
+     * tenant_id her zaman auth('sanctum') üzerinden alınır — form'dan gelen değer yok sayılır
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['tenant_id' => auth('sanctum')->user()?->tenant_id]);
+    }
+
     public function rules(): array
     {
         return [
