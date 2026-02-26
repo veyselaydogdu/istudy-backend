@@ -39,6 +39,8 @@ class ClassManagementController extends BaseController
             ]);
 
             return $this->successResponse($teachers);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Sınıf bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('ClassManagementController::classTeachers Error: '.$e->getMessage());
 
@@ -244,6 +246,8 @@ class ClassManagementController extends BaseController
                 'quantity' => $material->quantity,
                 'due_date' => $material->due_date,
             ], 'İhtiyaç kalemi güncellendi.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Materyal bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('ClassManagementController::updateSupplyItem Error: '.$e->getMessage());
 
@@ -265,6 +269,8 @@ class ClassManagementController extends BaseController
             $material->delete();
 
             return $this->successResponse(null, 'İhtiyaç kalemi silindi.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Materyal bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('ClassManagementController::deleteSupplyItem Error: '.$e->getMessage());
 

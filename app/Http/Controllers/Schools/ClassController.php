@@ -93,7 +93,7 @@ class ClassController extends BaseSchoolController
     /**
      * Sınıf detayını getir
      */
-    public function show(SchoolClass $class): JsonResponse
+    public function show(int $school_id, SchoolClass $class): JsonResponse
     {
         try {
             $this->authorize('view', $class);
@@ -121,7 +121,7 @@ class ClassController extends BaseSchoolController
     /**
      * Sınıf güncelle
      */
-    public function update(UpdateSchoolClassRequest $request, SchoolClass $class): JsonResponse
+    public function update(UpdateSchoolClassRequest $request, int $school_id, SchoolClass $class): JsonResponse
     {
         try {
             DB::beginTransaction();
@@ -158,7 +158,7 @@ class ClassController extends BaseSchoolController
     /**
      * Sınıf sil
      */
-    public function destroy(SchoolClass $class): JsonResponse
+    public function destroy(int $school_id, SchoolClass $class): JsonResponse
     {
         try {
             DB::beginTransaction();

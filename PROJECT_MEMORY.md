@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-26 (Test suite altyapısı: PHP 8.4+SQLite fix, AcademicYearController transaction leak, ModelNotFoundException handler, FoodIngredient allergens scope fix, mealStore academic_year_id, test assertion soft-delete düzeltmeleri — 105 passing / 31 @group bug)
+> **Son Güncelleme:** 2026-02-26 (TÜM TESTLER GEÇTİ: 136 passing / 0 failing — BUG-001→010 + ClassManagement bug'ları düzeltildi; nested route school_id positional arg sorunu çözüldü)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---

@@ -7,9 +7,11 @@ use App\Models\Base\Country;
 use App\Models\Base\Role;
 use App\Models\Base\UserContactNumber;
 use App\Models\Child\FamilyProfile;
+use App\Models\School\School;
 use App\Models\School\TeacherProfile;
 use App\Models\Tenant\Tenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -89,6 +91,22 @@ class User extends Authenticatable
     {
         // User might own tenants or belong to them. Assuming 'owner_user_id' in tenants table for ownership.
         return $this->hasMany(Tenant::class, 'owner_user_id');
+    }
+
+    /**
+     * Kullanıcının tenant'ına ait okullar.
+     * User.tenant_id → Tenant.id → School.tenant_id
+     */
+    public function schools(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            School::class,
+            Tenant::class,
+            'id',        // tenants.id = users.tenant_id
+            'tenant_id', // schools.tenant_id = tenants.id
+            'tenant_id', // users.tenant_id (local key)
+            'id',        // tenants.id (second local key)
+        );
     }
 
     // If users table had tenant_id, belongsTo would be appropriate.

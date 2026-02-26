@@ -11,6 +11,13 @@ class StoreSchoolClassRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->route('school_id')) {
+            $this->merge(['school_id' => $this->route('school_id')]);
+        }
+    }
+
     /**
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */

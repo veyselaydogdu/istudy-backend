@@ -27,7 +27,8 @@ class TenantMealController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            $ingredients = FoodIngredient::with('allergens')
+            $ingredients = FoodIngredient::withoutGlobalScope('tenant')
+                ->with('allergens')
                 ->where(function ($q) use ($tenantId) {
                     $q->whereNull('tenant_id')->orWhere('tenant_id', $tenantId);
                 })
@@ -130,6 +131,8 @@ class TenantMealController extends BaseController
                 'is_custom' => true,
                 'allergens' => $ingredient->allergens->map(fn ($a) => ['id' => $a->id, 'name' => $a->name]),
             ], 'Besin öğesi güncellendi.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Besin öğesi bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('TenantMealController::ingredientUpdate Error: '.$e->getMessage());
 
@@ -168,9 +171,9 @@ class TenantMealController extends BaseController
      */
     public function mealIndex(Request $request): JsonResponse
     {
-        try {
-            $request->validate(['school_id' => ['required', 'exists:schools,id']]);
+        $request->validate(['school_id' => ['required', 'exists:schools,id']]);
 
+        try {
             $meals = Meal::with('ingredients')
                 ->where('school_id', $request->school_id)
                 ->when($request->search, fn ($q) => $q->where('name', 'like', '%'.$request->search.'%'))
@@ -254,6 +257,10 @@ class TenantMealController extends BaseController
         try {
             $meal = Meal::findOrFail($id);
 
+            if ($meal->school->tenant_id !== $this->user()->tenant_id) {
+                return $this->errorResponse('Bu yemeğe erişim yetkiniz yok.', 403);
+            }
+
             $meal->update([
                 'name' => $request->name,
                 'meal_type' => $request->meal_type ?? $meal->meal_type,
@@ -286,6 +293,11 @@ class TenantMealController extends BaseController
     {
         try {
             $meal = Meal::findOrFail($id);
+
+            if ($meal->school->tenant_id !== $this->user()->tenant_id) {
+                return $this->errorResponse('Bu yemeğe erişim yetkiniz yok.', 403);
+            }
+
             $meal->delete();
 
             return $this->successResponse(null, 'Yemek silindi.');

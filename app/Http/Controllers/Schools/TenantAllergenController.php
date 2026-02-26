@@ -23,9 +23,10 @@ class TenantAllergenController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            $allergens = Allergen::where(function ($q) use ($tenantId) {
-                $q->whereNull('tenant_id')->orWhere('tenant_id', $tenantId);
-            })
+            $allergens = Allergen::withoutGlobalScope('tenant')
+                ->where(function ($q) use ($tenantId) {
+                    $q->whereNull('tenant_id')->orWhere('tenant_id', $tenantId);
+                })
                 ->orderBy('name')
                 ->get();
 
@@ -112,6 +113,8 @@ class TenantAllergenController extends BaseController
                 'risk_level' => $allergen->risk_level,
                 'tenant_id' => $allergen->tenant_id,
             ], 'Allerjen güncellendi.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Allerjen bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('TenantAllergenController::update Error: '.$e->getMessage());
 

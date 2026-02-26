@@ -11,6 +11,13 @@ class StoreActivityRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->route('school_id')) {
+            $this->merge(['school_id' => $this->route('school_id')]);
+        }
+    }
+
     public function rules(): array
     {
         return [

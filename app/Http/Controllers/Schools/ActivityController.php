@@ -80,7 +80,7 @@ class ActivityController extends BaseSchoolController
     /**
      * Aktivite detayını getir
      */
-    public function show(Activity $activity): JsonResponse
+    public function show(int $school_id, Activity $activity): JsonResponse
     {
         try {
             $this->authorize('view', $activity);
@@ -105,7 +105,7 @@ class ActivityController extends BaseSchoolController
     /**
      * Aktivite güncelle
      */
-    public function update(UpdateActivityRequest $request, Activity $activity): JsonResponse
+    public function update(UpdateActivityRequest $request, int $school_id, Activity $activity): JsonResponse
     {
         try {
             DB::beginTransaction();
@@ -141,7 +141,7 @@ class ActivityController extends BaseSchoolController
     /**
      * Aktivite sil
      */
-    public function destroy(Activity $activity): JsonResponse
+    public function destroy(int $school_id, Activity $activity): JsonResponse
     {
         try {
             DB::beginTransaction();

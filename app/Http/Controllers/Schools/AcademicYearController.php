@@ -104,17 +104,17 @@ class AcademicYearController extends BaseSchoolController
      */
     public function store(Request $request): JsonResponse
     {
+        $request->validate([
+            'school_id' => 'required|exists:schools,id',
+            'name' => 'required|string|max:100',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'description' => 'nullable|string|max:500',
+            'is_current' => 'nullable|boolean',
+        ]);
+
         DB::beginTransaction();
         try {
-            $request->validate([
-                'school_id' => 'required|exists:schools,id',
-                'name' => 'required|string|max:100',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after:start_date',
-                'description' => 'nullable|string|max:500',
-                'is_current' => 'nullable|boolean',
-            ]);
-
             $data = $request->all();
             $data['is_active'] = true;
             $data['created_by'] = $this->user()->id;
@@ -223,17 +223,17 @@ class AcademicYearController extends BaseSchoolController
      */
     public function transition(Request $request): JsonResponse
     {
+        $request->validate([
+            'school_id' => 'required|exists:schools,id',
+            'name' => 'required|string|max:100',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'description' => 'nullable|string|max:500',
+            'copy_classes' => 'nullable|boolean',
+        ]);
+
         DB::beginTransaction();
         try {
-            $request->validate([
-                'school_id' => 'required|exists:schools,id',
-                'name' => 'required|string|max:100',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after:start_date',
-                'description' => 'nullable|string|max:500',
-                'copy_classes' => 'nullable|boolean',
-            ]);
-
             $newYearData = $request->only(['name', 'start_date', 'end_date', 'description']);
             $newYearData['created_by'] = $this->user()->id;
 
