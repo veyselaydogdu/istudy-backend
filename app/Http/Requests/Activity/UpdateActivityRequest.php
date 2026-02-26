@@ -18,6 +18,10 @@ class UpdateActivityRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'is_paid' => ['nullable', 'boolean'],
             'price' => ['nullable', 'numeric', 'min:0'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'class_ids' => ['nullable', 'array'],
+            'class_ids.*' => ['exists:classes,id'],
         ];
     }
 }

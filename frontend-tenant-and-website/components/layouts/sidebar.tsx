@@ -14,6 +14,9 @@ import {
     User,
     LogOut,
     ChevronDown,
+    Utensils,
+    Calendar,
+    GraduationCap,
 } from 'lucide-react';
 
 type NavItem = {
@@ -34,7 +37,12 @@ const navGroups: NavGroup[] = [
     },
     {
         label: 'YÖNETİM',
-        items: [{ title: 'Okullarım', href: '/schools', icon: School }],
+        items: [
+            { title: 'Okullarım', href: '/schools', icon: School },
+            { title: 'Eğitim Yılları', href: '/academic-years', icon: GraduationCap },
+            { title: 'Yemekler', href: '/meals', icon: Utensils },
+            { title: 'Etkinlikler', href: '/activities', icon: Calendar },
+        ],
     },
     {
         label: 'HESAP',

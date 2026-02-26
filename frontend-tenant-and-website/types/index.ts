@@ -85,21 +85,153 @@ export type SubscriptionUsage = {
     classes: { used: number; limit: number }
 }
 
+// ─── Country ─────────────────────────────────────────────────────────────────
+
+export type Country = {
+    id: number
+    name: string
+    iso2: string
+    phone_code?: string
+}
+
 // ─── School ──────────────────────────────────────────────────────────────────
 
 export type School = {
     id: number
     tenant_id: number
+    country_id?: number
     name: string
+    description?: string
+    code?: string
     address?: string
+    city?: string
     phone?: string
+    fax?: string
+    gsm?: string
+    whatsapp?: string
     email?: string
+    website?: string
     status?: string
-    max_students?: number
+    is_active?: boolean
     created_at: string
     updated_at: string
     classes_count?: number
     children_count?: number
+    country?: { id: number; name: string; iso2: string }
+}
+
+// ─── Class ───────────────────────────────────────────────────────────────────
+
+export type SchoolClass = {
+    id: number
+    school_id: number
+    academic_year_id?: number
+    name: string
+    description?: string
+    age_min?: number
+    age_max?: number
+    capacity?: number
+    color?: string
+    children_count?: number
+    teachers_count?: number
+    created_at?: string
+}
+
+// ─── Teacher ─────────────────────────────────────────────────────────────────
+
+export type Teacher = {
+    id: number
+    user_id: number
+    school_id: number
+    name: string
+    title?: string
+    role?: string
+}
+
+// ─── Allergen ────────────────────────────────────────────────────────────────
+
+export type Allergen = {
+    id: number
+    name: string
+    description?: string
+    risk_level?: 'low' | 'medium' | 'high'
+    tenant_id?: number | null
+}
+
+// ─── Meal & Food ─────────────────────────────────────────────────────────────
+
+export type FoodIngredient = {
+    id: number
+    name: string
+    is_custom?: boolean
+    allergens?: Allergen[]
+}
+
+export type Meal = {
+    id: number
+    school_id: number
+    name: string
+    meal_type?: 'breakfast' | 'lunch' | 'snack' | 'dinner'
+    ingredients?: { id: number; name: string }[]
+}
+
+// ─── Supply List ─────────────────────────────────────────────────────────────
+
+export type SupplyItem = {
+    id: number
+    name: string
+    description?: string
+    quantity?: number
+    due_date?: string
+    class_id?: number
+    school_id?: number
+}
+
+// ─── Attendance ──────────────────────────────────────────────────────────────
+
+export type Attendance = {
+    id: number
+    child_id: number
+    class_id: number
+    attendance_date: string
+    status: 'present' | 'absent' | 'late' | 'excused'
+    notes?: string
+}
+
+// ─── Activity / Event ────────────────────────────────────────────────────────
+
+export type Activity = {
+    id: number
+    school_id: number
+    academic_year_id?: number
+    name: string
+    description?: string
+    is_paid?: boolean
+    price?: number
+    start_date?: string
+    end_date?: string
+    classes?: SchoolClass[]
+    created_at?: string
+}
+
+export type AcademicYear = {
+    id: number
+    school_id: number
+    name: string
+    start_date: string
+    end_date: string
+    is_active?: boolean
+}
+
+// ─── Child ───────────────────────────────────────────────────────────────────
+
+export type Child = {
+    id: number
+    name: string
+    surname?: string
+    birth_date?: string
+    gender?: string
+    status?: string
 }
 
 // ─── Finance ─────────────────────────────────────────────────────────────────

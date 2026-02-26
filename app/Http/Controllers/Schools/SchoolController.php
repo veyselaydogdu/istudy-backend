@@ -6,13 +6,17 @@ use App\Http\Requests\School\StoreSchoolRequest;
 use App\Http\Requests\School\UpdateSchoolRequest;
 use App\Http\Resources\SchoolResource;
 use App\Models\School\School;
+use App\Models\Tenant\Tenant;
 use App\Services\SchoolService;
+use App\Traits\ChecksPackageLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SchoolController extends BaseSchoolController
 {
+    use ChecksPackageLimits;
+
     public function __construct(protected SchoolService $service) {}
 
     /**
@@ -48,6 +52,9 @@ class SchoolController extends BaseSchoolController
         try {
             DB::beginTransaction();
             $this->authorize('create', School::class);
+
+            $tenant = Tenant::with('activeSubscription.package')->find($this->user()->tenant_id);
+            $this->checkSchoolLimit($tenant);
 
             $school = $this->service->create($request->validated());
 

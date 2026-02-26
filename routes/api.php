@@ -275,6 +275,52 @@ Route::middleware('auth:sanctum')->group(function () {
             // ───────────────────────────────────────────────────
             Route::get('/attendances', [\App\Http\Controllers\Schools\AttendanceController::class, 'index']);
             Route::post('/attendances', [\App\Http\Controllers\Schools\AttendanceController::class, 'store']); // Toplu ve tekli kayıt
+
+            // ───────────────────────────────────────────────────
+            // SINIF YÖNETİMİ — Öğretmen Atama & İhtiyaç Listesi
+            // ───────────────────────────────────────────────────
+            Route::prefix('classes/{class_id}')->group(function () {
+                // Öğretmen atama
+                Route::get('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'classTeachers']);
+                Route::post('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'assignTeacher']);
+                Route::delete('/teachers/{teacher_profile_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'removeTeacher']);
+
+                // İhtiyaç listesi (supply list)
+                Route::get('/supply-list', [\App\Http\Controllers\Schools\ClassManagementController::class, 'supplyList']);
+                Route::post('/supply-list', [\App\Http\Controllers\Schools\ClassManagementController::class, 'addSupplyItem']);
+                Route::put('/supply-list/{material_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'updateSupplyItem']);
+                Route::delete('/supply-list/{material_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'deleteSupplyItem']);
+            });
+
+            // Okuldaki tüm öğretmenler (sınıfa atama için liste)
+            Route::get('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'schoolTeachers']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // ALLERJEN YÖNETİMİ (Tenant tarafı)
+        // ───────────────────────────────────────────────────
+        Route::prefix('allergens')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\TenantAllergenController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\TenantAllergenController::class, 'store']);
+            Route::put('/{allergen_id}', [\App\Http\Controllers\Schools\TenantAllergenController::class, 'update']);
+            Route::delete('/{allergen_id}', [\App\Http\Controllers\Schools\TenantAllergenController::class, 'destroy']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // BESİN ÖĞELERİ & YEMEK YÖNETİMİ (Tenant tarafı)
+        // ───────────────────────────────────────────────────
+        Route::prefix('food-ingredients')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\TenantMealController::class, 'ingredientIndex']);
+            Route::post('/', [\App\Http\Controllers\Schools\TenantMealController::class, 'ingredientStore']);
+            Route::put('/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'ingredientUpdate']);
+            Route::delete('/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'ingredientDestroy']);
+        });
+
+        Route::prefix('meals')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealIndex']);
+            Route::post('/', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealStore']);
+            Route::put('/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealUpdate']);
+            Route::delete('/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealDestroy']);
         });
 
         // ───────────────────────────────────────────────────

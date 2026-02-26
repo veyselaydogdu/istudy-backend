@@ -19,12 +19,17 @@ class School extends BaseModel
 
     protected $fillable = [
         'tenant_id',
+        'country_id',
         'name',
         'description',
         'code',
         'registration_code',
         'address',
+        'city',
         'phone',
+        'fax',
+        'gsm',
+        'whatsapp',
         'email',
         'website',
         'logo',
@@ -47,6 +52,11 @@ class School extends BaseModel
     public function tenant()
     {
         return $this->belongsTo(Tenant::class, 'tenant_id')->withDefault();
+    }
+
+    public function country()
+    {
+        return $this->belongsTo(\App\Models\Base\Country::class, 'country_id')->withDefault();
     }
 
     public function academicYears()

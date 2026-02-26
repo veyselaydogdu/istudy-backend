@@ -45,7 +45,7 @@ class AcademicYearController extends BaseSchoolController
                 AcademicYearResource::collection($years)->resource
             );
         } catch (\Throwable $e) {
-            Log::error('Eğitim yılları listeleme hatası: ' . $e->getMessage());
+            Log::error('Eğitim yılları listeleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Eğitim yılları listelenirken bir hata oluştu.', 500);
         }
@@ -74,7 +74,7 @@ class AcademicYearController extends BaseSchoolController
                 'Güncel eğitim yılı getirildi.'
             );
         } catch (\Throwable $e) {
-            Log::error('Güncel eğitim yılı hatası: ' . $e->getMessage());
+            Log::error('Güncel eğitim yılı hatası: '.$e->getMessage());
 
             return $this->errorResponse('Güncel eğitim yılı getirilirken bir hata oluştu.', 500);
         }
@@ -93,7 +93,7 @@ class AcademicYearController extends BaseSchoolController
                 'stats' => $stats,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Eğitim yılı detay hatası: ' . $e->getMessage());
+            Log::error('Eğitim yılı detay hatası: '.$e->getMessage());
 
             return $this->errorResponse('Eğitim yılı detayı getirilirken bir hata oluştu.', 500);
         }
@@ -130,7 +130,7 @@ class AcademicYearController extends BaseSchoolController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Eğitim yılı oluşturma hatası: ' . $e->getMessage());
+            Log::error('Eğitim yılı oluşturma hatası: '.$e->getMessage());
 
             return $this->errorResponse('Eğitim yılı oluşturulurken bir hata oluştu.', 500);
         }
@@ -165,7 +165,7 @@ class AcademicYearController extends BaseSchoolController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Eğitim yılı güncelleme hatası: ' . $e->getMessage());
+            Log::error('Eğitim yılı güncelleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Eğitim yılı güncellenirken bir hata oluştu.', 500);
         }
@@ -188,7 +188,7 @@ class AcademicYearController extends BaseSchoolController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Eğitim yılı aktif yapma hatası: ' . $e->getMessage());
+            Log::error('Eğitim yılı aktif yapma hatası: '.$e->getMessage());
 
             return $this->errorResponse('İşlem sırasında bir hata oluştu.', 500);
         }
@@ -211,7 +211,7 @@ class AcademicYearController extends BaseSchoolController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Eğitim yılı kapatma hatası: ' . $e->getMessage());
+            Log::error('Eğitim yılı kapatma hatası: '.$e->getMessage());
 
             return $this->errorResponse('İşlem sırasında bir hata oluştu.', 500);
         }
@@ -252,7 +252,7 @@ class AcademicYearController extends BaseSchoolController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Eğitim yılı geçiş hatası: ' . $e->getMessage());
+            Log::error('Eğitim yılı geçiş hatası: '.$e->getMessage());
 
             return $this->errorResponse('Geçiş sırasında bir hata oluştu.', 500);
         }
@@ -286,7 +286,7 @@ class AcademicYearController extends BaseSchoolController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Sınıf ekleme hatası: ' . $e->getMessage());
+            Log::error('Sınıf ekleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Sınıf eklenirken bir hata oluştu.', 500);
         }
@@ -306,7 +306,7 @@ class AcademicYearController extends BaseSchoolController
             return $this->successResponse(null, 'Sınıf başarıyla kaldırıldı.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Sınıf kaldırma hatası: ' . $e->getMessage());
+            Log::error('Sınıf kaldırma hatası: '.$e->getMessage());
 
             return $this->errorResponse('Sınıf kaldırılırken bir hata oluştu.', 500);
         }
@@ -320,6 +320,8 @@ class AcademicYearController extends BaseSchoolController
         DB::beginTransaction();
         try {
             if ($academicYear->is_current) {
+                DB::rollBack();
+
                 return $this->errorResponse('Aktif eğitim yılı silinemez. Önce başka bir yılı aktif yapın.', 422);
             }
 
@@ -331,7 +333,7 @@ class AcademicYearController extends BaseSchoolController
             return $this->successResponse(null, 'Eğitim yılı başarıyla silindi.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Eğitim yılı silme hatası: ' . $e->getMessage());
+            Log::error('Eğitim yılı silme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Eğitim yılı silinirken bir hata oluştu.', 500);
         }

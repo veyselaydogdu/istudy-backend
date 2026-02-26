@@ -51,10 +51,14 @@ class ActivityController extends BaseSchoolController
 
             $activity = $this->service->create($request->validated());
 
+            if ($request->has('class_ids')) {
+                $activity->classes()->sync($request->class_ids ?? []);
+            }
+
             DB::commit();
 
             return $this->successResponse(
-                ActivityResource::make($activity),
+                ActivityResource::make($activity->load(['classes'])),
                 'Aktivite başarıyla oluşturuldu.',
                 201
             );
@@ -82,7 +86,7 @@ class ActivityController extends BaseSchoolController
             $this->authorize('view', $activity);
 
             return $this->successResponse(
-                ActivityResource::make($activity->load(['children']))
+                ActivityResource::make($activity->load(['children', 'classes']))
             );
 
         } catch (\Throwable $e) {
@@ -109,10 +113,14 @@ class ActivityController extends BaseSchoolController
 
             $updatedActivity = $this->service->update($activity, $request->validated());
 
+            if ($request->has('class_ids')) {
+                $updatedActivity->classes()->sync($request->class_ids ?? []);
+            }
+
             DB::commit();
 
             return $this->successResponse(
-                ActivityResource::make($updatedActivity),
+                ActivityResource::make($updatedActivity->load(['classes'])),
                 'Aktivite başarıyla güncellendi.'
             );
 

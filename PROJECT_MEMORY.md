@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-20 (Paket sistemi: Package features pivot yapısı, description/sort_order alanları, düzenleme düzeltmesi, frontend form güncellemesi)
+> **Son Güncelleme:** 2026-02-26 (Test suite altyapısı: PHP 8.4+SQLite fix, AcademicYearController transaction leak, ModelNotFoundException handler, FoodIngredient allergens scope fix, mealStore academic_year_id, test assertion soft-delete düzeltmeleri — 105 passing / 31 @group bug)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -86,8 +86,11 @@ istudy-backend/
 │   │   │   │   ├── BaseSchoolController.php
 │   │   │   │   ├── SchoolController.php
 │   │   │   │   ├── ClassController.php
+│   │   │   │   ├── ClassManagementController.php  ← Öğretmen-sınıf atama (GET/POST/DELETE)
 │   │   │   │   ├── ChildController.php
-│   │   │   │   ├── ActivityController.php
+│   │   │   │   ├── ActivityController.php          ← start/end date + class sync eklendi
+│   │   │   │   ├── TenantMealController.php        ← Yemek + besin + allerjen sync
+│   │   │   │   ├── TenantAllergenController.php    ← Tenant allerjen CRUD (global+özel)
 │   │   │   │   └── FamilyProfileController.php
 │   │   │   ├── Tenant/
 │   │   │   │   ├── BaseTenantController.php
@@ -233,9 +236,10 @@ istudy-backend/
 #### 🎓 Akademik Yapılar
 | Tablo | Model | Açıklama |
 |-------|-------|----------|
-| `classes` | `App\Models\Academic\SchoolClass` | Sınıflar (Not: PHP'de `Class` reserved keyword olduğu için `SchoolClass` adlandırılır) |
+| `classes` | `App\Models\Academic\SchoolClass` | Sınıflar — `id, school_id, academic_year_id, name, description, age_min (tinyInt unsigned nullable), age_max (tinyInt unsigned nullable), color, logo, capacity` (Not: PHP'de `Class` reserved keyword olduğu için `SchoolClass` adlandırılır) |
 | `child_class_assignments` | — (Pivot) | Çocuk-Sınıf atamaları (M2M) |
 | `class_teacher_assignments` | — (Pivot) | Öğretmen-Sınıf atamaları (M2M) |
+| `activity_class_assignments` | — (Pivot) | Etkinlik-Sınıf atamaları (M2M) — `activity_id, class_id` |
 
 #### 🏥 Sağlık & Beslenme Modülü
 | Tablo | Model | Açıklama |
@@ -249,13 +253,16 @@ istudy-backend/
 | `child_medications` | — (Pivot) | Çocuk-İlaç (M2M) |
 | `child_conditions` | — (Pivot) | Çocuk-Tıbbi Durum (M2M) |
 | `meal_ingredient_pivot` | — (Pivot) | Yemek-Malzeme (M2M) |
+| `food_ingredient_allergens` | — (Pivot) | Besin Öğesi-Alerjen (M2M) — `food_ingredient_id, allergen_id` |
+
+> **Allergen tenant_id:** `allergens.tenant_id = NULL` → Global (tüm tenant'lar görür, sadece admin düzenler). `allergens.tenant_id = X` → Tenant'a özel (X tenant'ı oluşturdu, düzenleyebilir). `TenantAllergenController` her iki grubu birleştirerek döndürür.
 
 #### 📊 Takip & Aktiviteler Modülü
 | Tablo | Model | Açıklama |
 |-------|-------|----------|
 | `daily_child_reports` | `App\Models\Activity\DailyChildReport` | Günlük çocuk raporları (mood, appetite, notlar) |
 | `attendances` | `App\Models\Activity\Attendance` | Yoklama (present, absent, late, excused) |
-| `activities` | `App\Models\Activity\Activity` | Etkinlikler (ücretli/ücretsiz) |
+| `activities` | `App\Models\Activity\Activity` | Etkinlikler (ücretli/ücretsiz) — `id, school_id, academic_year_id, name, description, is_paid, price, start_date (date nullable), end_date (date nullable)` |
 | `report_templates` | `App\Models\Activity\ReportTemplate` | Dinamik Rapor Şablonları (Okul Yöneticisi tanımlar) |
 | `report_template_inputs` | `App\Models\Activity\ReportTemplateInput` | Şablon Alanları (Label, Type: select/text/rating, Options: JSON) |
 | `report_input_values` | `App\Models\Activity\ReportInputValue` | Girilen Değerler (Öğretmen doldurur) |
@@ -349,7 +356,8 @@ AcademicYear ┬── belongsTo ──── School
 SchoolClass ┬── belongsTo ──── School
             ├── belongsTo ──── AcademicYear
             ├── belongsToMany ──── Child (via child_class_assignments)
-            └── belongsToMany ──── TeacherProfile (via class_teacher_assignments)
+            ├── belongsToMany ──── TeacherProfile (via class_teacher_assignments)
+            └── belongsToMany ──── Activity (via activity_class_assignments)
 
 Child ──────┬── belongsTo ──── FamilyProfile
             ├── belongsTo ──── School
@@ -398,6 +406,15 @@ Transaction ──── belongsTo ──── Invoice
 ── Para Birimi & Döviz Kuru ───────────────────────────
 Currency ──────── hasMany ──── ExchangeRate
 ExchangeRate ──── belongsTo ──── Currency (base + target)
+
+── Etkinlik & Sağlık Ek İlişkiler ───────────────────
+Activity ──────┬── belongsTo ──── School
+               ├── belongsTo ──── AcademicYear
+               ├── belongsToMany ──── Child (via child_activity_enrollments)
+               └── belongsToMany ──── SchoolClass (via activity_class_assignments)
+
+FoodIngredient ── belongsToMany ──── Allergen (via food_ingredient_allergens)
+Allergen ──────── (tenant_id=NULL: global | tenant_id=X: tenant-specific)
 ```
 
 ---
@@ -541,10 +558,20 @@ class SchoolController {
 │ 3️⃣ ABONELİK GEREKLİ (middleware: subscription.active)   │
 │   apiResource: schools                                  │
 │   apiResource: schools/{id}/classes                     │
+│   GET/POST/DELETE schools/{id}/classes/{classId}/teachers│
 │   apiResource: schools/{id}/children                    │
 │   apiResource: schools/{id}/activities                  │
 │   apiResource: schools/{id}/families                    │
 │   apiResource: subscriptions (B2C)                      │
+│   GET/POST/PUT/DELETE: academic-years                   │
+│   PATCH: academic-years/{id}/set-current                │
+│   PATCH: academic-years/{id}/close                      │
+│   GET/POST/PUT/DELETE: meals + food-ingredients         │
+│   GET/POST/PUT/DELETE: allergens (tenant allerjen mgmt) │
+│   GET: meal-menus/monthly                               │
+│   POST: notifications (gönder)                          │
+│   GET: notifications + PATCH read                       │
+│   GET: invoices/tenant                                  │
 ├──────────────────────────────────────────────────────────┤
 │ 4️⃣ ADMIN ONLY (Super Admin)                              │
 │   apiResource: admin/packages                           │
@@ -789,6 +816,7 @@ Tüm modellerde **soft delete** kullanıldığından, foreign key'lerde `cascade
 | `homework_class_assignments` | 000010_enhance_system_tables.php |
 | `notification_user` | 000010_enhance_system_tables.php |
 | `food_ingredient_allergens` | 000010_enhance_system_tables.php |
+| `activity_class_assignments` | 2026_02_24_120000_add_fields_to_classes_and_activities.php |
 
 **Kural:** Yeni migration yazarken soft-delete'li tablolara FK ekliyorsan `->restrictOnDelete()` kullan. Yalnızca yukarıdaki pivot tablolar ve gerçek junction tabloları `->cascadeOnDelete()` alır.
 
@@ -902,6 +930,12 @@ Güvenlik raporu (`tests/SECURITY_AND_ERRORS_REPORT.md`) tüm maddeleri uyguland
 | ✅ **Cron Jobs** | `currency:update-rates` (09:00) + `audit:maintain` (03:00) |
 | ✅ **Güvenlik** | 13/13 güvenlik açığı kapatıldı (XSS, stack trace, rate limit, exception handler, nginx headers, vb.) |
 | ✅ **E2E Testler** | Playwright E2E testleri yazıldı (`tests/e2e/` — 273/273 geçti). Unit testler: Vitest (`tests/unit/` — 19/19). |
+| ✅ **TenantMealController** | Yemek + besin öğesi CRUD + allerjen sync (allergen_ids) |
+| ✅ **TenantAllergenController** | Tenant allerjen CRUD (global read-only, tenant-specific CRUD) |
+| ✅ **ClassManagementController** | Öğretmen-sınıf atama GET/POST/DELETE |
+| ✅ **ActivityController güncelleme** | start_date, end_date, class_ids sync (activity_class_assignments) |
+| ✅ **StoreSchoolClassRequest bug fix** | grade_level + branch kaldırıldı (DB'de yok), description+age_min+age_max eklendi (age_group yerine iki ayrı integer alan; gte:age_min validation) |
+| ⚠️ **Migration bekliyor** | `2026_02_24_104108_add_contact_fields_to_schools_table.php` + `2026_02_24_120000_add_fields_to_classes_and_activities.php` (classes: description+age_min+age_max, activities: start_date+end_date, pivot: activity_class_assignments) → `php artisan migrate` Docker ayağa kalkınca çalıştırılacak |
 | ⚠️ **PHPUnit Tests** | Backend PHP unit/feature test dosyaları henüz yazılmamış. |
 | ⚠️ **Ödeme entegrasyonu** | Şimdilik simüle, iyzico/Stripe entegrasyonu eklenecek. |
 
@@ -1032,7 +1066,7 @@ AUDIT_DB_CONNECTION=mysql
 |-------|-------|-----------|---------|---------------|
 | `User` | users | — | Tenant(owner), TeacherProfile, FamilyProfile | Role |
 | `Tenant` | tenants | User(owner) | School, User(tenant_id) | — |
-| `School` | schools | Tenant | AcademicYear, SchoolClass, TeacherProfile, Child, EnrollmentRequest, SchoolRole, Announcement, Homework, MealMenuSchedule, ReportTemplate, SystemNotification, ChildPricingSetting | — |
+| `School` | schools | Tenant, Country? | AcademicYear, SchoolClass, TeacherProfile, Child, EnrollmentRequest, SchoolRole, Announcement, Homework, MealMenuSchedule, ReportTemplate, SystemNotification, ChildPricingSetting | — |
 | `AcademicYear` | academic_years | School | SchoolClass, Activity, Event | — |
 | `SchoolClass` | classes | School, AcademicYear | — | Child, TeacherProfile |
 | `TeacherProfile` | teacher_profiles | User, School | — | SchoolClass |
@@ -1085,6 +1119,11 @@ AUDIT_DB_CONNECTION=mysql
 | `ExchangeRate` | exchange_rates | Günlük döviz kurları (baz birime göre) |
 | `ExchangeRateLog` | exchange_rate_logs | API güncelleme logları |
 | `ActivityLog` | activity_logs (AUDIT DB) | Merkezi CRUD log (old/new values, denormalize) |
+
+### 🆕 Yeni Eklenen Modeller (2026-02-24)
+| Model | Namespace | Tablo | Açıklama |
+|-------|-----------|-------|----------|
+| `Material` | `App\Models\Activity\Material` | materials | İhtiyaç listesi (class_id, school_id, name, description, quantity, due_date). BaseModel'den türer. |
 
 ---
 
@@ -1225,6 +1264,211 @@ Sadece config değişir      →  Kod değişikliği minimum
 9. ✅ Route tanımla (`routes/api.php`)
 10. ✅ Test yaz (Feature + Unit)
 11. ✅ `vendor/bin/pint --dirty` çalıştır
+
+---
+
+## 🏗️ 16. Tenant Panel Backend Değişiklikleri (2026-02-24)
+
+### 16.1 Okul Limiti Bug Fix
+
+**Sorun:** `SchoolController::store()` paket limitini kontrol etmiyordu; tenant paketi sınırını aşarak okul ekleyebiliyordu.
+
+**Çözüm:** `SchoolController` içine `ChecksPackageLimits` trait eklendi ve `store()` başında çağrılıyor:
+```php
+use App\Traits\ChecksPackageLimits;
+class SchoolController extends BaseSchoolController {
+    use ChecksPackageLimits;
+
+    public function store(StoreSchoolRequest $request): JsonResponse {
+        $tenant = Tenant::with('activeSubscription.package')->find($this->user()->tenant_id);
+        $this->checkSchoolLimit($tenant); // Limit aşıldıysa exception fırlatır
+        // ...
+    }
+}
+```
+
+### 16.2 Schools Tablosu — Yeni Alanlar
+
+**Migration:** `2026_02_24_104108_add_contact_fields_to_schools_table.php`
+⚠️ **Bu migration henüz çalıştırılmadı!** Docker DB ayağa kalktığında `php artisan migrate` çalıştırılmalı.
+
+Eklenen alanlar:
+- `country_id` (FK → countries, nullable, nullOnDelete)
+- `city` (string 100, nullable)
+- `fax` (string 20, nullable)
+- `gsm` (string 20, nullable)
+- `whatsapp` (string 20, nullable)
+
+**School modeli `$fillable`'a eklenenler:** `country_id`, `city`, `fax`, `gsm`, `whatsapp`, `description`, `website`, `registration_code`
+
+**School modeli ilişki:** `country()` → `belongsTo(Country::class, 'country_id')->withDefault()`
+
+**StoreSchoolRequest / UpdateSchoolRequest yeni kurallar:**
+```php
+'country_id' => ['nullable', 'exists:countries,id'],
+'city'       => ['nullable', 'string', 'max:100'],
+'fax'        => ['nullable', 'string', 'max:20'],
+'gsm'        => ['nullable', 'string', 'max:20'],
+'whatsapp'   => ['nullable', 'string', 'max:20'],
+'description'=> ['nullable', 'string'],
+'website'    => ['nullable', 'string', 'max:255'],
+```
+
+### 16.3 TenantMealController (YENİ)
+
+`App\Http\Controllers\Schools\TenantMealController` — BaseController'dan türer.
+
+**Besin Öğeleri:**
+- `GET /food-ingredients` → Global (tenant_id=null) + tenant'a özel ingredients
+- `POST /food-ingredients` → Tenant-scope yeni ingredient (is_custom=true)
+- `PUT /food-ingredients/{id}` → Sadece kendi tenant'ının ingredientini günceller
+- `DELETE /food-ingredients/{id}` → Sadece is_custom=true olanları siler
+
+**Yemekler:**
+- `GET /meals` (?school_id) → Okul yemekleri (ingredients ile)
+- `POST /meals` → `{ school_id, name, meal_type, ingredient_ids[] }` — pivot ile sync
+- `PUT /meals/{id}` → Güncelle + ingredient sync
+- `DELETE /meals/{id}` → Sil
+
+### 16.4 ClassManagementController (YENİ)
+
+`App\Http\Controllers\Schools\ClassManagementController` — BaseController'dan türer.
+
+**Öğretmen Atama:**
+- `GET /schools/{school_id}/classes/{class_id}/teachers` → Sınıfa atanmış öğretmenler
+- `POST /schools/{school_id}/classes/{class_id}/teachers` → `{ teacher_profile_id, role? }` — syncWithoutDetaching
+- `DELETE /schools/{school_id}/classes/{class_id}/teachers/{teacher_profile_id}` → Öğretmeni kaldır (detach)
+- `GET /schools/{school_id}/teachers` → Okulun tüm öğretmen profilleri
+
+**İhtiyaç Listesi (Supply List = materials tablosu):**
+- `GET /schools/{school_id}/classes/{class_id}/supply-list` → Sınıfın ihtiyaç listesi
+- `POST /schools/{school_id}/classes/{class_id}/supply-list` → `{ name, description?, quantity?, due_date? }` — academic_year_id otomatik bulunur
+- `PUT /schools/{school_id}/classes/{class_id}/supply-list/{material_id}` → Güncelle
+- `DELETE /schools/{school_id}/classes/{class_id}/supply-list/{material_id}` → Sil
+
+### 16.5 Yeni Rotalar (routes/api.php)
+
+`subscription.active` middleware + tenant scope altına eklendi:
+
+```php
+// schools/{school_id} prefix içinde:
+Route::prefix('classes/{class_id}')->group(function () {
+    Route::get('/teachers', [ClassManagementController, 'classTeachers']);
+    Route::post('/teachers', [ClassManagementController, 'assignTeacher']);
+    Route::delete('/teachers/{teacher_profile_id}', [ClassManagementController, 'removeTeacher']);
+    Route::get('/supply-list', [ClassManagementController, 'supplyList']);
+    Route::post('/supply-list', [ClassManagementController, 'addSupplyItem']);
+    Route::put('/supply-list/{material_id}', [ClassManagementController, 'updateSupplyItem']);
+    Route::delete('/supply-list/{material_id}', [ClassManagementController, 'deleteSupplyItem']);
+});
+Route::get('/teachers', [ClassManagementController, 'schoolTeachers']);
+
+// schools prefix dışında:
+Route::prefix('food-ingredients')->group(...)  // TenantMealController
+Route::prefix('meals')->group(...)             // TenantMealController
+```
+
+### 16.6 Pint Düzeltmeleri
+
+`vendor/bin/pint --dirty` çalıştırıldı. Düzeltilen dosyalar:
+- `SchoolResource.php`, `UpdateSchoolRequest.php`, `StoreSchoolRequest.php`
+- `TenantMealController.php`, `ClassManagementController.php`
+
+---
+
+---
+
+## 🧪 17. Test Suite Altyapısı (2026-02-26)
+
+### 17.1 Genel Durum
+
+```
+php artisan test                     → 105 passing / 31 failing (tümü @group bug)
+php artisan test --exclude-group=bug → 99 passing / 0 failing
+```
+
+31 başarısız test tamamı `@group bug` annotation'lı olup **kasıtlı olarak belgelenmiş hatalardır**.
+Düzeltme rehberi: `TASKS_FOR_FIX.md` — BUG-001 → BUG-011.
+
+### 17.2 PHP 8.4 + SQLite + RefreshDatabase Uyumluluk Düzeltmesi
+
+**Sorun:** PHP 8.4'te `SQLiteConnection::executeBeginTransactionStatement()` → `exec("BEGIN DEFERRED TRANSACTION")` kullanır. PDO'nun `inTransaction()` bayrağını güncellemez. `performRollBack(0)` → `inTransaction()` false → rollback atlanır → "cannot start a transaction within a transaction" hatası.
+
+**Düzeltme Dosyaları:**
+- `tests/Database/TestSQLiteConnection.php` — `executeBeginTransactionStatement()` → `PDO::beginTransaction()`, `performRollBack(0)` → `exec('ROLLBACK')` direkt
+- `tests/TestCase.php` — `Connection::resolverFor('sqlite', ...)` ile custom connection kayıt
+
+### 17.3 Controller Bug Düzeltmeleri
+
+#### AcademicYearController::destroy() — Transaction Leak
+`is_current` kontrolünde `DB::rollBack()` eksikti:
+```php
+if ($academicYear->is_current) {
+    DB::rollBack(); // ← eklendi
+    return $this->errorResponse('...', 422);
+}
+```
+
+#### TenantAllergenController::destroy() — ModelNotFoundException → 404
+`firstOrFail()` catch(\Throwable) içindeydi → 500. `ModelNotFoundException` catch'i eklendi:
+```php
+} catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+    return $this->errorResponse('Allerjen bulunamadı.', 404);
+} catch (\Throwable $e) { ...
+```
+
+#### TenantMealController — 3 metod düzeltildi
+- `ingredientDestroy()` — ModelNotFoundException → 404
+- `mealDestroy()` — ModelNotFoundException → 404
+- `mealStore()` — `academic_year_id` validation + `Meal::create()` eklendi (`meals.academic_year_id NOT NULL`)
+
+#### FoodIngredient::allergens() — Global Scope Sorunu
+```php
+// ÖNCE:
+return $this->belongsToMany(Allergen::class, 'food_ingredient_allergens', ...);
+// SONRA:
+return $this->belongsToMany(Allergen::class, 'food_ingredient_allergens', ...)->withoutGlobalScopes();
+```
+**Neden:** `BaseModel` tenant global scope'u `allergens.tenant_id = $userId` filtresi ekliyor. Global allerjenler (tenant_id=null) relationship üzerinden yüklendiğinde filtreleniyor. `withoutGlobalScopes()` ile allergens her zaman eksiksiz döner.
+
+### 17.4 Test Dosyası Düzeltmeleri
+
+#### Soft-Delete assertDatabaseMissing Hatası
+`BaseModel` extends `SoftDeletes`. Silinen kayıt DB'de `deleted_at` set olmuş halde kalır.
+`assertDatabaseMissing('table', ['id' => $id])` → FAIL çünkü kayıt hâlâ var.
+**Düzeltme:** `assertDatabaseMissing('table', ['id' => $id, 'deleted_at' => null])`
+
+Düzeltilen testler:
+- `AcademicYearApiTest::destroy_aktif_olmayan_egitim_yilini_siler`
+- `TenantAllergenApiTest::destroy_kendi_allerjenini_siler`
+- `TenantMealApiTest::ingredient_destroy_kendi_tenant_besinini_siler`
+- `TenantMealApiTest::meal_destroy_kendi_yemegini_siler`
+- `ClassManagementApiTest::supply_list_kalem_sil`
+
+#### academic_year_id NOT NULL Eksikliği
+`meals.academic_year_id` ve `materials.academic_year_id` NOT NULL.
+
+- `ApiTestHelpers::createMeal()` → `academic_year_id` yoksa otomatik `createAcademicYear()` çağırır
+- `TenantMealApiTest::meal_store_yeni_yemek_olusturur` → `createAcademicYear()` + request'e `academic_year_id` eklendi
+- `TenantMealApiTest::meal_store_malzeme_atamasiyla_yemek_olusturur` → aynı
+- `ClassManagementApiTest::supply_list_kalem_guncelle` → `Material::create()` içine `academic_year_id` eklendi
+- `ClassManagementApiTest::supply_list_kalem_sil` → aynı
+
+### 17.5 Bilinen Bug Referansı (TASKS_FOR_FIX.md)
+
+| Bug ID | Açıklama | Durum |
+|--------|----------|-------|
+| BUG-010 | `User::schools()` eksik → BaseSchoolController 500 | ⏳ Bekliyor |
+| BUG-003 | Meal cross-tenant güvenlik açığı | ⏳ Bekliyor |
+| BUG-001 | Global allerjenler index'te görünmüyor | ⏳ Bekliyor |
+| BUG-002 | Global besin öğeleri index'te görünmüyor | ⏳ Bekliyor |
+| BUG-006 | mealIndex validate() try-catch içinde → 500 | ⏳ Bekliyor |
+| BUG-007 | AcademicYearController validate() try-catch → 500 | ⏳ Bekliyor |
+| BUG-004 | TenantAllergenController update firstOrFail catch → 500 | ⚠️ Kısmi (destroy ✓, update ⏳) |
+| BUG-005 | TenantMealController ingredientUpdate firstOrFail catch → 500 | ⚠️ Kısmi (destroy ✓, update ⏳) |
+| BUG-011 | assignTeacher hata mesajında iç detay sızıyor | ⏳ Bekliyor |
+| BUG-008 | `$request->all()` → `validated()` olmalı | ⏳ Bekliyor |
+| BUG-009 | paginatedResponse `.resource` anti-pattern | ⏳ Bekliyor |
 
 ---
 

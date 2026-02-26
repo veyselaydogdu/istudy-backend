@@ -21,6 +21,9 @@ import {
 const pageTitles: Record<string, string> = {
     '/dashboard': 'Dashboard',
     '/schools': 'Okullarım',
+    '/academic-years': 'Eğitim Yılları',
+    '/meals': 'Yemek Yönetimi',
+    '/activities': 'Etkinlikler',
     '/subscription': 'Aboneliğim',
     '/invoices': 'Faturalar',
     '/notifications': 'Bildirimler',

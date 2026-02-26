@@ -186,6 +186,63 @@ export default function SubscriptionPage() {
                         </div>
                     )}
 
+                    {/* Upgrade / Change Plan */}
+                    {packages.length > 0 && (
+                        <div className="panel mb-6">
+                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h2 className="font-semibold text-dark dark:text-white">Planı Değiştir / Yükselt</h2>
+                                <div className="inline-flex items-center gap-1 rounded-full bg-[#f1f2f3] p-1 dark:bg-[#1b2e4b]">
+                                    {(['monthly', 'yearly'] as const).map((cycle) => (
+                                        <button
+                                            key={cycle}
+                                            type="button"
+                                            className={`rounded-full px-4 py-1 text-sm font-semibold transition-colors ${billingCycle === cycle ? 'bg-white text-primary shadow dark:bg-[#0e1726]' : 'text-[#515365] dark:text-[#888ea8]'}`}
+                                            onClick={() => setBillingCycle(cycle)}
+                                        >
+                                            {cycle === 'monthly' ? 'Aylık' : 'Yıllık'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {packages.map((pkg, idx) => {
+                                    const isCurrent = subscription?.package_id === pkg.id;
+                                    return (
+                                        <div key={pkg.id} className={`rounded border p-4 ${isCurrent ? 'border-primary bg-primary/5' : 'border-[#ebedf2] dark:border-[#1b2e4b]'}`}>
+                                            <div className="mb-2 flex items-start justify-between">
+                                                <h3 className="font-bold text-dark dark:text-white">{pkg.name}</h3>
+                                                {isCurrent && <span className="badge badge-outline-primary text-xs">Mevcut</span>}
+                                                {idx === 1 && !isCurrent && <span className="badge badge-outline-success text-xs">Popüler</span>}
+                                            </div>
+                                            <div className="mb-3">
+                                                <span className="text-2xl font-extrabold text-primary">₺{getPrice(pkg)}</span>
+                                                <span className="text-xs text-[#515365] dark:text-[#888ea8]">/{billingCycle === 'monthly' ? 'ay' : 'yıl'}</span>
+                                            </div>
+                                            <ul className="mb-4 space-y-1 text-sm">
+                                                <li className="flex items-center gap-2 text-[#515365] dark:text-[#888ea8]">
+                                                    <Check className="h-3.5 w-3.5 shrink-0 text-success" />
+                                                    {formatLimit(pkg.max_schools)} Okul
+                                                </li>
+                                                <li className="flex items-center gap-2 text-[#515365] dark:text-[#888ea8]">
+                                                    <Check className="h-3.5 w-3.5 shrink-0 text-success" />
+                                                    {formatLimit(pkg.max_students)} Öğrenci
+                                                </li>
+                                            </ul>
+                                            <button
+                                                type="button"
+                                                className={`btn btn-sm w-full ${isCurrent ? 'btn-outline-secondary' : 'btn-primary'}`}
+                                                onClick={() => !isCurrent && handleSubscribe(pkg.id)}
+                                                disabled={isCurrent || subscribing === pkg.id}
+                                            >
+                                                {subscribing === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent ? 'Mevcut Plan' : 'Bu Plana Geç'}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* History */}
                     {history.length > 0 && (
                         <div className="panel">

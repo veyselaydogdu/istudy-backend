@@ -23,11 +23,18 @@ class StoreSchoolRequest extends FormRequest
     {
         return [
             'tenant_id' => ['required', 'exists:tenants,id'],
+            'country_id' => ['nullable', 'exists:countries,id'],
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:50', 'unique:schools,code'],
+            'description' => ['nullable', 'string'],
             'address' => ['nullable', 'string'],
+            'city' => ['nullable', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:20'],
+            'fax' => ['nullable', 'string', 'max:20'],
+            'gsm' => ['nullable', 'string', 'max:20'],
+            'whatsapp' => ['nullable', 'string', 'max:20'],
             'email' => ['nullable', 'email', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
             'logo' => ['nullable', 'string', 'max:500'],
             'timezone' => ['nullable', 'string', 'max:50'],
             'is_active' => ['nullable', 'boolean'],
