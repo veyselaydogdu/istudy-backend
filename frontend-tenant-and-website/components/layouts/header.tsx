@@ -24,6 +24,7 @@ const pageTitles: Record<string, string> = {
     '/academic-years': 'Eğitim Yılları',
     '/meals': 'Yemek Yönetimi',
     '/activities': 'Etkinlikler',
+    '/social': 'Sosyal Ağ',
     '/subscription': 'Aboneliğim',
     '/invoices': 'Faturalar',
     '/notifications': 'Bildirimler',

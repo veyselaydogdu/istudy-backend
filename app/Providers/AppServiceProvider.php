@@ -29,5 +29,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(\App\Models\Tenant\Tenant::class, \App\Policies\TenantPolicy::class);
         Gate::policy(\App\Models\Billing\FamilySubscription::class, \App\Policies\FamilySubscriptionPolicy::class);
         Gate::policy(\App\Models\Package\Package::class, \App\Policies\PackagePolicy::class);
+        Gate::policy(\App\Models\Social\SocialPost::class, \App\Policies\SocialPostPolicy::class);
     }
 }

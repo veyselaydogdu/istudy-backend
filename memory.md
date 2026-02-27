@@ -1,6 +1,6 @@
 # iStudy — Birleşik Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-27 — **TÜM TESTLER GEÇTİ: 136/136 ✅ — BUG-001→012 tamamı düzeltildi**
+> **Son Güncelleme:** 2026-02-27 — **TÜM TESTLER GEÇTİ: 136/136 ✅ — BUG-001→012 tamamı düzeltildi — Sosyal Ağ (SocialPost) özelliği eklendi**
 > **Kapsam:** Tüm sistem — Laravel Backend + Frontend Admin + Frontend Tenant & Website
 > **Amaç:** Projeye yeni dahil olan her AI agent, yazılım mühendisi, iş analisti ve proje mimarı bu tek dosyadan tüm sistemi baştan sona anlayabilmeli.
 
@@ -216,7 +216,8 @@ app/
 │   │   │   ├── ActivityController.php    ← start/end date + class_ids sync
 │   │   │   ├── AcademicYearController.php← CRUD + set-current + close + transition
 │   │   │   ├── TenantMealController.php  ← Yemek + besin öğesi + allerjen sync
-│   │   │   └── TenantAllergenController.php ← Tenant allerjen CRUD
+│   │   │   ├── TenantAllergenController.php ← Tenant allerjen CRUD
+│   │   │   └── SocialPostController.php  ← Sosyal feed CRUD + react + comment (BaseController'dan türer)
 │   │   ├── Tenant/ ... Parents/ ... Teachers/
 │   │   └── Admin/AdminHealthController.php ← /admin/allergens, /admin/food-ingredients vb.
 │   ├── Middleware/
@@ -235,9 +236,14 @@ app/
 │   ├── Activity/Activity.php, Material.php, DailyChildReport.php, Attendance.php
 │   ├── Health/Allergen.php, FoodIngredient.php, Meal.php
 │   ├── Child/Child.php, FamilyProfile.php
-│   └── Billing/Invoice.php, Transaction.php, Currency.php, ExchangeRate.php
-├── Services/                             ← BaseService + 14 somut service
-├── Policies/                             ← BasePolicy (super_admin bypass) + 8 policy
+│   ├── Billing/Invoice.php, Transaction.php, Currency.php, ExchangeRate.php
+│   └── Social/                           ← Sosyal Ağ modelleri
+│       ├── SocialPost.php                ← scopeForSchool() + scopeVisibleTo(User)
+│       ├── SocialPostMedia.php           ← image/video/file, disk+path, sort_order
+│       ├── SocialPostReaction.php        ← like/heart/clap, unique(post_id,user_id)
+│       └── SocialPostComment.php         ← parent_id ile iç içe yanıt desteği
+├── Services/                             ← BaseService + 15 somut service (SocialPostService dahil)
+├── Policies/                             ← BasePolicy (super_admin bypass) + 9 policy (SocialPostPolicy dahil)
 ├── Observers/HistoryObserver.php         ← İki katmanlı audit log
 ├── Jobs/WriteActivityLog.php             ← Asenkron log yazma
 └── Traits/
@@ -289,6 +295,15 @@ tests/
 | `attendances` | `Attendance` | Yoklama (present/absent/late/excused) |
 | `daily_child_reports` | `DailyChildReport` | Günlük çocuk raporu |
 | `materials` | `Material` | İhtiyaç listesi — `school_id, class_id, academic_year_id (NOT NULL), name, description, quantity, due_date` |
+
+#### Sosyal Ağ
+| Tablo | Model | Açıklama |
+|-------|-------|----------|
+| `social_posts` | `SocialPost` | `tenant_id, school_id, author_id, visibility(school\|class), content, is_pinned, published_at` |
+| `social_post_media` | `SocialPostMedia` | `post_id, type(image\|video\|file), disk, path(500), thumbnail_path, original_name, file_size, mime_type, sort_order` |
+| `social_post_class_tags` | Pivot | `post_id, class_id` — hangi sınıfların göreceğini tanımlar |
+| `social_post_reactions` | `SocialPostReaction` | `post_id, user_id, type(like\|heart\|clap)` — unique(post_id,user_id) |
+| `social_post_comments` | `SocialPostComment` | `post_id, user_id, parent_id(nullable), content` — SoftDeletes |
 
 #### Sağlık & Beslenme
 | Tablo | Model | Açıklama |
@@ -366,6 +381,11 @@ SchoolClass ──M2M──> Activity (activity_class_assignments)
 FoodIngredient ──M2M──> Allergen (food_ingredient_allergens)
 Meal ──M2M──> FoodIngredient (meal_ingredient_pivot)
 
+SocialPost ──belongsTo──> School, User(author)
+SocialPost ──hasMany────> SocialPostMedia, SocialPostReaction, SocialPostComment
+SocialPost ──M2M────────> SchoolClass (social_post_class_tags)
+SocialPostComment ──hasMany──> SocialPostComment (replies, parent_id)
+
 Package ──hasMany──> TenantSubscription ──belongsTo──> Tenant
 ```
 
@@ -402,6 +422,11 @@ Package ──hasMany──> TenantSubscription ──belongsTo──> Tenant
     food-ingredients (GET/POST/PUT/DELETE)
     meals (GET/POST/PUT/DELETE)
     allergens (GET/POST/PUT/DELETE — tenant allerjen yönetimi)
+    schools/{id}/social/posts (GET/POST)
+    schools/{id}/social/posts/{post} (GET/PUT/DELETE)
+    schools/{id}/social/posts/{post}/react (POST — like/heart/clap toggle)
+    schools/{id}/social/posts/{post}/comments (GET/POST)
+    schools/{id}/social/posts/{post}/comments/{comment} (DELETE)
     meal-menus/monthly (GET)
     notifications (GET/POST/PATCH read/PATCH read-all)
     invoices/tenant (GET)
@@ -464,8 +489,15 @@ protected function paginatedResponse(mixed $collection): JsonResponse
 ### BaseSchoolController
 
 `validateSchoolAccess()` → `$user->schools()->where(...)` çağırır.
-⚠️ **BUG-010:** `User` modelinde `schools()` ilişkisi YOK → `BadMethodCallException` → 500.
-`school_id` parametresi içeren tüm endpoint'ler bu nedenle başarısız.
+⚠️ **BUG-010 (DÜZELTİLDİ):** `User::schools()` `hasManyThrough` olarak eklendi.
+
+### SocialPostController
+
+**BaseController'dan türer** (BaseSchoolController'dan değil) — ebeveynleri de desteklemek için kendi `validateSchoolAccess(int $schoolId)` metodunu içerir:
+- `parent` rolü → `familyProfiles → children → school_id` kontrolü
+- Diğer roller → `User::schools()` hasManyThrough kontrolü
+
+Policy: `SocialPostPolicy` (create → school_admin/teacher; update/delete → author veya admin)
 
 ### BasePolicy
 
@@ -812,6 +844,7 @@ SİSTEM      → /activity-logs, /notifications, /settings
 | `/schools/[id]/classes/[classId]` | supply-list CRUD, devamsızlık, `GET /meal-menus/monthly` |
 | `/meals` | `/meals` (3 tab: Yemekler + Besinler + Allerjenler) |
 | `/activities` | `/schools/{id}/activities` (start/end date + class_ids) |
+| `/social` | `/schools/{id}/social/posts` CRUD + react + comments |
 | `/academic-years` | `/academic-years` CRUD + set-current + close |
 | `/subscription` | `/tenant/subscription`, `/packages`, plan değiştir, iptal |
 | `/invoices` | `GET /invoices/tenant` |
@@ -822,7 +855,7 @@ SİSTEM      → /activity-logs, /notifications, /settings
 
 ```typescript
 // ANA MENÜ: Dashboard
-// YÖNETİM: Okullarım, Yemekler, Etkinlikler, Eğitim Yılları
+// YÖNETİM: Okullarım, Yemekler, Etkinlikler, Sosyal Ağ, Eğitim Yılları
 // HESAP: Aboneliğim, Faturalar
 // SİSTEM: Bildirimler, Profil
 ```
@@ -844,6 +877,13 @@ Activity      // id, school_id, academic_year_id?, name, start_date?, end_date?,
 
 Meal          // id, school_id, name, meal_type?, ingredients?
               // ⚠️ academic_year_id backend'de NOT NULL
+
+SocialPostMedia   // id, type: 'image'|'video'|'file', url, original_name, file_size, mime_type?, sort_order?
+SocialPost        // id, school_id, visibility: 'school'|'class', content?, is_pinned, published_at?,
+                  // author: {id, name, avatar?}, media: SocialPostMedia[], classes?: {id,name}[],
+                  // reactions_count, user_reaction?: 'like'|'heart'|'clap'|null, comments_count, created_at
+SocialPostComment // id, user: {id, name, avatar?}, content, parent_id?, replies?: SocialPostComment[], created_at
+                  // ⚠️ lucide-react'te 'Clap' ikonu yok → klap için 'Zap' kullanıldı
 ```
 
 ### Sayfa Detay Notları
@@ -861,6 +901,16 @@ Meal          // id, school_id, name, meal_type?, ingredients?
 **Activities (`/activities`):**
 - Kart'ta: tarih aralığı + atanmış sınıf sayısı
 - Modal: start_date (date), end_date (date), sınıf çoklu checkbox
+
+**Social (`/social`):**
+- Okul seçici → `GET /schools/{id}/social/posts` (sayfalı feed)
+- "Paylaşım Ekle" modal: visibility toggle (Tüm Okul / Sınıfa Özel), sınıf çoklu checkbox, textarea, medya file input (multiple, drag-drop önizleme), sabitle checkbox
+- `POST` multipart/form-data → `media[]` array
+- Post kart: yazar avatar (ilk harf), zaman, visibility ikonu, sınıf tag badge'leri, medya grid (image/video/file)
+- Tepki bar: ThumbsUp(like) / Heart(heart) / Zap(clap) — toggle; `POST posts/{id}/react { type }`
+- Yorum toggle: `GET posts/{id}/comments`, inline form + `POST posts/{id}/comments`
+- "Daha Fazla Yükle" pagination (page increment)
+- ⚠️ lucide-react'te `Clap` ikonu yok → `Zap` kullanıldı
 
 ### Kodlama Standartları (Frontend)
 
@@ -1003,13 +1053,16 @@ public function show(int $school_id, SchoolClass $class): JsonResponse { }
 php artisan migrate   # Docker DB ayağa kalkınca çalıştırılacak
 ```
 
-Bekleyen 2 migration:
+Bekleyen 3 migration:
 1. `2026_02_24_104108_add_contact_fields_to_schools_table.php`
    — schools'a: country_id, city, fax, gsm, whatsapp
 2. `2026_02_24_120000_add_fields_to_classes_and_activities.php`
    — classes'a: description, age_min (tinyInt), age_max (tinyInt)
    — activities'e: start_date, end_date
    — Yeni pivot: activity_class_assignments (activity_id, class_id)
+3. `2026_02_27_115618_create_social_posts_tables.php`
+   — Yeni: social_posts, social_post_media, social_post_class_tags,
+            social_post_reactions, social_post_comments
 
 ### Diğer Bekleyenler
 
@@ -1021,6 +1074,8 @@ Bekleyen 2 migration:
 | Frontend: Sınıf formunda `academic_year_id` seçimi | ⏳ Bekliyor |
 | Frontend: Yemek besin öğesi allerjen checkbox (Global / Kuruma Özel) | ⏳ Bekliyor |
 | Frontend: Etkinlik formu — tarih + sınıf çoklu seçimi | ⏳ Bekliyor |
+| **Sosyal Ağ — Backend** (SocialPostController + Service + Policy + Models + Resources) | ✅ Tamamlandı |
+| **Sosyal Ağ — Frontend** (`/social/page.tsx` + sidebar + header + types) | ✅ Tamamlandı |
 
 ---
 

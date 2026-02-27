@@ -294,6 +294,21 @@ Route::middleware('auth:sanctum')->group(function () {
 
             // Okuldaki tüm öğretmenler (sınıfa atama için liste)
             Route::get('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'schoolTeachers']);
+
+            // ───────────────────────────────────────────────────
+            // SOSYAL AĞ (Social Feed)
+            // ───────────────────────────────────────────────────
+            Route::prefix('social')->group(function () {
+                Route::get('posts', [\App\Http\Controllers\Schools\SocialPostController::class, 'index']);
+                Route::post('posts', [\App\Http\Controllers\Schools\SocialPostController::class, 'store']);
+                Route::get('posts/{social_post}', [\App\Http\Controllers\Schools\SocialPostController::class, 'show']);
+                Route::put('posts/{social_post}', [\App\Http\Controllers\Schools\SocialPostController::class, 'update']);
+                Route::delete('posts/{social_post}', [\App\Http\Controllers\Schools\SocialPostController::class, 'destroy']);
+                Route::post('posts/{social_post}/react', [\App\Http\Controllers\Schools\SocialPostController::class, 'react']);
+                Route::get('posts/{social_post}/comments', [\App\Http\Controllers\Schools\SocialPostController::class, 'comments']);
+                Route::post('posts/{social_post}/comments', [\App\Http\Controllers\Schools\SocialPostController::class, 'comment']);
+                Route::delete('posts/{social_post}/comments/{comment}', [\App\Http\Controllers\Schools\SocialPostController::class, 'deleteComment']);
+            });
         });
 
         // ───────────────────────────────────────────────────

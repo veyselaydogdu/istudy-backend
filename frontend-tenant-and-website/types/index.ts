@@ -262,6 +262,51 @@ export type InvoiceItem = {
     total_price: number
 }
 
+// ─── Social Network ──────────────────────────────────────────────────────────
+
+export type SocialPostMedia = {
+    id: number
+    type: 'image' | 'video' | 'file'
+    url: string
+    original_name: string
+    file_size: number
+    mime_type?: string
+    sort_order?: number
+}
+
+export type SocialPost = {
+    id: number
+    school_id: number
+    visibility: 'school' | 'class'
+    content?: string | null
+    is_pinned: boolean
+    published_at?: string | null
+    author: {
+        id: number
+        name: string
+        avatar?: string | null
+    }
+    media: SocialPostMedia[]
+    classes?: { id: number; name: string }[]
+    reactions_count: number
+    user_reaction?: 'like' | 'heart' | 'clap' | null
+    comments_count: number
+    created_at: string
+}
+
+export type SocialPostComment = {
+    id: number
+    user: {
+        id: number
+        name: string
+        avatar?: string | null
+    }
+    content: string
+    parent_id?: number | null
+    replies?: SocialPostComment[]
+    created_at: string
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export type TenantNotification = {
