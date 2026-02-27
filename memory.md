@@ -1,6 +1,6 @@
 # iStudy — Birleşik Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-26
+> **Son Güncelleme:** 2026-02-27 — **TÜM TESTLER GEÇTİ: 136/136 ✅ — BUG-001→012 tamamı düzeltildi**
 > **Kapsam:** Tüm sistem — Laravel Backend + Frontend Admin + Frontend Tenant & Website
 > **Amaç:** Projeye yeni dahil olan her AI agent, yazılım mühendisi, iş analisti ve proje mimarı bu tek dosyadan tüm sistemi baştan sona anlayabilmeli.
 
@@ -646,14 +646,14 @@ EXCHANGERATE_API_KEY=
 
 ## 13. Test Suite
 
-### Durum (2026-02-26)
+### Durum (2026-02-27) ✅
 
 ```bash
-php artisan test                     → 105 passing / 31 failing (tümü @group bug)
-php artisan test --exclude-group=bug → 99 passing / 0 failing
+php artisan test          → 136 passing / 0 failing  ← TÜM TESTLER GEÇİYOR
+php artisan test --group=bug → 37 passing / 0 failing  ← Bug testleri de geçiyor
 ```
 
-31 başarısız testin **tamamı** `@group bug` annotasyonlu — kasıtlı olarak belgelenmiş hatalardır. Detay: `TASKS_FOR_FIX.md`.
+**BUG-001→BUG-012 tamamı düzeltildi.** `@group bug` annotasyonlu testler artık belgelenmiş değil — **gerçek testler** olarak çalışıyor.
 
 ### Test Altyapısı — PHP 8.4 + SQLite Fix
 
@@ -938,37 +938,59 @@ const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
 ## 16. Bilinen Hatalar (Bug Listesi)
 
-> Detaylı düzeltme rehberi: `TASKS_FOR_FIX.md`
-> Test dosyaları: `tests/Feature/API/` klasörü, `@group bug` annotasyonlu testler
+> **Durum: TÜM BUGLAR DÜZELTİLDİ ✅** (2026-02-27)
+> Test dosyaları: `tests/Feature/API/` klasörü, `@group bug` annotasyonlu 37 test — hepsi geçiyor.
 
-| Bug | Açıklama | Etki | Durum |
-|-----|----------|------|-------|
-| **BUG-010** | `BaseSchoolController::validateSchoolAccess()` → `User::schools()` eksik → 500. Tüm okul/sınıf/aktivite/eğitim-yılı endpoint'leri çalışmıyor. | KRİTİK 🔴 | ⏳ Bekliyor |
-| **BUG-003** | `Meal::findOrFail($id)` — tenant filtresi yok. Cross-tenant yemek güncelleme/silme mümkün. Güvenlik açığı. | KRİTİK 🔴 | ⏳ Bekliyor |
-| **BUG-001** | `TenantAllergenController::index()` — BaseModel tenant scope global allerjenları (tenant_id=null) siliyor. Index'te görünmüyor. | Yüksek 🟠 | ⏳ Bekliyor |
-| **BUG-002** | `TenantMealController::ingredientIndex()` — aynı sorun. Global besin öğeleri görünmüyor. | Yüksek 🟠 | ⏳ Bekliyor |
-| **BUG-006** | `mealIndex()` içinde `validate()` try-catch içinde → school_id eksikse 500 (422 olmalı). | Orta 🟡 | ⏳ Bekliyor |
-| **BUG-007** | `AcademicYearController::store/update/transition/addClass` → `validate()` try-catch içinde → 500 (422 olmalı). | Orta 🟡 | ⏳ Bekliyor |
-| **BUG-004** | `TenantAllergenController::update()` → `firstOrFail()` catch içinde → 500 (404 olmalı). | Orta 🟡 | ⚠️ `destroy()` ✅, `update()` ⏳ |
-| **BUG-005** | `TenantMealController::ingredientUpdate()` → aynı sorun. | Orta 🟡 | ⚠️ `destroy()` ✅, `update()` ⏳ |
-| **BUG-011** | `assignTeacher()` catch bloğunda `$e->getMessage()` response'a yazılıyor → iç hata sızıyor. | Düşük 🟢 | ⏳ Bekliyor |
-| **BUG-008** | `AcademicYearController::store/update` → `$request->all()` yerine `$request->validated()` kullanılmalı. | Düşük 🟢 | ⏳ Bekliyor |
-| **BUG-009** | `AcademicYearController::index()` → `.resource` anti-pattern; resource dönüşümü kaybolur. | Düşük 🟢 | ⏳ Bekliyor |
+| Bug | Açıklama | Etki | Durum | Düzeltme |
+|-----|----------|------|-------|---------|
+| **BUG-010** | `User::schools()` eksik → BaseSchoolController 500 | KRİTİK 🔴 | ✅ Düzeltildi | `User.php`'ye `hasManyThrough` eklendi |
+| **BUG-003** | Cross-tenant yemek güncelleme/silme güvenlik açığı | KRİTİK 🔴 | ✅ Düzeltildi | `TenantMealController` tenant ownership kontrolü |
+| **BUG-001** | Global allerjenler (tenant_id=null) index'te görünmüyor | Yüksek 🟠 | ✅ Düzeltildi | `withoutGlobalScope('tenant')` eklendi |
+| **BUG-002** | Global besin öğeleri index'te görünmüyor | Yüksek 🟠 | ✅ Düzeltildi | `withoutGlobalScope('tenant')` eklendi |
+| **BUG-006** | `mealIndex()` validate() try-catch içinde → 500 | Orta 🟡 | ✅ Düzeltildi | validate() try-catch dışına alındı |
+| **BUG-007** | `AcademicYearController` validate() try-catch içinde → 500 | Orta 🟡 | ✅ Düzeltildi | `$data = $request->validate([...])` return değeri |
+| **BUG-004** | `TenantAllergenController::update()` firstOrFail → 500 yerine 404 | Orta 🟡 | ✅ Düzeltildi | `ModelNotFoundException` catch eklendi |
+| **BUG-005** | `TenantMealController::ingredientUpdate()` aynı sorun | Orta 🟡 | ✅ Düzeltildi | `ModelNotFoundException` catch eklendi |
+| **BUG-011** | `assignTeacher()` catch'de iç hata mesajı sızıyor | Düşük 🟢 | ✅ Düzeltildi | Generic mesaj kullanıldı |
+| **BUG-008** | `AcademicYearController` `$request->all()` güvensiz | Düşük 🟢 | ✅ Düzeltildi | `$data = $request->validate([...])` return değeri |
+| **BUG-009** | `paginatedResponse` `.resource` anti-pattern | Düşük 🟢 | ✅ Düzeltildi | `.resource` kaldırıldı + `resolve()` fix |
+| **BUG-012** | Nested route positional arg hatası (ClassController/ActivityController) | KRİTİK 🔴 | ✅ Düzeltildi | `show/update/destroy`'a `int $school_id` eklendi |
 
-### Düzeltme Öncelik Sırası
+### Kritik Düzeltme Notları (Tekrar Edilmesin)
 
+**BUG-008 (Plain Request `validated()` sorunu):**
+```php
+// ❌ YANLIŞ: Plain Request'te $request->validated() çalışmaz
+$request->validate([...]);
+$data = $request->validated(); // → TypeError
+
+// ✅ DOĞRU: validate() return değerini yakala
+$data = $request->validate([...]); // return değeri validated data'dır
 ```
-1. BUG-010: User::schools() ekle (1 dosya, az risk)
-2. BUG-003: Meal tenant izolasyonu (school tenant scope ile filtrele)
-3. BUG-001: TenantAllergenController::index() → withoutGlobalScope('tenant')
-4. BUG-002: TenantMealController::ingredientIndex() → withoutGlobalScope('tenant')
-5. BUG-006: mealIndex validate() → try-catch dışına
-6. BUG-007: AcademicYear store/update/transition/addClass → validate() dışına
-7. BUG-004: TenantAllergenController::update() → firstOrFail() → first() + null check
-8. BUG-005: TenantMealController::ingredientUpdate() → aynı
-9. BUG-011: assignTeacher catch → generic mesaj
-10. BUG-008: $request->all() → validated()
-11. BUG-009: .resource → kaldır
+
+**BUG-009 (`paginatedResponse` + `resolve()`):**
+```php
+// ❌ YANLIŞ: .resource → ham paginator → resource dönüşümü kaybolur
+return $this->paginatedResponse(AcademicYearResource::collection($years)->resource);
+
+// ❌ YANLIŞ: toArray() → whenLoaded() MissingValue → first() on null → 500
+$data = collect($paginator->items())->map(fn($item) => (new $resourceClass($item))->toArray(request()));
+
+// ✅ DOĞRU: ResourceCollection direkt + resolve() ile MissingValue filtrelenir
+return $this->paginatedResponse(AcademicYearResource::collection($years));
+// BaseController'da:
+$data = collect($paginator->items())->map(fn($item) => (new $resourceClass($item))->resolve(request()));
+```
+
+**BUG-012 (Nested Route Positional Arg):**
+```php
+// ❌ YANLIŞ: Route prefix {school_id} varken model binding 2. param oluyor
+// callAction(...array_values(['school_id' => '5', 'class' => SchoolClass]))
+// → show('5') → $class = '5' → TypeError
+public function show(SchoolClass $class): JsonResponse { }
+
+// ✅ DOĞRU: int $school_id absorbs the prefix param positionally
+public function show(int $school_id, SchoolClass $class): JsonResponse { }
 ```
 
 ---
@@ -993,9 +1015,12 @@ Bekleyen 2 migration:
 
 | Konu | Durum |
 |------|-------|
-| BUG-001→BUG-011 düzeltmeleri | ⏳ Bekliyor |
 | Ödeme entegrasyonu (iyzico/Stripe) | ⏳ Simüle |
 | Frontend Admin test dosyaları | ⏳ Bekliyor |
+| Frontend: Eğitim Yılı yönetim sayfası (`/academic-years`) | ⏳ Bekliyor |
+| Frontend: Sınıf formunda `academic_year_id` seçimi | ⏳ Bekliyor |
+| Frontend: Yemek besin öğesi allerjen checkbox (Global / Kuruma Özel) | ⏳ Bekliyor |
+| Frontend: Etkinlik formu — tarih + sınıf çoklu seçimi | ⏳ Bekliyor |
 
 ---
 
@@ -1073,13 +1098,16 @@ docker compose build frontend-tenant && docker compose up -d frontend-tenant
 6. ✅ `XxxService` oluştur (BaseService'ten türet)
 7. ✅ Policy oluştur (BasePolicy: super_admin bypass dahil)
 8. ✅ Controller oluştur — uygun Base'den türet
-9. ✅ `validate()` her zaman try-catch **dışında** olmalı
+9. ✅ `validate()` her zaman try-catch **dışında** olmalı — `$data = $request->validate([...])` ile return değeri yakala
 10. ✅ `firstOrFail()` yerine `first()` + null kontrolü
 11. ✅ Catch bloğunda generic mesaj — `$e->getMessage()` response'a yazma
 12. ✅ Transaction leak'e dikkat: early return öncesi `DB::rollBack()` çağır
 13. ✅ Route ekle (`routes/api.php`)
-14. ✅ Test yaz (`php artisan make:test XxxApiTest`)
-15. ✅ `vendor/bin/pint --dirty` çalıştır
+14. ✅ **Nested resource route** (`prefix('schools/{school_id}')` + `apiResource`) → show/update/destroy'a `int $school_id` EKLE
+15. ✅ **Nested FormRequest** → `prepareForValidation()`'da `$this->route('school_id')` merge et
+16. ✅ `paginatedResponse()` çağırırken ResourceCollection direkt ver (`.resource` yazma)
+17. ✅ Test yaz (`php artisan make:test XxxApiTest`)
+18. ✅ `vendor/bin/pint --dirty` çalıştır
 
 ### Frontend
 
@@ -1100,4 +1128,4 @@ docker compose build frontend-tenant && docker compose up -d frontend-tenant
 
 > 📝 **Not:** Bu dosya projeye yeni dahil olan herkesin (AI agent, mühendis, analist, mimar) sistemi baştan sona anlayabilmesi için tasarlanmıştır.
 > Yeni modül, migration veya mimari kararların ardından güncellenmelidir.
-> Kaynak: `PROJECT_MEMORY.md` + `PROJECT_MEMORY_FRONTEND.md` + `PROJECT_MEMORY_FRONTEND_ADMIN.md` (2026-02-26 birleşimi)
+> Kaynak: `PROJECT_MEMORY.md` + `PROJECT_MEMORY_FRONTEND.md` + `PROJECT_MEMORY_FRONTEND_ADMIN.md` (2026-02-27 güncelleme — 136/136 test ✅)
