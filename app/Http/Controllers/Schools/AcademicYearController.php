@@ -42,7 +42,7 @@ class AcademicYearController extends BaseSchoolController
             $years = $this->service->listForSchool($schoolId);
 
             return $this->paginatedResponse(
-                AcademicYearResource::collection($years)->resource
+                AcademicYearResource::collection($years)
             );
         } catch (\Throwable $e) {
             Log::error('Eğitim yılları listeleme hatası: '.$e->getMessage());
@@ -104,7 +104,7 @@ class AcademicYearController extends BaseSchoolController
      */
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
+        $data = $request->validate([
             'school_id' => 'required|exists:schools,id',
             'name' => 'required|string|max:100',
             'start_date' => 'required|date',
@@ -115,7 +115,6 @@ class AcademicYearController extends BaseSchoolController
 
         DB::beginTransaction();
         try {
-            $data = $request->all();
             $data['is_active'] = true;
             $data['created_by'] = $this->user()->id;
 
@@ -143,7 +142,7 @@ class AcademicYearController extends BaseSchoolController
     {
         DB::beginTransaction();
         try {
-            $request->validate([
+            $data = $request->validate([
                 'name' => 'sometimes|string|max:100',
                 'start_date' => 'sometimes|date',
                 'end_date' => 'sometimes|date',
@@ -152,7 +151,6 @@ class AcademicYearController extends BaseSchoolController
                 'is_active' => 'nullable|boolean',
             ]);
 
-            $data = $request->all();
             $data['updated_by'] = $this->user()->id;
 
             $year = $this->service->updateYear($academicYear, $data);
@@ -265,14 +263,13 @@ class AcademicYearController extends BaseSchoolController
     {
         DB::beginTransaction();
         try {
-            $request->validate([
+            $classData = $request->validate([
                 'name' => 'required|string|max:100',
                 'color' => 'nullable|string|max:20',
                 'logo' => 'nullable|string',
                 'capacity' => 'nullable|integer|min:1|max:100',
             ]);
 
-            $classData = $request->all();
             $classData['created_by'] = $this->user()->id;
 
             $class = $this->service->addClass($academicYear, $classData);

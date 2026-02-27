@@ -58,7 +58,7 @@ abstract class BaseController extends BaseLaravelController
             $paginator = $collection->resource;
             // Get the resource class - collects is a property, not a method
             $resourceClass = $collection->collects;
-            $data = collect($paginator->items())->map(fn ($item) => (new $resourceClass($item))->toArray(request()));
+            $data = collect($paginator->items())->map(fn ($item) => (new $resourceClass($item))->resolve(request()));
         } else {
             $paginator = $collection;
             $data = collect($paginator->items());

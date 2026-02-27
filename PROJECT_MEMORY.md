@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-26 (TÜM TESTLER GEÇTİ: 136 passing / 0 failing — BUG-001→010 + ClassManagement bug'ları düzeltildi; nested route school_id positional arg sorunu çözüldü)
+> **Son Güncelleme:** 2026-02-27 (TÜM TESTLER GEÇTİ: 136 passing / 0 failing — BUG-001→012 tamamı düzeltildi; AcademicYearController BUG-008/009 + BaseController paginatedResponse resolve() fix)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -1458,17 +1458,18 @@ Düzeltilen testler:
 
 | Bug ID | Açıklama | Durum |
 |--------|----------|-------|
-| BUG-010 | `User::schools()` eksik → BaseSchoolController 500 | ⏳ Bekliyor |
-| BUG-003 | Meal cross-tenant güvenlik açığı | ⏳ Bekliyor |
-| BUG-001 | Global allerjenler index'te görünmüyor | ⏳ Bekliyor |
-| BUG-002 | Global besin öğeleri index'te görünmüyor | ⏳ Bekliyor |
-| BUG-006 | mealIndex validate() try-catch içinde → 500 | ⏳ Bekliyor |
-| BUG-007 | AcademicYearController validate() try-catch → 500 | ⏳ Bekliyor |
-| BUG-004 | TenantAllergenController update firstOrFail catch → 500 | ⚠️ Kısmi (destroy ✓, update ⏳) |
-| BUG-005 | TenantMealController ingredientUpdate firstOrFail catch → 500 | ⚠️ Kısmi (destroy ✓, update ⏳) |
-| BUG-011 | assignTeacher hata mesajında iç detay sızıyor | ⏳ Bekliyor |
-| BUG-008 | `$request->all()` → `validated()` olmalı | ⏳ Bekliyor |
-| BUG-009 | paginatedResponse `.resource` anti-pattern | ⏳ Bekliyor |
+| BUG-010 | `User::schools()` eksik → BaseSchoolController 500 | ✅ Düzeltildi |
+| BUG-003 | Meal cross-tenant güvenlik açığı | ✅ Düzeltildi |
+| BUG-001 | Global allerjenler index'te görünmüyor | ✅ Düzeltildi |
+| BUG-002 | Global besin öğeleri index'te görünmüyor | ✅ Düzeltildi |
+| BUG-006 | mealIndex validate() try-catch içinde → 500 | ✅ Düzeltildi |
+| BUG-007 | AcademicYearController validate() try-catch → 500 | ✅ Düzeltildi |
+| BUG-004 | TenantAllergenController update firstOrFail catch → 500 | ✅ Düzeltildi |
+| BUG-005 | TenantMealController ingredientUpdate firstOrFail catch → 500 | ✅ Düzeltildi |
+| BUG-011 | assignTeacher hata mesajında iç detay sızıyor | ✅ Düzeltildi |
+| BUG-008 | `$request->all()` → `$request->validate()` return değeri kullanılmalı | ✅ Düzeltildi |
+| BUG-009 | paginatedResponse `.resource` anti-pattern + `toArray()` → `resolve()` | ✅ Düzeltildi |
+| BUG-012 | ClassController/ActivityController nested route positional arg hatası (school_id) | ✅ Düzeltildi |
 
 ---
 
