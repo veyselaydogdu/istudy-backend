@@ -1,10 +1,10 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { FoodIngredient, Meal, School, Allergen, SchoolMealType } from '@/types';
-import { Plus, Trash2, Edit2, X, Utensils, Leaf, ShieldAlert, Settings } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Utensils, Leaf, ShieldAlert, Settings, Lock } from 'lucide-react';
 
 type Tab = 'meals' | 'ingredients' | 'allergens' | 'meal-types';
 
@@ -20,6 +20,7 @@ export default function MealsPage() {
 
     // Allergens (global + tenant)
     const [allergens, setAllergens] = useState<Allergen[]>([]);
+    const [loadingAllergens, setLoadingAllergens] = useState(false);
 
     // Meals
     const [meals, setMeals] = useState<Meal[]>([]);
@@ -63,10 +64,12 @@ export default function MealsPage() {
     }, [selectedSchoolId]);
 
     const fetchAllergens = useCallback(async () => {
+        setLoadingAllergens(true);
         try {
             const res = await apiClient.get('/allergens');
             setAllergens(res.data?.data ?? []);
         } catch { /* sessizce geç */ }
+        finally { setLoadingAllergens(false); }
     }, []);
 
     const fetchMeals = useCallback(async () => {
@@ -356,6 +359,15 @@ export default function MealsPage() {
     const globalAllergens = allergens.filter(a => a.tenant_id === null || a.tenant_id === undefined);
     const tenantAllergens = allergens.filter(a => a.tenant_id !== null && a.tenant_id !== undefined);
 
+    /** Seçili besin öğelerinden otomatik türetilen allerjenler (meal modalinde kilitli gösterilir) */
+    const lockedAllergens = useMemo(() => {
+        const map = new Map<number, string>();
+        ingredients
+            .filter(ing => mealForm.ingredient_ids.includes(ing.id))
+            .forEach(ing => ing.allergens?.forEach(a => map.set(a.id, a.name)));
+        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+    }, [ingredients, mealForm.ingredient_ids]);
+
     return (
         <div className="p-6">
             <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">Yemek Yönetimi</h1>
@@ -427,10 +439,31 @@ export default function MealsPage() {
                                             </div>
                                         </div>
                                         {meal.ingredients && meal.ingredients.length > 0 && (
-                                            <div className="flex flex-wrap gap-1">
-                                                {meal.ingredients.map(i => (
-                                                    <span key={i.id} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{capitalize(i.name)}</span>
-                                                ))}
+                                            <div className="space-y-1">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {meal.ingredients.map(i => (
+                                                        <span key={i.id} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{capitalize(i.name)}</span>
+                                                    ))}
+                                                </div>
+                                                {(() => {
+                                                    const mealAllergens = Array.from(
+                                                        new Map(
+                                                            meal.ingredients
+                                                                .flatMap(i => i.allergens ?? [])
+                                                                .map(a => [a.id, a])
+                                                        ).values()
+                                                    );
+                                                    return mealAllergens.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {mealAllergens.map(a => (
+                                                                <span key={a.id} className="flex items-center gap-1 rounded-full bg-danger/10 px-2 py-0.5 text-xs text-danger">
+                                                                    <ShieldAlert className="h-3 w-3" />
+                                                                    {capitalize(a.name)}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : null;
+                                                })()}
                                             </div>
                                         )}
                                     </div>
@@ -702,6 +735,29 @@ export default function MealsPage() {
                                     <p className="mt-1 text-xs text-danger">Lütfen en az bir besin öğesi seçin.</p>
                                 )}
                             </div>
+
+                            {lockedAllergens.length > 0 && (
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">
+                                        Tespit Edilen Allerjenler{' '}
+                                        <span className="text-xs text-[#888ea8]">(besin öğelerinden otomatik, kaldırılamaz)</span>
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {lockedAllergens.map(a => (
+                                            <button
+                                                key={a.id}
+                                                type="button"
+                                                className="flex cursor-not-allowed items-center gap-1 rounded-full bg-danger/10 px-3 py-1 text-xs font-medium text-danger"
+                                                onClick={() => toast.error('Bu besin öğesi alerjen içermektedir, kaldırılamaz.')}
+                                            >
+                                                <Lock className="h-3 w-3" />
+                                                {capitalize(a.name)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingMeal}>
                                     {savingMeal ? 'Kaydediliyor...' : (editingMeal ? 'Güncelle' : 'Kaydet')}
@@ -736,57 +792,71 @@ export default function MealsPage() {
                                 />
                             </div>
 
-                            {allergens.length > 0 && (
-                                <div>
-                                    <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">
-                                        Allerjenler <span className="text-xs text-[#888ea8]">(isteğe bağlı)</span>
-                                    </label>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">
+                                    Allerjenler <span className="text-xs text-[#888ea8]">(isteğe bağlı)</span>
+                                </label>
 
-                                    {globalAllergens.length > 0 && (
-                                        <div className="mb-3">
-                                            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Global</p>
-                                            <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
-                                                {globalAllergens.map(a => (
-                                                    <label
-                                                        key={a.id}
-                                                        className="flex cursor-pointer items-center gap-2 rounded border border-[#ebedf2] p-2 hover:border-primary dark:border-[#1b2e4b]"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            className="form-checkbox"
-                                                            checked={ingredientForm.allergen_ids.includes(a.id)}
-                                                            onChange={() => toggleAllergenInIngredient(a.id)}
-                                                        />
-                                                        <span className="text-sm text-dark dark:text-white">{a.name}</span>
-                                                    </label>
-                                                ))}
+                                {loadingAllergens ? (
+                                    <div className="flex items-center gap-2 text-sm text-[#888ea8]">
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                        Allerjenler yükleniyor...
+                                    </div>
+                                ) : allergens.length === 0 ? (
+                                    <p className="text-xs text-[#888ea8]">
+                                        Henüz allerjen tanımlanmamış.{' '}
+                                        <button type="button" className="text-primary underline" onClick={() => { setShowIngredientModal(false); setActiveTab('allergens'); }}>
+                                            Allerjen eklemek için tıklayın
+                                        </button>
+                                    </p>
+                                ) : (
+                                    <>
+                                        {globalAllergens.length > 0 && (
+                                            <div className="mb-3">
+                                                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Global</p>
+                                                <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
+                                                    {globalAllergens.map(a => (
+                                                        <label
+                                                            key={a.id}
+                                                            className="flex cursor-pointer items-center gap-2 rounded border border-[#ebedf2] p-2 hover:border-primary dark:border-[#1b2e4b]"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-checkbox"
+                                                                checked={ingredientForm.allergen_ids.includes(a.id)}
+                                                                onChange={() => toggleAllergenInIngredient(a.id)}
+                                                            />
+                                                            <span className="text-sm text-dark dark:text-white">{a.name}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {tenantAllergens.length > 0 && (
-                                        <div>
-                                            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Kuruma Özel</p>
-                                            <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
-                                                {tenantAllergens.map(a => (
-                                                    <label
-                                                        key={a.id}
-                                                        className="flex cursor-pointer items-center gap-2 rounded border border-[#ebedf2] p-2 hover:border-primary dark:border-[#1b2e4b]"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            className="form-checkbox"
-                                                            checked={ingredientForm.allergen_ids.includes(a.id)}
-                                                            onChange={() => toggleAllergenInIngredient(a.id)}
-                                                        />
-                                                        <span className="text-sm text-dark dark:text-white">{a.name}</span>
-                                                    </label>
-                                                ))}
+                                        {tenantAllergens.length > 0 && (
+                                            <div>
+                                                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Kuruma Özel</p>
+                                                <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
+                                                    {tenantAllergens.map(a => (
+                                                        <label
+                                                            key={a.id}
+                                                            className="flex cursor-pointer items-center gap-2 rounded border border-[#ebedf2] p-2 hover:border-primary dark:border-[#1b2e4b]"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-checkbox"
+                                                                checked={ingredientForm.allergen_ids.includes(a.id)}
+                                                                onChange={() => toggleAllergenInIngredient(a.id)}
+                                                            />
+                                                            <span className="text-sm text-dark dark:text-white">{a.name}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                        )}
+                                    </>
+                                )}
+                            </div>
 
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingIngredient}>

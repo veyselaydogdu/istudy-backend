@@ -174,7 +174,7 @@ class TenantMealController extends BaseController
         $request->validate(['school_id' => ['required', 'exists:schools,id']]);
 
         try {
-            $meals = Meal::with('ingredients')
+            $meals = Meal::with('ingredients.allergens')
                 ->where('school_id', $request->school_id)
                 ->when($request->search, fn ($q) => $q->where('name', 'like', '%'.$request->search.'%'))
                 ->orderBy('name')
@@ -185,7 +185,11 @@ class TenantMealController extends BaseController
                 'name' => $m->name,
                 'meal_type' => $m->meal_type,
                 'school_id' => $m->school_id,
-                'ingredients' => $m->ingredients->map(fn ($i) => ['id' => $i->id, 'name' => $i->name]),
+                'ingredients' => $m->ingredients->map(fn ($i) => [
+                    'id' => $i->id,
+                    'name' => $i->name,
+                    'allergens' => $i->allergens->map(fn ($a) => ['id' => $a->id, 'name' => $a->name]),
+                ]),
             ]));
         } catch (\Throwable $e) {
             Log::error('TenantMealController::mealIndex Error: '.$e->getMessage());
@@ -223,7 +227,7 @@ class TenantMealController extends BaseController
                 $meal->ingredients()->sync($request->ingredient_ids);
             }
 
-            $meal->load('ingredients');
+            $meal->load('ingredients.allergens');
 
             DB::commit();
 
@@ -232,7 +236,11 @@ class TenantMealController extends BaseController
                 'name' => $meal->name,
                 'meal_type' => $meal->meal_type,
                 'school_id' => $meal->school_id,
-                'ingredients' => $meal->ingredients->map(fn ($i) => ['id' => $i->id, 'name' => $i->name]),
+                'ingredients' => $meal->ingredients->map(fn ($i) => [
+                    'id' => $i->id,
+                    'name' => $i->name,
+                    'allergens' => $i->allergens->map(fn ($a) => ['id' => $a->id, 'name' => $a->name]),
+                ]),
             ], 'Yemek oluşturuldu.', 201);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -271,13 +279,17 @@ class TenantMealController extends BaseController
                 $meal->ingredients()->sync($request->ingredient_ids ?? []);
             }
 
-            $meal->load('ingredients');
+            $meal->load('ingredients.allergens');
 
             return $this->successResponse([
                 'id' => $meal->id,
                 'name' => $meal->name,
                 'meal_type' => $meal->meal_type,
-                'ingredients' => $meal->ingredients->map(fn ($i) => ['id' => $i->id, 'name' => $i->name]),
+                'ingredients' => $meal->ingredients->map(fn ($i) => [
+                    'id' => $i->id,
+                    'name' => $i->name,
+                    'allergens' => $i->allergens->map(fn ($a) => ['id' => $a->id, 'name' => $a->name]),
+                ]),
             ], 'Yemek güncellendi.');
         } catch (\Throwable $e) {
             Log::error('TenantMealController::mealUpdate Error: '.$e->getMessage());

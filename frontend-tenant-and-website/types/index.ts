@@ -173,7 +173,7 @@ export type Meal = {
     school_id: number
     name: string
     meal_type?: string
-    ingredients?: { id: number; name: string }[]
+    ingredients?: { id: number; name: string; allergens?: { id: number; name: string }[] }[]
 }
 
 export type SchoolMealType = {
