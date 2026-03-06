@@ -9,6 +9,12 @@ class BaseTenantController extends BaseController
 {
     protected function tenant(): Tenant
     {
-        return $this->user()->tenants()->firstOrFail();
+        $tenantId = $this->user()?->tenant_id;
+
+        if (! $tenantId) {
+            abort(403, 'Tenant bulunamadı.');
+        }
+
+        return Tenant::findOrFail($tenantId);
     }
 }

@@ -52,6 +52,28 @@ class AcademicYearController extends BaseSchoolController
     }
 
     /**
+     * Global akademik yıl listesi (2026/2027 → 2125/2126)
+     * Frontend selectbox için kullanılır, tüm tenantlar bu listeden seçer.
+     */
+    public function globalList(): JsonResponse
+    {
+        $years = [];
+
+        for ($startYear = 2026; $startYear <= 2125; $startYear++) {
+            $endYear = $startYear + 1;
+            $years[] = [
+                'name' => "{$startYear}/{$endYear}",
+                'start_year' => $startYear,
+                'end_year' => $endYear,
+                'start_date' => "{$startYear}-09-01",
+                'end_date' => "{$endYear}-06-30",
+            ];
+        }
+
+        return $this->successResponse($years);
+    }
+
+    /**
      * Okulun güncel (aktif) eğitim yılını getir
      */
     public function current(Request $request): JsonResponse

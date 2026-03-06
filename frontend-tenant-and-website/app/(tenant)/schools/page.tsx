@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { School, Country } from '@/types';
-import { Plus, Search, Trash2, ChevronLeft, ChevronRight, Edit2, X } from 'lucide-react';
+import { Plus, Search, Trash2, ChevronLeft, ChevronRight, Edit2, X, ToggleLeft, ToggleRight } from 'lucide-react';
 
 type SchoolForm = {
     name: string;
@@ -93,6 +93,7 @@ export default function SchoolsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!form.name.trim()) { toast.error('Okul adı zorunludur.'); return; }
         setSaving(true);
         const payload = {
             ...form,
@@ -115,6 +116,27 @@ export default function SchoolsPage() {
             toast.error(error.response?.data?.message ?? 'Hata oluştu.');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleToggleStatus = async (school: School) => {
+        const action = school.is_active ? 'pasif' : 'aktif';
+        const result = await Swal.fire({
+            title: `Okulu ${action === 'aktif' ? 'Aktif' : 'Pasif'} Yap`,
+            text: `"${school.name}" okulu ${action} yapılacak. Devam?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet',
+            cancelButtonText: 'İptal',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.patch(`/schools/${school.id}/toggle-status`);
+            toast.success(`Okul ${action} yapıldı.`);
+            fetchSchools();
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Durum değiştirilemedi.');
         }
     };
 
@@ -185,6 +207,7 @@ export default function SchoolsPage() {
                                         <th>Telefon</th>
                                         <th>Sınıf</th>
                                         <th>Öğrenci</th>
+                                        <th>Durum</th>
                                         <th>İşlemler</th>
                                     </tr>
                                 </thead>
@@ -202,7 +225,25 @@ export default function SchoolsPage() {
                                             <td>{school.classes_count ?? 0}</td>
                                             <td>{school.children_count ?? 0}</td>
                                             <td>
+                                                {school.is_active !== false ? (
+                                                    <span className="badge badge-outline-success">Aktif</span>
+                                                ) : (
+                                                    <span className="badge badge-outline-secondary">Pasif</span>
+                                                )}
+                                            </td>
+                                            <td>
                                                 <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className={`btn btn-sm p-2 ${school.is_active !== false ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                                        onClick={() => handleToggleStatus(school)}
+                                                        title={school.is_active !== false ? 'Pasif Yap' : 'Aktif Yap'}
+                                                    >
+                                                        {school.is_active !== false
+                                                            ? <ToggleRight className="h-4 w-4" />
+                                                            : <ToggleLeft className="h-4 w-4" />
+                                                        }
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         className="btn btn-sm btn-outline-primary p-2"

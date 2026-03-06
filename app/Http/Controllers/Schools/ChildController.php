@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Schools;
 use App\Http\Requests\Child\StoreChildRequest;
 use App\Http\Requests\Child\UpdateChildRequest;
 use App\Http\Resources\ChildResource;
+use App\Models\Academic\SchoolClass;
 use App\Models\Child\Child;
 use App\Services\ChildService;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,10 @@ use Illuminate\Support\Facades\Log;
 
 class ChildController extends BaseSchoolController
 {
-    public function __construct(protected ChildService $service) {}
+    public function __construct(protected ChildService $service)
+    {
+        parent::__construct();
+    }
 
     /**
      * Öğrencileri listele
@@ -48,6 +52,14 @@ class ChildController extends BaseSchoolController
         try {
             DB::beginTransaction();
             $this->authorize('create', Child::class);
+
+            // Pasif sınıfa kayıt yapılamaz
+            if ($request->class_id) {
+                $class = SchoolClass::find($request->class_id);
+                if ($class && ! $class->is_active) {
+                    return $this->errorResponse('Pasif sınıfa öğrenci kaydı yapılamaz.', 422);
+                }
+            }
 
             $child = $this->service->create($request->validated());
 

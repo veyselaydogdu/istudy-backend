@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\Log;
 
 class ActivityController extends BaseSchoolController
 {
-    public function __construct(protected ActivityService $service) {}
+    public function __construct(protected ActivityService $service)
+    {
+        parent::__construct();
+    }
 
     /**
      * Aktiviteleri listele

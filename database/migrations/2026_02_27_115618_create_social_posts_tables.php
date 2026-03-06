@@ -8,6 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Kısmi çalışmadan kalan tabloları temizle
+        Schema::dropIfExists('social_post_comments');
+        Schema::dropIfExists('social_post_reactions');
+        Schema::dropIfExists('social_post_class_tags');
+        Schema::dropIfExists('social_post_media');
+        Schema::dropIfExists('social_posts');
+
         // ─── social_posts ──────────────────────────────────────────────
         Schema::create('social_posts', function (Blueprint $table) {
             $table->id();
@@ -67,8 +74,8 @@ return new class extends Migration
         // ─── social_post_comments ──────────────────────────────────────
         Schema::create('social_post_comments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('post_id')->constrained('social_posts')->cascadeOnDelete()->index();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete()->index();
+            $table->foreignId('post_id')->constrained('social_posts')->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('parent_id')->nullable()->constrained('social_post_comments')->cascadeOnDelete();
             $table->text('content');
             $table->unsignedBigInteger('created_by')->nullable();

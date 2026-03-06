@@ -188,6 +188,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Okul işlemleri
         Route::apiResource('schools', \App\Http\Controllers\Schools\SchoolController::class);
+        Route::patch('schools/{school}/toggle-status', [\App\Http\Controllers\Schools\SchoolController::class, 'toggleStatus']);
 
         // ───────────────────────────────────────────────────
         // KAYIT TALEPLERİ (Okul yöneticisi tarafı)
@@ -252,6 +253,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('academic-years')->group(function () {
             Route::get('/', [\App\Http\Controllers\Schools\AcademicYearController::class, 'index']);
             Route::post('/', [\App\Http\Controllers\Schools\AcademicYearController::class, 'store']);
+            Route::get('/global-list', [\App\Http\Controllers\Schools\AcademicYearController::class, 'globalList']);
             Route::get('/current', [\App\Http\Controllers\Schools\AcademicYearController::class, 'current']);
             Route::get('/{academicYear}', [\App\Http\Controllers\Schools\AcademicYearController::class, 'show']);
             Route::put('/{academicYear}', [\App\Http\Controllers\Schools\AcademicYearController::class, 'update']);
@@ -263,9 +265,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{academicYear}/classes/{classId}', [\App\Http\Controllers\Schools\AcademicYearController::class, 'removeClass']);
         });
 
+        // Okul bazlı öğün türleri
+        Route::prefix('schools/{school_id}/meal-types')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\SchoolMealTypeController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\SchoolMealTypeController::class, 'store']);
+            Route::put('/{id}', [\App\Http\Controllers\Schools\SchoolMealTypeController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Schools\SchoolMealTypeController::class, 'destroy']);
+        });
+
         // Okul altındaki kaynaklar (nested routes)
         Route::prefix('schools/{school_id}')->group(function () {
             Route::apiResource('classes', \App\Http\Controllers\Schools\ClassController::class);
+            Route::patch('classes/{class}/toggle-status', [\App\Http\Controllers\Schools\ClassController::class, 'toggleStatus']);
             Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
             Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
             Route::apiResource('families', \App\Http\Controllers\Schools\FamilyProfileController::class);

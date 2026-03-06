@@ -3,13 +3,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
-import { Activity, AcademicYear, School, SchoolClass } from '@/types';
+import { Activity, School, SchoolClass } from '@/types';
 import { Plus, Trash2, Edit2, X, Calendar, DollarSign } from 'lucide-react';
 
 type ActivityForm = {
     name: string;
     description: string;
-    academic_year_id: string;
     is_paid: boolean;
     price: string;
     start_date: string;
@@ -18,14 +17,13 @@ type ActivityForm = {
 };
 
 const emptyForm: ActivityForm = {
-    name: '', description: '', academic_year_id: '', is_paid: false, price: '',
+    name: '', description: '', is_paid: false, price: '',
     start_date: '', end_date: '', class_ids: [],
 };
 
 export default function ActivitiesPage() {
     const [schools, setSchools] = useState<School[]>([]);
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
-    const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
     const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
 
     const [activities, setActivities] = useState<Activity[]>([]);
@@ -48,21 +46,6 @@ export default function ActivitiesPage() {
             }
         } catch { /* sessizce geç */ }
     }, []);
-
-    const fetchAcademicYears = useCallback(async () => {
-        if (!selectedSchoolId) return;
-        try {
-            const res = await apiClient.get('/academic-years', { params: { school_id: selectedSchoolId } });
-            const years: AcademicYear[] = res.data?.data ?? [];
-            setAcademicYears(years);
-            const active = years.find(y => y.is_active);
-            if (active) {
-                setForm(prev => ({ ...prev, academic_year_id: String(active.id) }));
-            } else if (years.length > 0) {
-                setForm(prev => ({ ...prev, academic_year_id: String(years[0].id) }));
-            }
-        } catch { /* sessizce geç */ }
-    }, [selectedSchoolId]);
 
     const fetchSchoolClasses = useCallback(async () => {
         if (!selectedSchoolId) return;
@@ -90,7 +73,6 @@ export default function ActivitiesPage() {
     useEffect(() => {
         if (selectedSchoolId) {
             setPage(1);
-            fetchAcademicYears();
             fetchSchoolClasses();
             fetchActivities();
         }
@@ -100,11 +82,7 @@ export default function ActivitiesPage() {
 
     const openCreate = () => {
         setEditingActivity(null);
-        const active = academicYears.find(y => y.is_active);
-        setForm({
-            ...emptyForm,
-            academic_year_id: active ? String(active.id) : (academicYears[0] ? String(academicYears[0].id) : ''),
-        });
+        setForm(emptyForm);
         setShowModal(true);
     };
 
@@ -113,7 +91,6 @@ export default function ActivitiesPage() {
         setForm({
             name: activity.name,
             description: activity.description ?? '',
-            academic_year_id: activity.academic_year_id ? String(activity.academic_year_id) : '',
             is_paid: activity.is_paid ?? false,
             price: activity.price != null ? String(activity.price) : '',
             start_date: activity.start_date ?? '',
@@ -125,12 +102,22 @@ export default function ActivitiesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Frontend validation
+        if (!form.name.trim()) {
+            toast.error('Etkinlik adı zorunludur.');
+            return;
+        }
+        if (!selectedSchoolId) {
+            toast.error('Lütfen bir okul seçin.');
+            return;
+        }
+
         setSaving(true);
         const payload = {
             school_id: Number(selectedSchoolId),
-            name: form.name,
+            name: form.name.trim(),
             description: form.description || null,
-            academic_year_id: form.academic_year_id ? Number(form.academic_year_id) : null,
             is_paid: form.is_paid,
             price: form.is_paid && form.price ? Number(form.price) : null,
             start_date: form.start_date || null,
@@ -309,7 +296,7 @@ export default function ActivitiesPage() {
             {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                    <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="flex items-center gap-2 text-lg font-bold text-dark dark:text-white">
                                 <Calendar className="h-5 w-5 text-primary" />
@@ -328,7 +315,6 @@ export default function ActivitiesPage() {
                                     className="form-input mt-1"
                                     value={form.name}
                                     onChange={f('name')}
-                                    required
                                     placeholder="Örn: Bahar Şenliği"
                                 />
                             </div>
@@ -343,20 +329,6 @@ export default function ActivitiesPage() {
                                     placeholder="Etkinlik hakkında kısa açıklama..."
                                 />
                             </div>
-
-                            {academicYears.length > 0 && (
-                                <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Eğitim Yılı *</label>
-                                    <select className="form-select mt-1" value={form.academic_year_id} onChange={f('academic_year_id')} required>
-                                        <option value="">Seçin</option>
-                                        {academicYears.map(y => (
-                                            <option key={y.id} value={y.id}>
-                                                {y.name}{y.is_active ? ' (Aktif)' : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
 
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
@@ -381,10 +353,10 @@ export default function ActivitiesPage() {
 
                             {schoolClasses.length > 0 && (
                                 <div>
-                                    <label className="block mb-2 text-sm font-medium text-dark dark:text-white-light">
+                                    <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">
                                         Sınıf Ataması
                                     </label>
-                                    <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
+                                    <div className="max-h-36 overflow-y-auto grid grid-cols-2 gap-2">
                                         {schoolClasses.map(cls => (
                                             <label
                                                 key={cls.id}

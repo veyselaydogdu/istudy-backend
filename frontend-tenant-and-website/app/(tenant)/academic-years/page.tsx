@@ -4,22 +4,31 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { AcademicYear, School } from '@/types';
-import { Plus, Trash2, Edit2, X, GraduationCap, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Trash2, X, GraduationCap, CheckCircle, XCircle } from 'lucide-react';
+
+type GlobalYear = {
+    name: string;
+    start_year: number;
+    end_year: number;
+    start_date: string;
+    end_date: string;
+};
 
 type YearForm = {
-    name: string;
+    global_year_name: string;
     start_date: string;
     end_date: string;
     description: string;
 };
 
-const emptyForm: YearForm = { name: '', start_date: '', end_date: '', description: '' };
+const emptyForm: YearForm = { global_year_name: '', start_date: '', end_date: '', description: '' };
 
 export default function AcademicYearsPage() {
     const [schools, setSchools] = useState<School[]>([]);
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
 
     const [years, setYears] = useState<AcademicYear[]>([]);
+    const [globalYears, setGlobalYears] = useState<GlobalYear[]>([]);
     const [loading, setLoading] = useState(false);
 
     const [showModal, setShowModal] = useState(false);
@@ -38,6 +47,13 @@ export default function AcademicYearsPage() {
         } catch { /* sessizce geç */ }
     }, []);
 
+    const fetchGlobalYears = useCallback(async () => {
+        try {
+            const res = await apiClient.get('/academic-years/global-list');
+            setGlobalYears(res.data?.data ?? []);
+        } catch { /* sessizce geç */ }
+    }, []);
+
     const fetchYears = useCallback(async () => {
         if (!selectedSchoolId) return;
         setLoading(true);
@@ -51,8 +67,18 @@ export default function AcademicYearsPage() {
         }
     }, [selectedSchoolId]);
 
-    useEffect(() => { fetchSchools(); }, [fetchSchools]);
+    useEffect(() => { fetchSchools(); fetchGlobalYears(); }, [fetchSchools, fetchGlobalYears]);
     useEffect(() => { if (selectedSchoolId) fetchYears(); }, [selectedSchoolId, fetchYears]);
+
+    const handleGlobalYearChange = (name: string) => {
+        const gy = globalYears.find(y => y.name === name);
+        setForm(prev => ({
+            ...prev,
+            global_year_name: name,
+            start_date: gy ? gy.start_date : '',
+            end_date: gy ? gy.end_date : '',
+        }));
+    };
 
     const openCreate = () => {
         setEditingYear(null);
@@ -63,7 +89,7 @@ export default function AcademicYearsPage() {
     const openEdit = (year: AcademicYear) => {
         setEditingYear(year);
         setForm({
-            name: year.name,
+            global_year_name: year.name,
             start_date: year.start_date,
             end_date: year.end_date,
             description: '',
@@ -73,10 +99,25 @@ export default function AcademicYearsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Frontend validation
+        if (!form.global_year_name && !editingYear) {
+            toast.error('Lütfen bir eğitim yılı seçin.');
+            return;
+        }
+        if (!form.start_date || !form.end_date) {
+            toast.error('Başlangıç ve bitiş tarihleri zorunludur.');
+            return;
+        }
+        if (!selectedSchoolId) {
+            toast.error('Lütfen bir okul seçin.');
+            return;
+        }
+
         setSaving(true);
         const payload = {
             school_id: Number(selectedSchoolId),
-            name: form.name,
+            name: form.global_year_name,
             start_date: form.start_date,
             end_date: form.end_date,
             description: form.description || null,
@@ -160,9 +201,6 @@ export default function AcademicYearsPage() {
             toast.error(error.response?.data?.message ?? 'Silme başarısız.');
         }
     };
-
-    const f = (field: keyof YearForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-        setForm(prev => ({ ...prev, [field]: e.target.value }));
 
     return (
         <div className="p-6">
@@ -259,14 +297,6 @@ export default function AcademicYearsPage() {
                                                 )}
                                                 <button
                                                     type="button"
-                                                    className="btn btn-sm btn-outline-primary p-2"
-                                                    onClick={() => openEdit(year)}
-                                                    title="Düzenle"
-                                                >
-                                                    <Edit2 className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button
-                                                    type="button"
                                                     className="btn btn-sm btn-outline-danger p-2"
                                                     onClick={() => handleDelete(year)}
                                                     title="Sil"
@@ -304,16 +334,21 @@ export default function AcademicYearsPage() {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                    Yıl Adı *
+                                    Eğitim Yılı *
                                 </label>
-                                <input
-                                    type="text"
-                                    className="form-input mt-1"
-                                    value={form.name}
-                                    onChange={f('name')}
-                                    required
-                                    placeholder="Örn: 2025-2026"
-                                />
+                                <select
+                                    className="form-select mt-1"
+                                    value={form.global_year_name}
+                                    onChange={e => handleGlobalYearChange(e.target.value)}
+                                >
+                                    <option value="">— Yıl Seçin —</option>
+                                    {globalYears.map(gy => (
+                                        <option key={gy.name} value={gy.name}>{gy.name}</option>
+                                    ))}
+                                </select>
+                                <p className="mt-1 text-xs text-[#888ea8]">
+                                    Seçilen yıla göre tarihler otomatik doldurulur.
+                                </p>
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -325,8 +360,7 @@ export default function AcademicYearsPage() {
                                         type="date"
                                         className="form-input mt-1"
                                         value={form.start_date}
-                                        onChange={f('start_date')}
-                                        required
+                                        onChange={e => setForm(prev => ({ ...prev, start_date: e.target.value }))}
                                     />
                                 </div>
                                 <div>
@@ -337,8 +371,7 @@ export default function AcademicYearsPage() {
                                         type="date"
                                         className="form-input mt-1"
                                         value={form.end_date}
-                                        onChange={f('end_date')}
-                                        required
+                                        onChange={e => setForm(prev => ({ ...prev, end_date: e.target.value }))}
                                     />
                                 </div>
                             </div>
@@ -351,7 +384,7 @@ export default function AcademicYearsPage() {
                                     className="form-input mt-1"
                                     rows={2}
                                     value={form.description}
-                                    onChange={f('description')}
+                                    onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
                                     placeholder="İsteğe bağlı açıklama..."
                                 />
                             </div>

@@ -138,6 +138,28 @@ class SchoolController extends BaseSchoolController
     }
 
     /**
+     * Okul aktif/pasif durumunu değiştir
+     */
+    public function toggleStatus(School $school): JsonResponse
+    {
+        try {
+            $this->authorize('update', $school);
+
+            $school->update(['is_active' => ! $school->is_active]);
+            $status = $school->is_active ? 'aktif' : 'pasif';
+
+            return $this->successResponse(
+                SchoolResource::make($school),
+                "Okul {$status} yapıldı."
+            );
+        } catch (\Throwable $e) {
+            Log::error('SchoolController::toggleStatus Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Durum değiştirme başarısız.', 500);
+        }
+    }
+
+    /**
      * Okul sil
      */
     public function destroy(School $school): JsonResponse

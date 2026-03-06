@@ -22,7 +22,7 @@ class StoreActivityRequest extends FormRequest
     {
         return [
             'school_id' => ['required', 'exists:schools,id'],
-            'academic_year_id' => ['required', 'exists:academic_years,id'],
+            'academic_year_id' => ['nullable', 'exists:academic_years,id'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'is_paid' => ['nullable', 'boolean'],

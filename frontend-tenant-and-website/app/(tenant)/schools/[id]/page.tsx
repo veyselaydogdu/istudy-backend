@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { School, SchoolClass, Child, Teacher, AcademicYear } from '@/types';
-import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight } from 'lucide-react';
 
 type ClassForm = { name: string; description: string; age_min: string; age_max: string; capacity: string; color: string; academic_year_id: string };
 const emptyClassForm: ClassForm = { name: '', description: '', age_min: '', age_max: '', capacity: '20', color: '', academic_year_id: '' };
@@ -82,8 +82,30 @@ export default function SchoolDetailPage() {
         setShowClassModal(true);
     };
 
+    const handleToggleClassStatus = async (cls: SchoolClass) => {
+        const action = cls.is_active !== false ? 'pasif' : 'aktif';
+        const result = await Swal.fire({
+            title: `Sınıfı ${action === 'aktif' ? 'Aktif' : 'Pasif'} Yap`,
+            text: `"${cls.name}" sınıfı ${action} yapılacak. Devam?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet',
+            cancelButtonText: 'İptal',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.patch(`/schools/${id}/classes/${cls.id}/toggle-status`);
+            toast.success(`Sınıf ${action} yapıldı.`);
+            loadData();
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Durum değiştirilemedi.');
+        }
+    };
+
     const handleClassSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!classForm.name.trim()) { toast.error('Sınıf adı zorunludur.'); return; }
         setSavingClass(true);
         const payload = {
             name: classForm.name,
@@ -299,6 +321,7 @@ export default function SchoolDetailPage() {
                                             <th>Yaş Grubu</th>
                                             <th>Kapasite</th>
                                             <th>Öğrenci</th>
+                                            <th>Durum</th>
                                             <th>İşlemler</th>
                                         </tr>
                                     </thead>
@@ -320,7 +343,25 @@ export default function SchoolDetailPage() {
                                                 <td>{cls.capacity ?? '—'}</td>
                                                 <td>{cls.children_count ?? 0}</td>
                                                 <td>
+                                                    {cls.is_active !== false ? (
+                                                        <span className="badge badge-outline-success">Aktif</span>
+                                                    ) : (
+                                                        <span className="badge badge-outline-secondary">Pasif</span>
+                                                    )}
+                                                </td>
+                                                <td>
                                                     <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            className={`btn btn-sm p-2 ${cls.is_active !== false ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                                            onClick={() => handleToggleClassStatus(cls)}
+                                                            title={cls.is_active !== false ? 'Pasif Yap' : 'Aktif Yap'}
+                                                        >
+                                                            {cls.is_active !== false
+                                                                ? <ToggleRight className="h-4 w-4" />
+                                                                : <ToggleLeft className="h-4 w-4" />
+                                                            }
+                                                        </button>
                                                         <button type="button" className="btn btn-sm btn-outline-info p-2" onClick={() => openTeacherModal(cls)} title="Öğretmen Ata">
                                                             <UserPlus className="h-4 w-4" />
                                                         </button>
@@ -394,14 +435,13 @@ export default function SchoolDetailPage() {
                                 <input type="text" className="form-input mt-1" value={classForm.name} onChange={cf('name')} required />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Eğitim Yılı *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Eğitim Yılı</label>
                                 <select
                                     className="form-select mt-1"
                                     value={classForm.academic_year_id}
                                     onChange={e => setClassForm(prev => ({ ...prev, academic_year_id: e.target.value }))}
-                                    required
                                 >
-                                    <option value="">Seçin</option>
+                                    <option value="">— Seçin (İsteğe Bağlı) —</option>
                                     {academicYears.map(y => (
                                         <option key={y.id} value={y.id}>
                                             {y.name}{y.is_active ? ' (Aktif)' : ''}

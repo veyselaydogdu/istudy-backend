@@ -132,6 +132,7 @@ export type SchoolClass = {
     age_max?: number
     capacity?: number
     color?: string
+    is_active?: boolean
     children_count?: number
     teachers_count?: number
     created_at?: string
@@ -171,8 +172,16 @@ export type Meal = {
     id: number
     school_id: number
     name: string
-    meal_type?: 'breakfast' | 'lunch' | 'snack' | 'dinner'
+    meal_type?: string
     ingredients?: { id: number; name: string }[]
+}
+
+export type SchoolMealType = {
+    id: number
+    school_id: number
+    name: string
+    sort_order?: number
+    is_active?: boolean
 }
 
 // ─── Supply List ─────────────────────────────────────────────────────────────

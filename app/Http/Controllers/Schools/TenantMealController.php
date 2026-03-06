@@ -201,10 +201,10 @@ class TenantMealController extends BaseController
     {
         $request->validate([
             'school_id' => ['required', 'exists:schools,id'],
-            'academic_year_id' => ['required', 'exists:academic_years,id'],
+            'academic_year_id' => ['nullable', 'exists:academic_years,id'],
             'name' => ['required', 'string', 'max:255'],
-            'meal_type' => ['nullable', 'string', 'in:breakfast,lunch,snack,dinner'],
-            'ingredient_ids' => ['nullable', 'array'],
+            'meal_type' => ['nullable', 'string', 'max:100'],
+            'ingredient_ids' => ['required', 'array', 'min:1'],
             'ingredient_ids.*' => ['exists:food_ingredients,id'],
         ]);
 
@@ -215,7 +215,7 @@ class TenantMealController extends BaseController
                 'school_id' => $request->school_id,
                 'academic_year_id' => $request->academic_year_id,
                 'name' => $request->name,
-                'meal_type' => $request->meal_type ?? 'lunch',
+                'meal_type' => $request->meal_type,
                 'created_by' => $this->user()->id,
             ]);
 
@@ -249,8 +249,8 @@ class TenantMealController extends BaseController
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'meal_type' => ['nullable', 'string', 'in:breakfast,lunch,snack,dinner'],
-            'ingredient_ids' => ['nullable', 'array'],
+            'meal_type' => ['nullable', 'string', 'max:100'],
+            'ingredient_ids' => ['required', 'array', 'min:1'],
             'ingredient_ids.*' => ['exists:food_ingredients,id'],
         ]);
 

@@ -186,4 +186,28 @@ class ClassController extends BaseSchoolController
             );
         }
     }
+
+    /**
+     * Sınıf aktif/pasif durumunu değiştir
+     */
+    public function toggleStatus(int $school_id, SchoolClass $class): JsonResponse
+    {
+        try {
+            $class->update([
+                'is_active' => ! $class->is_active,
+                'updated_by' => $this->user()->id,
+            ]);
+
+            $status = $class->is_active ? 'aktif' : 'pasif';
+
+            return $this->successResponse(
+                SchoolClassResource::make($class),
+                "Sınıf {$status} yapıldı."
+            );
+        } catch (\Throwable $e) {
+            Log::error('ClassController::toggleStatus Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Durum değiştirme başarısız.', 500);
+        }
+    }
 }

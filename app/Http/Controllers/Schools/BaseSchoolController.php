@@ -24,20 +24,17 @@ class BaseSchoolController extends BaseController
     protected function validateSchoolAccess(): void
     {
         $user = $this->user();
-        $schoolId = request('school_id');
+        $schoolId = request()->route('school_id') ?? request('school_id');
 
-        // If no school_id provided, we might default or let it pass if route doesn't require it,
-        // but typically school routes need context. Assuming strict check if ID present.
         if ($schoolId) {
-            $hasAccess = $user->schools()
-                ->where('schools.id', $schoolId)
+            $hasAccess = School::where('id', $schoolId)
+                ->where('tenant_id', $user->tenant_id)
                 ->exists();
 
             if (! $hasAccess) {
                 abort(403, 'Bu okula erişim yetkiniz yok.');
             }
 
-            // Cache the school model
             $this->school = School::find($schoolId);
         }
     }
