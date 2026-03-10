@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-03-06 (Öğretmen modülü: TenantTeacherController, school_teacher_assignments pivot, tenant-level teacher CRUD + school assignment; Sınıf düzeltmeleri: age_min/age_max migration, academic_year_id nullable, ClassController $e->getCode() fix; Yemek: food_ingredient_allergens pivot, ingredients.allergens response)
+> **Son Güncelleme:** 2026-03-10 (Öğretmen modülü: TeacherRoleType tablosu+modeli eklendi, school_teacher_assignments.teacher_role_type_id FK eklendi, ClassManagementController::schoolTeachers BelongsToMany pivot bug'ı düzeltildi, TeacherRoleTypeController eklendi; Docker: PHP opcache container restart gerektiriyor)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -92,6 +92,7 @@ istudy-backend/
 │   │   │   │   ├── TenantMealController.php        ← Yemek + besin + allerjen sync; ingredients.allergens response
 │   │   │   │   ├── TenantAllergenController.php    ← Tenant allerjen CRUD (global+özel)
 │   │   │   │   ├── TenantTeacherController.php     ← YENİ: Tenant-level öğretmen CRUD + school assignment
+│   │   │   │   ├── TeacherRoleTypeController.php    ← YENİ: Tenant-level görev türü CRUD (Sınıf Öğretmeni vb.)
 │   │   │   │   └── FamilyProfileController.php
 │   │   │   ├── Tenant/
 │   │   │   │   ├── BaseTenantController.php
@@ -189,7 +190,8 @@ istudy-backend/
 │   │   ├── 2026_03_06_104123_create_food_ingredient_allergens_table.php ← hasTable guard (pivot zaten vardı)
 │   │   ├── 2026_03_06_120405_make_academic_year_nullable_on_classes_table.php
 │   │   ├── 2026_03_06_130545_add_age_min_age_max_to_classes_table.php ← hasColumn guard'lı; Docker ile çalıştırıldı ✅
-│   │   └── 2026_03_06_131331_add_tenant_id_to_teacher_profiles_and_create_school_assignments.php ← tenant_id backfill + school_teacher_assignments pivot ✅
+│   │   ├── 2026_03_06_131331_add_tenant_id_to_teacher_profiles_and_create_school_assignments.php ← tenant_id backfill + school_teacher_assignments pivot ✅
+│   │   └── 2026_03_06_200942_create_teacher_role_types_and_add_to_assignments.php ← teacher_role_types tablosu + school_teacher_assignments.teacher_role_type_id FK ✅
 │   └── seeders/
 │       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
 │       ├── RoleSeeder.php                        ← 5 temel rol
@@ -251,7 +253,8 @@ istudy-backend/
 | `classes` | `App\Models\Academic\SchoolClass` | Sınıflar — `id, school_id, academic_year_id, name, description, age_min (tinyInt unsigned nullable), age_max (tinyInt unsigned nullable), color, logo, capacity` (Not: PHP'de `Class` reserved keyword olduğu için `SchoolClass` adlandırılır) |
 | `child_class_assignments` | — (Pivot) | Çocuk-Sınıf atamaları (M2M) |
 | `class_teacher_assignments` | — (Pivot) | Öğretmen-Sınıf atamaları (M2M) |
-| `school_teacher_assignments` | — (Pivot) | YENİ: Öğretmen-Okul atamaları (M2M) — `school_id, teacher_profile_id, employment_type, start_date, end_date, is_active` |
+| `school_teacher_assignments` | — (Pivot) | YENİ: Öğretmen-Okul atamaları (M2M) — `school_id, teacher_profile_id, employment_type, start_date, end_date, is_active, teacher_role_type_id (FK, nullable)` |
+| `teacher_role_types` | `App\Models\School\TeacherRoleType` | YENİ: Tenant-level öğretmen görev türleri (Sınıf Öğretmeni, Yardımcı Öğretmen vb.) — `id, tenant_id, name, sort_order, is_active` |
 | `activity_class_assignments` | — (Pivot) | Etkinlik-Sınıf atamaları (M2M) — `activity_id, class_id` |
 
 #### 🏥 Sağlık & Beslenme Modülü
@@ -572,6 +575,11 @@ class SchoolController {
 │   apiResource: schools                                  │
 │   apiResource: schools/{id}/classes                     │
 │   GET/POST/DELETE schools/{id}/classes/{classId}/teachers│
+│   GET/POST/PUT/DELETE schools/{id}/teachers (school-level teacher mgmt, ?detailed=1) │
+│   GET/POST/PUT/DELETE teacher-role-types (tenant-level TeacherRoleType CRUD) │
+│   GET/POST/PUT/DELETE teachers (tenant-level TenantTeacherController CRUD) │
+│   GET teachers/{id}/schools (okul atamaları)                │
+│   POST/DELETE teachers/{id}/schools                         │
 │   apiResource: schools/{id}/children                    │
 │   apiResource: schools/{id}/activities                  │
 │   apiResource: schools/{id}/families                    │
@@ -920,6 +928,37 @@ Güvenlik raporu (`tests/SECURITY_AND_ERRORS_REPORT.md`) tüm maddeleri uyguland
 1. `$request->validate()` her zaman try-catch **dışında** olmalı → 422 garantisi
 2. `firstOrFail()` yerine `first() + null kontrolü` kullan → 404 garantisi
 3. Catch bloğunda `$e->getMessage()` response'a yazılmamalı → generic mesaj
+
+### 10.1f BelongsToMany Pivot Accessor Bug (ÇÖZÜLMESİ GEREKİYOR)
+
+**Sorun:** `->with(['relation' => fn($q) => $q->where(...)->withPivot(...)])` şeklinde constraint callback ile eager load yapıldığında, dönen model'de `->pivot` accessor çalışmaz. Hata: `Call to undefined relationship [pivot] on model [School]`.
+
+**Sebep:** Laravel, BelongsToMany eager loading'de constraint callback kullanıldığında `setRelation('pivot', ...)` call'unu atlayabilir. Sonuçta modelde pivot ilişkisi kurulamamış olur.
+
+**Çözüm (ClassManagementController::schoolTeachers):** Pivot verilerini ORM accessor'dan değil `DB::table()` ile doğrudan çek:
+```php
+$pivotMap = DB::table('school_teacher_assignments')
+    ->where('school_id', $schoolId)
+    ->whereIn('teacher_profile_id', $teacherIds)
+    ->get()
+    ->keyBy('teacher_profile_id');
+// $pivot = $pivotMap->get($teacher->id); // stdClass olarak gelir
+```
+
+**Kural:** Pivot verilerini okurken ORM `->pivot` accessor yerine `DB::table(pivot_table)` kullanmayı tercih et. Özellikle `whereHas`/constraint ile filtrelenmiş eager loading'de.
+
+### 10.1g Docker PHP Opcache (KRİTİK)
+
+**Sorun:** Docker volume mount ile çalışırken (`../:/var/www/html`) PHP dosyası değişse bile API eski kodu döndürmeye devam edebilir.
+
+**Sebep:** PHP opcache container restart olmadan sıfırlanmaz.
+
+**Çözüm:** PHP kodu değiştikten sonra container yeniden başlat:
+```bash
+docker compose -f dockerfiles/docker-compose.yml restart app
+```
+
+**Kural:** Backend API beklenmedik şekilde eski yanıt dönüyorsa → önce container'ı yeniden başlat.
 
 ---
 

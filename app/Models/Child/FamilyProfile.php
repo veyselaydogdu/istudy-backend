@@ -58,4 +58,18 @@ class FamilyProfile extends BaseModel
     {
         return $this->hasMany(AuthorizedPickup::class, 'family_profile_id');
     }
+
+    /**
+     * Velinin kayıtlı olduğu okullar (onaylananlar)
+     */
+    public function schools()
+    {
+        return $this->belongsToMany(
+            \App\Models\School\School::class,
+            'school_family_assignments',
+            'family_profile_id',
+            'school_id'
+        )->withPivot(['enrollment_request_id', 'is_active', 'joined_at'])
+            ->withTimestamps();
+    }
 }

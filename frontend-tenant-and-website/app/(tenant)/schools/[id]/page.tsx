@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
-import { School, SchoolClass, Child, Teacher, AcademicYear, SchoolTeacher, TeacherRoleType, TeacherProfile } from '@/types';
-import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap } from 'lucide-react';
+import { School, SchoolClass, Child, Teacher, AcademicYear, SchoolTeacher, TeacherRoleType, TeacherProfile, EnrollmentRequest, SchoolParent } from '@/types';
+import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight } from 'lucide-react';
 
 type ClassForm = { name: string; description: string; age_min: string; age_max: string; capacity: string; color: string; academic_year_id: string };
 const emptyClassForm: ClassForm = { name: '', description: '', age_min: '', age_max: '', capacity: '20', color: '', academic_year_id: '' };
@@ -20,7 +20,7 @@ export default function SchoolDetailPage() {
     const [children, setChildren] = useState<Child[]>([]);
     const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'classes' | 'children' | 'teachers'>('classes');
+    const [activeTab, setActiveTab] = useState<'classes' | 'children' | 'teachers' | 'requests' | 'parents'>('classes');
 
     // School-level teacher management
     const [schoolLevelTeachers, setSchoolLevelTeachers] = useState<SchoolTeacher[]>([]);
@@ -33,6 +33,29 @@ export default function SchoolDetailPage() {
     const [assignRoleTypeId, setAssignRoleTypeId] = useState('');
     const [assignEmploymentType, setAssignEmploymentType] = useState('full_time');
     const [savingSchoolTeacher, setSavingSchoolTeacher] = useState(false);
+
+    // Enrollment requests
+    const [enrollmentRequests, setEnrollmentRequests] = useState<EnrollmentRequest[]>([]);
+    const [loadingRequests, setLoadingRequests] = useState(false);
+    const [requestsFetched, setRequestsFetched] = useState(false);
+    const [requestsFilter, setRequestsFilter] = useState<'' | 'pending' | 'approved' | 'rejected'>('pending');
+    const [requestsMeta, setRequestsMeta] = useState({ current_page: 1, last_page: 1 });
+
+    // Reject modal
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectTargetId, setRejectTargetId] = useState<number | null>(null);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [savingReject, setSavingReject] = useState(false);
+
+    // Parents
+    const [parents, setParents] = useState<SchoolParent[]>([]);
+    const [loadingParents, setLoadingParents] = useState(false);
+    const [parentsFetched, setParentsFetched] = useState(false);
+    const [expandedParent, setExpandedParent] = useState<number | null>(null);
+
+    // Invite info
+    const [inviteInfo, setInviteInfo] = useState<{ registration_code: string; invite_token: string } | null>(null);
+    const [regeneratingInvite, setRegeneratingInvite] = useState(false);
 
     // Class CRUD
     const [showClassModal, setShowClassModal] = useState(false);
@@ -143,11 +166,132 @@ export default function SchoolDetailPage() {
         }
     };
 
-    const handleTabChange = (tab: 'classes' | 'children' | 'teachers') => {
+    const fetchEnrollmentRequests = useCallback(async (status?: string, page = 1) => {
+        setLoadingRequests(true);
+        try {
+            const res = await apiClient.get(`/schools/${id}/enrollment-requests`, {
+                params: { status: status || undefined, page },
+            });
+            setEnrollmentRequests(res.data?.data ?? []);
+            setRequestsMeta(res.data?.meta ?? { current_page: 1, last_page: 1 });
+            setRequestsFetched(true);
+        } catch {
+            toast.error('Kayıt talepleri yüklenemedi.');
+        } finally {
+            setLoadingRequests(false);
+        }
+    }, [id]);
+
+    const fetchParents = useCallback(async () => {
+        setLoadingParents(true);
+        try {
+            const res = await apiClient.get(`/schools/${id}/parents`);
+            setParents(res.data?.data ?? []);
+            setParentsFetched(true);
+        } catch {
+            toast.error('Veliler yüklenemedi.');
+        } finally {
+            setLoadingParents(false);
+        }
+    }, [id]);
+
+    const fetchInviteInfo = useCallback(async () => {
+        try {
+            const res = await apiClient.get(`/schools/${id}/invite-info`);
+            setInviteInfo(res.data?.data ?? null);
+        } catch { /* sessiz */ }
+    }, [id]);
+
+    useEffect(() => { fetchInviteInfo(); }, [fetchInviteInfo]);
+
+    const handleTabChange = (tab: typeof activeTab) => {
         setActiveTab(tab);
         if (tab === 'teachers' && !teachersFetched && !loadingSchoolTeachers) {
             fetchSchoolLevelTeachers();
         }
+        if (tab === 'requests' && !requestsFetched && !loadingRequests) {
+            fetchEnrollmentRequests(requestsFilter);
+        }
+        if (tab === 'parents' && !parentsFetched && !loadingParents) {
+            fetchParents();
+        }
+    };
+
+    const handleRequestsFilterChange = (f: '' | 'pending' | 'approved' | 'rejected') => {
+        setRequestsFilter(f);
+        fetchEnrollmentRequests(f);
+    };
+
+    const handleApprove = async (requestId: number) => {
+        const result = await Swal.fire({
+            title: 'Talebi Onayla',
+            text: 'Bu kayıt talebini onaylamak istediğinize emin misiniz? Veli için hesap oluşturulacak.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Onayla',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#00ab55',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.patch(`/schools/${id}/enrollment-requests/${requestId}/approve`);
+            toast.success('Talep onaylandı. Veli hesabı oluşturuldu.');
+            fetchEnrollmentRequests(requestsFilter);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Onaylama başarısız.');
+        }
+    };
+
+    const openRejectModal = (requestId: number) => {
+        setRejectTargetId(requestId);
+        setRejectionReason('');
+        setShowRejectModal(true);
+    };
+
+    const handleRejectSubmit = async () => {
+        if (!rejectTargetId || !rejectionReason.trim()) return;
+        setSavingReject(true);
+        try {
+            await apiClient.patch(`/schools/${id}/enrollment-requests/${rejectTargetId}/reject`, {
+                rejection_reason: rejectionReason,
+            });
+            toast.success('Talep reddedildi.');
+            setShowRejectModal(false);
+            fetchEnrollmentRequests(requestsFilter);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Red işlemi başarısız.');
+        } finally {
+            setSavingReject(false);
+        }
+    };
+
+    const handleRegenerateInvite = async () => {
+        const result = await Swal.fire({
+            title: 'Davet Linkini Yenile',
+            text: 'Eski davet linki geçersiz olacak. Devam etmek istiyor musunuz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Yenile',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+        });
+        if (!result.isConfirmed) return;
+        setRegeneratingInvite(true);
+        try {
+            const res = await apiClient.post(`/schools/${id}/invite/regenerate`);
+            setInviteInfo(res.data?.data ?? null);
+            toast.success('Davet linki yenilendi.');
+        } catch {
+            toast.error('Yenileme başarısız.');
+        } finally {
+            setRegeneratingInvite(false);
+        }
+    };
+
+    const copyToClipboard = (text: string, label: string) => {
+        navigator.clipboard.writeText(text).then(() => toast.success(`${label} kopyalandı.`));
     };
 
     // ── Sınıf CRUD ──────────────────────────────────────────────
@@ -370,6 +514,59 @@ export default function SchoolDetailPage() {
                         </span>
                     </div>
                 </div>
+
+                {/* Davet Kodu Bölümü */}
+                {inviteInfo && (
+                    <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
+                        <p className="mb-3 text-sm font-semibold text-primary">Veli Davet Bilgileri</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <p className="text-xs text-[#888ea8]">Kayıt Kodu</p>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <code className="rounded bg-white px-3 py-1 text-base font-bold tracking-widest text-dark dark:bg-[#1b2e4b] dark:text-white">
+                                        {inviteInfo.registration_code}
+                                    </code>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary p-1.5"
+                                        onClick={() => copyToClipboard(inviteInfo.registration_code, 'Kayıt kodu')}
+                                        title="Kopyala"
+                                    >
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-xs text-[#888ea8]">Davet Linki</p>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <span className="max-w-[200px] truncate text-sm text-[#515365] dark:text-[#888ea8]">
+                                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${inviteInfo.invite_token}`}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary p-1.5"
+                                        onClick={() => copyToClipboard(
+                                            `${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${inviteInfo.invite_token}`,
+                                            'Davet linki'
+                                        )}
+                                        title="Linki Kopyala"
+                                    >
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-danger p-1.5"
+                                        onClick={handleRegenerateInvite}
+                                        disabled={regeneratingInvite}
+                                        title="Linki Yenile (Eski link geçersiz olur)"
+                                    >
+                                        <RefreshCw className={`h-3.5 w-3.5 ${regeneratingInvite ? 'animate-spin' : ''}`} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Tabs */}
@@ -398,6 +595,25 @@ export default function SchoolDetailPage() {
                     >
                         <GraduationCap className="h-4 w-4" />
                         Öğretmenler ({schoolLevelTeachers.length})
+                    </button>
+                    <button
+                        type="button"
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${activeTab === 'requests' ? 'border-b-2 border-primary text-primary' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
+                        onClick={() => handleTabChange('requests')}
+                    >
+                        <Clock className="h-4 w-4" />
+                        Kayıt Talepleri
+                        {enrollmentRequests.filter(r => r.status === 'pending').length > 0 && (
+                            <span className="badge badge-outline-warning text-xs">{enrollmentRequests.filter(r => r.status === 'pending').length}</span>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${activeTab === 'parents' ? 'border-b-2 border-primary text-primary' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
+                        onClick={() => handleTabChange('parents')}
+                    >
+                        <UserCheck className="h-4 w-4" />
+                        Veliler ({parents.length})
                     </button>
                 </div>
 
@@ -580,6 +796,188 @@ export default function SchoolDetailPage() {
                         )}
                     </>
                 )}
+
+                {/* Kayıt Talepleri Tab */}
+                {activeTab === 'requests' && (
+                    <>
+                        {/* Filtre Butonları */}
+                        <div className="mb-4 flex flex-wrap gap-2">
+                            {(['pending', 'approved', 'rejected', ''] as const).map((f) => {
+                                const labels: Record<string, string> = { pending: 'Bekleyenler', approved: 'Onaylananlar', rejected: 'Reddedilenler', '': 'Tümü' };
+                                const colors: Record<string, string> = { pending: 'btn-outline-warning', approved: 'btn-outline-success', rejected: 'btn-outline-danger', '': 'btn-outline-secondary' };
+                                return (
+                                    <button
+                                        key={f}
+                                        type="button"
+                                        className={`btn btn-sm ${requestsFilter === f ? colors[f].replace('outline-', '') : colors[f]}`}
+                                        onClick={() => handleRequestsFilterChange(f)}
+                                    >
+                                        {labels[f]}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {loadingRequests ? (
+                            <div className="flex h-32 items-center justify-center">
+                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                            </div>
+                        ) : enrollmentRequests.length === 0 ? (
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">
+                                {requestsFilter === 'pending' ? 'Bekleyen kayıt talebi yok.' : 'Kayıt talebi bulunamadı.'}
+                            </p>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Ad Soyad</th>
+                                            <th>E-posta</th>
+                                            <th>Telefon</th>
+                                            <th>Mesaj</th>
+                                            <th>Durum</th>
+                                            <th>Tarih</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {enrollmentRequests.map((req) => (
+                                            <tr key={req.id}>
+                                                <td className="font-medium text-dark dark:text-white">
+                                                    {[req.parent_name, req.parent_surname].filter(Boolean).join(' ') || '—'}
+                                                </td>
+                                                <td>{req.parent_email ?? '—'}</td>
+                                                <td>{req.parent_phone ?? '—'}</td>
+                                                <td className="max-w-[180px]">
+                                                    <span className="line-clamp-2 text-sm text-[#515365] dark:text-[#888ea8]">
+                                                        {req.message ?? '—'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">Bekliyor</span>}
+                                                    {req.status === 'approved' && <span className="badge badge-outline-success">Onaylandı</span>}
+                                                    {req.status === 'rejected' && (
+                                                        <span
+                                                            className="badge badge-outline-danger cursor-help"
+                                                            title={req.rejection_reason ?? ''}
+                                                        >
+                                                            Reddedildi
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="text-sm text-[#888ea8]">
+                                                    {new Date(req.created_at).toLocaleDateString('tr-TR')}
+                                                </td>
+                                                <td>
+                                                    {req.status === 'pending' && (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-success p-2"
+                                                                onClick={() => handleApprove(req.id)}
+                                                                title="Onayla"
+                                                            >
+                                                                <CheckCircle className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-danger p-2"
+                                                                onClick={() => openRejectModal(req.id)}
+                                                                title="Reddet"
+                                                            >
+                                                                <XCircle className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {requestsMeta.last_page > 1 && (
+                            <div className="mt-4 flex items-center justify-center gap-3">
+                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={requestsMeta.current_page === 1} onClick={() => fetchEnrollmentRequests(requestsFilter, requestsMeta.current_page - 1)}>Önceki</button>
+                                <span className="text-sm text-[#888ea8]">{requestsMeta.current_page} / {requestsMeta.last_page}</span>
+                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={requestsMeta.current_page === requestsMeta.last_page} onClick={() => fetchEnrollmentRequests(requestsFilter, requestsMeta.current_page + 1)}>Sonraki</button>
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* Veliler Tab */}
+                {activeTab === 'parents' && (
+                    <>
+                        {loadingParents ? (
+                            <div className="flex h-32 items-center justify-center">
+                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                            </div>
+                        ) : parents.length === 0 ? (
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Bu okula kayıtlı veli bulunmuyor.</p>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: 32 }}></th>
+                                            <th>Veli Adı</th>
+                                            <th>Aile Adı</th>
+                                            <th>E-posta</th>
+                                            <th>Telefon</th>
+                                            <th>Çocuklar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {parents.map((parent) => (
+                                            <>
+                                                <tr
+                                                    key={parent.id}
+                                                    className="cursor-pointer"
+                                                    onClick={() => setExpandedParent(expandedParent === parent.id ? null : parent.id)}
+                                                >
+                                                    <td>
+                                                        {parent.children.length > 0 && (
+                                                            expandedParent === parent.id
+                                                                ? <ChevronDown className="h-4 w-4 text-[#888ea8]" />
+                                                                : <ChevronRight className="h-4 w-4 text-[#888ea8]" />
+                                                        )}
+                                                    </td>
+                                                    <td className="font-medium text-dark dark:text-white">{parent.owner_name}</td>
+                                                    <td>{parent.family_name ?? '—'}</td>
+                                                    <td>{parent.email ?? '—'}</td>
+                                                    <td>{parent.phone ?? '—'}</td>
+                                                    <td>
+                                                        <span className="badge badge-outline-info">{parent.children.length} çocuk</span>
+                                                    </td>
+                                                </tr>
+                                                {expandedParent === parent.id && parent.children.length > 0 && (
+                                                    <tr key={`${parent.id}-children`}>
+                                                        <td></td>
+                                                        <td colSpan={5} className="bg-primary/5 pb-3 pt-1">
+                                                            <p className="mb-2 text-xs font-semibold text-[#888ea8]">ÇOCUKLAR</p>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {parent.children.map((child) => (
+                                                                    <div key={child.id} className="flex items-center gap-2 rounded-lg border border-[#ebedf2] bg-white px-3 py-1.5 dark:border-[#1b2e4b] dark:bg-[#0e1726]">
+                                                                        <span className="font-medium text-dark dark:text-white">{child.name}</span>
+                                                                        {child.birth_date && <span className="text-xs text-[#888ea8]">{child.birth_date}</span>}
+                                                                        {child.gender && <span className="badge badge-outline-secondary text-xs">{child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : child.gender}</span>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
 
             {/* Sınıf Oluştur/Düzenle Modal */}
@@ -719,6 +1117,45 @@ export default function SchoolDetailPage() {
                                     {savingSchoolTeacher ? 'Atanıyor...' : 'Ata'}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowSchoolTeacherModal(false)}>İptal</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Red Sebebi Modal */}
+            {showRejectModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Talebi Reddet</h2>
+                            <button type="button" onClick={() => setShowRejectModal(false)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                    Red Sebebi <span className="text-danger">*</span>
+                                </label>
+                                <textarea
+                                    className="form-textarea mt-1 w-full"
+                                    rows={4}
+                                    placeholder="Red sebebini açıklayınız (zorunlu)..."
+                                    value={rejectionReason}
+                                    onChange={e => setRejectionReason(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-danger flex-1"
+                                    onClick={handleRejectSubmit}
+                                    disabled={!rejectionReason.trim() || savingReject}
+                                >
+                                    {savingReject ? 'Reddediliyor...' : 'Reddet'}
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectModal(false)}>İptal</button>
                             </div>
                         </div>
                     </div>

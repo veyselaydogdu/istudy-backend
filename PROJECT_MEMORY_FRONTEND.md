@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Tenant & Website — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-03-06 (Öğretmen modülü: /teachers sayfası (CRUD + okul atama modal), TeacherProfile type, sidebar Öğretmenler menüsü; Yemek: besin öğesi allerjen seçimi, lockedAllergens useMemo, capitalize helper; Sınıf: age_min/age_max migration, academic_year_id nullable fix)
+> **Son Güncelleme:** 2026-03-10 (Okul Detayı: Öğretmenler tab düzeltildi — `?detailed=1` param, `teachersFetched` flag pattern, `SchoolTeacher` tipi rolleri; TeacherRoleType type eklendi)
 > **Amaç:** Bu dosya, `frontend-tenant-and-website` projesinin mimarisini, kararlarını ve kodlama standartlarını tüm AI ajanlarının doğru davranış üretebilmesi için belgeler.
 
 ---
@@ -211,7 +211,7 @@ localStorage.setItem('admin_token', token)
 | `(auth)/register/plans/page.tsx` | `GET /packages`, `POST /tenant/subscribe` |
 | `(tenant)/dashboard/page.tsx` | `GET /auth/me`, `GET /tenant/subscription`, `GET /tenant/subscription/usage`, `GET /schools` |
 | `(tenant)/schools/page.tsx` | `GET /schools` (?page,?search), `GET /countries`, `POST /schools`, `PUT /schools/{id}`, `DELETE /schools/{id}` |
-| `(tenant)/schools/[id]/page.tsx` | `GET /schools/{id}`, `GET /schools/{id}/classes`, `POST/PUT/DELETE /schools/{id}/classes`, `GET /academic-years?school_id={id}`, `GET /schools/{id}/teachers`, `GET/POST/DELETE /schools/{id}/classes/{classId}/teachers` |
+| `(tenant)/schools/[id]/page.tsx` | `GET /schools/{id}`, `GET /schools/{id}/classes`, `POST/PUT/DELETE /schools/{id}/classes`, `GET /academic-years?school_id={id}`, `GET /schools/{id}/teachers?detailed=1`, `POST/DELETE /schools/{id}/teachers/{teacherProfileId}`, `GET /teachers`, `GET /teacher-role-types`, `GET/POST/DELETE /schools/{id}/classes/{classId}/teachers` |
 | `(tenant)/schools/[id]/classes/[classId]/page.tsx` | `GET /schools/{id}/classes/{classId}/supply-list`, `POST/PUT/DELETE` supply-list, `POST /schools/{id}/attendances`, `GET /meal-menus/monthly` |
 | `(tenant)/meals/page.tsx` | `GET/POST/PUT/DELETE /meals` (?school_id), `GET/POST/PUT/DELETE /food-ingredients` (allergen_ids ile), `GET/POST/PUT/DELETE /allergens` |
 | `(tenant)/activities/page.tsx` | `GET/POST/PUT/DELETE /schools/{id}/activities` (start_date+end_date+class_ids), `GET /academic-years` (?school_id), `GET /schools/{id}/classes` |
@@ -528,8 +528,11 @@ TeacherProfile          // id, user_id, name, email?, phone?, title?, specializa
                         //   employment_type?: 'full_time'|'part_time'|'contract'|'intern'|'volunteer',
                         //   employment_label?, experience_years?, profile_photo?, bio?,
                         //   hire_date?, linkedin_url?, website_url?,
-                        //   school_count?, schools?{id,name,is_active}[], classes?{id,name,school_id}[]
+                        //   school_count?, schools?{id,name,is_active,role_type_name?}[], classes?{id,name,school_id}[]
                         //   (tenant-level yönetim sayfasında kullanılır — /teachers/page.tsx)
+SchoolTeacher           // id, user_id, name, title?, employment_type?, is_active: boolean,
+                        //   role_type?: {id,name}|null   (okul detay Öğretmenler sekmesinde kullanılır — ?detailed=1)
+TeacherRoleType         // id, tenant_id, name, sort_order?, is_active?   (görev türleri: Sınıf Öğretmeni vb.)
 Allergen                // id, name, description?, risk_level?('low'|'medium'|'high'), tenant_id?: number|null
                         //   tenant_id=null → Global (admin tanımlı), tenant_id=X → Kuruma özel
 FoodIngredient          // id, name, is_custom?, allergens?: Allergen[]
@@ -592,6 +595,35 @@ Admin'deki `withCredentials: true` KALDIRILDI. Bu uygulama token-based auth kull
 ### 6. `tenant_token` vs `admin_token`
 
 Bu projede hiçbir yerde `admin_token` kullanılmaz. Tüm `localStorage` işlemleri `tenant_token` ile yapılır.
+
+### 7. Tab Fetch Flag Paterni (`teachersFetched`)
+
+Tab tıklamasıyla veri çeken sayfalarda, boş listeyi tekrar yüklemeden ayırt etmek için `fetched` flag kullanılır:
+
+```tsx
+const [teachersFetched, setTeachersFetched] = useState(false);
+
+const fetchTeachers = useCallback(async () => {
+    setLoading(true);
+    try {
+        const res = await apiClient.get(`/schools/${id}/teachers`, { params: { detailed: 1 } });
+        setTeachers(res.data?.data ?? []);
+        setTeachersFetched(true);   // ← başarılı fetch sonrası set et
+    } catch { toast.error('Yüklenemedi.'); }
+    finally { setLoading(false); }
+}, [id]);
+
+const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // length === 0 kontrolü YANLIŞ — boş liste de olsa tekrar fetch atar
+    // teachersFetched flag DOĞRU — sadece ilk defa fetch atar
+    if (tab === 'teachers' && !teachersFetched && !loading) {
+        fetchTeachers();
+    }
+};
+```
+
+**Kural:** Veri yükleme durumunu `data.length === 0` ile değil, ayrı `fetched` boolean flag ile takip et.
 
 ---
 
@@ -712,7 +744,11 @@ CMD ["npm", "start"]
   - Tabloda gösterim: `"3–5 yaş"` (her ikisi doluysa) veya `"3+ yaş"` (sadece min doluysa) veya `—`
   - Modal açılınca `GET /academic-years?school_id={id}` ile yıllar fetch edilir, aktif yıl auto-seçilir
   - `academic_year_id` zorunlu — payload'a `Number(classForm.academic_year_id)` olarak eklenir
-- **Öğretmen Atama Modal**: `GET /schools/{id}/classes/{classId}/teachers` + `GET /schools/{id}/teachers`; atama: `POST`, kaldırma: `DELETE`
+- **Öğretmenler tab**: `GET /schools/{id}/teachers?detailed=1` → `SchoolTeacher[]` (employment_type, is_active, role_type{id,name}) döner
+  - `teachersFetched` boolean state → tab ilk açıldığında tek fetch, boş liste olsa bile yeniden istek atılmaz
+  - Okula öğretmen ata: `POST /schools/{id}/teachers { teacher_profile_id, teacher_role_type_id? }`, kaldır: `DELETE /schools/{id}/teachers/{teacherProfileId}`
+  - `GET /teachers` (tenant öğretmen listesi) + `GET /teacher-role-types` (tenant görev türleri) atama modalinde kullanılır
+- **Öğretmen Atama Modal** (sınıf bazlı): `GET /schools/{id}/classes/{classId}/teachers` + `GET /schools/{id}/teachers`; atama: `POST`, kaldırma: `DELETE`
 - Sınıf satırı: `Link href="/schools/{id}/classes/{classId}"`
 
 ### Class Detail (`/schools/[id]/classes/[classId]`)
@@ -800,7 +836,7 @@ CMD ["npm", "start"]
 | **Kamuya Açık Web Sitesi** | ✅ Tam | Ana sayfa, pricing, about, contact |
 | **Dashboard** | ✅ Tam | Stats, usage bars, son okullar tablosu |
 | **Okullar (CRUD)** | ✅ Tam | Liste, ekle/düzenle/sil (modal), pagination, search, ülke+şehir+fax+gsm+whatsapp |
-| **Okul Detayı** | ✅ Tam | Bilgi kartı + Sınıf CRUD (modal) + Öğretmen atama modal |
+| **Okul Detayı** | ✅ Tam | Bilgi kartı + Sınıf CRUD (modal) + Öğretmen Atama (okul tab: role_type, employment_type, is_active; sınıf tab: atama/kaldırma) |
 | **Sınıf Detayı** | ✅ Tam | 4 tab: Öğrenciler, Devamsızlık (tarih+durum), İhtiyaç Listesi (CRUD+deadline), Yemek Takvimi (aylık grid) |
 | **Yemek Yönetimi** | ✅ Tam | 3 tab: Yemekler + Besin Öğeleri (allerjen badge+checkbox, 2 grup: global/özel) + Allerjenler (tenant CRUD) |
 | **Etkinlikler** | ✅ Tam | Okul seçici, kart grid, CRUD modal (eğitim yılı, ücretli/ücretsiz, start/end date, sınıf checkbox) |

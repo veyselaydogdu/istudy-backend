@@ -34,8 +34,14 @@ Route::get('/packages', [\App\Http\Controllers\Tenant\PackageSelectionController
 // İletişim formu (herkese açık, rate limiting ile korunur)
 Route::middleware('throttle:10,1')->post('/contact', [\App\Http\Controllers\ContactRequestController::class, 'store']);
 
-// Kayıt kodu ile okul ara (veli tarafı, auth gerekmez arama için)
+// Kayıt kodu ile okul ara (veli tarafı, auth gerekmez)
 Route::post('/schools/search', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'searchSchool']);
+
+// Davet linki bilgisi — token ile okul bilgisini döndür (auth gerekmez)
+Route::get('/invite/{token}', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'inviteInfo']);
+
+// Anonim veli kayıt talebi gönder (davet kodu veya link ile, auth gerekmez)
+Route::middleware('throttle:10,1')->post('/schools/join', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'publicJoin']);
 
 // ───────────────────────────────────────────────────
 // SANAL POS CALLBACK (Auth gerektirmez — webhook endpoint'leri)
@@ -191,13 +197,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('schools/{school}/toggle-status', [\App\Http\Controllers\Schools\SchoolController::class, 'toggleStatus']);
 
         // ───────────────────────────────────────────────────
-        // KAYIT TALEPLERİ (Okul yöneticisi tarafı)
+        // KAYIT TALEPLERİ (Genel — eski uyumluluk için pending)
         // ───────────────────────────────────────────────────
         Route::prefix('enrollment-requests')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'index']);
             Route::get('/pending', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'pending']);
-            Route::patch('/{enrollmentRequest}/approve', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'approve']);
-            Route::patch('/{enrollmentRequest}/reject', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'reject']);
         });
 
         // ───────────────────────────────────────────────────
@@ -301,6 +304,18 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/supply-list', [\App\Http\Controllers\Schools\ClassManagementController::class, 'addSupplyItem']);
                 Route::put('/supply-list/{material_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'updateSupplyItem']);
                 Route::delete('/supply-list/{material_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'deleteSupplyItem']);
+            });
+
+            // ───────────────────────────────────────────────────
+            // VELİ YÖNETİMİ (Davet kodu + kayıt talepleri + veli listesi)
+            // ───────────────────────────────────────────────────
+            Route::get('/invite-info', [\App\Http\Controllers\Schools\SchoolParentController::class, 'inviteInfo']);
+            Route::post('/invite/regenerate', [\App\Http\Controllers\Schools\SchoolParentController::class, 'regenerateInvite']);
+            Route::get('/parents', [\App\Http\Controllers\Schools\SchoolParentController::class, 'index']);
+            Route::prefix('enrollment-requests')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'schoolIndex']);
+                Route::patch('/{id}/approve', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'approve']);
+                Route::patch('/{id}/reject', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'reject']);
             });
 
             // Okuldaki öğretmenler (?detailed=1 ile zengin veri)

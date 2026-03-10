@@ -24,6 +24,7 @@ class School extends BaseModel
         'description',
         'code',
         'registration_code',
+        'invite_token',
         'address',
         'city',
         'phone',
@@ -85,6 +86,40 @@ class School extends BaseModel
     public function enrollmentRequests()
     {
         return $this->hasMany(SchoolEnrollmentRequest::class, 'school_id');
+    }
+
+    /**
+     * Okula kayıtlı veliler (onaylananlar)
+     */
+    public function families()
+    {
+        return $this->belongsToMany(
+            \App\Models\Child\FamilyProfile::class,
+            'school_family_assignments',
+            'school_id',
+            'family_profile_id'
+        )->withPivot(['enrollment_request_id', 'is_active', 'joined_at'])
+            ->withTimestamps()
+            ->wherePivot('is_active', true);
+    }
+
+    /**
+     * Davet tokeni ile okul bul
+     */
+    public static function findByInviteToken(string $token): ?self
+    {
+        return static::where('invite_token', $token)->where('is_active', true)->first();
+    }
+
+    /**
+     * Davet tokenini yenile (UUID)
+     */
+    public function regenerateInviteToken(): string
+    {
+        $token = \Illuminate\Support\Str::uuid()->toString();
+        $this->update(['invite_token' => $token]);
+
+        return $token;
     }
 
     /**

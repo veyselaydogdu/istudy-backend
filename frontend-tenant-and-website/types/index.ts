@@ -315,6 +315,33 @@ export type SchoolTeacher = {
     role_type?: { id: number; name: string } | null
 }
 
+// ─── Enrollment Request (Veli Kayıt Talebi) ──────────────────────────────────
+
+export type EnrollmentRequest = {
+    id: number
+    school_id: number
+    parent_name?: string | null
+    parent_surname?: string | null
+    parent_email?: string | null
+    parent_phone?: string | null
+    status: 'pending' | 'approved' | 'rejected'
+    message?: string | null
+    rejection_reason?: string | null
+    reviewed_at?: string | null
+    reviewer?: { id: number; name: string } | null
+    created_at: string
+}
+
+/** Okula kayıtlı veli */
+export type SchoolParent = {
+    id: number
+    family_name?: string | null
+    owner_name: string
+    email?: string | null
+    phone?: string | null
+    children: { id: number; name: string; birth_date?: string | null; gender?: string | null; status?: string | null }[]
+}
+
 // ─── Social Network ──────────────────────────────────────────────────────────
 
 export type SocialPostMedia = {
