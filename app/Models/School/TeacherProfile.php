@@ -5,6 +5,7 @@ namespace App\Models\School;
 use App\Models\Academic\SchoolClass;
 use App\Models\Base\BaseModel;
 use App\Models\Base\Country;
+use App\Models\Tenant\Tenant;
 use App\Models\User;
 
 /**
@@ -19,6 +20,7 @@ class TeacherProfile extends BaseModel
 
     protected $fillable = [
         'user_id',
+        'tenant_id',
         'school_id',
         'title',
         'date_of_birth',
@@ -42,12 +44,12 @@ class TeacherProfile extends BaseModel
     ];
 
     protected $casts = [
-        'languages'             => 'array',
-        'certifications'        => 'array',
-        'experience_years'      => 'integer',
-        'profile_completeness'  => 'integer',
-        'date_of_birth'         => 'date',
-        'hire_date'             => 'date',
+        'languages' => 'array',
+        'certifications' => 'array',
+        'experience_years' => 'integer',
+        'profile_completeness' => 'integer',
+        'date_of_birth' => 'date',
+        'hire_date' => 'date',
     ];
 
     /*
@@ -61,9 +63,24 @@ class TeacherProfile extends BaseModel
         return $this->belongsTo(User::class, 'user_id')->withDefault();
     }
 
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class, 'tenant_id');
+    }
+
     public function school()
     {
         return $this->belongsTo(School::class, 'school_id')->withDefault();
+    }
+
+    /**
+     * Öğretmenin atandığı okullar (school_teacher_assignments pivot)
+     */
+    public function schools()
+    {
+        return $this->belongsToMany(School::class, 'school_teacher_assignments', 'teacher_profile_id', 'school_id')
+            ->withPivot(['employment_type', 'teacher_role_type_id', 'start_date', 'end_date', 'is_active'])
+            ->withTimestamps();
     }
 
     public function classes()
@@ -171,18 +188,38 @@ class TeacherProfile extends BaseModel
         $total = 10;
 
         // Temel bilgiler
-        if ($this->bio) $score++;
-        if ($this->title) $score++;
-        if ($this->date_of_birth) $score++;
-        if ($this->profile_photo) $score++;
-        if ($this->specialization) $score++;
-        if ($this->experience_years > 0) $score++;
+        if ($this->bio) {
+            $score++;
+        }
+        if ($this->title) {
+            $score++;
+        }
+        if ($this->date_of_birth) {
+            $score++;
+        }
+        if ($this->profile_photo) {
+            $score++;
+        }
+        if ($this->specialization) {
+            $score++;
+        }
+        if ($this->experience_years > 0) {
+            $score++;
+        }
 
         // İlişkili veriler
-        if ($this->educations()->exists()) $score++;
-        if ($this->approvedCertificates()->exists()) $score++;
-        if ($this->approvedCourses()->exists()) $score++;
-        if ($this->skills()->exists()) $score++;
+        if ($this->educations()->exists()) {
+            $score++;
+        }
+        if ($this->approvedCertificates()->exists()) {
+            $score++;
+        }
+        if ($this->approvedCourses()->exists()) {
+            $score++;
+        }
+        if ($this->skills()->exists()) {
+            $score++;
+        }
 
         return (int) round(($score / $total) * 100);
     }
@@ -203,12 +240,12 @@ class TeacherProfile extends BaseModel
     public function getEmploymentTypeLabelAttribute(): string
     {
         return match ($this->employment_type) {
-            'full_time'  => 'Tam Zamanlı',
-            'part_time'  => 'Yarı Zamanlı',
-            'contract'   => 'Sözleşmeli',
-            'intern'     => 'Stajyer',
-            'volunteer'  => 'Gönüllü',
-            default      => $this->employment_type ?? 'Belirtilmemiş',
+            'full_time' => 'Tam Zamanlı',
+            'part_time' => 'Yarı Zamanlı',
+            'contract' => 'Sözleşmeli',
+            'intern' => 'Stajyer',
+            'volunteer' => 'Gönüllü',
+            default => $this->employment_type ?? 'Belirtilmemiş',
         };
     }
 

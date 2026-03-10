@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Tenant & Website — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-25 (Tenant panel modülleri: okul yeni alanlar, sınıf CRUD+öğretmen atama, yemek/besin+allerjen, etkinlik+tarih+sınıf atama, bildirim gönder, abonelik yükseltme, sidebar+header güncelleme; Yeni: academic-years sayfası, TenantAllergenController, allerjen checkbox sistemi)
+> **Son Güncelleme:** 2026-03-06 (Öğretmen modülü: /teachers sayfası (CRUD + okul atama modal), TeacherProfile type, sidebar Öğretmenler menüsü; Yemek: besin öğesi allerjen seçimi, lockedAllergens useMemo, capitalize helper; Sınıf: age_min/age_max migration, academic_year_id nullable fix)
 > **Amaç:** Bu dosya, `frontend-tenant-and-website` projesinin mimarisini, kararlarını ve kodlama standartlarını tüm AI ajanlarının doğru davranış üretebilmesi için belgeler.
 
 ---
@@ -91,9 +91,10 @@ frontend-tenant-and-website/
 │       │       ├── page.tsx            ← Okul detayı (bilgi kartı + sınıf CRUD + öğretmen atama modal)
 │       │       └── classes/
 │       │           └── [classId]/page.tsx ← Sınıf detayı (4 tab: Öğrenciler, Devamsızlık, İhtiyaç Listesi, Yemek Takvimi)
-│       ├── meals/page.tsx              ← 3 tab: Yemekler + Besin Öğeleri (allerjen badge+checkbox) + Allerjenler (tenant CRUD)
+│       ├── meals/page.tsx              ← 3 tab: Yemekler + Besin Öğeleri (allerjen badge+checkbox, lockedAllergens useMemo) + Allerjenler
 │       ├── activities/page.tsx         ← Etkinlikler (okul seçici, kart grid, CRUD, start/end date, sınıf checkbox)
 │       ├── academic-years/page.tsx     ← Eğitim Yılı yönetimi (okul seçici, tablo, CRUD, aktif yap, kapat)
+│       ├── teachers/page.tsx           ← YENİ: Tenant-level öğretmen yönetimi (CRUD + okul atama modal)
 │       ├── subscription/page.tsx       ← Mevcut plan + kullanım + "Planı Değiştir/Yükselt" bölümü + geçmiş
 │       ├── invoices/page.tsx           ← Fatura tablosu
 │       ├── notifications/page.tsx      ← 2 tab: Gelen (inbox+okundu) + Bildirim Gönder (form)
@@ -104,7 +105,7 @@ frontend-tenant-and-website/
 │   ├── dropdown.tsx                    ← react-popper tabanlı dropdown
 │   ├── icon/                           ← Vristo SVG icon bileşenleri
 │   ├── layouts/                        ← ⚠️ "layouts" (çoğul) — "layout" değil
-│   │   ├── sidebar.tsx                 ← Tenant nav (6 item), tenant_token logout
+│   │   ├── sidebar.tsx                 ← Tenant nav (7 item): Dashboard, Okullarım, Öğretmenler(/teachers), Eğitim Yılları, Yemekler, Etkinlikler, Sosyal Ağ; tenant_token logout
 │   │   ├── header.tsx                  ← Sayfa başlıkları, /auth/me, unread badge
 │   │   ├── content-animation.tsx
 │   │   ├── footer.tsx
@@ -219,6 +220,7 @@ localStorage.setItem('admin_token', token)
 | `(tenant)/invoices/page.tsx` | `GET /invoices/tenant` (?page) |
 | `(tenant)/notifications/page.tsx` | `GET /notifications` (?page), `PATCH /notifications/{id}/read`, `PATCH /notifications/read-all`, `POST /notifications` (gönder) |
 | `(tenant)/profile/page.tsx` | `GET /auth/me`, `PUT /auth/me`, `POST /auth/change-password` |
+| `(tenant)/teachers/page.tsx` | `GET /teachers` (?search,?page), `POST /teachers`, `PUT /teachers/{id}`, `DELETE /teachers/{id}`, `GET /teachers/{id}/schools`, `POST /teachers/{id}/schools`, `DELETE /teachers/{id}/schools/{schoolId}`, `GET /schools` |
 | `components/layouts/header.tsx` | `GET /auth/me` (initials), `GET /notifications/unread-count` (badge) |
 
 ### API Response Formatı (Backend Standardı)
@@ -521,12 +523,19 @@ School                  // id, name, country_id?, country?{id,name,iso2}, descri
 SchoolClass             // id, school_id, academic_year_id?, name, description?,
                         //   age_min?: number, age_max?: number,   ← iki ayrı integer (age_group kaldırıldı)
                         //   capacity?, color?, children_count?, teachers_count?
-Teacher                 // id, user_id, school_id, name, title?, role?
+Teacher                 // id, user_id, school_id?: number|null, name, title?, role?   (minimal, sınıf atama modalinde)
+TeacherProfile          // id, user_id, name, email?, phone?, title?, specialization?,
+                        //   employment_type?: 'full_time'|'part_time'|'contract'|'intern'|'volunteer',
+                        //   employment_label?, experience_years?, profile_photo?, bio?,
+                        //   hire_date?, linkedin_url?, website_url?,
+                        //   school_count?, schools?{id,name,is_active}[], classes?{id,name,school_id}[]
+                        //   (tenant-level yönetim sayfasında kullanılır — /teachers/page.tsx)
 Allergen                // id, name, description?, risk_level?('low'|'medium'|'high'), tenant_id?: number|null
                         //   tenant_id=null → Global (admin tanımlı), tenant_id=X → Kuruma özel
 FoodIngredient          // id, name, is_custom?, allergens?: Allergen[]
                         //   (allergen_info kaldırıldı — allergen_ids ile sync yapılır)
-Meal                    // id, school_id, name, meal_type?('breakfast'|'lunch'|'snack'|'dinner'), ingredients?
+Meal                    // id, school_id, name, meal_type?('breakfast'|'lunch'|'snack'|'dinner'),
+                        //   ingredients?{id, name, allergens?{id,name}[]}[]   ← allergens dahil
 SupplyItem              // id, name, description?, quantity?, due_date?, class_id?, school_id?
 Attendance              // id, child_id, class_id, attendance_date, status, notes?
 Activity                // id, school_id, academic_year_id?, name, description?, is_paid?, price?,

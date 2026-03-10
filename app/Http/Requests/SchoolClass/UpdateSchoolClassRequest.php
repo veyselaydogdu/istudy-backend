@@ -18,7 +18,7 @@ class UpdateSchoolClassRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'academic_year_id' => ['sometimes', 'required', 'exists:academic_years,id'],
+            'academic_year_id' => ['sometimes', 'nullable', 'exists:academic_years,id'],
             'school_id' => ['sometimes', 'exists:schools,id'],
             'description' => ['nullable', 'string'],
             'age_min' => ['nullable', 'integer', 'min:0', 'max:18'],

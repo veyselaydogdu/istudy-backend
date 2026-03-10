@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
-import { School, SchoolClass, Child, Teacher, AcademicYear } from '@/types';
-import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight } from 'lucide-react';
+import { School, SchoolClass, Child, Teacher, AcademicYear, SchoolTeacher, TeacherRoleType, TeacherProfile } from '@/types';
+import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap } from 'lucide-react';
 
 type ClassForm = { name: string; description: string; age_min: string; age_max: string; capacity: string; color: string; academic_year_id: string };
 const emptyClassForm: ClassForm = { name: '', description: '', age_min: '', age_max: '', capacity: '20', color: '', academic_year_id: '' };
@@ -20,7 +20,19 @@ export default function SchoolDetailPage() {
     const [children, setChildren] = useState<Child[]>([]);
     const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'classes' | 'children'>('classes');
+    const [activeTab, setActiveTab] = useState<'classes' | 'children' | 'teachers'>('classes');
+
+    // School-level teacher management
+    const [schoolLevelTeachers, setSchoolLevelTeachers] = useState<SchoolTeacher[]>([]);
+    const [loadingSchoolTeachers, setLoadingSchoolTeachers] = useState(false);
+    const [teachersFetched, setTeachersFetched] = useState(false);
+    const [showSchoolTeacherModal, setShowSchoolTeacherModal] = useState(false);
+    const [allTenantTeachers, setAllTenantTeachers] = useState<Pick<TeacherProfile, 'id' | 'name'>[]>([]);
+    const [roleTypes, setRoleTypes] = useState<TeacherRoleType[]>([]);
+    const [assignTeacherProfileId, setAssignTeacherProfileId] = useState('');
+    const [assignRoleTypeId, setAssignRoleTypeId] = useState('');
+    const [assignEmploymentType, setAssignEmploymentType] = useState('full_time');
+    const [savingSchoolTeacher, setSavingSchoolTeacher] = useState(false);
 
     // Class CRUD
     const [showClassModal, setShowClassModal] = useState(false);
@@ -58,6 +70,85 @@ export default function SchoolDetailPage() {
     }, [id]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    const fetchSchoolLevelTeachers = useCallback(async () => {
+        setLoadingSchoolTeachers(true);
+        try {
+            const res = await apiClient.get(`/schools/${id}/teachers`, { params: { detailed: 1 } });
+            setSchoolLevelTeachers(res.data?.data ?? []);
+            setTeachersFetched(true);
+        } catch {
+            toast.error('Öğretmenler yüklenemedi.');
+        } finally {
+            setLoadingSchoolTeachers(false);
+        }
+    }, [id]);
+
+    const openSchoolTeacherModal = async () => {
+        setAssignTeacherProfileId('');
+        setAssignRoleTypeId('');
+        setAssignEmploymentType('full_time');
+        try {
+            const [teachersRes, roleTypesRes] = await Promise.all([
+                apiClient.get('/teachers', { params: { per_page: 100 } }),
+                apiClient.get('/teacher-role-types'),
+            ]);
+            const all: Pick<TeacherProfile, 'id' | 'name'>[] = teachersRes.data?.data ?? [];
+            const assignedIds = new Set(schoolLevelTeachers.map(t => t.id));
+            setAllTenantTeachers(all.filter(t => !assignedIds.has(t.id)));
+            setRoleTypes(roleTypesRes.data?.data ?? []);
+        } catch {
+            toast.error('Veriler yüklenemedi.');
+        }
+        setShowSchoolTeacherModal(true);
+    };
+
+    const handleAssignTeacherToSchool = async () => {
+        if (!assignTeacherProfileId) return;
+        setSavingSchoolTeacher(true);
+        try {
+            await apiClient.post(`/schools/${id}/teachers`, {
+                teacher_profile_id: Number(assignTeacherProfileId),
+                teacher_role_type_id: assignRoleTypeId ? Number(assignRoleTypeId) : undefined,
+                employment_type: assignEmploymentType,
+            });
+            toast.success('Öğretmen okula atandı.');
+            setShowSchoolTeacherModal(false);
+            fetchSchoolLevelTeachers();
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Atama başarısız.');
+        } finally {
+            setSavingSchoolTeacher(false);
+        }
+    };
+
+    const handleRemoveTeacherFromSchool = async (teacher: SchoolTeacher) => {
+        const result = await Swal.fire({
+            title: 'Öğretmeni Çıkar',
+            text: `"${teacher.name}" adlı öğretmeni okuldan çıkarmak istediğinize emin misiniz?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Çıkar',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.delete(`/schools/${id}/teachers/${teacher.id}`);
+            toast.success('Öğretmen okuldan çıkarıldı.');
+            fetchSchoolLevelTeachers();
+        } catch {
+            toast.error('İşlem başarısız.');
+        }
+    };
+
+    const handleTabChange = (tab: 'classes' | 'children' | 'teachers') => {
+        setActiveTab(tab);
+        if (tab === 'teachers' && !teachersFetched && !loadingSchoolTeachers) {
+            fetchSchoolLevelTeachers();
+        }
+    };
 
     // ── Sınıf CRUD ──────────────────────────────────────────────
     const openCreateClass = () => {
@@ -208,6 +299,7 @@ export default function SchoolDetailPage() {
         setClassForm(prev => ({ ...prev, [field]: e.target.value }));
 
     const roleLabel = (role: string) => ({ head_teacher: 'Baş Öğretmen', assistant_teacher: 'Yardımcı Öğretmen', substitute_teacher: 'Vekil Öğretmen' }[role] ?? role);
+    const employmentLabel = (type?: string) => ({ full_time: 'Tam Zamanlı', part_time: 'Yarı Zamanlı', contract: 'Sözleşmeli', intern: 'Stajyer', volunteer: 'Gönüllü' }[type ?? ''] ?? type ?? '—');
 
     if (loading) {
         return (
@@ -286,7 +378,7 @@ export default function SchoolDetailPage() {
                     <button
                         type="button"
                         className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${activeTab === 'classes' ? 'border-b-2 border-primary text-primary' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
-                        onClick={() => setActiveTab('classes')}
+                        onClick={() => handleTabChange('classes')}
                     >
                         <BookOpen className="h-4 w-4" />
                         Sınıflar ({classes.length})
@@ -294,10 +386,18 @@ export default function SchoolDetailPage() {
                     <button
                         type="button"
                         className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${activeTab === 'children' ? 'border-b-2 border-primary text-primary' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
-                        onClick={() => setActiveTab('children')}
+                        onClick={() => handleTabChange('children')}
                     >
                         <Users className="h-4 w-4" />
                         Öğrenciler ({children.length})
+                    </button>
+                    <button
+                        type="button"
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${activeTab === 'teachers' ? 'border-b-2 border-primary text-primary' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
+                        onClick={() => handleTabChange('teachers')}
+                    >
+                        <GraduationCap className="h-4 w-4" />
+                        Öğretmenler ({schoolLevelTeachers.length})
                     </button>
                 </div>
 
@@ -415,6 +515,71 @@ export default function SchoolDetailPage() {
                         </div>
                     )
                 )}
+
+                {/* Öğretmenler Tab */}
+                {activeTab === 'teachers' && (
+                    <>
+                        <div className="mb-4 flex justify-end">
+                            <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openSchoolTeacherModal}>
+                                <UserPlus className="h-4 w-4" />
+                                Öğretmen Ata
+                            </button>
+                        </div>
+                        {loadingSchoolTeachers ? (
+                            <div className="flex h-32 items-center justify-center">
+                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                            </div>
+                        ) : schoolLevelTeachers.length === 0 ? (
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Bu okula henüz öğretmen atanmamış.</p>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Ad</th>
+                                            <th>Unvan</th>
+                                            <th>Görev Türü</th>
+                                            <th>İstihdam</th>
+                                            <th>Durum</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {schoolLevelTeachers.map((teacher) => (
+                                            <tr key={teacher.id}>
+                                                <td className="font-medium text-dark dark:text-white">{teacher.name}</td>
+                                                <td>{teacher.title ?? '—'}</td>
+                                                <td>
+                                                    {teacher.role_type ? (
+                                                        <span className="badge badge-outline-info">{teacher.role_type.name}</span>
+                                                    ) : '—'}
+                                                </td>
+                                                <td>{employmentLabel(teacher.employment_type)}</td>
+                                                <td>
+                                                    {teacher.is_active ? (
+                                                        <span className="badge badge-outline-success">Aktif</span>
+                                                    ) : (
+                                                        <span className="badge badge-outline-secondary">Pasif</span>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-danger p-2"
+                                                        onClick={() => handleRemoveTeacherFromSchool(teacher)}
+                                                        title="Okuldan Çıkar"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
 
             {/* Sınıf Oluştur/Düzenle Modal */}
@@ -489,6 +654,73 @@ export default function SchoolDetailPage() {
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassModal(false)}>İptal</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Okul Öğretmen Atama Modal */}
+            {showSchoolTeacherModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Okula Öğretmen Ata</h2>
+                            <button type="button" onClick={() => setShowSchoolTeacherModal(false)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Öğretmen *</label>
+                                <select
+                                    className="form-select mt-1"
+                                    value={assignTeacherProfileId}
+                                    onChange={e => setAssignTeacherProfileId(e.target.value)}
+                                >
+                                    <option value="">Öğretmen seçin</option>
+                                    {allTenantTeachers.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Görev Türü</label>
+                                <select
+                                    className="form-select mt-1"
+                                    value={assignRoleTypeId}
+                                    onChange={e => setAssignRoleTypeId(e.target.value)}
+                                >
+                                    <option value="">— Seçin (İsteğe Bağlı) —</option>
+                                    {roleTypes.filter(r => r.is_active !== false).map(r => (
+                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">İstihdam Türü</label>
+                                <select
+                                    className="form-select mt-1"
+                                    value={assignEmploymentType}
+                                    onChange={e => setAssignEmploymentType(e.target.value)}
+                                >
+                                    <option value="full_time">Tam Zamanlı</option>
+                                    <option value="part_time">Yarı Zamanlı</option>
+                                    <option value="contract">Sözleşmeli</option>
+                                    <option value="intern">Stajyer</option>
+                                    <option value="volunteer">Gönüllü</option>
+                                </select>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-primary flex-1"
+                                    onClick={handleAssignTeacherToSchool}
+                                    disabled={!assignTeacherProfileId || savingSchoolTeacher}
+                                >
+                                    {savingSchoolTeacher ? 'Atanıyor...' : 'Ata'}
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowSchoolTeacherModal(false)}>İptal</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Schools;
 use App\Http\Controllers\Base\BaseController;
 use App\Models\Academic\SchoolClass;
 use App\Models\School\TeacherProfile;
+use App\Models\School\TeacherRoleType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -66,7 +67,10 @@ class ClassManagementController extends BaseController
                 ->firstOrFail();
 
             $teacher = TeacherProfile::where('id', $request->teacher_profile_id)
-                ->where('school_id', $schoolId)
+                ->where(function ($q) use ($schoolId) {
+                    $q->where('school_id', $schoolId)
+                        ->orWhereHas('schools', fn ($s) => $s->where('schools.id', $schoolId));
+                })
                 ->firstOrFail();
 
             $class->teachers()->syncWithoutDetaching([
@@ -110,26 +114,130 @@ class ClassManagementController extends BaseController
     }
 
     /**
-     * Okulun öğretmen listesi (atanabilir öğretmenler için)
+     * Okulun öğretmen listesi.
+     * ?detailed=1 → Görev türü, istihdam tipi, aktiflik bilgisi de döner (okul detayı sekmesi için).
+     * Hem eski school_id hem yeni school_teacher_assignments pivot desteklenir.
      */
-    public function schoolTeachers(int $schoolId): JsonResponse
+    public function schoolTeachers(Request $request, int $schoolId): JsonResponse
     {
         try {
+            $detailed = (bool) $request->query('detailed', false);
+
             $teachers = TeacherProfile::with('user')
-                ->where('school_id', $schoolId)
-                ->get()
-                ->map(fn ($t) => [
+                ->where(function ($q) use ($schoolId) {
+                    $q->where('school_id', $schoolId)
+                        ->orWhereHas('schools', fn ($s) => $s->where('schools.id', $schoolId)->where('school_teacher_assignments.is_active', true));
+                })
+                ->get();
+
+            // Detailed modda pivot verisini direkt DB'den tek sorguda çek
+            $pivotMap = collect();
+            $roleTypeMap = collect();
+
+            if ($detailed) {
+                $teacherIds = $teachers->pluck('id');
+
+                $pivotMap = DB::table('school_teacher_assignments')
+                    ->where('school_id', $schoolId)
+                    ->whereIn('teacher_profile_id', $teacherIds)
+                    ->get()
+                    ->keyBy('teacher_profile_id');
+
+                $roleTypeIds = $pivotMap->pluck('teacher_role_type_id')->filter()->unique();
+                if ($roleTypeIds->isNotEmpty()) {
+                    $roleTypeMap = TeacherRoleType::whereIn('id', $roleTypeIds)
+                        ->get()
+                        ->keyBy('id');
+                }
+            }
+
+            $result = $teachers->map(function ($t) use ($detailed, $pivotMap, $roleTypeMap) {
+                $base = [
                     'id' => $t->id,
                     'user_id' => $t->user_id,
                     'name' => trim(($t->user?->name ?? '').' '.($t->user?->surname ?? '')),
                     'title' => $t->title,
-                ]);
+                ];
 
-            return $this->successResponse($teachers);
+                if ($detailed) {
+                    $pivot = $pivotMap->get($t->id);
+                    $roleType = $pivot?->teacher_role_type_id
+                        ? $roleTypeMap->get($pivot->teacher_role_type_id)
+                        : null;
+
+                    $base['employment_type'] = $pivot?->employment_type ?? $t->employment_type;
+                    $base['is_active'] = (bool) ($pivot ? $pivot->is_active : true);
+                    $base['role_type'] = $roleType ? ['id' => $roleType->id, 'name' => $roleType->name] : null;
+                }
+
+                return $base;
+            });
+
+            return $this->successResponse($result);
         } catch (\Throwable $e) {
             Log::error('ClassManagementController::schoolTeachers Error: '.$e->getMessage());
 
             return $this->errorResponse('Öğretmenler yüklenemedi.', 500);
+        }
+    }
+
+    /**
+     * Okula öğretmen ata (school_teacher_assignments pivot)
+     */
+    public function assignTeacherToSchool(Request $request, int $schoolId): JsonResponse
+    {
+        $data = $request->validate([
+            'teacher_profile_id' => ['required', 'exists:teacher_profiles,id'],
+            'teacher_role_type_id' => ['nullable', 'exists:teacher_role_types,id'],
+            'employment_type' => ['nullable', 'in:full_time,part_time,contract,intern,volunteer'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+        ]);
+
+        try {
+            $teacher = TeacherProfile::where('id', $data['teacher_profile_id'])
+                ->where('tenant_id', $this->user()->tenant_id)
+                ->firstOrFail();
+
+            $teacher->schools()->syncWithoutDetaching([
+                $schoolId => [
+                    'employment_type' => $data['employment_type'] ?? 'full_time',
+                    'teacher_role_type_id' => $data['teacher_role_type_id'] ?? null,
+                    'start_date' => $data['start_date'] ?? null,
+                    'end_date' => $data['end_date'] ?? null,
+                    'is_active' => true,
+                ],
+            ]);
+
+            return $this->successResponse(null, 'Öğretmen okula atandı.', 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Öğretmen bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ClassManagementController::assignTeacherToSchool Error: '.$e->getMessage());
+
+            return $this->errorResponse('Atama başarısız.', 500);
+        }
+    }
+
+    /**
+     * Okul-öğretmen atamasını kaldır
+     */
+    public function removeTeacherFromSchool(int $schoolId, int $teacherProfileId): JsonResponse
+    {
+        try {
+            $teacher = TeacherProfile::where('id', $teacherProfileId)
+                ->where('tenant_id', $this->user()->tenant_id)
+                ->firstOrFail();
+
+            $teacher->schools()->detach($schoolId);
+
+            return $this->successResponse(null, 'Öğretmen okuldan çıkarıldı.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Öğretmen bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ClassManagementController::removeTeacherFromSchool Error: '.$e->getMessage());
+
+            return $this->errorResponse('İşlem başarısız.', 500);
         }
     }
 

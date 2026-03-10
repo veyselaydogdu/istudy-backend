@@ -18,6 +18,7 @@ import {
     Calendar,
     GraduationCap,
     MessageSquare,
+    Users,
 } from 'lucide-react';
 
 type NavItem = {
@@ -40,6 +41,7 @@ const navGroups: NavGroup[] = [
         label: 'YÖNETİM',
         items: [
             { title: 'Okullarım', href: '/schools', icon: School },
+            { title: 'Öğretmenler', href: '/teachers', icon: Users },
             { title: 'Eğitim Yılları', href: '/academic-years', icon: GraduationCap },
             { title: 'Yemekler', href: '/meals', icon: Utensils },
             { title: 'Etkinlikler', href: '/activities', icon: Calendar },

@@ -42,10 +42,7 @@ class ClassController extends BaseSchoolController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->errorResponse(
-                $e->getMessage(),
-                $e->getCode() ?: 400
-            );
+            return $this->errorResponse('Bir hata oluştu.', 500);
         }
     }
 
@@ -83,10 +80,7 @@ class ClassController extends BaseSchoolController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->errorResponse(
-                $e->getMessage(),
-                $e->getCode() ?: 400
-            );
+            return $this->errorResponse('Bir hata oluştu.', 500);
         }
     }
 
@@ -111,10 +105,7 @@ class ClassController extends BaseSchoolController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->errorResponse(
-                $e->getMessage(),
-                $e->getCode() ?: 400
-            );
+            return $this->errorResponse('Bir hata oluştu.', 500);
         }
     }
 
@@ -148,10 +139,7 @@ class ClassController extends BaseSchoolController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->errorResponse(
-                $e->getMessage(),
-                $e->getCode() ?: 400
-            );
+            return $this->errorResponse('Bir hata oluştu.', 500);
         }
     }
 
@@ -180,10 +168,7 @@ class ClassController extends BaseSchoolController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->errorResponse(
-                $e->getMessage(),
-                $e->getCode() ?: 400
-            );
+            return $this->errorResponse('Bir hata oluştu.', 500);
         }
     }
 

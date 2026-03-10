@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-02-27 (TÜM TESTLER GEÇTİ: 136 passing / 0 failing — BUG-001→012 tamamı düzeltildi; AcademicYearController BUG-008/009 + BaseController paginatedResponse resolve() fix)
+> **Son Güncelleme:** 2026-03-06 (Öğretmen modülü: TenantTeacherController, school_teacher_assignments pivot, tenant-level teacher CRUD + school assignment; Sınıf düzeltmeleri: age_min/age_max migration, academic_year_id nullable, ClassController $e->getCode() fix; Yemek: food_ingredient_allergens pivot, ingredients.allergens response)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -85,12 +85,13 @@ istudy-backend/
 │   │   │   ├── Schools/
 │   │   │   │   ├── BaseSchoolController.php
 │   │   │   │   ├── SchoolController.php
-│   │   │   │   ├── ClassController.php
-│   │   │   │   ├── ClassManagementController.php  ← Öğretmen-sınıf atama (GET/POST/DELETE)
+│   │   │   │   ├── ClassController.php             ← age_min/age_max fix, $e->getCode() → 500
+│   │   │   │   ├── ClassManagementController.php  ← Öğretmen-sınıf atama (GET/POST/DELETE); dual-source: school_id + pivot
 │   │   │   │   ├── ChildController.php
 │   │   │   │   ├── ActivityController.php          ← start/end date + class sync eklendi
-│   │   │   │   ├── TenantMealController.php        ← Yemek + besin + allerjen sync
+│   │   │   │   ├── TenantMealController.php        ← Yemek + besin + allerjen sync; ingredients.allergens response
 │   │   │   │   ├── TenantAllergenController.php    ← Tenant allerjen CRUD (global+özel)
+│   │   │   │   ├── TenantTeacherController.php     ← YENİ: Tenant-level öğretmen CRUD + school assignment
 │   │   │   │   └── FamilyProfileController.php
 │   │   │   ├── Tenant/
 │   │   │   │   ├── BaseTenantController.php
@@ -115,6 +116,9 @@ istudy-backend/
 │   │   │   ├── Activity/
 │   │   │   │   ├── StoreActivityRequest.php
 │   │   │   │   └── UpdateActivityRequest.php
+│   │   │   ├── Teacher/                            ← YENİ
+│   │   │   │   ├── StoreTeacherRequest.php         ← User+TeacherProfile alanları (email unique)
+│   │   │   │   └── UpdateTeacherRequest.php        ← Sadece profil alanları + phone
 │   │   │   ├── Child/  ... School/  ... SchoolClass/  ... Subscription/  ... Tenant/
 │   │   └── Resources/
 │   │       ├── PackageResource.php               ← Paket (limit label'ları + yıllık indirim %)
@@ -177,7 +181,15 @@ istudy-backend/
 │   │   ├── 000012_create_invoice_and_transaction_tables.php ← invoices + items + transactions
 │   │   ├── 000013_create_currency_tables.php       ← currencies + exchange_rates + exchange_rate_logs
 │   │   ├── 000014_create_activity_log_tables.php   ← activity_logs + archive + summaries (AUDIT_DB_CONNECTION ile)
-│   │   └── 000015_create_countries_contacts_teacher_cv_tables.php ← countries + user_contact_numbers + teacher CV tabloları
+│   │   ├── 000015_create_countries_contacts_teacher_cv_tables.php ← countries + user_contact_numbers + teacher CV tabloları
+│   │   ├── 2026_02_27_115618_create_social_posts_tables.php ← social_posts, social_post_media, social_post_class_tags, social_post_reactions, social_post_comments
+│   │   ├── 2026_03_01_102126_add_is_active_to_classes_table.php
+│   │   ├── 2026_03_01_102151_make_academic_year_nullable_on_activities_and_meals.php
+│   │   ├── 2026_03_01_102220_create_school_meal_types_table.php
+│   │   ├── 2026_03_06_104123_create_food_ingredient_allergens_table.php ← hasTable guard (pivot zaten vardı)
+│   │   ├── 2026_03_06_120405_make_academic_year_nullable_on_classes_table.php
+│   │   ├── 2026_03_06_130545_add_age_min_age_max_to_classes_table.php ← hasColumn guard'lı; Docker ile çalıştırıldı ✅
+│   │   └── 2026_03_06_131331_add_tenant_id_to_teacher_profiles_and_create_school_assignments.php ← tenant_id backfill + school_teacher_assignments pivot ✅
 │   └── seeders/
 │       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
 │       ├── RoleSeeder.php                        ← 5 temel rol
@@ -223,7 +235,7 @@ istudy-backend/
 #### 👥 Kişiler Modülü (People)
 | Tablo | Model | Açıklama |
 |-------|-------|----------|
-| `teacher_profiles` | `App\Models\School\TeacherProfile` | Öğretmen profilleri (genişletildi: CV, eğitim, sertifika, kurs, yetenek) |
+| `teacher_profiles` | `App\Models\School\TeacherProfile` | Öğretmen profilleri — YENİ: `tenant_id` eklendi, `school_id` nullable (eski uyumluluk), tenant-level sahiplik; relations: `tenant()`, `schools()` via pivot |
 | `teacher_educations` | `App\Models\School\TeacherEducation` | Öğretmen eğitim geçmişi (lisans, yüksek lisans vb.) |
 | `teacher_certificates` | `App\Models\School\TeacherCertificate` | Öğretmen sertifikaları (okul onayı gerektirir: pending→approved/rejected) |
 | `teacher_courses` | `App\Models\School\TeacherCourse` | Kurs/Seminer katılımı (okul onayı gerektirir) |
@@ -239,6 +251,7 @@ istudy-backend/
 | `classes` | `App\Models\Academic\SchoolClass` | Sınıflar — `id, school_id, academic_year_id, name, description, age_min (tinyInt unsigned nullable), age_max (tinyInt unsigned nullable), color, logo, capacity` (Not: PHP'de `Class` reserved keyword olduğu için `SchoolClass` adlandırılır) |
 | `child_class_assignments` | — (Pivot) | Çocuk-Sınıf atamaları (M2M) |
 | `class_teacher_assignments` | — (Pivot) | Öğretmen-Sınıf atamaları (M2M) |
+| `school_teacher_assignments` | — (Pivot) | YENİ: Öğretmen-Okul atamaları (M2M) — `school_id, teacher_profile_id, employment_type, start_date, end_date, is_active` |
 | `activity_class_assignments` | — (Pivot) | Etkinlik-Sınıf atamaları (M2M) — `activity_id, class_id` |
 
 #### 🏥 Sağlık & Beslenme Modülü
@@ -1367,6 +1380,29 @@ Route::get('/teachers', [ClassManagementController, 'schoolTeachers']);
 Route::prefix('food-ingredients')->group(...)  // TenantMealController
 Route::prefix('meals')->group(...)             // TenantMealController
 ```
+
+### 16.7 Öğretmen Modülü Rotaları (2026-03-06)
+
+`subscription.active` middleware altına eklendi:
+
+```php
+Route::prefix('teachers')->group(function () {
+    Route::get('/', [TenantTeacherController::class, 'index']);           // ?search, ?school_id, ?per_page
+    Route::post('/', [TenantTeacherController::class, 'store']);          // User + TeacherProfile oluştur, teacher rolü ata
+    Route::get('/{id}', [TenantTeacherController::class, 'show']);
+    Route::put('/{id}', [TenantTeacherController::class, 'update']);
+    Route::delete('/{id}', [TenantTeacherController::class, 'destroy']);  // soft delete
+    Route::get('/{id}/schools', [TenantTeacherController::class, 'schoolAssignments']);
+    Route::post('/{id}/schools', [TenantTeacherController::class, 'assignToSchool']);
+    Route::delete('/{id}/schools/{schoolId}', [TenantTeacherController::class, 'removeFromSchool']);
+});
+```
+
+**Öğretmen Mimarisi:**
+- `teacher_profiles.tenant_id` → öğretmen tenant'a aittir (okula değil)
+- `teacher_profiles.school_id` → nullable (geriye uyumluluk)
+- `school_teacher_assignments` pivot → öğretmen birden fazla okula atanabilir
+- `ClassManagementController::schoolTeachers()` → hem `school_id` hem pivot'tan öğretmen getirir
 
 ### 16.6 Pint Düzeltmeleri
 

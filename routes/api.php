@@ -303,8 +303,11 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::delete('/supply-list/{material_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'deleteSupplyItem']);
             });
 
-            // Okuldaki tüm öğretmenler (sınıfa atama için liste)
+            // Okuldaki öğretmenler (?detailed=1 ile zengin veri)
             Route::get('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'schoolTeachers']);
+            // Okula öğretmen ata / çıkar (school_teacher_assignments)
+            Route::post('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'assignTeacherToSchool']);
+            Route::delete('/teachers/{teacher_profile_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'removeTeacherFromSchool']);
 
             // ───────────────────────────────────────────────────
             // SOSYAL AĞ (Social Feed)
@@ -320,6 +323,32 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('posts/{social_post}/comments', [\App\Http\Controllers\Schools\SocialPostController::class, 'comment']);
                 Route::delete('posts/{social_post}/comments/{comment}', [\App\Http\Controllers\Schools\SocialPostController::class, 'deleteComment']);
             });
+        });
+
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN GÖREV TÜRLERİ (Tenant düzeyinde)
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher-role-types')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\TeacherRoleTypeController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\TeacherRoleTypeController::class, 'store']);
+            Route::put('/{id}', [\App\Http\Controllers\Schools\TeacherRoleTypeController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Schools\TeacherRoleTypeController::class, 'destroy']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN YÖNETİMİ (Tenant düzeyinde)
+        // ───────────────────────────────────────────────────
+        Route::prefix('teachers')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'store']);
+            Route::get('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'show']);
+            Route::put('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'destroy']);
+
+            // Okul atamaları
+            Route::get('/{id}/schools', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'schoolAssignments']);
+            Route::post('/{id}/schools', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'assignToSchool']);
+            Route::delete('/{id}/schools/{schoolId}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'removeFromSchool']);
         });
 
         // ───────────────────────────────────────────────────

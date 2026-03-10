@@ -140,13 +140,36 @@ export type SchoolClass = {
 
 // ─── Teacher ─────────────────────────────────────────────────────────────────
 
+/** Sınıf atama modalinde kullanılan minimal öğretmen tipi */
 export type Teacher = {
     id: number
     user_id: number
-    school_id: number
+    school_id?: number | null
     name: string
     title?: string
     role?: string
+}
+
+/** Tenant-level öğretmen yönetim sayfasında kullanılan tam profil tipi */
+export type TeacherProfile = {
+    id: number
+    user_id: number
+    name: string
+    email?: string
+    phone?: string
+    title?: string
+    specialization?: string
+    employment_type?: 'full_time' | 'part_time' | 'contract' | 'intern' | 'volunteer'
+    employment_label?: string
+    experience_years?: number
+    profile_photo?: string | null
+    bio?: string
+    hire_date?: string | null
+    linkedin_url?: string | null
+    website_url?: string | null
+    school_count?: number
+    schools?: { id: number; name: string; is_active: boolean; role_type_name?: string | null }[]
+    classes?: { id: number; name: string; school_id: number }[]
 }
 
 // ─── Allergen ────────────────────────────────────────────────────────────────
@@ -269,6 +292,27 @@ export type InvoiceItem = {
     quantity: number
     unit_price: number
     total_price: number
+}
+
+// ─── Teacher Role Type ────────────────────────────────────────────────────────
+
+export type TeacherRoleType = {
+    id: number
+    tenant_id: number
+    name: string
+    sort_order?: number
+    is_active?: boolean
+}
+
+/** Okul detay sayfasının Öğretmenler sekmesinde kullanılır */
+export type SchoolTeacher = {
+    id: number
+    user_id: number
+    name: string
+    title?: string
+    employment_type?: string
+    is_active: boolean
+    role_type?: { id: number; name: string } | null
 }
 
 // ─── Social Network ──────────────────────────────────────────────────────────
