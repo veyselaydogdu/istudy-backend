@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import apiClient from '@/lib/apiClient';
 import { Package } from '@/types';
@@ -55,20 +54,15 @@ const steps = [
 ];
 
 export default function HomePage() {
-    const router = useRouter();
     const [packages, setPackages] = useState<Package[]>([]);
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && localStorage.getItem('tenant_token')) {
-            router.push('/dashboard');
-            return;
-        }
         apiClient.get('/packages').then((res) => {
             if (res.data?.data) {
                 setPackages(res.data.data.slice(0, 3));
             }
         }).catch(() => {});
-    }, [router]);
+    }, []);
 
     return (
         <>

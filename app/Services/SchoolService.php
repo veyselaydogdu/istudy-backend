@@ -30,6 +30,8 @@ class SchoolService extends BaseService
 
     protected function applyFilters($query, array $filters): void
     {
+        $query->withCount(['classes', 'children']);
+
         if (! empty($filters['tenant_id'])) {
             $query->where('tenant_id', $filters['tenant_id']);
         }

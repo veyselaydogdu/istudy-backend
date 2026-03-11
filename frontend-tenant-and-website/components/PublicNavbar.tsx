@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Menu, X, GraduationCap } from 'lucide-react';
 
@@ -13,6 +13,11 @@ const navLinks = [
 
 export default function PublicNavbar() {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        setIsLoggedIn(!!localStorage.getItem('tenant_token'));
+    }, []);
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-white/80 backdrop-blur-md dark:bg-black/80">
@@ -40,18 +45,20 @@ export default function PublicNavbar() {
 
                 {/* Desktop CTA */}
                 <div className="hidden items-center gap-3 md:flex">
-                    <Link
-                        href="/login"
-                        className="btn btn-outline-primary btn-sm"
-                    >
-                        Giriş Yap
-                    </Link>
-                    <Link
-                        href="/register"
-                        className="btn btn-primary btn-sm"
-                    >
-                        Ücretsiz Başla
-                    </Link>
+                    {isLoggedIn ? (
+                        <Link href="/dashboard" className="btn btn-primary btn-sm">
+                            Panel
+                        </Link>
+                    ) : (
+                        <>
+                            <Link href="/login" className="btn btn-outline-primary btn-sm">
+                                Giriş Yap
+                            </Link>
+                            <Link href="/register" className="btn btn-primary btn-sm">
+                                Ücretsiz Başla
+                            </Link>
+                        </>
+                    )}
                 </div>
 
                 {/* Mobile hamburger */}
@@ -80,12 +87,20 @@ export default function PublicNavbar() {
                             </Link>
                         ))}
                         <div className="mt-3 flex flex-col gap-2 border-t border-[#ebedf2] pt-3 dark:border-[#1b2e4b]">
-                            <Link href="/login" className="btn btn-outline-primary" onClick={() => setMobileOpen(false)}>
-                                Giriş Yap
-                            </Link>
-                            <Link href="/register" className="btn btn-primary" onClick={() => setMobileOpen(false)}>
-                                Ücretsiz Başla
-                            </Link>
+                            {isLoggedIn ? (
+                                <Link href="/dashboard" className="btn btn-primary" onClick={() => setMobileOpen(false)}>
+                                    Panel
+                                </Link>
+                            ) : (
+                                <>
+                                    <Link href="/login" className="btn btn-outline-primary" onClick={() => setMobileOpen(false)}>
+                                        Giriş Yap
+                                    </Link>
+                                    <Link href="/register" className="btn btn-primary" onClick={() => setMobileOpen(false)}>
+                                        Ücretsiz Başla
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </nav>
                 </div>
