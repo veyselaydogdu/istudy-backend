@@ -158,4 +158,16 @@ class User extends Authenticatable
     {
         return trim("{$this->name} {$this->surname}");
     }
+
+    /**
+     * Mobil uygulama için deep link ile şifre sıfırlama bildirimi gönderir.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        \Illuminate\Auth\Notifications\ResetPassword::createUrlUsing(function ($notifiable, $token) {
+            return 'parentmobileapp://reset-password?token='.$token.'&email='.urlencode($notifiable->email);
+        });
+
+        $this->notify(new \Illuminate\Auth\Notifications\ResetPassword($token));
+    }
 }

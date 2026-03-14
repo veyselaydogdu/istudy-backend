@@ -18,12 +18,13 @@ class SocialPost extends BaseModel
     protected $table = 'social_posts';
 
     protected $fillable = [
-        'tenant_id',
-        'school_id',
+        'tenant_id', // nullable — global postlar için
+        'school_id', // nullable — global postlar için
         'author_id',
         'visibility',
         'content',
         'is_pinned',
+        'is_global',
         'published_at',
         'created_by',
         'updated_by',
@@ -33,6 +34,7 @@ class SocialPost extends BaseModel
     {
         return [
             'is_pinned' => 'boolean',
+            'is_global' => 'boolean',
             'published_at' => 'datetime',
         ];
     }

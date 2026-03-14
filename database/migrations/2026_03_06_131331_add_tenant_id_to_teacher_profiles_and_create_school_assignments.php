@@ -24,13 +24,15 @@ return new class extends Migration
             $table->unsignedBigInteger('school_id')->nullable()->change();
         });
 
-        // 2. Mevcut kayıtlar için tenant_id backfill
-        \DB::statement('
-            UPDATE teacher_profiles tp
-            JOIN schools s ON s.id = tp.school_id
-            SET tp.tenant_id = s.tenant_id
-            WHERE tp.tenant_id IS NULL AND tp.school_id IS NOT NULL
-        ');
+        // 2. Mevcut kayıtlar için tenant_id backfill (MySQL only — test DB SQLite boş)
+        if (\DB::getDriverName() !== 'sqlite') {
+            \DB::statement('
+                UPDATE teacher_profiles tp
+                JOIN schools s ON s.id = tp.school_id
+                SET tp.tenant_id = s.tenant_id
+                WHERE tp.tenant_id IS NULL AND tp.school_id IS NOT NULL
+            ');
+        }
 
         // 3. school_teacher_assignments pivot tablosu
         if (! Schema::hasTable('school_teacher_assignments')) {
@@ -47,13 +49,15 @@ return new class extends Migration
                 $table->unique(['school_id', 'teacher_profile_id']);
             });
 
-            // Mevcut teacher_profiles.school_id kayıtlarını pivot'a backfill et
-            \DB::statement('
-                INSERT IGNORE INTO school_teacher_assignments (school_id, teacher_profile_id, employment_type, is_active, created_at, updated_at)
-                SELECT school_id, id, employment_type, 1, NOW(), NOW()
-                FROM teacher_profiles
-                WHERE school_id IS NOT NULL
-            ');
+            // Mevcut teacher_profiles.school_id kayıtlarını pivot'a backfill et (MySQL only)
+            if (\DB::getDriverName() !== 'sqlite') {
+                \DB::statement('
+                    INSERT IGNORE INTO school_teacher_assignments (school_id, teacher_profile_id, employment_type, is_active, created_at, updated_at)
+                    SELECT school_id, id, employment_type, 1, NOW(), NOW()
+                    FROM teacher_profiles
+                    WHERE school_id IS NOT NULL
+                ');
+            }
         }
     }
 

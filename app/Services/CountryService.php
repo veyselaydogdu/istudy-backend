@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Models\Base\Country;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * CountryService — Ülke Yönetim Servisi
@@ -83,12 +83,12 @@ class CountryService
                 ->ordered()
                 ->get(['id', 'name', 'iso2', 'phone_code', 'flag_emoji'])
                 ->map(fn ($c) => [
-                    'id'         => $c->id,
-                    'name'       => $c->name,
-                    'iso2'       => $c->iso2,
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'iso2' => $c->iso2,
                     'phone_code' => $c->phone_code,
-                    'flag'       => $c->flag_emoji,
-                    'label'      => "{$c->flag_emoji} {$c->name} ({$c->phone_code})",
+                    'flag' => $c->flag_emoji,
+                    'label' => "{$c->flag_emoji} {$c->name} ({$c->phone_code})",
                 ])
                 ->toArray();
         });
@@ -119,15 +119,17 @@ class CountryService
         $stats = ['created' => 0, 'updated' => 0, 'errors' => 0, 'total' => 0];
 
         try {
-            $response = Http::timeout(30)->get(self::API_URL . '/all');
+            $response = Http::timeout(60)->get(self::API_URL.'/all', [
+                'fields' => 'name,cca2,cca3,ccn3,idd,currencies,region,subregion,capital,continents,timezones,latlng,languages,flag,flags,population,borders,tld,car,startOfWeek,postalCode,independent,landlocked,area,demonyms,gini,coatOfArms',
+            ]);
 
             if (! $response->successful()) {
                 Log::error('RestCountries API hatası', [
                     'status' => $response->status(),
-                    'body'   => substr($response->body(), 0, 500),
+                    'body' => substr($response->body(), 0, 500),
                 ]);
 
-                return array_merge($stats, ['error' => 'API yanıt vermedi: ' . $response->status()]);
+                return array_merge($stats, ['error' => 'API yanıt vermedi: '.$response->status()]);
             }
 
             $countries = $response->json();
@@ -138,6 +140,7 @@ class CountryService
                     $iso2 = $data['cca2'] ?? null;
                     if (! $iso2) {
                         $stats['errors']++;
+
                         continue;
                     }
 
@@ -158,7 +161,7 @@ class CountryService
                 } catch (\Throwable $e) {
                     $stats['errors']++;
                     Log::warning('Ülke senkronizasyon hatası', [
-                        'iso2'  => $iso2 ?? 'unknown',
+                        'iso2' => $iso2 ?? 'unknown',
                         'error' => $e->getMessage(),
                     ]);
                 }
@@ -186,7 +189,7 @@ class CountryService
     public function syncCountry(string $iso2): ?Country
     {
         try {
-            $response = Http::timeout(15)->get(self::API_URL . '/alpha/' . strtoupper($iso2));
+            $response = Http::timeout(15)->get(self::API_URL.'/alpha/'.strtoupper($iso2));
 
             if (! $response->successful()) {
                 return null;
@@ -205,7 +208,7 @@ class CountryService
 
         } catch (\Throwable $e) {
             Log::error('Tek ülke senkronizasyon hatası', [
-                'iso2'  => $iso2,
+                'iso2' => $iso2,
                 'error' => $e->getMessage(),
             ]);
 
@@ -221,18 +224,18 @@ class CountryService
         $iso2 = $data['cca2'] ?? '';
 
         // Telefon kodu oluştur
-        $phoneRoot     = $data['idd']['root'] ?? '';
+        $phoneRoot = $data['idd']['root'] ?? '';
         $phoneSuffixes = $data['idd']['suffixes'] ?? [];
-        $phoneCode     = $phoneRoot . ($phoneSuffixes[0] ?? '');
+        $phoneCode = $phoneRoot.($phoneSuffixes[0] ?? '');
 
         // Para birimi bilgisi (ilk para birimi)
-        $currencyCode   = null;
-        $currencyName   = null;
+        $currencyCode = null;
+        $currencyName = null;
         $currencySymbol = null;
         if (! empty($data['currencies'])) {
-            $firstCurrency  = array_key_first($data['currencies']);
-            $currencyCode   = $firstCurrency;
-            $currencyName   = $data['currencies'][$firstCurrency]['name'] ?? null;
+            $firstCurrency = array_key_first($data['currencies']);
+            $currencyCode = $firstCurrency;
+            $currencyName = $data['currencies'][$firstCurrency]['name'] ?? null;
             $currencySymbol = $data['currencies'][$firstCurrency]['symbol'] ?? null;
         }
 
@@ -240,40 +243,40 @@ class CountryService
         $nativeName = null;
         if (! empty($data['name']['nativeName'])) {
             $firstNative = array_values($data['name']['nativeName']);
-            $nativeName  = $firstNative[0]['common'] ?? null;
+            $nativeName = $firstNative[0]['common'] ?? null;
         }
 
         // Koordinatlar
-        $latitude  = $data['latlng'][0] ?? null;
+        $latitude = $data['latlng'][0] ?? null;
         $longitude = $data['latlng'][1] ?? null;
 
         return [
-            'name'            => $data['name']['common'] ?? $iso2,
-            'official_name'   => $data['name']['official'] ?? null,
-            'native_name'     => $nativeName,
-            'iso2'            => $iso2,
-            'iso3'            => $data['cca3'] ?? null,
-            'numeric_code'    => $data['ccn3'] ?? null,
-            'phone_code'      => $phoneCode ?: null,
-            'phone_root'      => $phoneRoot ?: null,
-            'phone_suffixes'  => ! empty($phoneSuffixes) ? $phoneSuffixes : null,
-            'currency_code'   => $currencyCode,
-            'currency_name'   => $currencyName,
+            'name' => $data['name']['common'] ?? $iso2,
+            'official_name' => $data['name']['official'] ?? null,
+            'native_name' => $nativeName,
+            'iso2' => $iso2,
+            'iso3' => $data['cca3'] ?? null,
+            'numeric_code' => $data['ccn3'] ?? null,
+            'phone_code' => $phoneCode ?: null,
+            'phone_root' => $phoneRoot ?: null,
+            'phone_suffixes' => ! empty($phoneSuffixes) ? $phoneSuffixes : null,
+            'currency_code' => $currencyCode,
+            'currency_name' => $currencyName,
             'currency_symbol' => $currencySymbol,
-            'region'          => $data['region'] ?? null,
-            'subregion'       => $data['subregion'] ?? null,
-            'capital'         => is_array($data['capital'] ?? null) ? ($data['capital'][0] ?? null) : ($data['capital'] ?? null),
-            'continents'      => $data['continents'] ?? null,
-            'timezones'       => $data['timezones'] ?? null,
-            'latitude'        => $latitude,
-            'longitude'       => $longitude,
-            'languages'       => $data['languages'] ?? null,
-            'flag_emoji'      => $data['flag'] ?? null,
-            'flag_png'        => $data['flags']['png'] ?? null,
-            'flag_svg'        => $data['flags']['svg'] ?? null,
-            'population'      => $data['population'] ?? 0,
-            'sort_order'      => self::PRIORITY_COUNTRIES[$iso2] ?? 0,
-            'extra_data'      => $this->buildExtraData($data),
+            'region' => $data['region'] ?? null,
+            'subregion' => $data['subregion'] ?? null,
+            'capital' => is_array($data['capital'] ?? null) ? ($data['capital'][0] ?? null) : ($data['capital'] ?? null),
+            'continents' => $data['continents'] ?? null,
+            'timezones' => $data['timezones'] ?? null,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'languages' => $data['languages'] ?? null,
+            'flag_emoji' => $data['flag'] ?? null,
+            'flag_png' => $data['flags']['png'] ?? null,
+            'flag_svg' => $data['flags']['svg'] ?? null,
+            'population' => $data['population'] ?? 0,
+            'sort_order' => self::PRIORITY_COUNTRIES[$iso2] ?? 0,
+            'extra_data' => $this->buildExtraData($data),
         ];
     }
 
@@ -352,10 +355,10 @@ class CountryService
     {
         return Cache::remember('countries:stats', 3600, function () {
             return [
-                'total'    => Country::count(),
-                'active'   => Country::active()->count(),
+                'total' => Country::count(),
+                'active' => Country::active()->count(),
                 'inactive' => Country::where('is_active', false)->count(),
-                'regions'  => Country::active()->distinct()->pluck('region')->filter()->count(),
+                'regions' => Country::active()->distinct()->pluck('region')->filter()->count(),
             ];
         });
     }

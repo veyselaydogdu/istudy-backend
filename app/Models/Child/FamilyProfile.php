@@ -60,6 +60,14 @@ class FamilyProfile extends BaseModel
     }
 
     /**
+     * Acil durum kişileri
+     */
+    public function emergencyContacts()
+    {
+        return $this->hasMany(EmergencyContact::class, 'family_profile_id')->orderBy('sort_order');
+    }
+
+    /**
      * Velinin kayıtlı olduğu okullar (onaylananlar)
      */
     public function schools()

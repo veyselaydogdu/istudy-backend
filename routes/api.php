@@ -72,6 +72,68 @@ Route::prefix('countries')->group(function () {
 });
 
 // ═══════════════════════════════════════════════════════════
+// VELİ AUTH (Public — Mobil uygulama)
+// ═══════════════════════════════════════════════════════════
+Route::prefix('parent/auth')->group(function () {
+    Route::middleware('throttle:10,1')->post('/register', [\App\Http\Controllers\Parents\ParentAuthController::class, 'register']);
+    Route::middleware('throttle:5,1')->post('/login', [\App\Http\Controllers\Parents\ParentAuthController::class, 'login']);
+    Route::post('/forgot-password', [\App\Http\Controllers\Parents\ParentAuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [\App\Http\Controllers\Parents\ParentAuthController::class, 'resetPassword']);
+    Route::get('/verify-email/{id}/{hash}', [\App\Http\Controllers\Parents\ParentAuthController::class, 'verifyEmail'])->name('parent.verification.verify');
+    Route::get('/countries', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'countries']);
+    Route::get('/blood-types', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'bloodTypes']);
+});
+
+// ═══════════════════════════════════════════════════════════
+// VELİ API (Auth gerekli — Mobil uygulama)
+// ═══════════════════════════════════════════════════════════
+Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
+    // Auth
+    Route::post('/auth/logout', [\App\Http\Controllers\Parents\ParentAuthController::class, 'logout']);
+    Route::get('/auth/me', [\App\Http\Controllers\Parents\ParentAuthController::class, 'me']);
+    Route::post('/auth/resend-verification', [\App\Http\Controllers\Parents\ParentAuthController::class, 'resendVerification']);
+
+    // Çocuklar
+    Route::apiResource('children', \App\Http\Controllers\Parents\ParentChildController::class);
+    Route::post('/children/{child}/allergens', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncAllergens']);
+    Route::post('/children/{child}/medications', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncMedications']);
+    Route::post('/children/{child}/conditions', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncConditions']);
+
+    // Aile üyeleri
+    Route::get('/family/members', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'members']);
+    Route::post('/family/members', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'addMember']);
+    Route::delete('/family/members/{userId}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'removeMember']);
+
+    // Acil durum kişileri
+    Route::get('/family/emergency-contacts', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'emergencyContacts']);
+    Route::post('/family/emergency-contacts', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'storeEmergencyContact']);
+    Route::put('/family/emergency-contacts/{contact}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'updateEmergencyContact']);
+    Route::delete('/family/emergency-contacts/{contact}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'destroyEmergencyContact']);
+
+    // Okullar
+    Route::get('/schools', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'mySchools']);
+    Route::post('/schools/join', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'joinSchool']);
+    Route::get('/schools/{school}', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'schoolDetail']);
+    Route::get('/schools/{school}/feed', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'socialFeed']);
+
+    // Akış
+    Route::get('/feed/global', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'globalFeed']);
+    Route::get('/feed/schools', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'mySchoolsFeed']);
+
+    // Referans veriler
+    Route::get('/allergens', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'allergens']);
+    Route::get('/conditions', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'conditions']);
+    Route::get('/medications', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'medications']);
+    Route::get('/countries', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'countries']);
+    Route::get('/blood-types', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'bloodTypes']);
+
+    // Veli önerileri (özel sağlık girişleri)
+    Route::post('/children/{child}/suggest-allergen', [\App\Http\Controllers\Parents\ParentChildController::class, 'suggestAllergen']);
+    Route::post('/children/{child}/suggest-condition', [\App\Http\Controllers\Parents\ParentChildController::class, 'suggestCondition']);
+    Route::post('/children/{child}/suggest-medication', [\App\Http\Controllers\Parents\ParentChildController::class, 'suggestMedication']);
+});
+
+// ═══════════════════════════════════════════════════════════
 // 2️⃣ AUTH GEREKLİ (Abonelik gerektirmez)
 // ═══════════════════════════════════════════════════════════
 Route::middleware('auth:sanctum')->group(function () {
@@ -376,6 +438,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{allergen_id}', [\App\Http\Controllers\Schools\TenantAllergenController::class, 'destroy']);
         });
 
+        // Veli önerileri onay (tenant)
+        Route::get('/health-suggestions', [\App\Http\Controllers\Schools\TenantHealthSuggestionController::class, 'index']);
+        Route::post('/health-suggestions/approve', [\App\Http\Controllers\Schools\TenantHealthSuggestionController::class, 'approve']);
+        Route::post('/health-suggestions/reject', [\App\Http\Controllers\Schools\TenantHealthSuggestionController::class, 'reject']);
+
         // ───────────────────────────────────────────────────
         // BESİN ÖĞELERİ & YEMEK YÖNETİMİ (Tenant tarafı)
         // ───────────────────────────────────────────────────
@@ -587,6 +654,23 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'medicationStore']);
             Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'medicationDestroy']);
         });
+
+        // ───────────────────────────────────────────────────
+        // KAN GRUPLARI
+        // ───────────────────────────────────────────────────
+        Route::prefix('blood-types')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'bloodTypeIndex']);
+            Route::post('/', [\App\Http\Controllers\Admin\AdminHealthController::class, 'bloodTypeStore']);
+            Route::put('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'bloodTypeUpdate']);
+            Route::delete('/{id}', [\App\Http\Controllers\Admin\AdminHealthController::class, 'bloodTypeDestroy']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // VELİ ÖNERİLERİ (Global Onay)
+        // ───────────────────────────────────────────────────
+        Route::get('/health-suggestions', [\App\Http\Controllers\Admin\AdminHealthController::class, 'pendingSuggestions']);
+        Route::post('/health-suggestions/approve', [\App\Http\Controllers\Admin\AdminHealthController::class, 'approveSuggestion']);
+        Route::post('/health-suggestions/reject', [\App\Http\Controllers\Admin\AdminHealthController::class, 'rejectSuggestion']);
 
         // ───────────────────────────────────────────────────
         // İLETİŞİM TALEPLERİ YÖNETİMİ

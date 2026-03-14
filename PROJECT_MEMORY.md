@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-03-10 (Öğretmen modülü: TeacherRoleType tablosu+modeli eklendi, school_teacher_assignments.teacher_role_type_id FK eklendi, ClassManagementController::schoolTeachers BelongsToMany pivot bug'ı düzeltildi, TeacherRoleTypeController eklendi; Docker: PHP opcache container restart gerektiriyor)
+> **Son Güncelleme:** 2026-03-13 (Kan grubu sistemi, sağlık öneri akışı, passport_number; Detaylar: PROJECT_MEMORY_MOBILE.md)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -100,7 +100,13 @@ istudy-backend/
 │   │   │   │   ├── SubscriptionController.php     ← Aile abonelikleri (B2C)
 │   │   │   │   └── PackageSelectionController.php ← Paket satın alma (B2B)
 │   │   │   ├── Parents/
-│   │   │   │   └── BaseParentController.php
+│   │   │   │   ├── BaseParentController.php         ← getFamilyProfile() (owner+co_parent) + findOwnedChild()
+│   │   │   │   ├── ParentAuthController.php         ← register/login/logout/me/forgot/reset/verify
+│   │   │   │   ├── ParentChildController.php        ← CRUD + syncAllergens/Medications/Conditions + saveMedications()
+│   │   │   │   ├── ParentFamilyController.php       ← members/addMember/removeMember + emergency contacts
+│   │   │   │   ├── ParentSchoolController.php       ← mySchools/joinSchool/socialFeed/globalFeed
+│   │   │   │   ├── ParentReferenceController.php    ← allergens/conditions/medications/countries
+│   │   │   │   └── AuthorizedPickupController.php
 │   │   │   └── Teachers/
 │   │   │       └── BaseTeacherController.php
 │   │   ├── Middleware/
@@ -664,7 +670,7 @@ protected function paginatedResponse(mixed $collection): JsonResponse
 |-----------|-----------|----------|
 | `BaseSchoolController` | `Controllers\Schools` | Okul erişim kontrolü yapar. `school_id` parameter'ını doğrular. `$this->school` property sağlar. |
 | `BaseTenantController` | `Controllers\Tenant` | `$this->tenant()` helper'ı ile mevcut tenant'ı döndürür. |
-| `BaseParentController` | `Controllers\Parents` | `$this->familyProfile()` helper'ı ile velinin aile profilini döndürür. |
+| `BaseParentController` | `Controllers\Parents` | `getFamilyProfile()`: owner_user_id → family_members (co_parent) sırasıyla arar. `findOwnedChild(int $id)` dahil. Tüm parent controller'lar buradan türer. |
 | `BaseTeacherController` | `Controllers\Teachers` | `$this->teacherProfile()` helper'ı ile öğretmen profilini döndürür. |
 
 ### 5.5 BasePolicy (`app/Policies/BasePolicy.php`)
