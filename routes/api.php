@@ -115,6 +115,7 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
     // Okullar
     Route::get('/schools', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'mySchools']);
     Route::post('/schools/join', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'joinSchool']);
+    Route::get('/my-enrollment-requests', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'myEnrollmentRequests']);
     Route::get('/schools/{school}', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'schoolDetail']);
     Route::get('/schools/{school}/feed', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'socialFeed']);
 

@@ -151,6 +151,42 @@ class ParentSchoolController extends BaseParentController
     }
 
     /**
+     * Velinin bekleyen ve reddedilen okul başvurularını listeler.
+     */
+    public function myEnrollmentRequests(): JsonResponse
+    {
+        try {
+            $user = $this->user();
+
+            $requests = SchoolEnrollmentRequest::withoutGlobalScope('tenant')
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['pending', 'rejected'])
+                ->with(['school:id,name,address,phone,logo'])
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(fn ($req) => [
+                    'id' => $req->id,
+                    'status' => $req->status,
+                    'rejection_reason' => $req->rejection_reason,
+                    'created_at' => $req->created_at,
+                    'school' => $req->school ? [
+                        'id' => $req->school->id,
+                        'name' => $req->school->name,
+                        'address' => $req->school->address ?? null,
+                        'phone' => $req->school->phone ?? null,
+                        'logo' => $req->school->logo ?? null,
+                    ] : null,
+                ]);
+
+            return $this->successResponse($requests, 'Başvurular listelendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::myEnrollmentRequests Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Okul sosyal akışı (sadece kayıtlı veli erişebilir).
      */
     public function socialFeed(int $school): JsonResponse

@@ -140,8 +140,8 @@ class EnrollmentRequestService extends BaseService
             }
         }
 
-        // 2. FamilyProfile bul ya da oluştur
-        $familyProfile = FamilyProfile::where('owner_user_id', $user->id)->first();
+        // 2. FamilyProfile bul ya da oluştur (withoutGlobalScope: parent tenant_id null olabilir)
+        $familyProfile = FamilyProfile::withoutGlobalScope('tenant')->where('owner_user_id', $user->id)->first();
 
         if (! $familyProfile) {
             $familyProfile = FamilyProfile::create([
