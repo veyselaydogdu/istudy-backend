@@ -14,14 +14,21 @@ class ParentReferenceController extends BaseParentController
 {
     /**
      * Global ve tenant'a ait alerjenler.
+     *
+     * Parent kullanıcılar (tenant_id=null) birden fazla tenant'a ait okula
+     * kayıtlı olabileceğinden tüm approved alerjenler döndürülür.
      */
     public function allergens(): JsonResponse
     {
         try {
+            $userTenantId = $this->user()->tenant_id;
+
             $allergens = Allergen::withoutGlobalScope('tenant')
-                ->where(function ($q) {
-                    $q->whereNull('tenant_id')
-                        ->orWhere('tenant_id', $this->user()->tenant_id ?? 0);
+                ->when($userTenantId, function ($q) use ($userTenantId) {
+                    $q->where(function ($q2) use ($userTenantId) {
+                        $q2->whereNull('tenant_id')
+                            ->orWhere('tenant_id', $userTenantId);
+                    });
                 })
                 ->where('status', 'approved')
                 ->orderBy('name')
@@ -39,14 +46,20 @@ class ParentReferenceController extends BaseParentController
 
     /**
      * Global ve tenant'a ait tıbbi durumlar.
+     *
+     * Parent kullanıcılar (tenant_id=null) için tüm approved tıbbi durumlar döndürülür.
      */
     public function conditions(): JsonResponse
     {
         try {
+            $userTenantId = $this->user()->tenant_id;
+
             $conditions = MedicalCondition::withoutGlobalScope('tenant')
-                ->where(function ($q) {
-                    $q->whereNull('tenant_id')
-                        ->orWhere('tenant_id', $this->user()->tenant_id ?? 0);
+                ->when($userTenantId, function ($q) use ($userTenantId) {
+                    $q->where(function ($q2) use ($userTenantId) {
+                        $q2->whereNull('tenant_id')
+                            ->orWhere('tenant_id', $userTenantId);
+                    });
                 })
                 ->where('status', 'approved')
                 ->orderBy('name')

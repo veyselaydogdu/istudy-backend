@@ -1,8 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -56,6 +58,234 @@ const DAY_TR: Record<string, string> = {
   thursday: 'Per', friday: 'Cum', saturday: 'Cmt', sunday: 'Paz',
 };
 
+// ─── Multi-Select Picker Modal ────────────────────────────
+
+interface MultiSelectPickerModalProps {
+  visible: boolean;
+  title: string;
+  items: Array<{ id: number; name: string }>;
+  selectedIds: number[];
+  customItems: string[];
+  accentColor: string;
+  onConfirm: (ids: number[]) => void;
+  onCustomAdd: (name: string) => void;
+  onCustomRemove: (idx: number) => void;
+  onClose: () => void;
+}
+
+function MultiSelectPickerModal({
+  visible, title, items, selectedIds, customItems,
+  accentColor, onConfirm, onCustomAdd, onCustomRemove, onClose,
+}: MultiSelectPickerModalProps) {
+  const [search, setSearch] = useState('');
+  const [tempSelected, setTempSelected] = useState<number[]>([]);
+  const [showAddInput, setShowAddInput] = useState(false);
+  const [addInputValue, setAddInputValue] = useState('');
+
+  // Modal açılınca mevcut seçimleri al
+  React.useEffect(() => {
+    if (visible) {
+      setTempSelected(selectedIds);
+      setSearch('');
+      setShowAddInput(false);
+      setAddInputValue('');
+    }
+  }, [visible, selectedIds]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items;
+    return items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()));
+  }, [items, search]);
+
+  const toggle = (id: number) => {
+    setTempSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={msStyles.overlay}>
+        <View style={msStyles.sheet}>
+          <View style={msStyles.handle} />
+
+          {/* Başlık */}
+          <View style={msStyles.header}>
+            <Text style={msStyles.title}>{title}</Text>
+            <Text style={[msStyles.countBadge, { backgroundColor: accentColor + '20', color: accentColor }]}>
+              {tempSelected.length + customItems.length} seçili
+            </Text>
+          </View>
+
+          {/* Arama */}
+          <View style={msStyles.searchRow}>
+            <Ionicons name="search-outline" size={16} color="#9CA3AF" />
+            <TextInput
+              style={msStyles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Ara..."
+              placeholderTextColor="#C4C9D4"
+              autoCorrect={false}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Liste */}
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => String(item.id)}
+            style={msStyles.list}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => {
+              const selected = tempSelected.includes(item.id);
+              return (
+                <TouchableOpacity style={msStyles.item} onPress={() => toggle(item.id)} activeOpacity={0.7}>
+                  <View style={[msStyles.checkbox, selected && { backgroundColor: accentColor, borderColor: accentColor }]}>
+                    {selected && <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
+                  </View>
+                  <Text style={[msStyles.itemText, selected && { color: accentColor, fontWeight: '600' }]}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={
+              <Text style={msStyles.emptyText}>
+                {search.trim() ? 'Sonuç bulunamadı' : (items.length === 0 ? 'Kayıt bulunamadı' : 'Sonuç bulunamadı')}
+              </Text>
+            }
+            ListFooterComponent={
+              <View>
+                {/* Özel eklenenler */}
+                {customItems.map((name, idx) => (
+                  <View key={`c-${idx}`} style={msStyles.customItem}>
+                    <View style={[msStyles.checkbox, { backgroundColor: accentColor, borderColor: accentColor }]}>
+                      <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                    </View>
+                    <Text style={[msStyles.itemText, { color: accentColor, fontWeight: '600', flex: 1 }]}>
+                      {name}
+                      <Text style={{ fontSize: 10, color: '#9CA3AF' }}> (onay bekleniyor)</Text>
+                    </Text>
+                    <TouchableOpacity onPress={() => onCustomRemove(idx)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="close-circle" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {/* Özel ekle butonu / input */}
+                {showAddInput ? (
+                  <View style={msStyles.addInputRow}>
+                    <TextInput
+                      style={msStyles.addInput}
+                      value={addInputValue}
+                      onChangeText={setAddInputValue}
+                      placeholder="Adı girin..."
+                      placeholderTextColor="#9CA3AF"
+                      autoFocus
+                    />
+                    <TouchableOpacity
+                      style={[msStyles.addConfirmBtn, { backgroundColor: accentColor }]}
+                      onPress={() => {
+                        const name = addInputValue.trim();
+                        if (name) { onCustomAdd(name); }
+                        setAddInputValue('');
+                        setShowAddInput(false);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={msStyles.addConfirmBtnText}>Ekle</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setShowAddInput(false); setAddInputValue(''); }}>
+                      <Ionicons name="close" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={msStyles.addCustomBtn} onPress={() => setShowAddInput(true)} activeOpacity={0.7}>
+                    <Ionicons name="add-circle-outline" size={16} color="#D97706" />
+                    <Text style={msStyles.addCustomBtnText}>Listede yok, özel ekle</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            }
+          />
+
+          {/* Onayla */}
+          <View style={msStyles.footer}>
+            <TouchableOpacity style={msStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+              <Text style={msStyles.cancelBtnText}>İptal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[msStyles.confirmBtn, { backgroundColor: accentColor }]}
+              onPress={() => { onConfirm(tempSelected); onClose(); }}
+              activeOpacity={0.8}
+            >
+              <Text style={msStyles.confirmBtnText}>Onayla ({tempSelected.length + customItems.length})</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const msStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+    maxHeight: '80%',
+  },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB', alignSelf: 'center', marginBottom: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 10 },
+  title: { fontSize: 17, fontWeight: '800', color: '#1F2937' },
+  countBadge: { fontSize: 12, fontWeight: '700', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3 },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6',
+    borderRadius: 12, marginHorizontal: 20, paddingHorizontal: 12, paddingVertical: 10,
+    gap: 8, marginBottom: 8,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: '#1F2937', padding: 0 },
+  list: { flexGrow: 0 },
+  item: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 13, gap: 12 },
+  customItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 11, gap: 12, backgroundColor: '#FFFBEB' },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#D1D5DB',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  itemText: { flex: 1, fontSize: 14, color: '#374151' },
+  emptyText: { textAlign: 'center', color: '#9CA3AF', fontSize: 13, paddingVertical: 24 },
+  addCustomBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderTopWidth: 1, borderTopColor: '#F3F4F6',
+  },
+  addCustomBtnText: { fontSize: 13, color: '#D97706', fontWeight: '600' },
+  addInputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 20, paddingVertical: 10,
+    borderTopWidth: 1, borderTopColor: '#F3F4F6',
+  },
+  addInput: {
+    flex: 1, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB',
+    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#1F2937',
+  },
+  addConfirmBtn: { borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9 },
+  addConfirmBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  footer: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  cancelBtn: { flex: 1, backgroundColor: '#F3F4F6', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  confirmBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  confirmBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+});
+
 export default function AddChildScreen() {
   const [form, setForm] = useState({
     first_name: '',
@@ -97,6 +327,8 @@ export default function AddChildScreen() {
   const [medications, setMedications] = useState<Array<{id: number; name: string}>>([]);
   const [selectedAllergenIds, setSelectedAllergenIds] = useState<number[]>([]);
   const [selectedConditionIds, setSelectedConditionIds] = useState<number[]>([]);
+  const [customAllergenNames, setCustomAllergenNames] = useState<string[]>([]);
+  const [customConditionNames, setCustomConditionNames] = useState<string[]>([]);
   const [selectedMedications, setSelectedMedications] = useState<Array<{
     medication_id: number | null;
     custom_name: string;
@@ -107,6 +339,10 @@ export default function AddChildScreen() {
   const [showMedAddModal, setShowMedAddModal] = useState(false);
   const [medAddForm, setMedAddForm] = useState({ medication_id: null as number | null, custom_name: '', dose: '', usage_time: [] as string[], usage_days: [] as string[] });
   const [healthLoading, setHealthLoading] = useState(false);
+
+  // Multi-select picker modals
+  const [showAllergenPicker, setShowAllergenPicker] = useState(false);
+  const [showConditionPicker, setShowConditionPicker] = useState(false);
 
   useEffect(() => {
     void fetchCountries();
@@ -211,7 +447,7 @@ export default function AddChildScreen() {
 
     setLoading(true);
     try {
-      await api.post('/parent/children', {
+      const res = await api.post<{ data: { id: number } }>('/parent/children', {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         birth_date: form.birth_date.trim(),
@@ -227,6 +463,23 @@ export default function AddChildScreen() {
         condition_ids: selectedConditionIds.length > 0 ? selectedConditionIds : undefined,
         medications: selectedMedications.length > 0 ? selectedMedications : undefined,
       });
+
+      const childId = res.data?.data?.id;
+      if (childId) {
+        // Özel alerjenler — suggest olarak gönder
+        await Promise.allSettled(
+          customAllergenNames.map((name) =>
+            api.post(`/parent/children/${childId}/suggest-allergen`, { name })
+          )
+        );
+        // Özel tıbbi durumlar — suggest olarak gönder
+        await Promise.allSettled(
+          customConditionNames.map((name) =>
+            api.post(`/parent/children/${childId}/suggest-condition`, { name })
+          )
+        );
+      }
+
       router.back();
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
@@ -500,70 +753,72 @@ export default function AddChildScreen() {
             ) : (
               <>
                 {/* ALERJENLER */}
-                {allergens.length > 0 && (
-                  <View style={styles.field}>
-                    <Text style={styles.label}>🚨 Alerjenler</Text>
+                <View style={styles.field}>
+                  <Text style={styles.label}>🚨 Alerjenler</Text>
+                  <TouchableOpacity
+                    style={styles.pickerButton}
+                    onPress={() => setShowAllergenPicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.pickerButtonText, (selectedAllergenIds.length + customAllergenNames.length) === 0 && styles.placeholderText]}>
+                      {(selectedAllergenIds.length + customAllergenNames.length) > 0
+                        ? `${selectedAllergenIds.length + customAllergenNames.length} alerjen seçildi`
+                        : 'Alerjen seçin...'}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                  </TouchableOpacity>
+                  {(selectedAllergenIds.length + customAllergenNames.length) > 0 && (
                     <View style={styles.chipGrid}>
-                      {allergens.map((item) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          style={[
-                            styles.healthChip,
-                            selectedAllergenIds.includes(item.id) && styles.healthChipActiveRed,
-                          ]}
-                          onPress={() =>
-                            setSelectedAllergenIds((prev) =>
-                              prev.includes(item.id) ? prev.filter((i) => i !== item.id) : [...prev, item.id]
-                            )
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <Text
-                            style={[
-                              styles.healthChipText,
-                              selectedAllergenIds.includes(item.id) && styles.healthChipTextRed,
-                            ]}
-                          >
-                            {item.name}
-                          </Text>
-                        </TouchableOpacity>
+                      {selectedAllergenIds.map((id) => {
+                        const item = allergens.find((a) => a.id === id);
+                        return item ? (
+                          <View key={id} style={[styles.healthChip, styles.healthChipActiveRed]}>
+                            <Text style={[styles.healthChipText, styles.healthChipTextRed]}>{item.name}</Text>
+                          </View>
+                        ) : null;
+                      })}
+                      {customAllergenNames.map((name, idx) => (
+                        <View key={`ca-${idx}`} style={[styles.healthChip, styles.healthChipActiveRed]}>
+                          <Text style={[styles.healthChipText, styles.healthChipTextRed]}>{name} ⏳</Text>
+                        </View>
                       ))}
                     </View>
-                  </View>
-                )}
+                  )}
+                </View>
 
                 {/* HASTALIKLAR */}
-                {conditions.length > 0 && (
-                  <View style={styles.field}>
-                    <Text style={styles.label}>🏥 Tıbbi Durumlar</Text>
+                <View style={styles.field}>
+                  <Text style={styles.label}>🏥 Tıbbi Durumlar</Text>
+                  <TouchableOpacity
+                    style={styles.pickerButton}
+                    onPress={() => setShowConditionPicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.pickerButtonText, (selectedConditionIds.length + customConditionNames.length) === 0 && styles.placeholderText]}>
+                      {(selectedConditionIds.length + customConditionNames.length) > 0
+                        ? `${selectedConditionIds.length + customConditionNames.length} tıbbi durum seçildi`
+                        : 'Tıbbi durum seçin...'}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                  </TouchableOpacity>
+                  {(selectedConditionIds.length + customConditionNames.length) > 0 && (
                     <View style={styles.chipGrid}>
-                      {conditions.map((item) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          style={[
-                            styles.healthChip,
-                            selectedConditionIds.includes(item.id) && styles.healthChipActiveOrange,
-                          ]}
-                          onPress={() =>
-                            setSelectedConditionIds((prev) =>
-                              prev.includes(item.id) ? prev.filter((i) => i !== item.id) : [...prev, item.id]
-                            )
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <Text
-                            style={[
-                              styles.healthChipText,
-                              selectedConditionIds.includes(item.id) && styles.healthChipTextOrange,
-                            ]}
-                          >
-                            {item.name}
-                          </Text>
-                        </TouchableOpacity>
+                      {selectedConditionIds.map((id) => {
+                        const item = conditions.find((c) => c.id === id);
+                        return item ? (
+                          <View key={id} style={[styles.healthChip, styles.healthChipActiveOrange]}>
+                            <Text style={[styles.healthChipText, styles.healthChipTextOrange]}>{item.name}</Text>
+                          </View>
+                        ) : null;
+                      })}
+                      {customConditionNames.map((name, idx) => (
+                        <View key={`cc-${idx}`} style={[styles.healthChip, styles.healthChipActiveOrange]}>
+                          <Text style={[styles.healthChipText, styles.healthChipTextOrange]}>{name} ⏳</Text>
+                        </View>
                       ))}
                     </View>
-                  </View>
-                )}
+                  )}
+                </View>
 
                 {/* İLAÇLAR */}
                 <View style={styles.field}>
@@ -840,6 +1095,34 @@ export default function AddChildScreen() {
           </View>
         </View>
       </Modal>
+      {/* ALERJEN ÇOKLU SEÇİM */}
+      <MultiSelectPickerModal
+        visible={showAllergenPicker}
+        title="Alerjen Seç"
+        items={allergens}
+        selectedIds={selectedAllergenIds}
+        customItems={customAllergenNames}
+        accentColor="#DC2626"
+        onConfirm={setSelectedAllergenIds}
+        onCustomAdd={(name) => setCustomAllergenNames((prev) => [...prev, name])}
+        onCustomRemove={(idx) => setCustomAllergenNames((prev) => prev.filter((_, i) => i !== idx))}
+        onClose={() => setShowAllergenPicker(false)}
+      />
+
+      {/* TIBBİ DURUM ÇOKLU SEÇİM */}
+      <MultiSelectPickerModal
+        visible={showConditionPicker}
+        title="Tıbbi Durum Seç"
+        items={conditions}
+        selectedIds={selectedConditionIds}
+        customItems={customConditionNames}
+        accentColor="#D97706"
+        onConfirm={setSelectedConditionIds}
+        onCustomAdd={(name) => setCustomConditionNames((prev) => [...prev, name])}
+        onCustomRemove={(idx) => setCustomConditionNames((prev) => prev.filter((_, i) => i !== idx))}
+        onClose={() => setShowConditionPicker(false)}
+      />
+
       {/* İLAÇ EKLEME MODAL */}
       <Modal
         visible={showMedAddModal}
@@ -1320,6 +1603,17 @@ const styles = StyleSheet.create({
   healthChipTextOrange: { color: '#D97706', fontWeight: '700' },
   addMedBtn: { backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   addMedBtnText: { color: '#208AEF', fontSize: 13, fontWeight: '600' },
+  healthSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  addSuggestBtn: { backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  addSuggestBtnText: { color: '#D97706', fontSize: 12, fontWeight: '700' },
+  healthEmptyHint: { fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', marginTop: 2 },
+  customModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 24,
+    marginHorizontal: 24,
+    gap: 4,
+  },
   medItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   medName: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
   medDetail: { fontSize: 12, color: '#6B7280', marginTop: 2 },
