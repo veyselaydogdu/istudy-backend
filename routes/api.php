@@ -26,6 +26,8 @@ Route::get('/health', fn () => response()->json(['status' => 'ok', 'timestamp' =
 Route::prefix('auth')->group(function () {
     Route::middleware('throttle:10,1')->post('/register', [\App\Http\Controllers\Auth\AuthController::class, 'register']);
     Route::middleware('throttle:5,1')->post('/login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
+    Route::middleware('throttle:5,1')->post('/forgot-password', [\App\Http\Controllers\Auth\AuthController::class, 'forgotPassword']);
+    Route::middleware('throttle:5,1')->post('/reset-password', [\App\Http\Controllers\Auth\AuthController::class, 'resetPassword']);
 });
 
 // Aktif paketleri listele (kayıt öncesi gösterilir)

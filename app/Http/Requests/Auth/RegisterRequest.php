@@ -16,7 +16,15 @@ class RegisterRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/',
+            ],
             'phone' => ['nullable', 'string', 'max:20'],
             'institution_name' => ['required', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:5'],
@@ -33,6 +41,7 @@ class RegisterRequest extends FormRequest
             'email.unique' => 'Bu e-posta adresi zaten kayıtlı.',
             'password.min' => 'Şifre en az 8 karakter olmalıdır.',
             'password.confirmed' => 'Şifre tekrarı eşleşmiyor.',
+            'password.regex' => 'Şifre en az 1 büyük harf, 1 rakam ve 1 özel karakter içermelidir.',
             'institution_name.required' => 'Kurum adı gereklidir.',
         ];
     }

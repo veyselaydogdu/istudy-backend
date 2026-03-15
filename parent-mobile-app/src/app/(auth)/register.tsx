@@ -253,11 +253,13 @@ export default function RegisterScreen() {
     void (async () => {
       try {
         const res = await api.get<{ data: Country[] }>('/parent/auth/countries');
-        // phone_code bazen "+90" formatında gelir, "90" olarak normalize et
-        const list = res.data.data.map((c) => ({
-          ...c,
-          phone_code: c.phone_code.replace(/^\+/, ''),
-        }));
+        // phone_code null olan ülkeleri filtrele, "90" formatına normalize et
+        const list = res.data.data
+          .filter((c) => !!c.phone_code)
+          .map((c) => ({
+            ...c,
+            phone_code: c.phone_code.replace(/^\+/, ''),
+          }));
         setCountries(list);
         // Türkiye varsa varsayılan olarak seç
         const tr = list.find((c) => c.iso2 === 'TR');

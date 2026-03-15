@@ -99,6 +99,12 @@ export default function LoginPage() {
                                     )}
                                 </div>
 
+                                <div className="flex justify-end">
+                                    <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:underline">
+                                        Şifremi Unuttum
+                                    </Link>
+                                </div>
+
                                 <button
                                     type="submit"
                                     className="btn btn-gradient w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]"

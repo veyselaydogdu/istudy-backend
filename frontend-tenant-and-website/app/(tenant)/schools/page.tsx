@@ -1,11 +1,155 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { School, Country } from '@/types';
-import { Plus, Search, Trash2, ChevronLeft, ChevronRight, Edit2, X, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Search, Trash2, ChevronLeft, ChevronRight, Edit2, X, ToggleLeft, ToggleRight, ChevronDown } from 'lucide-react';
+
+// ─── Phone Code Types ───────────────────────────────────────────────────────
+
+type PhoneCode = {
+    id: number;
+    name: string;
+    iso2: string;
+    phone_code: string; // stored without +
+    flag_emoji?: string;
+};
+
+type PhoneFieldKey = 'phone' | 'fax' | 'gsm' | 'whatsapp';
+
+type PhoneState = {
+    digits: string;
+    code: PhoneCode | null;
+};
+
+// ─── Phone Input Component ──────────────────────────────────────────────────
+
+interface PhoneInputFieldProps {
+    digits: string;
+    selectedCode: PhoneCode | null;
+    phoneCodes: PhoneCode[];
+    onDigitsChange: (digits: string) => void;
+    onCodeChange: (code: PhoneCode) => void;
+    disabled?: boolean;
+    placeholder?: string;
+}
+
+function PhoneInputField({ digits, selectedCode, phoneCodes, onDigitsChange, onCodeChange, disabled, placeholder }: PhoneInputFieldProps) {
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
+
+    const filtered = useMemo(() => {
+        if (!search) return phoneCodes;
+        const s = search.toLowerCase();
+        return phoneCodes.filter(c => c.name.toLowerCase().includes(s) || c.phone_code.includes(s));
+    }, [phoneCodes, search]);
+
+    return (
+        <div className="flex gap-2">
+            <div className="relative" ref={dropdownRef}>
+                <button
+                    type="button"
+                    className="form-input flex h-[38px] min-w-[110px] items-center gap-1.5 px-2 text-sm"
+                    onClick={() => setDropdownOpen(v => !v)}
+                    disabled={disabled}
+                >
+                    <span className="text-base">{selectedCode?.flag_emoji || '🌍'}</span>
+                    <span className="font-medium">+{selectedCode?.phone_code || '—'}</span>
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 text-white-dark" />
+                </button>
+
+                {dropdownOpen && (
+                    <div className="absolute left-0 top-full z-50 mt-1 w-64 overflow-hidden rounded-md border border-white-light bg-white shadow-lg dark:border-[#1b2e4b] dark:bg-[#1b2e4b]">
+                        <div className="border-b border-white-light p-2 dark:border-[#253b5e]">
+                            <input
+                                type="text"
+                                className="w-full rounded border border-white-light px-2 py-1 text-sm focus:outline-none dark:border-[#253b5e] dark:bg-[#0e1726] dark:text-white"
+                                placeholder="Ülke ara..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                        <ul className="max-h-52 overflow-y-auto">
+                            {filtered.length === 0 && (
+                                <li className="px-3 py-2 text-sm text-[#888ea8]">Sonuç bulunamadı</li>
+                            )}
+                            {filtered.map(c => (
+                                <li key={c.id}>
+                                    <button
+                                        type="button"
+                                        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[#f1f2f3] dark:hover:bg-[#253b5e] ${
+                                            selectedCode?.id === c.id ? 'bg-primary/10 text-primary' : 'text-[#515365] dark:text-[#888ea8]'
+                                        }`}
+                                        onClick={() => { onCodeChange(c); setDropdownOpen(false); setSearch(''); }}
+                                    >
+                                        <span className="text-base">{c.flag_emoji || '🌍'}</span>
+                                        <span className="flex-1 truncate">{c.name}</span>
+                                        <span className="text-xs font-medium text-primary">+{c.phone_code}</span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
+
+            <div className="relative flex-1">
+                <input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder={placeholder || '5xx xxx xx xx'}
+                    className="form-input w-full pr-12"
+                    value={digits}
+                    onChange={e => onDigitsChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    disabled={disabled}
+                    maxLength={10}
+                />
+                {digits.length > 0 && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#9CA3AF]">
+                        {digits.length}/10
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function parsePhone(value: string | null | undefined, codes: PhoneCode[]): PhoneState {
+    if (!value) { return { digits: '', code: null }; }
+    if (!value.startsWith('+')) { return { digits: value, code: null }; }
+    const raw = value.slice(1);
+    const sorted = [...codes].sort((a, b) => b.phone_code.length - a.phone_code.length);
+    for (const c of sorted) {
+        if (raw.startsWith(c.phone_code)) {
+            return { code: c, digits: raw.slice(c.phone_code.length) };
+        }
+    }
+    return { digits: raw, code: null };
+}
+
+function buildPhone(state: PhoneState): string | null {
+    if (!state.digits.trim()) { return null; }
+    const code = state.code?.phone_code || '';
+    return code ? `+${code}${state.digits.trim()}` : state.digits.trim();
+}
+
+// ─── Form Type ──────────────────────────────────────────────────────────────
 
 type SchoolForm = {
     name: string;
@@ -13,10 +157,6 @@ type SchoolForm = {
     country_id: string;
     city: string;
     address: string;
-    phone: string;
-    fax: string;
-    gsm: string;
-    whatsapp: string;
     email: string;
     website: string;
     description: string;
@@ -24,12 +164,22 @@ type SchoolForm = {
 
 const emptyForm: SchoolForm = {
     name: '', code: '', country_id: '', city: '', address: '',
-    phone: '', fax: '', gsm: '', whatsapp: '', email: '', website: '', description: '',
+    email: '', website: '', description: '',
 };
+
+const emptyPhoneStates = (): Record<PhoneFieldKey, PhoneState> => ({
+    phone: { digits: '', code: null },
+    fax: { digits: '', code: null },
+    gsm: { digits: '', code: null },
+    whatsapp: { digits: '', code: null },
+});
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function SchoolsPage() {
     const [schools, setSchools] = useState<School[]>([]);
     const [countries, setCountries] = useState<Country[]>([]);
+    const [phoneCodes, setPhoneCodes] = useState<PhoneCode[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
@@ -37,6 +187,7 @@ export default function SchoolsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingSchool, setEditingSchool] = useState<School | null>(null);
     const [form, setForm] = useState<SchoolForm>(emptyForm);
+    const [phoneStates, setPhoneStates] = useState<Record<PhoneFieldKey, PhoneState>>(emptyPhoneStates());
     const [saving, setSaving] = useState(false);
 
     const fetchSchools = useCallback(async () => {
@@ -57,7 +208,7 @@ export default function SchoolsPage() {
     const fetchCountries = useCallback(async () => {
         try {
             const res = await apiClient.get('/countries');
-            if (res.data?.data) setCountries(res.data.data);
+            if (res.data?.data) { setCountries(res.data.data); }
         } catch {
             // sessizce geç
         }
@@ -66,9 +217,33 @@ export default function SchoolsPage() {
     useEffect(() => { fetchSchools(); }, [fetchSchools]);
     useEffect(() => { fetchCountries(); }, [fetchCountries]);
 
+    useEffect(() => {
+        apiClient
+            .get('/countries/phone-codes')
+            .then(res => {
+                const data: PhoneCode[] = (res.data?.data || []).map((c: PhoneCode) => ({
+                    ...c,
+                    phone_code: c.phone_code.replace(/^\+/, ''),
+                }));
+                setPhoneCodes(data);
+            })
+            .catch(() => {});
+    }, []);
+
+    const defaultCode = useCallback((codes: PhoneCode[]) => {
+        return codes.find(c => c.iso2 === 'TR') || codes[0] || null;
+    }, []);
+
     const openCreate = () => {
         setEditingSchool(null);
         setForm(emptyForm);
+        const def = defaultCode(phoneCodes);
+        setPhoneStates({
+            phone: { digits: '', code: def },
+            fax: { digits: '', code: def },
+            gsm: { digits: '', code: def },
+            whatsapp: { digits: '', code: def },
+        });
         setShowModal(true);
     };
 
@@ -80,15 +255,21 @@ export default function SchoolsPage() {
             country_id: school.country_id ? String(school.country_id) : '',
             city: school.city ?? '',
             address: school.address ?? '',
-            phone: school.phone ?? '',
-            fax: school.fax ?? '',
-            gsm: school.gsm ?? '',
-            whatsapp: school.whatsapp ?? '',
             email: school.email ?? '',
             website: school.website ?? '',
             description: school.description ?? '',
         });
+        setPhoneStates({
+            phone: parsePhone(school.phone, phoneCodes),
+            fax: parsePhone(school.fax, phoneCodes),
+            gsm: parsePhone(school.gsm, phoneCodes),
+            whatsapp: parsePhone(school.whatsapp, phoneCodes),
+        });
         setShowModal(true);
+    };
+
+    const setPhoneField = (field: PhoneFieldKey, update: Partial<PhoneState>) => {
+        setPhoneStates(prev => ({ ...prev, [field]: { ...prev[field], ...update } }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -98,6 +279,10 @@ export default function SchoolsPage() {
         const payload = {
             ...form,
             country_id: form.country_id ? Number(form.country_id) : null,
+            phone: buildPhone(phoneStates.phone),
+            fax: buildPhone(phoneStates.fax),
+            gsm: buildPhone(phoneStates.gsm),
+            whatsapp: buildPhone(phoneStates.whatsapp),
         };
         try {
             if (editingSchool) {
@@ -129,7 +314,7 @@ export default function SchoolsPage() {
             confirmButtonText: 'Evet',
             cancelButtonText: 'İptal',
         });
-        if (!result.isConfirmed) return;
+        if (!result.isConfirmed) { return; }
         try {
             await apiClient.patch(`/schools/${school.id}/toggle-status`);
             toast.success(`Okul ${action} yapıldı.`);
@@ -150,7 +335,7 @@ export default function SchoolsPage() {
             cancelButtonText: 'İptal',
             confirmButtonColor: '#e7515a',
         });
-        if (!result.isConfirmed) return;
+        if (!result.isConfirmed) { return; }
         try {
             await apiClient.delete(`/schools/${school.id}`);
             toast.success('Okul silindi.');
@@ -331,23 +516,59 @@ export default function SchoolsPage() {
                                 <textarea className="form-input mt-1" rows={2} value={form.address} onChange={f('address')} />
                             </div>
 
-                            {/* İletişim */}
+                            {/* İletişim — Telefon alanları */}
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">Telefon</label>
-                                    <input type="text" className="form-input mt-1" placeholder="+90 555 000 0000" value={form.phone} onChange={f('phone')} />
+                                    <div className="mt-1">
+                                        <PhoneInputField
+                                            digits={phoneStates.phone.digits}
+                                            selectedCode={phoneStates.phone.code}
+                                            phoneCodes={phoneCodes}
+                                            onDigitsChange={digits => setPhoneField('phone', { digits })}
+                                            onCodeChange={code => setPhoneField('phone', { code })}
+                                            disabled={saving}
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">Faks</label>
-                                    <input type="text" className="form-input mt-1" value={form.fax} onChange={f('fax')} />
+                                    <div className="mt-1">
+                                        <PhoneInputField
+                                            digits={phoneStates.fax.digits}
+                                            selectedCode={phoneStates.fax.code}
+                                            phoneCodes={phoneCodes}
+                                            onDigitsChange={digits => setPhoneField('fax', { digits })}
+                                            onCodeChange={code => setPhoneField('fax', { code })}
+                                            disabled={saving}
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">GSM (Cep)</label>
-                                    <input type="text" className="form-input mt-1" value={form.gsm} onChange={f('gsm')} />
+                                    <div className="mt-1">
+                                        <PhoneInputField
+                                            digits={phoneStates.gsm.digits}
+                                            selectedCode={phoneStates.gsm.code}
+                                            phoneCodes={phoneCodes}
+                                            onDigitsChange={digits => setPhoneField('gsm', { digits })}
+                                            onCodeChange={code => setPhoneField('gsm', { code })}
+                                            disabled={saving}
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">WhatsApp</label>
-                                    <input type="text" className="form-input mt-1" placeholder="+90 555 000 0000" value={form.whatsapp} onChange={f('whatsapp')} />
+                                    <div className="mt-1">
+                                        <PhoneInputField
+                                            digits={phoneStates.whatsapp.digits}
+                                            selectedCode={phoneStates.whatsapp.code}
+                                            phoneCodes={phoneCodes}
+                                            onDigitsChange={digits => setPhoneField('whatsapp', { digits })}
+                                            onCodeChange={code => setPhoneField('whatsapp', { code })}
+                                            disabled={saving}
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">E-posta</label>

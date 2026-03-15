@@ -87,8 +87,7 @@ class CountryService
                     'name' => $c->name,
                     'iso2' => $c->iso2,
                     'phone_code' => $c->phone_code,
-                    'flag' => $c->flag_emoji,
-                    'label' => "{$c->flag_emoji} {$c->name} ({$c->phone_code})",
+                    'flag_emoji' => $c->flag_emoji,
                 ])
                 ->toArray();
         });
@@ -120,7 +119,7 @@ class CountryService
 
         try {
             $response = Http::timeout(60)->get(self::API_URL.'/all', [
-                'fields' => 'name,cca2,cca3,ccn3,idd,currencies,region,subregion,capital,continents,timezones,latlng,languages,flag,flags,population,borders,tld,car,startOfWeek,postalCode,independent,landlocked,area,demonyms,gini,coatOfArms',
+                'fields' => 'name,cca2,cca3,idd,flag,flags,region,currencies,latlng,population',
             ]);
 
             if (! $response->successful()) {
@@ -224,9 +223,12 @@ class CountryService
         $iso2 = $data['cca2'] ?? '';
 
         // Telefon kodu oluştur
+        // Tek suffix varsa birleştir (örn: TR → +9+0 = +90), birden fazlaysa sadece root (örn: US → +1)
         $phoneRoot = $data['idd']['root'] ?? '';
         $phoneSuffixes = $data['idd']['suffixes'] ?? [];
-        $phoneCode = $phoneRoot.($phoneSuffixes[0] ?? '');
+        $phoneCode = (count($phoneSuffixes) === 1 && $phoneSuffixes[0] !== '')
+            ? $phoneRoot.$phoneSuffixes[0]
+            : $phoneRoot;
 
         // Para birimi bilgisi (ilk para birimi)
         $currencyCode = null;

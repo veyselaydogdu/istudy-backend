@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-03-13 (Kan grubu sistemi, sağlık öneri akışı, passport_number; Detaylar: PROJECT_MEMORY_MOBILE.md)
+> **Son Güncelleme:** 2026-03-14 (Tenant şifremi unuttum/sıfırla; güçlü şifre kuralları; ülke sistemi düzeltmeleri — telefon kodu + sync; Detaylar mobil için: PROJECT_MEMORY_MOBILE.md)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -238,7 +238,13 @@ istudy-backend/
 #### 🌍 Ülkeler Modülü (Countries)
 | Tablo | Model | Açıklama |
 |-------|-------|----------|
-| `countries` | `App\Models\Base\Country` | Ülkeler (RestCountries API'den senkronize) — ISO kodları, telefon kodları, para birimi, dil, bayrak, coğrafi veriler, `extra_data` JSON |
+| `countries` | `App\Models\Base\Country` | Ülkeler (RestCountries API'den senkronize) — `id, name, iso2, phone_code, flag_emoji, region, ...` — 250 ülke mevcut |
+
+**⚠️ KRİTİK — Countries Tablosu Yapısı:**
+- Tablo kolonu: `name, iso2, phone_code, flag_emoji` (NOT: `name_tr` yok, `official_name/native_name` var)
+- `phone_code` formatı: `+90`, `+1`, `+44` şeklinde `+` prefix ile saklanır
+- Frontend'de kullanmadan önce `+` prefix kaldırılmalı: `.replace(/^\+/, '')`
+- `sort_order` alanı — Öncelikli ülkeler (TR: 100, US: 95, GB: 90, DE: 85, FR: 80, NL: 75, SA: 70, AE: 65, AZ: 60)
 
 #### 👥 Kişiler Modülü (People)
 | Tablo | Model | Açıklama |
@@ -542,18 +548,49 @@ class SchoolController {
 |--------|----------|----------|------|
 | POST | `/api/auth/register` | Kayıt (User + Tenant) | ❌ |
 | POST | `/api/auth/login` | Giriş (Token döner) | ❌ |
+| POST | `/api/auth/forgot-password` | Şifre sıfırlama e-postası | ❌ |
+| POST | `/api/auth/reset-password` | Şifre sıfırla (token + email) | ❌ |
 | POST | `/api/auth/logout` | Çıkış (Token silinir) | ✅ |
 | GET | `/api/auth/me` | Profil bilgileri | ✅ |
 
 ### 6.2 Kayıt Akışı Detay
 
-1. `RegisterRequest` ile validation
+1. `RegisterRequest` ile validation (güçlü şifre kuralları dahil)
 2. `AuthService::register()` ile:
    - User oluşturulur (password otomatik hash)
    - `tenant_owner` rolü atanır
    - Tenant oluşturulur (`institution_name` → `tenants.name`)
    - User'a `tenant_id` atanır
    - Sanctum token oluşturulur
+
+### 6.3 Güçlü Şifre Kuralları (Tenant + Parent)
+
+Hem tenant kaydı (`RegisterRequest`) hem tenant şifre sıfırlama (`AuthController::resetPassword`) için:
+
+```php
+'password' => [
+    'required', 'string', 'min:8', 'confirmed',
+    'regex:/[A-Z]/',         // En az 1 büyük harf
+    'regex:/[0-9]/',         // En az 1 rakam
+    'regex:/[^A-Za-z0-9]/', // En az 1 özel karakter
+]
+```
+
+Frontend `register/page.tsx` ve `reset-password/page.tsx`'te aynı kurallar Zod ile validate edilir, `PasswordStrengthBar` bileşeni (4 çubuk + kural listesi) anlık güç göstergesi sağlar.
+
+### 6.4 Şifre Sıfırlama Akışı (Tenant Web)
+
+```
+1. Kullanıcı /forgot-password → POST /api/auth/forgot-password {email}
+2. Backend: Password::sendResetLink() → User::sendPasswordResetNotification()
+3. User::sendPasswordResetNotification():
+   - tenant_id NULL ise  → mobile deep link: parentmobileapp://reset-password?token=...&email=...
+   - tenant_id NOT NULL  → web URL: {TENANT_FRONTEND_URL}/reset-password?token=...&email=...
+4. Kullanıcı e-postadaki linke tıklar → /reset-password?token=...&email=...
+5. POST /api/auth/reset-password {token, email, password, password_confirmation}
+```
+
+**Önemli:** `TENANT_FRONTEND_URL` env değişkeni (varsayılan: `http://localhost:3002`) `config/app.php`'de `tenant_frontend_url` olarak tanımlanmıştır.
 
 ---
 
@@ -565,7 +602,10 @@ class SchoolController {
 │   GET  /api/health                                      │
 │   POST /api/auth/register                               │
 │   POST /api/auth/login                                  │
+│   POST /api/auth/forgot-password                        │
+│   POST /api/auth/reset-password                         │
 │   GET  /api/packages                                    │
+│   GET  /api/countries/phone-codes  ← telefon kodu dropdown │
 ├──────────────────────────────────────────────────────────┤
 │ 2️⃣ AUTH GEREKLİ (token, abonelik gerekmez)              │
 │   POST /api/auth/logout                                 │
@@ -1322,6 +1362,118 @@ Sadece config değişir      →  Kod değişikliği minimum
 9. ✅ Route tanımla (`routes/api.php`)
 10. ✅ Test yaz (Feature + Unit)
 11. ✅ `vendor/bin/pint --dirty` çalıştır
+
+---
+
+## 🌍 16a. Ülkeler (Countries) Sistemi — Tam Rehber
+
+### 16a.1 Genel Yapı
+
+Countries tablosu RestCountries API (v3.1) ile senkronize edilir. **250 ülke** mevcut.
+
+```
+countries tablosu
+├── id, name, iso2, iso3, numeric_code
+├── phone_code (+90 formatında, + prefix'li)
+├── phone_root, phone_suffixes (JSON)
+├── flag_emoji (🇹🇷), flag_png, flag_svg
+├── currency_code, currency_name, currency_symbol
+├── region, subregion, capital
+├── latitude, longitude, population
+├── sort_order (öncelikli ülkeler yüksek değer)
+├── is_active (default: true)
+└── extra_data (JSON — tld, borders, car, vb.)
+```
+
+### 16a.2 Telefon Kodu Formatı
+
+| DB'de Saklanan | Frontend'e Dönen | Kullanım |
+|----------------|------------------|----------|
+| `+90` | `+90` (CountryService) | `.replace(/^\+/, '')` → `90` |
+
+**Telefon kodu üretme kuralı (`CountryService::mapApiData`):**
+- Tek suffix → `root + suffix` (örn: TR: `+9` + `0` = `+90`)
+- Birden fazla suffix → yalnızca `root` (örn: US: `+1` — çünkü `+1201, +1202...` olmaz)
+
+### 16a.3 Sync Komutu
+
+```bash
+# Tüm ülkeleri senkronize et (250 ülke, ~2 sn)
+docker compose -f dockerfiles/docker-compose.yml exec app php artisan countries:sync
+
+# Tek ülke güncelle
+docker compose -f dockerfiles/docker-compose.yml exec app php artisan countries:sync --iso=TR
+```
+
+**⚠️ RestCountries API Kısıtı:** `fields` parametresi ile max 10 field istenilebilir.
+Kullanılan 10 field: `name,cca2,cca3,idd,flag,flags,region,currencies,latlng,population`
+
+### 16a.4 API Endpoint'leri
+
+| Method | Endpoint | Auth | Açıklama | Response |
+|--------|----------|------|----------|----------|
+| `GET` | `/api/countries/phone-codes` | ❌ | Telefon kodu dropdown | `[{id, name, iso2, phone_code, flag_emoji}]` |
+| `GET` | `/api/countries` | ❌ | Tüm aktif ülkeler (paginated) | CountryResource |
+| `GET` | `/api/countries/regions` | ❌ | Bölge listesi | `[string]` |
+| `GET` | `/api/parent/auth/countries` | ❌ | Mobil — public | `[{id, name, iso2, phone_code, flag_emoji}]` |
+| `GET` | `/api/parent/countries` | ✅ | Mobil — auth gerekli | `[{id, name, iso2, phone_code, flag_emoji}]` |
+
+### 16a.5 Frontend Kullanım Örneği (Tenant Web — register/page.tsx)
+
+```tsx
+// Ülkeleri çek + phone_code normalize et
+useEffect(() => {
+  apiClient.get('/countries/phone-codes').then((res) => {
+    const data = (res.data?.data || []).map((c) => ({
+      ...c,
+      phone_code: c.phone_code.replace(/^\+/, ''), // "+90" → "90"
+    }));
+    setPhoneCodes(data);
+    const turkey = data.find((c) => c.iso2 === 'TR') || data[0] || null;
+    setSelectedCode(turkey);
+  }).catch(() => {});
+}, []);
+
+// Telefon input — sadece rakam, max 10 hane
+const handlePhoneChange = (e) => {
+  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+  setValue('phone', digits);
+};
+
+// Gönderirken birleştir
+const fullPhone = phoneValue.trim()
+  ? `+${selectedCode.phone_code}${phoneValue.trim()}`
+  : undefined;
+// Sonuç: "+905551234567"
+```
+
+### 16a.6 Frontend Kullanım Örneği (Mobil — parent-mobile-app/register.tsx)
+
+```tsx
+// Ülkeleri çek (public endpoint — auth gerekmez)
+useEffect(() => {
+  api.get('/parent/auth/countries').then((res) => {
+    const list = res.data.data.map((c) => ({
+      ...c,
+      phone_code: c.phone_code.replace(/^\+/, ''), // normalize
+    }));
+    setCountries(list);
+    const tr = list.find((c) => c.iso2 === 'TR');
+    if (tr) setSelectedCountry(tr);
+  }).catch(() => {});
+}, []);
+
+// Telefon input — sadece rakam, max 10 hane
+const handlePhoneChange = (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  updateField('phone', digits);
+};
+```
+
+### 16a.7 Cache
+
+`CountryService::phoneCodeList()` → `Cache::remember('countries:phone_codes', 3600)` — 1 saat.
+Sync veya `toggleActive()` sonrası cache otomatik temizlenir (`Cache::forget('countries:phone_codes')`).
 
 ---
 

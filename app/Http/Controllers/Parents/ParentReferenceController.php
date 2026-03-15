@@ -113,7 +113,8 @@ class ParentReferenceController extends BaseParentController
         try {
             $countries = Country::query()
                 ->where('is_active', true)
-                ->orderBy('sort_order')
+                ->whereNotNull('phone_code')
+                ->orderByDesc('sort_order')
                 ->orderBy('name')
                 ->get(['id', 'name', 'iso2', 'phone_code', 'flag_emoji']);
 

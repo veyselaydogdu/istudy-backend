@@ -1,15 +1,17 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
-import { Loader2, ChevronDown } from 'lucide-react';
+import { Loader2, ChevronDown, Eye, EyeOff, CheckCircle2, Circle } from 'lucide-react';
 import Image from 'next/image';
+
+// ─── Types ────────────────────────────────────────────────
 
 type PhoneCode = {
     id: number;
@@ -19,11 +21,87 @@ type PhoneCode = {
     flag_emoji?: string;
 };
 
+// ─── Password strength ────────────────────────────────────
+
+interface PasswordStrength {
+    score: number;
+    hasLength: boolean;
+    hasUpper: boolean;
+    hasSpecial: boolean;
+    hasNumber: boolean;
+}
+
+function calcStrength(pwd: string): PasswordStrength {
+    const hasLength = pwd.length >= 8;
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+    const hasNumber = /[0-9]/.test(pwd);
+    const score = [hasLength, hasUpper, hasSpecial, hasNumber].filter(Boolean).length;
+    return { score, hasLength, hasUpper, hasSpecial, hasNumber };
+}
+
+const STRENGTH_COLORS = ['#EF4444', '#F59E0B', '#F59E0B', '#10B981', '#208AEF'];
+const STRENGTH_LABELS = ['', 'Çok Zayıf', 'Zayıf', 'Orta', 'Güçlü', 'Çok Güçlü'];
+
+function PasswordStrengthBar({ password }: { password: string }) {
+    const { score, hasLength, hasUpper, hasSpecial, hasNumber } = calcStrength(password);
+    if (!password) return null;
+
+    const color = STRENGTH_COLORS[score] ?? '#E5E7EB';
+    const label = STRENGTH_LABELS[score] ?? '';
+
+    return (
+        <div className="mt-2 space-y-2">
+            {/* Progress bars */}
+            <div className="flex gap-1.5">
+                {[1, 2, 3, 4].map((n) => (
+                    <div
+                        key={n}
+                        className="h-1.5 flex-1 rounded-full transition-all duration-300"
+                        style={{ backgroundColor: n <= score ? color : '#E5E7EB' }}
+                    />
+                ))}
+            </div>
+
+            {/* Label */}
+            <p className="text-right text-xs font-bold" style={{ color }}>{label}</p>
+
+            {/* Rules */}
+            <div className="space-y-1">
+                <RuleItem met={hasLength} text="En az 8 karakter" />
+                <RuleItem met={hasUpper} text="En az 1 büyük harf (A-Z)" />
+                <RuleItem met={hasNumber} text="En az 1 rakam (0-9)" />
+                <RuleItem met={hasSpecial} text="En az 1 özel karakter (!@#$...)" />
+            </div>
+        </div>
+    );
+}
+
+function RuleItem({ met, text }: { met: boolean; text: string }) {
+    return (
+        <div className="flex items-center gap-1.5">
+            {met ? (
+                <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 text-success" />
+            ) : (
+                <Circle className="h-3.5 w-3.5 flex-shrink-0 text-[#D1D5DB]" />
+            )}
+            <span className={`text-xs ${met ? 'text-success' : 'text-[#9CA3AF]'}`}>{text}</span>
+        </div>
+    );
+}
+
+// ─── Zod Schema ───────────────────────────────────────────
+
 const registerSchema = z
     .object({
         name: z.string().min(2, 'Ad en az 2 karakter olmalıdır.'),
         email: z.string().email('Geçerli bir e-posta adresi giriniz.'),
-        password: z.string().min(8, 'Şifre en az 8 karakter olmalıdır.'),
+        password: z
+            .string()
+            .min(8, 'Şifre en az 8 karakter olmalıdır.')
+            .regex(/[A-Z]/, 'Şifre en az 1 büyük harf içermelidir.')
+            .regex(/[0-9]/, 'Şifre en az 1 rakam içermelidir.')
+            .regex(/[^A-Za-z0-9]/, 'Şifre en az 1 özel karakter içermelidir (!@#$...).'),
         password_confirmation: z.string(),
         phone: z.string().optional(),
         institution_name: z.string().min(2, 'Kurum adı en az 2 karakter olmalıdır.'),
@@ -35,6 +113,8 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+// ─── Main Page ────────────────────────────────────────────
+
 export default function RegisterPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = React.useState(false);
@@ -42,24 +122,35 @@ export default function RegisterPage() {
     const [selectedCode, setSelectedCode] = React.useState<PhoneCode | null>(null);
     const [dropdownOpen, setDropdownOpen] = React.useState(false);
     const [codeSearch, setCodeSearch] = React.useState('');
+    const [showPassword, setShowPassword] = React.useState(false);
+    const [showConfirm, setShowConfirm] = React.useState(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
     const {
         register,
         handleSubmit,
+        control,
+        setValue,
+        watch,
         formState: { errors },
     } = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
+        defaultValues: { phone: '' },
     });
+
+    const passwordValue = useWatch({ control, name: 'password' }) ?? '';
+    const phoneValue = watch('phone') ?? '';
 
     // Ülke telefon kodlarını çek
     React.useEffect(() => {
         apiClient
             .get('/countries/phone-codes')
             .then((res) => {
-                const data: PhoneCode[] = res.data?.data || [];
+                const data: PhoneCode[] = (res.data?.data || []).map((c: PhoneCode) => ({
+                    ...c,
+                    phone_code: c.phone_code.replace(/^\+/, ''),
+                }));
                 setPhoneCodes(data);
-                // Türkiye'yi varsayılan seç (iso2: TR)
                 const turkey = data.find((c) => c.iso2 === 'TR') || data[0] || null;
                 setSelectedCode(turkey);
             })
@@ -81,20 +172,23 @@ export default function RegisterPage() {
         if (!codeSearch) return phoneCodes;
         const s = codeSearch.toLowerCase();
         return phoneCodes.filter(
-            (c) => c.name.toLowerCase().includes(s) || c.phone_code.includes(s)
+            (c) => c.name.toLowerCase().includes(s) || c.phone_code.includes(s),
         );
     }, [phoneCodes, codeSearch]);
+
+    // Sadece rakam, max 10 hane
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+        setValue('phone', digits, { shouldValidate: false });
+    };
 
     const onSubmit = async (data: RegisterFormValues) => {
         setIsLoading(true);
         try {
-            // Telefon varsa: alan kodu (+ olmadan) + numara birleştir
-            let phone: string | undefined = undefined;
+            let phone: string | undefined;
             if (data.phone && data.phone.trim()) {
-                const code = selectedCode?.phone_code || '';
-                // Sadece rakamları al, + veya sıfır başını temizle
-                const digits = data.phone.trim().replace(/\D/g, '');
-                phone = code ? `${code}${digits}` : digits;
+                const code = selectedCode?.phone_code.replace(/^\+/, '') || '';
+                phone = code ? `+${code}${data.phone.trim()}` : data.phone.trim();
             }
 
             const response = await apiClient.post('/auth/register', {
@@ -142,6 +236,7 @@ export default function RegisterPage() {
                             </div>
 
                             <form className="space-y-4 dark:text-white" onSubmit={handleSubmit(onSubmit)}>
+                                {/* Ad Soyad */}
                                 <div className={errors.name ? 'has-error' : ''}>
                                     <label htmlFor="name">Ad Soyad</label>
                                     <input
@@ -157,6 +252,7 @@ export default function RegisterPage() {
                                     )}
                                 </div>
 
+                                {/* Kurum Adı */}
                                 <div className={errors.institution_name ? 'has-error' : ''}>
                                     <label htmlFor="institution_name">Kurum Adı</label>
                                     <input
@@ -172,6 +268,7 @@ export default function RegisterPage() {
                                     )}
                                 </div>
 
+                                {/* E-posta */}
                                 <div className={errors.email ? 'has-error' : ''}>
                                     <label htmlFor="email">E-posta</label>
                                     <input
@@ -187,11 +284,11 @@ export default function RegisterPage() {
                                     )}
                                 </div>
 
-                                {/* Telefon — alan kodu selectbox + numara */}
+                                {/* Telefon — ülke kodu + max 10 hane */}
                                 <div>
                                     <label htmlFor="phone">Telefon (opsiyonel)</label>
                                     <div className="flex gap-2">
-                                        {/* Alan kodu dropdown */}
+                                        {/* Ülke kodu dropdown */}
                                         <div className="relative" ref={dropdownRef}>
                                             <button
                                                 type="button"
@@ -200,9 +297,7 @@ export default function RegisterPage() {
                                                 disabled={isLoading}
                                             >
                                                 <span className="text-base">{selectedCode?.flag_emoji || '🌍'}</span>
-                                                <span className="font-medium">
-                                                    +{selectedCode?.phone_code || '—'}
-                                                </span>
+                                                <span className="font-medium">+{selectedCode?.phone_code || '—'}</span>
                                                 <ChevronDown className="ml-auto h-3.5 w-3.5 text-white-dark" />
                                             </button>
 
@@ -248,46 +343,76 @@ export default function RegisterPage() {
                                             )}
                                         </div>
 
-                                        {/* Numara input */}
-                                        <input
-                                            id="phone"
-                                            type="tel"
-                                            placeholder="5xx xxx xx xx"
-                                            className="form-input flex-1"
-                                            {...register('phone')}
-                                            disabled={isLoading}
-                                        />
+                                        {/* Numara — sadece rakam, max 10 hane */}
+                                        <div className="relative flex-1">
+                                            <input
+                                                id="phone"
+                                                type="tel"
+                                                inputMode="numeric"
+                                                placeholder="5xx xxx xx xx"
+                                                className="form-input w-full pr-12"
+                                                value={phoneValue}
+                                                onChange={handlePhoneChange}
+                                                disabled={isLoading}
+                                                maxLength={10}
+                                            />
+                                            {phoneValue.length > 0 && (
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#9CA3AF]">
+                                                    {phoneValue.length}/10
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <p className="mt-1 text-xs text-white-dark">
-                                        Seçilen kod: +{selectedCode?.phone_code} — numara &quot;+&quot; olmadan giriniz
-                                    </p>
                                 </div>
 
+                                {/* Şifre */}
                                 <div className={errors.password ? 'has-error' : ''}>
                                     <label htmlFor="password">Şifre</label>
-                                    <input
-                                        id="password"
-                                        type="password"
-                                        placeholder="En az 8 karakter"
-                                        className="form-input"
-                                        {...register('password')}
-                                        disabled={isLoading}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            id="password"
+                                            type={showPassword ? 'text' : 'password'}
+                                            placeholder="En az 8 karakter"
+                                            className="form-input w-full pr-10"
+                                            {...register('password')}
+                                            disabled={isLoading}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#515365]"
+                                            onClick={() => setShowPassword((v) => !v)}
+                                            tabIndex={-1}
+                                        >
+                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
                                     {errors.password && (
                                         <p className="mt-1 text-xs text-danger">{errors.password.message}</p>
                                     )}
+                                    <PasswordStrengthBar password={passwordValue} />
                                 </div>
 
+                                {/* Şifre Tekrar */}
                                 <div className={errors.password_confirmation ? 'has-error' : ''}>
                                     <label htmlFor="password_confirmation">Şifre Tekrar</label>
-                                    <input
-                                        id="password_confirmation"
-                                        type="password"
-                                        placeholder="Şifrenizi tekrar giriniz"
-                                        className="form-input"
-                                        {...register('password_confirmation')}
-                                        disabled={isLoading}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            id="password_confirmation"
+                                            type={showConfirm ? 'text' : 'password'}
+                                            placeholder="Şifrenizi tekrar giriniz"
+                                            className="form-input w-full pr-10"
+                                            {...register('password_confirmation')}
+                                            disabled={isLoading}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#515365]"
+                                            onClick={() => setShowConfirm((v) => !v)}
+                                            tabIndex={-1}
+                                        >
+                                            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
                                     {errors.password_confirmation && (
                                         <p className="mt-1 text-xs text-danger">{errors.password_confirmation.message}</p>
                                     )}

@@ -160,12 +160,22 @@ class User extends Authenticatable
     }
 
     /**
-     * Mobil uygulama için deep link ile şifre sıfırlama bildirimi gönderir.
+     * Kullanıcı tipine göre şifre sıfırlama URL'si üretir.
+     * - Parent (mobil) → deep link
+     * - Tenant admin (web) → TENANT_FRONTEND_URL/reset-password
      */
     public function sendPasswordResetNotification($token): void
     {
-        \Illuminate\Auth\Notifications\ResetPassword::createUrlUsing(function ($notifiable, $token) {
-            return 'parentmobileapp://reset-password?token='.$token.'&email='.urlencode($notifiable->email);
+        $isParent = is_null($this->tenant_id);
+
+        \Illuminate\Auth\Notifications\ResetPassword::createUrlUsing(function ($notifiable, string $resetToken) use ($isParent) {
+            if ($isParent) {
+                return 'parentmobileapp://reset-password?token='.$resetToken.'&email='.urlencode($notifiable->email);
+            }
+
+            $frontendUrl = config('app.tenant_frontend_url', 'http://localhost:3002');
+
+            return $frontendUrl.'/reset-password?token='.$resetToken.'&email='.urlencode($notifiable->email);
         });
 
         $this->notify(new \Illuminate\Auth\Notifications\ResetPassword($token));
