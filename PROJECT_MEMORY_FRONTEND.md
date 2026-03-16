@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Tenant & Website — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-03-10 (Okul Detayı: Öğretmenler tab düzeltildi — `?detailed=1` param, `teachersFetched` flag pattern, `SchoolTeacher` tipi rolleri; TeacherRoleType type eklendi)
+> **Son Güncelleme:** 2026-03-16 (Okul Detayı: Öğrenci kayıt sistemi — "Onay Bekleyen Öğrenciler" sekmesi, öğrenci listesinde veli bilgisi, child detail modal, tarih formatlama)
 > **Amaç:** Bu dosya, `frontend-tenant-and-website` projesinin mimarisini, kararlarını ve kodlama standartlarını tüm AI ajanlarının doğru davranış üretebilmesi için belgeler.
 
 ---
@@ -836,7 +836,7 @@ CMD ["npm", "start"]
 | **Kamuya Açık Web Sitesi** | ✅ Tam | Ana sayfa, pricing, about, contact |
 | **Dashboard** | ✅ Tam | Stats, usage bars, son okullar tablosu |
 | **Okullar (CRUD)** | ✅ Tam | Liste, ekle/düzenle/sil (modal), pagination, search, ülke+şehir+fax+gsm+whatsapp |
-| **Okul Detayı** | ✅ Tam | Bilgi kartı + Sınıf CRUD (modal) + Öğretmen Atama (okul tab: role_type, employment_type, is_active; sınıf tab: atama/kaldırma) |
+| **Okul Detayı** | ✅ Tam | Bilgi kartı + Sınıf CRUD + Öğretmenler + Kayıt Talepleri + Veliler + **Öğrenciler (veli bilgisi, detay modal)** + **Onay Bekleyen Öğrenciler (çocuk kayıt sistemi)** |
 | **Sınıf Detayı** | ✅ Tam | 4 tab: Öğrenciler, Devamsızlık (tarih+durum), İhtiyaç Listesi (CRUD+deadline), Yemek Takvimi (aylık grid) |
 | **Yemek Yönetimi** | ✅ Tam | 3 tab: Yemekler + Besin Öğeleri (allerjen badge+checkbox, 2 grup: global/özel) + Allerjenler (tenant CRUD) |
 | **Etkinlikler** | ✅ Tam | Okul seçici, kart grid, CRUD modal (eğitim yılı, ücretli/ücretsiz, start/end date, sınıf checkbox) |
@@ -863,6 +863,47 @@ CMD ["npm", "start"]
 8. ✅ Tailwind v3 sınıfları kullan — v4 sözdizimi YAZMA
 9. ✅ `app/page.tsx` OLUŞTURMA
 10. ✅ `(auth)/layout.tsx`'e wrapper EKLEME
+
+---
+
+## 📌 19. Okul Detayı (`/schools/[id]`) — Tab Mimarisi (2026-03-16)
+
+Tüm state ve fetch işlemleri tek dosya: `app/(tenant)/schools/[id]/page.tsx`
+
+### Sekmeler ve Fetch Stratejisi
+
+| Tab key | İçerik | Fetch Zamanı |
+|---------|--------|--------------|
+| `classes` | Sınıf CRUD | `loadData()` (ilk yükleme) |
+| `children` | Öğrenciler + veli adı/tel | `loadData()` (ilk yükleme) |
+| `teachers` | Öğretmenler | Tab tıklandığında (lazy, `teachersFetched` flag) |
+| `requests` | Veli kayıt talepleri | Tab tıklandığında (lazy, `requestsFetched` flag) |
+| `parents` | Onaylı veliler | Tab tıklandığında (lazy, `parentsFetched` flag) |
+| `child-requests` | **Onay Bekleyen Öğrenciler** | `loadData()` parallel (badge sayısı için) + tab değişiminde full refresh |
+
+### Öğrenciler Sekmesi (`children` tab)
+- **Veli kolonu**: `child.family_profile?.owner?.name + surname + phone` — backend `ChildController::index()` artık `familyProfile.owner` eager load eder
+- **Satır tıklama**: `openChildDetail(child.id)` → `GET /schools/{id}/children/{childId}` → detay modal
+- **Detay modal**: Kişisel bilgiler (doğum tarihi, cinsiyet, kan grubu, TC, pasaport, uyruk, diller) + Sağlık (allerjenler, ilaçlar, rahatsızlıklar) + Aile üyeleri
+
+### Onay Bekleyen Öğrenciler Sekmesi (`child-requests` tab)
+- **Badge sayısı**: `loadData()` içinde `pending` talepler parallel çekilir → sayfa açılır açılmaz sekme etiketi üzerinde görünür
+- **Tip**: `ChildEnrollmentRequest` — `id, status, rejection_reason, created_at, parent{}, child{}`
+- **Onaylama** (`handleApproveChildRequest`): SweetAlert2 onay → `PATCH .../approve` → hem `fetchChildEnrollmentRequests` hem `children` listesini yeniler (sayfa yenilemeden öğrenci listesine eklenir)
+- **Reddetme** (`openRejectChildModal`): `rejection_reason` modal → `PATCH .../reject`
+
+### Tarih Formatlama Kuralı
+Tüm tarih alanları `toLocaleDateString('tr-TR')` ile formatlanır:
+```tsx
+{date ? new Date(date).toLocaleDateString('tr-TR') : '—'}
+```
+- Öğrenciler tablosunda `birth_date`
+- Onay Bekleyen Öğrenciler tablosunda `child?.birth_date`, `created_at`
+- Detay modallerinde doğum tarihi alanları
+
+### ChildResource ve Tip Uyumu
+- Backend `ChildResource` artık `name`/`surname` alias + `first_name`/`last_name` + `family_profile` (owner + members) + sağlık verileri döner
+- TypeScript `Child` tipi (`types/index.ts`): `first_name`, `last_name`, `full_name`, `family_profile.owner`, `family_profile.members`, `allergens[].status`, `conditions[].status` içerir
 
 ---
 

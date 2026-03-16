@@ -259,11 +259,39 @@ export type AcademicYear = {
 
 export type Child = {
     id: number
+    first_name: string
+    last_name: string
+    // legacy aliases returned by ChildResource
     name: string
-    surname?: string
+    surname: string
+    full_name: string
     birth_date?: string
     gender?: string
+    blood_type?: string
+    identity_number?: string
+    passport_number?: string
+    parent_notes?: string
+    special_notes?: string
+    languages?: string[]
     status?: string
+    profile_photo?: string
+    school_id?: number
+    academic_year_id?: number
+    nationality?: { id: number; name: string; flag_emoji?: string } | null
+    family_profile?: {
+        id: number
+        family_name?: string
+        owner?: { id: number; name: string; surname: string; email: string; phone?: string } | null
+        members?: Array<{
+            id: number
+            role: string
+            is_active: boolean
+            user?: { id: number; name: string; surname: string; email: string; phone?: string } | null
+        }>
+    } | null
+    allergens?: Array<{ id: number; name: string; status?: string }>
+    conditions?: Array<{ id: number; name: string; status?: string }>
+    medications?: Array<{ id: number; name: string }>
 }
 
 // ─── Finance ─────────────────────────────────────────────────────────────────

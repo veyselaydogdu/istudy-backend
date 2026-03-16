@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { School, SchoolClass, Child, Teacher, AcademicYear, SchoolTeacher, TeacherRoleType, TeacherProfile, EnrollmentRequest, SchoolParent } from '@/types';
-import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight, Baby } from 'lucide-react';
 
 type ClassForm = { name: string; description: string; age_min: string; age_max: string; capacity: string; color: string; academic_year_id: string };
 const emptyClassForm: ClassForm = { name: '', description: '', age_min: '', age_max: '', capacity: '20', color: '', academic_year_id: '' };
@@ -18,9 +18,11 @@ export default function SchoolDetailPage() {
     const [school, setSchool] = useState<School | null>(null);
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [children, setChildren] = useState<Child[]>([]);
+    const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+    const [loadingChildDetail, setLoadingChildDetail] = useState(false);
     const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'classes' | 'children' | 'teachers' | 'requests' | 'parents'>('classes');
+    const [activeTab, setActiveTab] = useState<'classes' | 'children' | 'teachers' | 'requests' | 'parents' | 'child-requests'>('classes');
 
     // School-level teacher management
     const [schoolLevelTeachers, setSchoolLevelTeachers] = useState<SchoolTeacher[]>([]);
@@ -53,6 +55,37 @@ export default function SchoolDetailPage() {
     const [parentsFetched, setParentsFetched] = useState(false);
     const [expandedParent, setExpandedParent] = useState<number | null>(null);
 
+    // Child enrollment requests
+    type ChildEnrollmentRequest = {
+        id: number;
+        status: 'pending' | 'approved' | 'rejected';
+        rejection_reason: string | null;
+        created_at: string;
+        parent: { id: number; name: string; surname: string; email: string; phone: string | null } | null;
+        child: {
+            id: number; first_name: string; last_name: string; full_name: string;
+            birth_date: string | null; gender: string | null; blood_type: string | null;
+            identity_number: string | null; passport_number: string | null;
+            parent_notes: string | null; special_notes: string | null;
+            languages: string[] | null;
+            nationality: { name: string; flag_emoji: string | null } | null;
+            allergens: { id: number; name: string; status: string }[];
+            conditions: { id: number; name: string; status: string }[];
+            medications: { id: number; name: string }[];
+        } | null;
+    };
+    const [childEnrollmentRequests, setChildEnrollmentRequests] = useState<ChildEnrollmentRequest[]>([]);
+    const [loadingChildRequests, setLoadingChildRequests] = useState(false);
+    const [childRequestsFetched, setChildRequestsFetched] = useState(false);
+    const [childRequestsFilter, setChildRequestsFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+    const [childRequestsMeta, setChildRequestsMeta] = useState({ current_page: 1, last_page: 1 });
+    const [selectedParentDetail, setSelectedParentDetail] = useState<ChildEnrollmentRequest['parent'] | null>(null);
+    const [selectedChildDetail, setSelectedChildDetail] = useState<ChildEnrollmentRequest['child'] | null>(null);
+    const [showRejectChildModal, setShowRejectChildModal] = useState(false);
+    const [rejectChildTargetId, setRejectChildTargetId] = useState<number | null>(null);
+    const [rejectionChildReason, setRejectionChildReason] = useState('');
+    const [savingChildReject, setSavingChildReject] = useState(false);
+
     // Invite info
     const [inviteInfo, setInviteInfo] = useState<{ registration_code: string; invite_token: string } | null>(null);
     const [regeneratingInvite, setRegeneratingInvite] = useState(false);
@@ -75,16 +108,21 @@ export default function SchoolDetailPage() {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [schoolRes, classesRes, childrenRes, yearsRes] = await Promise.all([
+            const [schoolRes, classesRes, childrenRes, yearsRes, childRequestsRes] = await Promise.all([
                 apiClient.get(`/schools/${id}`),
                 apiClient.get(`/schools/${id}/classes`).catch(() => ({ data: { data: [] } })),
                 apiClient.get(`/schools/${id}/children`).catch(() => ({ data: { data: [] } })),
                 apiClient.get('/academic-years', { params: { school_id: id } }).catch(() => ({ data: { data: [] } })),
+                apiClient.get(`/schools/${id}/child-enrollment-requests`, { params: { status: 'pending' } }).catch(() => ({ data: { data: [] } })),
             ]);
             if (schoolRes.data?.data) setSchool(schoolRes.data.data);
             if (classesRes.data?.data) setClasses(classesRes.data.data);
             if (childrenRes.data?.data) setChildren(childrenRes.data.data);
             if (yearsRes.data?.data) setAcademicYears(yearsRes.data.data);
+            if (childRequestsRes.data?.data) {
+                setChildEnrollmentRequests(childRequestsRes.data.data);
+                setChildRequestsFetched(true);
+            }
         } catch {
             toast.error('Okul bilgileri yüklenemedi.');
         } finally {
@@ -93,6 +131,19 @@ export default function SchoolDetailPage() {
     }, [id]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    const openChildDetail = async (childId: number) => {
+        setLoadingChildDetail(true);
+        setSelectedChild(null);
+        try {
+            const res = await apiClient.get(`/schools/${id}/children/${childId}`);
+            setSelectedChild(res.data?.data ?? null);
+        } catch {
+            toast.error('Öğrenci detayı yüklenemedi.');
+        } finally {
+            setLoadingChildDetail(false);
+        }
+    };
 
     const fetchSchoolLevelTeachers = useCallback(async () => {
         setLoadingSchoolTeachers(true);
@@ -195,6 +246,22 @@ export default function SchoolDetailPage() {
         }
     }, [id]);
 
+    const fetchChildEnrollmentRequests = useCallback(async (status = 'pending', page = 1) => {
+        setLoadingChildRequests(true);
+        try {
+            const res = await apiClient.get(`/schools/${id}/child-enrollment-requests`, {
+                params: { status, page },
+            });
+            setChildEnrollmentRequests(res.data?.data ?? []);
+            setChildRequestsMeta(res.data?.meta ?? { current_page: 1, last_page: 1 });
+            setChildRequestsFetched(true);
+        } catch {
+            toast.error('Çocuk kayıt talepleri yüklenemedi.');
+        } finally {
+            setLoadingChildRequests(false);
+        }
+    }, [id]);
+
     const fetchInviteInfo = useCallback(async () => {
         try {
             const res = await apiClient.get(`/schools/${id}/invite-info`);
@@ -214,6 +281,9 @@ export default function SchoolDetailPage() {
         }
         if (tab === 'parents' && !parentsFetched && !loadingParents) {
             fetchParents();
+        }
+        if (tab === 'child-requests' && !childRequestsFetched && !loadingChildRequests) {
+            fetchChildEnrollmentRequests('pending');
         }
     };
 
@@ -264,6 +334,54 @@ export default function SchoolDetailPage() {
             toast.error(error.response?.data?.message ?? 'Red işlemi başarısız.');
         } finally {
             setSavingReject(false);
+        }
+    };
+
+    const handleApproveChildRequest = async (requestId: number, childName: string) => {
+        const result = await Swal.fire({
+            title: 'Öğrenci Kaydını Onayla',
+            text: `"${childName}" adlı çocuğu okula kayıt etmek istediğinize emin misiniz?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Kaydet',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#00ab55',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.patch(`/schools/${id}/child-enrollment-requests/${requestId}/approve`);
+            toast.success('Öğrenci okula kayıt edildi.');
+            // Öğrenci listesini ve talep listesini yenile
+            const childrenRes = await apiClient.get(`/schools/${id}/children`).catch(() => ({ data: { data: [] } }));
+            if (childrenRes.data?.data) setChildren(childrenRes.data.data);
+            fetchChildEnrollmentRequests(childRequestsFilter);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Onaylama başarısız.');
+        }
+    };
+
+    const openRejectChildModal = (requestId: number) => {
+        setRejectChildTargetId(requestId);
+        setRejectionChildReason('');
+        setShowRejectChildModal(true);
+    };
+
+    const handleRejectChildSubmit = async () => {
+        if (!rejectChildTargetId || !rejectionChildReason.trim()) return;
+        setSavingChildReject(true);
+        try {
+            await apiClient.patch(`/schools/${id}/child-enrollment-requests/${rejectChildTargetId}/reject`, {
+                rejection_reason: rejectionChildReason,
+            });
+            toast.success('Talep reddedildi.');
+            setShowRejectChildModal(false);
+            fetchChildEnrollmentRequests(childRequestsFilter);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Red işlemi başarısız.');
+        } finally {
+            setSavingChildReject(false);
         }
     };
 
@@ -615,6 +733,17 @@ export default function SchoolDetailPage() {
                         <UserCheck className="h-4 w-4" />
                         Veliler ({parents.length})
                     </button>
+                    <button
+                        type="button"
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${activeTab === 'child-requests' ? 'border-b-2 border-primary text-primary' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
+                        onClick={() => handleTabChange('child-requests')}
+                    >
+                        <Baby className="h-4 w-4" />
+                        Onay Bekleyen Öğrenciler
+                        {childEnrollmentRequests.filter(r => r.status === 'pending').length > 0 && (
+                            <span className="badge badge-outline-warning text-xs">{childEnrollmentRequests.filter(r => r.status === 'pending').length}</span>
+                        )}
+                    </button>
                 </div>
 
                 {/* Sınıflar Tab */}
@@ -701,24 +830,43 @@ export default function SchoolDetailPage() {
                 {/* Öğrenciler Tab */}
                 {activeTab === 'children' && (
                     children.length === 0 ? (
-                        <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Öğrenci bulunamadı.</p>
+                        <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Bu okula kayıtlı onaylı öğrenci bulunmuyor.</p>
                     ) : (
                         <div className="table-responsive">
                             <table className="table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Ad</th>
-                                        <th>Soyad</th>
+                                        <th>Ad Soyad</th>
+                                        <th>Veli</th>
                                         <th>Doğum Tarihi</th>
+                                        <th>Cinsiyet</th>
                                         <th>Durum</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {children.map((child) => (
-                                        <tr key={child.id}>
-                                            <td className="font-medium text-dark dark:text-white">{child.name}</td>
-                                            <td>{child.surname ?? '—'}</td>
-                                            <td>{child.birth_date ?? '—'}</td>
+                                        <tr key={child.id} className="cursor-pointer hover:bg-primary/5" onClick={() => openChildDetail(child.id)}>
+                                            <td>
+                                                <span className="font-medium text-primary hover:underline">
+                                                    {child.first_name} {child.last_name}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {child.family_profile?.owner ? (
+                                                    <div>
+                                                        <p className="text-sm font-medium text-dark dark:text-white">
+                                                            {child.family_profile.owner.name} {child.family_profile.owner.surname}
+                                                        </p>
+                                                        {child.family_profile.owner.phone && (
+                                                            <p className="text-xs text-[#888ea8]">{child.family_profile.owner.phone}</p>
+                                                        )}
+                                                    </div>
+                                                ) : <span className="text-[#888ea8]">—</span>}
+                                            </td>
+                                            <td className="text-sm text-[#515365] dark:text-[#888ea8]">{child.birth_date ? new Date(child.birth_date).toLocaleDateString('tr-TR') : '—'}</td>
+                                            <td className="text-sm text-[#515365] dark:text-[#888ea8]">
+                                                {child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : '—'}
+                                            </td>
                                             <td>
                                                 <span className={`badge ${child.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
                                                     {child.status === 'active' ? 'Aktif' : (child.status ?? '—')}
@@ -962,7 +1110,7 @@ export default function SchoolDetailPage() {
                                                                 {parent.children.map((child) => (
                                                                     <div key={child.id} className="flex items-center gap-2 rounded-lg border border-[#ebedf2] bg-white px-3 py-1.5 dark:border-[#1b2e4b] dark:bg-[#0e1726]">
                                                                         <span className="font-medium text-dark dark:text-white">{child.name}</span>
-                                                                        {child.birth_date && <span className="text-xs text-[#888ea8]">{child.birth_date}</span>}
+                                                                        {child.birth_date && <span className="text-xs text-[#888ea8]">{new Date(child.birth_date).toLocaleDateString('tr-TR')}</span>}
                                                                         {child.gender && <span className="badge badge-outline-secondary text-xs">{child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : child.gender}</span>}
                                                                     </div>
                                                                 ))}
@@ -978,7 +1126,435 @@ export default function SchoolDetailPage() {
                         )}
                     </>
                 )}
+
+                {/* Onay Bekleyen Öğrenciler Tab */}
+                {activeTab === 'child-requests' && (
+                    <>
+                        {/* Filtre */}
+                        <div className="mb-4 flex flex-wrap gap-2">
+                            {(['pending', 'approved', 'rejected', 'all'] as const).map((f) => {
+                                const labels = { pending: 'Bekleyenler', approved: 'Onaylananlar', rejected: 'Reddedilenler', all: 'Tümü' };
+                                const colors = { pending: 'btn-outline-warning', approved: 'btn-outline-success', rejected: 'btn-outline-danger', all: 'btn-outline-secondary' };
+                                return (
+                                    <button
+                                        key={f}
+                                        type="button"
+                                        className={`btn btn-sm ${childRequestsFilter === f ? colors[f].replace('outline-', '') : colors[f]}`}
+                                        onClick={() => { setChildRequestsFilter(f); fetchChildEnrollmentRequests(f); }}
+                                    >
+                                        {labels[f]}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {loadingChildRequests ? (
+                            <div className="flex h-32 items-center justify-center">
+                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                            </div>
+                        ) : childEnrollmentRequests.length === 0 ? (
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">
+                                {childRequestsFilter === 'pending' ? 'Onay bekleyen öğrenci kaydı yok.' : 'Öğrenci kayıt talebi bulunamadı.'}
+                            </p>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Veli</th>
+                                            <th>Çocuk</th>
+                                            <th>Doğum Tarihi</th>
+                                            <th>Cinsiyet</th>
+                                            <th>Durum</th>
+                                            <th>Tarih</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {childEnrollmentRequests.map((req) => (
+                                            <tr key={req.id}>
+                                                <td>
+                                                    {req.parent ? (
+                                                        <button
+                                                            type="button"
+                                                            className="font-medium text-primary hover:underline"
+                                                            onClick={() => setSelectedParentDetail(req.parent)}
+                                                        >
+                                                            {req.parent.name} {req.parent.surname}
+                                                        </button>
+                                                    ) : '—'}
+                                                </td>
+                                                <td>
+                                                    {req.child ? (
+                                                        <button
+                                                            type="button"
+                                                            className="font-medium text-primary hover:underline"
+                                                            onClick={() => setSelectedChildDetail(req.child)}
+                                                        >
+                                                            {req.child.full_name}
+                                                        </button>
+                                                    ) : '—'}
+                                                </td>
+                                                <td className="text-sm text-[#515365] dark:text-[#888ea8]">{req.child?.birth_date ? new Date(req.child.birth_date).toLocaleDateString('tr-TR') : '—'}</td>
+                                                <td className="text-sm text-[#515365] dark:text-[#888ea8]">
+                                                    {req.child?.gender === 'male' ? 'Erkek' : req.child?.gender === 'female' ? 'Kız' : '—'}
+                                                </td>
+                                                <td>
+                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">Bekliyor</span>}
+                                                    {req.status === 'approved' && <span className="badge badge-outline-success">Onaylandı</span>}
+                                                    {req.status === 'rejected' && (
+                                                        <span className="badge badge-outline-danger cursor-help" title={req.rejection_reason ?? ''}>Reddedildi</span>
+                                                    )}
+                                                </td>
+                                                <td className="text-sm text-[#888ea8]">
+                                                    {new Date(req.created_at).toLocaleDateString('tr-TR')}
+                                                </td>
+                                                <td>
+                                                    {req.status === 'pending' && (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-success p-2"
+                                                                onClick={() => handleApproveChildRequest(req.id, req.child?.full_name ?? '')}
+                                                                title="Onayla"
+                                                            >
+                                                                <CheckCircle className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-danger p-2"
+                                                                onClick={() => openRejectChildModal(req.id)}
+                                                                title="Reddet"
+                                                            >
+                                                                <XCircle className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {childRequestsMeta.last_page > 1 && (
+                            <div className="mt-4 flex items-center justify-center gap-3">
+                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={childRequestsMeta.current_page === 1} onClick={() => fetchChildEnrollmentRequests(childRequestsFilter, childRequestsMeta.current_page - 1)}>Önceki</button>
+                                <span className="text-sm text-[#888ea8]">{childRequestsMeta.current_page} / {childRequestsMeta.last_page}</span>
+                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={childRequestsMeta.current_page === childRequestsMeta.last_page} onClick={() => fetchChildEnrollmentRequests(childRequestsFilter, childRequestsMeta.current_page + 1)}>Sonraki</button>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
+
+            {/* Veli Detay Modalı */}
+            {selectedParentDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Veli Bilgileri</h2>
+                            <button type="button" onClick={() => setSelectedParentDetail(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3 rounded-lg bg-primary/5 p-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white text-lg font-bold">
+                                    {selectedParentDetail.name.charAt(0)}{selectedParentDetail.surname.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-dark dark:text-white">{selectedParentDetail.name} {selectedParentDetail.surname}</p>
+                                    <p className="text-sm text-[#888ea8]">{selectedParentDetail.email}</p>
+                                </div>
+                            </div>
+                            {selectedParentDetail.phone && (
+                                <div className="flex justify-between border-b border-[#ebedf2] py-2 dark:border-[#1b2e4b]">
+                                    <span className="text-sm text-[#888ea8]">Telefon</span>
+                                    <span className="text-sm font-medium text-dark dark:text-white">{selectedParentDetail.phone}</span>
+                                </div>
+                            )}
+                        </div>
+                        <button type="button" className="btn btn-outline-secondary mt-4 w-full" onClick={() => setSelectedParentDetail(null)}>Kapat</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Çocuk Detay Modalı */}
+            {selectedChildDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-lg bg-white p-6 dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Çocuk Bilgileri</h2>
+                            <button type="button" onClick={() => setSelectedChildDetail(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            <div className="mb-4 flex items-center gap-3 rounded-lg bg-primary/5 p-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white text-lg font-bold">
+                                    {selectedChildDetail.first_name.charAt(0)}{selectedChildDetail.last_name.charAt(0)}
+                                </div>
+                                <p className="text-xl font-bold text-dark dark:text-white">{selectedChildDetail.full_name}</p>
+                            </div>
+                            {[
+                                { label: 'Doğum Tarihi', value: selectedChildDetail.birth_date ? new Date(selectedChildDetail.birth_date).toLocaleDateString('tr-TR') : null },
+                                { label: 'Cinsiyet', value: selectedChildDetail.gender === 'male' ? 'Erkek' : selectedChildDetail.gender === 'female' ? 'Kız' : selectedChildDetail.gender },
+                                { label: 'Kan Grubu', value: selectedChildDetail.blood_type },
+                                { label: 'TC Kimlik No', value: selectedChildDetail.identity_number },
+                                { label: 'Pasaport No', value: selectedChildDetail.passport_number },
+                                { label: 'Uyruk', value: selectedChildDetail.nationality ? `${selectedChildDetail.nationality.flag_emoji ?? ''} ${selectedChildDetail.nationality.name}` : null },
+                                { label: 'Diller', value: selectedChildDetail.languages?.join(', ') ?? null },
+                            ].filter(r => r.value).map(r => (
+                                <div key={r.label} className="flex justify-between border-b border-[#ebedf2] py-2 dark:border-[#1b2e4b]">
+                                    <span className="text-sm text-[#888ea8]">{r.label}</span>
+                                    <span className="text-sm font-medium text-dark dark:text-white">{r.value}</span>
+                                </div>
+                            ))}
+                            {selectedChildDetail.allergens.length > 0 && (
+                                <div className="pt-3">
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Alerjenler</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {selectedChildDetail.allergens.map(a => (
+                                            <span key={a.id} className={`badge ${a.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-danger'}`}>
+                                                {a.name}{a.status === 'pending' ? ' (bekliyor)' : ''}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {selectedChildDetail.conditions.length > 0 && (
+                                <div className="pt-3">
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Tıbbi Durumlar</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {selectedChildDetail.conditions.map(c => (
+                                            <span key={c.id} className={`badge ${c.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-info'}`}>
+                                                {c.name}{c.status === 'pending' ? ' (bekliyor)' : ''}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {selectedChildDetail.medications.length > 0 && (
+                                <div className="pt-3">
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">İlaçlar</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {selectedChildDetail.medications.map(m => (
+                                            <span key={m.id} className="badge badge-outline-secondary">{m.name}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {selectedChildDetail.parent_notes && (
+                                <div className="pt-3">
+                                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Veli Notu</p>
+                                    <p className="text-sm text-[#515365] dark:text-[#888ea8]">{selectedChildDetail.parent_notes}</p>
+                                </div>
+                            )}
+                        </div>
+                        <button type="button" className="btn btn-outline-secondary mt-4 w-full" onClick={() => setSelectedChildDetail(null)}>Kapat</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Çocuk Talebi Red Modalı */}
+            {showRejectChildModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğrenci Talebini Reddet</h2>
+                            <button type="button" onClick={() => setShowRejectChildModal(false)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                    Red Sebebi <span className="text-danger">*</span>
+                                </label>
+                                <textarea
+                                    className="form-textarea mt-1 w-full"
+                                    rows={4}
+                                    placeholder="Red sebebini açıklayınız (zorunlu)..."
+                                    value={rejectionChildReason}
+                                    onChange={e => setRejectionChildReason(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-danger flex-1"
+                                    onClick={handleRejectChildSubmit}
+                                    disabled={!rejectionChildReason.trim() || savingChildReject}
+                                >
+                                    {savingChildReject ? 'Reddediliyor...' : 'Reddet'}
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectChildModal(false)}>İptal</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Öğrenci Detay Modalı */}
+            {(selectedChild || loadingChildDetail) && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-2xl rounded-lg bg-white p-6 dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğrenci Detayı</h2>
+                            <button type="button" onClick={() => setSelectedChild(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {loadingChildDetail ? (
+                            <div className="flex h-32 items-center justify-center">
+                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                            </div>
+                        ) : selectedChild && (
+                            <div className="space-y-6">
+                                {/* Başlık */}
+                                <div className="flex items-center gap-4 rounded-lg bg-primary/5 p-4">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
+                                        {selectedChild.first_name.charAt(0)}{selectedChild.last_name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="text-xl font-bold text-dark dark:text-white">{selectedChild.full_name}</p>
+                                        <span className={`badge ${selectedChild.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
+                                            {selectedChild.status === 'active' ? 'Aktif' : (selectedChild.status ?? '—')}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Kişisel Bilgiler */}
+                                <div>
+                                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Kişisel Bilgiler</p>
+                                    <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
+                                        {[
+                                            { label: 'Doğum Tarihi', value: selectedChild.birth_date ? new Date(selectedChild.birth_date).toLocaleDateString('tr-TR') : null },
+                                            { label: 'Cinsiyet', value: selectedChild.gender === 'male' ? 'Erkek' : selectedChild.gender === 'female' ? 'Kız' : selectedChild.gender },
+                                            { label: 'Kan Grubu', value: selectedChild.blood_type },
+                                            { label: 'TC Kimlik No', value: selectedChild.identity_number },
+                                            { label: 'Pasaport No', value: selectedChild.passport_number },
+                                            { label: 'Uyruk', value: selectedChild.nationality ? `${selectedChild.nationality.flag_emoji ?? ''} ${selectedChild.nationality.name}` : null },
+                                            { label: 'Diller', value: selectedChild.languages?.join(', ') },
+                                        ].filter(r => r.value).map(r => (
+                                            <div key={r.label} className="flex justify-between py-2">
+                                                <span className="text-sm text-[#888ea8]">{r.label}</span>
+                                                <span className="text-sm font-medium text-dark dark:text-white">{r.value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Sağlık Bilgileri */}
+                                {((selectedChild.allergens?.length ?? 0) > 0 || (selectedChild.conditions?.length ?? 0) > 0 || (selectedChild.medications?.length ?? 0) > 0) && (
+                                    <div>
+                                        <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Sağlık Bilgileri</p>
+                                        {(selectedChild.allergens?.length ?? 0) > 0 && (
+                                            <div className="mb-2">
+                                                <p className="mb-1 text-xs text-[#888ea8]">Alerjenler</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {selectedChild.allergens!.map(a => (
+                                                        <span key={a.id} className={`badge ${a.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-danger'}`}>
+                                                            {a.name}{a.status === 'pending' ? ' (bekliyor)' : ''}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {(selectedChild.conditions?.length ?? 0) > 0 && (
+                                            <div className="mb-2">
+                                                <p className="mb-1 text-xs text-[#888ea8]">Tıbbi Durumlar</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {selectedChild.conditions!.map(c => (
+                                                        <span key={c.id} className={`badge ${c.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-info'}`}>
+                                                            {c.name}{c.status === 'pending' ? ' (bekliyor)' : ''}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {(selectedChild.medications?.length ?? 0) > 0 && (
+                                            <div>
+                                                <p className="mb-1 text-xs text-[#888ea8]">İlaçlar</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {selectedChild.medications!.map(m => (
+                                                        <span key={m.id} className="badge badge-outline-secondary">{m.name}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Veli Notları */}
+                                {selectedChild.parent_notes && (
+                                    <div>
+                                        <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Veli Notu</p>
+                                        <p className="text-sm text-[#515365] dark:text-[#888ea8]">{selectedChild.parent_notes}</p>
+                                    </div>
+                                )}
+
+                                {/* Aile Bilgileri */}
+                                {selectedChild.family_profile && (
+                                    <div>
+                                        <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Aile Bilgileri</p>
+                                        {selectedChild.family_profile.family_name && (
+                                            <p className="mb-2 text-sm font-medium text-dark dark:text-white">
+                                                Aile: {selectedChild.family_profile.family_name}
+                                            </p>
+                                        )}
+                                        <div className="space-y-2">
+                                            {/* Ana veli */}
+                                            {selectedChild.family_profile.owner && (
+                                                <div className="flex items-center gap-3 rounded-lg border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                                                        {selectedChild.family_profile.owner.name.charAt(0)}{selectedChild.family_profile.owner.surname.charAt(0)}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="font-medium text-dark dark:text-white">
+                                                            {selectedChild.family_profile.owner.name} {selectedChild.family_profile.owner.surname}
+                                                            <span className="ml-2 text-xs text-[#888ea8]">Ana Veli</span>
+                                                        </p>
+                                                        <p className="text-xs text-[#888ea8]">{selectedChild.family_profile.owner.email}</p>
+                                                        {selectedChild.family_profile.owner.phone && (
+                                                            <p className="text-xs text-[#888ea8]">{selectedChild.family_profile.owner.phone}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {/* Diğer üyeler */}
+                                            {(selectedChild.family_profile.members ?? []).filter(m => m.user).map(m => (
+                                                <div key={m.id} className="flex items-center gap-3 rounded-lg border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#888ea8] text-sm font-bold text-white">
+                                                        {m.user!.name.charAt(0)}{m.user!.surname.charAt(0)}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="font-medium text-dark dark:text-white">
+                                                            {m.user!.name} {m.user!.surname}
+                                                            <span className="ml-2 text-xs text-[#888ea8]">
+                                                                {m.role === 'super_parent' ? 'Ana Veli' : 'Ek Veli'}
+                                                            </span>
+                                                        </p>
+                                                        <p className="text-xs text-[#888ea8]">{m.user!.email}</p>
+                                                        {m.user!.phone && (
+                                                            <p className="text-xs text-[#888ea8]">{m.user!.phone}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedChild(null)}>Kapat</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Sınıf Oluştur/Düzenle Modal */}
             {showClassModal && (

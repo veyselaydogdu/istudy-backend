@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-03-14 (Tenant şifremi unuttum/sıfırla; güçlü şifre kuralları; ülke sistemi düzeltmeleri — telefon kodu + sync; Detaylar mobil için: PROJECT_MEMORY_MOBILE.md)
+> **Son Güncelleme:** 2026-03-16 (Çocuk okul kayıt talebi sistemi; ChildController nested route düzeltmesi; FamilyProfile/allerjen tenant scope düzeltmeleri)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -627,6 +627,9 @@ Frontend `register/page.tsx` ve `reset-password/page.tsx`'te aynı kurallar Zod 
 │   GET teachers/{id}/schools (okul atamaları)                │
 │   POST/DELETE teachers/{id}/schools                         │
 │   apiResource: schools/{id}/children                    │
+│   GET/PATCH schools/{id}/child-enrollment-requests      │   ← Çocuk okul kayıt talepleri
+│   PATCH schools/{id}/child-enrollment-requests/{id}/approve │
+│   PATCH schools/{id}/child-enrollment-requests/{id}/reject  │
 │   apiResource: schools/{id}/activities                  │
 │   apiResource: schools/{id}/families                    │
 │   apiResource: subscriptions (B2C)                      │
@@ -1687,7 +1690,66 @@ Düzeltilen testler:
 - `ClassManagementApiTest::supply_list_kalem_guncelle` → `Material::create()` içine `academic_year_id` eklendi
 - `ClassManagementApiTest::supply_list_kalem_sil` → aynı
 
-### 17.5 Bilinen Bug Referansı (TASKS_FOR_FIX.md)
+### 17.5 Çocuk Okul Kayıt Talebi Sistemi (2026-03-16)
+
+#### Akış
+1. Veli mobil uygulamada "Okullarım" → okul seç → "Çocuğumu Ekle" → henüz okulda olmayan çocuklarını gösterir → çocuk seç → talep oluşturulur
+2. Tenant panel → Okul Detayı → "Onay Bekleyen Öğrenciler" sekmesi → talepleri listeler, onay/red yapabilir
+3. Onay sonrası: `children.school_id = schoolId` set edilir, çocuk "Öğrenciler" sekmesinde belirir
+
+#### Backend Dosyaları
+- **Model:** `app/Models/School/SchoolChildEnrollmentRequest.php`
+  - Tablo: `school_child_enrollment_requests`
+  - Unique: `(school_id, child_id)` — bir çocuk bir okula birden fazla talep gönderemez
+  - Statüler: `pending / approved / rejected`
+- **Controller (Tenant):** `app/Http/Controllers/Schools/ChildEnrollmentRequestController.php`
+  - Extends `BaseController` (BaseSchoolController DEĞİL — kendi school erişim kontrolünü yapar)
+  - `index(Request, int $schoolId)` — `withoutGlobalScope('tenant')` zorunlu (parent'ın çocukları tenant_id=NULL)
+  - `approve(int $schoolId, int $id)` — `children.school_id = schoolId` set eder
+  - `reject(Request, int $schoolId, int $id)` — `rejection_reason` required min:5
+- **Controller (Parent):** `app/Http/Controllers/Parents/ParentSchoolController.php`
+  - `enrollChild(Request, int $school)` — Çocuğun aileye ait olduğunu, başka okulda olmadığını, duplicate talep olmadığını doğrular
+  - `myChildEnrollments(int $school)` — Ailenin o okul için çocuk kayıt taleplerini listeler
+
+#### ChildController Kritik Düzeltmeler (2026-03-16)
+
+**Nested route positional arg hatası:**
+`schools/{school_id}/children/{child}` → Laravel iki route param'ı positional olarak geçirir.
+`show(Child $child)` çağrısında `school_id='1'` birinci arg olarak gelir → TypeError!
+
+```php
+// YANLIŞ:
+public function show(Child $child): JsonResponse
+// DOĞRU:
+public function show(int $school_id, Child $child): JsonResponse
+public function update(UpdateChildRequest $request, int $school_id, Child $child): JsonResponse
+public function destroy(int $school_id, Child $child): JsonResponse
+```
+
+**FamilyProfile tenant scope sorunu:**
+Parent kullanıcıların `tenant_id = NULL`. Tenant admin `ChildController::show()` veya `index()` çağırdığında `FamilyProfile` eager loading'e global scope `WHERE tenant_id = {X}` ekler → parent'ın family profile'ı NULL döner.
+
+```php
+// index() — listede veli bilgisi göstermek için:
+->with(['familyProfile' => fn($q) => $q->withoutGlobalScope('tenant')->with('owner')])
+
+// show() — detayda tüm aile bilgisi için:
+$child->load([
+    'familyProfile' => fn($q) => $q->withoutGlobalScope('tenant')->with(['owner', 'members.user']),
+    'allergens' => fn($q) => $q->withoutGlobalScope('tenant'),
+    'medications' => fn($q) => $q->withoutGlobalScope('tenant'),
+    'conditions' => fn($q) => $q->withoutGlobalScope('tenant'),
+    ...
+]);
+```
+
+**Sağlık verileri tenant scope sorunu:**
+Global allerjenler (`tenant_id=NULL`) ve parent önerilen allerjenler (`tenant_id=NULL`) tenant scope ile filtrelenir. Tenant admin bir çocuğun tüm sağlık verisini görebilmeli → `withoutGlobalScope('tenant')` her üç sağlık ilişkisinde kullanılmalı.
+
+**ChildController::index() ChildResource dönüşümü:**
+`paginatedResponse($plainPaginator)` raw model data döndürür (ChildResource bypass edilir). `ChildResource::collection($paginator)` ile döndür ki `family_profile` alanı doğru serialize edilsin.
+
+### 17.6 Bilinen Bug Referansı (TASKS_FOR_FIX.md)
 
 | Bug ID | Açıklama | Durum |
 |--------|----------|-------|
@@ -1703,6 +1765,9 @@ Düzeltilen testler:
 | BUG-008 | `$request->all()` → `$request->validate()` return değeri kullanılmalı | ✅ Düzeltildi |
 | BUG-009 | paginatedResponse `.resource` anti-pattern + `toArray()` → `resolve()` | ✅ Düzeltildi |
 | BUG-012 | ClassController/ActivityController nested route positional arg hatası (school_id) | ✅ Düzeltildi |
+| BUG-013 | ChildController::show/update/destroy nested route positional arg hatası (school_id) | ✅ Düzeltildi |
+| BUG-014 | ChildController::show FamilyProfile tenant scope → NULL parent profile yüklenmiyor | ✅ Düzeltildi |
+| BUG-015 | ChildController::index FamilyProfile tenant scope → veli bilgisi listede görünmüyor | ✅ Düzeltildi |
 
 ---
 

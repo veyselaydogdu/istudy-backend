@@ -16,11 +16,57 @@ class ChildResource extends JsonResource
             'academic_year_id' => $this->academic_year_id,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
+            // Aliases for legacy frontend compatibility
+            'name' => $this->first_name,
+            'surname' => $this->last_name,
             'full_name' => $this->full_name,
             'birth_date' => $this->birth_date?->format('Y-m-d'),
             'gender' => $this->gender,
+            'blood_type' => $this->blood_type,
+            'identity_number' => $this->identity_number,
+            'passport_number' => $this->passport_number,
+            'parent_notes' => $this->parent_notes,
+            'special_notes' => $this->special_notes,
+            'languages' => $this->languages,
+            'status' => $this->status,
             'profile_photo' => $this->profile_photo,
-            'family_profile' => new FamilyProfileResource($this->whenLoaded('familyProfile')),
+            'nationality' => $this->whenLoaded('nationality', fn () => $this->nationality ? [
+                'id' => $this->nationality->id,
+                'name' => $this->nationality->name,
+                'flag_emoji' => $this->nationality->flag_emoji,
+            ] : null),
+            'family_profile' => $this->whenLoaded('familyProfile', function () {
+                $fp = $this->familyProfile;
+                if (! $fp || ! $fp->id) {
+                    return null;
+                }
+
+                return [
+                    'id' => $fp->id,
+                    'family_name' => $fp->family_name,
+                    'owner' => $fp->relationLoaded('owner') && $fp->owner ? [
+                        'id' => $fp->owner->id,
+                        'name' => $fp->owner->name,
+                        'surname' => $fp->owner->surname,
+                        'email' => $fp->owner->email,
+                        'phone' => $fp->owner->phone,
+                    ] : null,
+                    'members' => $fp->relationLoaded('members')
+                        ? $fp->members->map(fn ($m) => [
+                            'id' => $m->id,
+                            'role' => $m->role,
+                            'is_active' => $m->is_active,
+                            'user' => $m->relationLoaded('user') && $m->user ? [
+                                'id' => $m->user->id,
+                                'name' => $m->user->name,
+                                'surname' => $m->user->surname,
+                                'email' => $m->user->email,
+                                'phone' => $m->user->phone,
+                            ] : null,
+                        ])->values()
+                        : [],
+                ];
+            }),
             'classes' => SchoolClassResource::collection($this->whenLoaded('classes')),
             'allergens' => $this->whenLoaded('allergens'),
             'medications' => $this->whenLoaded('medications'),

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Parents;
 
 use App\Http\Resources\Parent\ParentSocialPostResource;
+use App\Models\Child\Child;
 use App\Models\School\School;
+use App\Models\School\SchoolChildEnrollmentRequest;
 use App\Models\School\SchoolEnrollmentRequest;
 use App\Models\Social\SocialPost;
 use Illuminate\Http\JsonResponse;
@@ -267,6 +269,120 @@ class ParentSchoolController extends BaseParentController
             );
         } catch (\Throwable $e) {
             Log::error('ParentSchoolController::mySchoolsFeed Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Çocuğu okula kayıt talebi gönder.
+     * POST /parent/schools/{school}/enroll-child
+     */
+    public function enrollChild(Request $request, int $school): JsonResponse
+    {
+        $data = $request->validate([
+            'child_id' => ['required', 'integer'],
+        ]);
+
+        try {
+            // Velinin bu okula erişimi var mı?
+            if (! $this->hasSchoolAccess($school)) {
+                return $this->errorResponse('Bu okula erişim yetkiniz yok.', 403);
+            }
+
+            $familyProfile = $this->getFamilyProfile();
+            if (! $familyProfile) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            // Çocuk bu veliye ait mi?
+            $child = Child::withoutGlobalScope('tenant')
+                ->where('id', $data['child_id'])
+                ->where('family_profile_id', $familyProfile->id)
+                ->first();
+
+            if (! $child) {
+                return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            // Çocuk zaten bir okula kayıtlı mı?
+            if ($child->school_id) {
+                return $this->errorResponse('Bu çocuk zaten bir okula kayıtlı. Bir çocuk yalnızca bir okulda olabilir.', 409);
+            }
+
+            // Bu okul için zaten bir talep var mı?
+            $existingRequest = SchoolChildEnrollmentRequest::withoutGlobalScope('tenant')
+                ->where('school_id', $school)
+                ->where('child_id', $child->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->first();
+
+            if ($existingRequest) {
+                $message = $existingRequest->status === 'approved'
+                    ? 'Bu çocuk zaten bu okula kayıtlı.'
+                    : 'Bu çocuk için bu okula zaten bekleyen bir talep var.';
+
+                return $this->errorResponse($message, 409);
+            }
+
+            $enrollmentRequest = SchoolChildEnrollmentRequest::create([
+                'school_id' => $school,
+                'child_id' => $child->id,
+                'family_profile_id' => $familyProfile->id,
+                'requested_by_user_id' => $this->user()->id,
+                'status' => 'pending',
+            ]);
+
+            return $this->successResponse([
+                'id' => $enrollmentRequest->id,
+                'child_id' => $child->id,
+                'child_name' => $child->first_name.' '.$child->last_name,
+                'status' => 'pending',
+            ], 'Çocuk kayıt talebiniz gönderildi. Okul onayı bekleniyor.', 201);
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::enrollChild Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Velinin bir okul için gönderdiği çocuk kayıt taleplerini listele.
+     * GET /parent/schools/{school}/child-enrollments
+     */
+    public function myChildEnrollments(int $school): JsonResponse
+    {
+        try {
+            $familyProfile = $this->getFamilyProfile();
+
+            if (! $familyProfile) {
+                return $this->successResponse([], 'Talepler listelendi.');
+            }
+
+            $requests = SchoolChildEnrollmentRequest::withoutGlobalScope('tenant')
+                ->where('school_id', $school)
+                ->where('family_profile_id', $familyProfile->id)
+                ->with(['child' => fn ($q) => $q->withoutGlobalScope('tenant')])
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(fn ($req) => [
+                    'id' => $req->id,
+                    'status' => $req->status,
+                    'rejection_reason' => $req->rejection_reason,
+                    'created_at' => $req->created_at,
+                    'child' => $req->child ? [
+                        'id' => $req->child->id,
+                        'first_name' => $req->child->first_name,
+                        'last_name' => $req->child->last_name,
+                        'full_name' => $req->child->first_name.' '.$req->child->last_name,
+                        'birth_date' => $req->child->birth_date,
+                        'gender' => $req->child->gender,
+                    ] : null,
+                ]);
+
+            return $this->successResponse($requests, 'Talepler listelendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::myChildEnrollments Error', ['message' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 500);
         }

@@ -118,6 +118,8 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
     Route::get('/my-enrollment-requests', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'myEnrollmentRequests']);
     Route::get('/schools/{school}', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'schoolDetail']);
     Route::get('/schools/{school}/feed', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'socialFeed']);
+    Route::post('/schools/{school}/enroll-child', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'enrollChild']);
+    Route::get('/schools/{school}/child-enrollments', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'myChildEnrollments']);
 
     // Akış
     Route::get('/feed/global', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'globalFeed']);
@@ -381,6 +383,13 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'schoolIndex']);
                 Route::patch('/{id}/approve', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'approve']);
                 Route::patch('/{id}/reject', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'reject']);
+            });
+
+            // Çocuk okul kayıt talepleri
+            Route::prefix('child-enrollment-requests')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Schools\ChildEnrollmentRequestController::class, 'index']);
+                Route::patch('/{id}/approve', [\App\Http\Controllers\Schools\ChildEnrollmentRequestController::class, 'approve']);
+                Route::patch('/{id}/reject', [\App\Http\Controllers\Schools\ChildEnrollmentRequestController::class, 'reject']);
             });
 
             // Okuldaki öğretmenler (?detailed=1 ile zengin veri)

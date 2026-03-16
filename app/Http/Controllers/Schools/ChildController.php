@@ -27,9 +27,18 @@ class ChildController extends BaseSchoolController
         try {
             $this->authorize('viewAny', Child::class);
 
-            $data = $this->service->getAll(request()->all());
+            $schoolId = (int) request()->route('school_id');
 
-            return $this->paginatedResponse($data);
+            $query = Child::query()
+                ->where('school_id', $schoolId)
+                ->with([
+                    'familyProfile' => fn ($q) => $q->withoutGlobalScope('tenant')->with('owner'),
+                ]);
+
+            $perPage = request('per_page', 15);
+            $data = $query->latest()->paginate($perPage);
+
+            return $this->paginatedResponse(ChildResource::collection($data));
 
         } catch (\Throwable $e) {
             Log::error('ChildController::index Error', [
@@ -88,20 +97,24 @@ class ChildController extends BaseSchoolController
     /**
      * Öğrenci detayını getir
      */
-    public function show(Child $child): JsonResponse
+    public function show(int $school_id, Child $child): JsonResponse
     {
         try {
             $this->authorize('view', $child);
 
-            return $this->successResponse(
-                ChildResource::make($child->load([
-                    'familyProfile',
-                    'classes',
-                    'allergens',
-                    'medications',
-                    'conditions',
-                ]))
-            );
+            $child->load([
+                'familyProfile' => fn ($q) => $q->withoutGlobalScope('tenant')->with([
+                    'owner',
+                    'members.user',
+                ]),
+                'classes',
+                'allergens' => fn ($q) => $q->withoutGlobalScope('tenant'),
+                'medications' => fn ($q) => $q->withoutGlobalScope('tenant'),
+                'conditions' => fn ($q) => $q->withoutGlobalScope('tenant'),
+                'nationality',
+            ]);
+
+            return $this->successResponse(ChildResource::make($child));
 
         } catch (\Throwable $e) {
             Log::error('ChildController::show Error', [
@@ -119,7 +132,7 @@ class ChildController extends BaseSchoolController
     /**
      * Öğrenci güncelle
      */
-    public function update(UpdateChildRequest $request, Child $child): JsonResponse
+    public function update(UpdateChildRequest $request, int $school_id, Child $child): JsonResponse
     {
         try {
             DB::beginTransaction();
@@ -151,7 +164,7 @@ class ChildController extends BaseSchoolController
     /**
      * Öğrenci sil
      */
-    public function destroy(Child $child): JsonResponse
+    public function destroy(int $school_id, Child $child): JsonResponse
     {
         try {
             DB::beginTransaction();

@@ -2,8 +2,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Modal,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -36,6 +39,29 @@ interface Post {
   comments_count: number;
 }
 
+interface FamilyChild {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  birth_date: string | null;
+  gender: string | null;
+  school_id: number | null;
+}
+
+interface ChildEnrollment {
+  id: number;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
+  created_at: string;
+  child: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+  } | null;
+}
+
 export default function SchoolDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [school, setSchool] = useState<SchoolDetail | null>(null);
@@ -45,6 +71,13 @@ export default function SchoolDetailScreen() {
   const [postsLoading, setPostsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+
+  // Child enrollment
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [familyChildren, setFamilyChildren] = useState<FamilyChild[]>([]);
+  const [loadingChildren, setLoadingChildren] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [childEnrollments, setChildEnrollments] = useState<ChildEnrollment[]>([]);
 
   const fetchSchool = useCallback(async () => {
     try {
@@ -79,12 +112,21 @@ export default function SchoolDetailScreen() {
     }
   }, [id]);
 
+  const fetchChildEnrollments = useCallback(async () => {
+    try {
+      const res = await api.get<{ data: ChildEnrollment[] }>(`/parent/schools/${id}/child-enrollments`);
+      setChildEnrollments(res.data.data ?? []);
+    } catch {
+      // sessizce geç
+    }
+  }, [id]);
+
   const loadAll = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
-    await Promise.all([fetchSchool(), fetchPosts(1, isRefresh)]);
+    await Promise.all([fetchSchool(), fetchPosts(1, isRefresh), fetchChildEnrollments()]);
     setLoading(false);
     setRefreshing(false);
-  }, [fetchSchool, fetchPosts]);
+  }, [fetchSchool, fetchPosts, fetchChildEnrollments]);
 
   useEffect(() => {
     void loadAll();
@@ -101,6 +143,39 @@ export default function SchoolDetailScreen() {
     }
   };
 
+  const openEnrollModal = async () => {
+    setShowEnrollModal(true);
+    setLoadingChildren(true);
+    try {
+      const res = await api.get<{ data: FamilyChild[] }>('/parent/children');
+      // Sadece henüz bir okula kayıtlı olmayan çocukları göster
+      const unenrolled = (res.data.data ?? []).filter((c) => !c.school_id);
+      setFamilyChildren(unenrolled);
+    } catch (err: unknown) {
+      Alert.alert('Hata', getApiError(err));
+      setShowEnrollModal(false);
+    } finally {
+      setLoadingChildren(false);
+    }
+  };
+
+  const handleEnrollChild = async (child: FamilyChild) => {
+    setEnrolling(true);
+    try {
+      await api.post(`/parent/schools/${id}/enroll-child`, { child_id: child.id });
+      setShowEnrollModal(false);
+      Alert.alert(
+        'Talep Gönderildi',
+        `${child.full_name} için okul kayıt talebiniz gönderildi. Okul onayını bekliyorsunuz.`
+      );
+      void fetchChildEnrollments();
+    } catch (err: unknown) {
+      Alert.alert('Hata', getApiError(err));
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -110,6 +185,8 @@ export default function SchoolDetailScreen() {
       </SafeAreaView>
     );
   }
+
+  const pendingEnrollments = childEnrollments.filter((e) => e.status === 'pending');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -162,25 +239,49 @@ export default function SchoolDetailScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           school ? (
-            <View style={styles.schoolCard}>
-              <View style={styles.schoolIconBox}>
-                <Text style={styles.schoolIconText}>🏫</Text>
+            <View>
+              <View style={styles.schoolCard}>
+                <View style={styles.schoolIconBox}>
+                  <Text style={styles.schoolIconText}>🏫</Text>
+                </View>
+                <Text style={styles.schoolName}>{school.name}</Text>
+                {school.type && <Text style={styles.schoolType}>{school.type}</Text>}
+                {school.address && (
+                  <Text style={styles.schoolInfo}>📍 {school.address}</Text>
+                )}
+                {school.phone && (
+                  <Text style={styles.schoolInfo}>📞 {school.phone}</Text>
+                )}
+                {school.current_academic_year && (
+                  <View style={styles.yearBadge}>
+                    <Text style={styles.yearBadgeText}>
+                      {school.current_academic_year.name}
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.enrollButton}
+                  onPress={openEnrollModal}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.enrollButtonText}>👶 Çocuğumu Bu Okula Ekle</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.schoolName}>{school.name}</Text>
-              {school.type && <Text style={styles.schoolType}>{school.type}</Text>}
-              {school.address && (
-                <Text style={styles.schoolInfo}>📍 {school.address}</Text>
-              )}
-              {school.phone && (
-                <Text style={styles.schoolInfo}>📞 {school.phone}</Text>
-              )}
-              {school.current_academic_year && (
-                <View style={styles.yearBadge}>
-                  <Text style={styles.yearBadgeText}>
-                    {school.current_academic_year.name}
-                  </Text>
+
+              {pendingEnrollments.length > 0 && (
+                <View style={styles.pendingCard}>
+                  <Text style={styles.pendingTitle}>⏳ Onay Bekleyen Kayıtlar</Text>
+                  {pendingEnrollments.map((e) => (
+                    <View key={e.id} style={styles.pendingItem}>
+                      <Text style={styles.pendingChildName}>{e.child?.full_name}</Text>
+                      <View style={styles.pendingBadge}>
+                        <Text style={styles.pendingBadgeText}>Onay Bekleniyor</Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
               )}
+
               <Text style={styles.feedTitle}>Okul Akışı</Text>
             </View>
           ) : null
@@ -207,6 +308,78 @@ export default function SchoolDetailScreen() {
           ) : null
         }
       />
+
+      {/* Çocuk Seçme Modalı */}
+      <Modal
+        visible={showEnrollModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowEnrollModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Çocuğumu Ekle</Text>
+              <TouchableOpacity onPress={() => setShowEnrollModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>
+              Okula kayıt talebinde bulunmak istediğiniz çocuğu seçin.
+            </Text>
+
+            {loadingChildren ? (
+              <ActivityIndicator color="#208AEF" style={{ marginVertical: 32 }} />
+            ) : familyChildren.length === 0 ? (
+              <View style={styles.emptyModal}>
+                <Text style={styles.emptyModalText}>
+                  Tüm çocuklarınız zaten bir okula kayıtlı veya henüz çocuk eklenmemiş.
+                </Text>
+                <TouchableOpacity
+                  style={styles.addChildBtn}
+                  onPress={() => {
+                    setShowEnrollModal(false);
+                    router.push('/(app)/children/add');
+                  }}
+                >
+                  <Text style={styles.addChildBtnText}>+ Çocuk Ekle</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {familyChildren.map((child) => (
+                  <TouchableOpacity
+                    key={child.id}
+                    style={styles.childItem}
+                    onPress={() => handleEnrollChild(child)}
+                    disabled={enrolling}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.childAvatar}>
+                      <Text style={styles.childAvatarText}>
+                        {child.first_name.charAt(0)}{child.last_name.charAt(0)}
+                      </Text>
+                    </View>
+                    <View style={styles.childInfo}>
+                      <Text style={styles.childName}>{child.full_name}</Text>
+                      {child.birth_date && (
+                        <Text style={styles.childBirth}>
+                          {new Date(child.birth_date).toLocaleDateString('tr-TR')}
+                        </Text>
+                      )}
+                    </View>
+                    {enrolling ? (
+                      <ActivityIndicator color="#208AEF" size="small" />
+                    ) : (
+                      <Text style={styles.selectArrow}>→</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -231,7 +404,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 12,
     alignItems: 'center',
     gap: 8,
     marginTop: 16,
@@ -257,12 +430,46 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   yearBadgeText: { color: '#059669', fontSize: 12, fontWeight: '600' },
+  enrollButton: {
+    backgroundColor: '#208AEF',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginTop: 8,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+  },
+  enrollButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  pendingCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    gap: 8,
+  },
+  pendingTitle: { fontSize: 13, fontWeight: '700', color: '#92400E' },
+  pendingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  pendingChildName: { fontSize: 13, color: '#374151', fontWeight: '600' },
+  pendingBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  pendingBadgeText: { fontSize: 11, color: '#92400E', fontWeight: '600' },
   feedTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
-    alignSelf: 'flex-start',
-    marginTop: 12,
+    marginBottom: 12,
+    marginTop: 4,
   },
   postCard: {
     backgroundColor: '#FFFFFF',
@@ -295,4 +502,56 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 40 },
   emptyText: { fontSize: 14, color: '#9CA3AF' },
   loader: { paddingVertical: 20 },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: '#1F2937' },
+  modalClose: { fontSize: 18, color: '#6B7280', padding: 4 },
+  modalSubtitle: { fontSize: 13, color: '#6B7280', marginBottom: 20 },
+  emptyModal: { alignItems: 'center', paddingVertical: 24, gap: 16 },
+  emptyModalText: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
+  addChildBtn: {
+    backgroundColor: '#208AEF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  addChildBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  childItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  childAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#208AEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  childAvatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  childInfo: { flex: 1 },
+  childName: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
+  childBirth: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  selectArrow: { fontSize: 18, color: '#208AEF', fontWeight: '700' },
 });
