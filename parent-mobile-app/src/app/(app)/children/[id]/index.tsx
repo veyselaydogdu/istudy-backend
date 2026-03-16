@@ -30,8 +30,8 @@ interface Child {
   profile_photo: string | null;
   status: string;
   nationality: { id: number; name: string; name_tr: string | null; flag_emoji: string | null } | null;
-  allergens: Array<{ id: number; name: string }>;
-  conditions: Array<{ id: number; name: string }>;
+  allergens: Array<{ id: number; name: string; status?: string }>;
+  conditions: Array<{ id: number; name: string; status?: string }>;
   medications: Array<{ id: number; name: string; dose: string | null; usage_time: string[] | null; usage_days: string[] | null }>;
 }
 
@@ -211,6 +211,9 @@ export default function ChildDetailScreen() {
                   {child.allergens.map((a) => (
                     <View key={a.id} style={[styles.tag, styles.tagRed]}>
                       <Text style={styles.tagTextRed}>{a.name}</Text>
+                      {a.status === 'pending' && (
+                        <Text style={styles.pendingBadge}> (onay bekleniyor)</Text>
+                      )}
                     </View>
                   ))}
                 </View>
@@ -223,6 +226,9 @@ export default function ChildDetailScreen() {
                   {child.conditions.map((c) => (
                     <View key={c.id} style={[styles.tag, styles.tagOrange]}>
                       <Text style={styles.tagTextOrange}>{c.name}</Text>
+                      {c.status === 'pending' && (
+                        <Text style={styles.pendingBadge}> (onay bekleniyor)</Text>
+                      )}
                     </View>
                   ))}
                 </View>
@@ -398,6 +404,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pendingBadge: {
+    fontSize: 10,
+    color: '#92400E',
+    fontWeight: '600',
+    fontStyle: 'italic',
   },
   tagRed: {
     backgroundColor: '#FEE2E2',

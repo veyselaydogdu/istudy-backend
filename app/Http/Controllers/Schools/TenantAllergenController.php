@@ -27,6 +27,7 @@ class TenantAllergenController extends BaseController
                 ->where(function ($q) use ($tenantId) {
                     $q->whereNull('tenant_id')->orWhere('tenant_id', $tenantId);
                 })
+                ->where('status', 'approved')
                 ->orderBy('name')
                 ->get();
 

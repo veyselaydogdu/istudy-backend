@@ -6,6 +6,7 @@ use App\Http\Controllers\Base\BaseController;
 use App\Models\Health\Allergen;
 use App\Models\Health\MedicalCondition;
 use App\Models\Health\Medication;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -26,28 +27,50 @@ class TenantHealthSuggestionController extends BaseController
 
             $result = [];
 
+            $withUser = function ($items) {
+                $userIds = $items->pluck('suggested_by_user_id')->filter()->unique()->values();
+                $users = User::whereIn('id', $userIds)->get(['id', 'name', 'surname', 'email'])
+                    ->keyBy('id');
+
+                return $items->map(function ($item) use ($users) {
+                    $user = $users->get($item->suggested_by_user_id);
+
+                    return array_merge($item->toArray(), [
+                        'suggested_by' => $user ? [
+                            'id' => $user->id,
+                            'name' => $user->name,
+                            'surname' => $user->surname,
+                            'email' => $user->email,
+                        ] : null,
+                    ]);
+                });
+            };
+
             if (! $type || $type === 'allergen') {
-                $result['allergens'] = Allergen::withoutGlobalScopes()
+                $items = Allergen::withoutGlobalScopes()
                     ->where('status', 'pending')
                     ->where('tenant_id', $tenantId)
                     ->orderBy('created_at', 'desc')
                     ->get(['id', 'name', 'description', 'risk_level', 'suggested_by_user_id', 'created_at']);
+                $result['allergens'] = $withUser($items);
             }
 
             if (! $type || $type === 'condition') {
-                $result['conditions'] = MedicalCondition::withoutGlobalScopes()
+                $items = MedicalCondition::withoutGlobalScopes()
                     ->where('status', 'pending')
                     ->where('tenant_id', $tenantId)
                     ->orderBy('created_at', 'desc')
                     ->get(['id', 'name', 'description', 'suggested_by_user_id', 'created_at']);
+                $result['conditions'] = $withUser($items);
             }
 
             if (! $type || $type === 'medication') {
-                $result['medications'] = Medication::withoutGlobalScopes()
+                $items = Medication::withoutGlobalScopes()
                     ->where('status', 'pending')
                     ->where('tenant_id', $tenantId)
                     ->orderBy('created_at', 'desc')
                     ->get(['id', 'name', 'suggested_by_user_id', 'created_at']);
+                $result['medications'] = $withUser($items);
             }
 
             return $this->successResponse($result, 'Bekleyen öneriler listelendi.');

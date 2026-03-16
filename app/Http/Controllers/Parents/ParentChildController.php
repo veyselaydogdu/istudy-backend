@@ -260,13 +260,27 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
-            $familyProfile = $this->getFamilyProfile();
+            // Tenant'ı önce çocuğun okulundan bul, yoksa family assignment'tan al
+            $tenantId = null;
+            if ($childModel->school_id) {
+                $tenantId = \Illuminate\Support\Facades\DB::table('schools')
+                    ->where('id', $childModel->school_id)
+                    ->value('tenant_id');
+            }
+            if (! $tenantId) {
+                $familyProfile = $this->getFamilyProfile();
+                $tenantId = \Illuminate\Support\Facades\DB::table('school_family_assignments')
+                    ->join('schools', 'schools.id', '=', 'school_family_assignments.school_id')
+                    ->where('school_family_assignments.family_profile_id', $familyProfile?->id)
+                    ->whereNull('school_family_assignments.deleted_at')
+                    ->value('schools.tenant_id');
+            }
 
             $allergen = Allergen::withoutGlobalScopes()->create([
                 'name' => trim($request->name),
                 'description' => $request->description,
                 'risk_level' => 'medium',
-                'tenant_id' => $familyProfile?->tenant_id,
+                'tenant_id' => $tenantId,
                 'status' => 'pending',
                 'suggested_by_user_id' => $this->user()->id,
                 'created_by' => $this->user()->id,
@@ -303,12 +317,26 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
-            $familyProfile = $this->getFamilyProfile();
+            // Tenant'ı önce çocuğun okulundan bul, yoksa family assignment'tan al
+            $tenantId = null;
+            if ($childModel->school_id) {
+                $tenantId = \Illuminate\Support\Facades\DB::table('schools')
+                    ->where('id', $childModel->school_id)
+                    ->value('tenant_id');
+            }
+            if (! $tenantId) {
+                $familyProfile = $this->getFamilyProfile();
+                $tenantId = \Illuminate\Support\Facades\DB::table('school_family_assignments')
+                    ->join('schools', 'schools.id', '=', 'school_family_assignments.school_id')
+                    ->where('school_family_assignments.family_profile_id', $familyProfile?->id)
+                    ->whereNull('school_family_assignments.deleted_at')
+                    ->value('schools.tenant_id');
+            }
 
             $condition = MedicalCondition::withoutGlobalScopes()->create([
                 'name' => trim($request->name),
                 'description' => $request->description,
-                'tenant_id' => $familyProfile?->tenant_id,
+                'tenant_id' => $tenantId,
                 'status' => 'pending',
                 'suggested_by_user_id' => $this->user()->id,
                 'created_by' => $this->user()->id,
@@ -347,11 +375,25 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
-            $familyProfile = $this->getFamilyProfile();
+            // Tenant'ı önce çocuğun okulundan bul, yoksa family assignment'tan al
+            $tenantId = null;
+            if ($childModel->school_id) {
+                $tenantId = DB::table('schools')
+                    ->where('id', $childModel->school_id)
+                    ->value('tenant_id');
+            }
+            if (! $tenantId) {
+                $familyProfile = $this->getFamilyProfile();
+                $tenantId = DB::table('school_family_assignments')
+                    ->join('schools', 'schools.id', '=', 'school_family_assignments.school_id')
+                    ->where('school_family_assignments.family_profile_id', $familyProfile?->id)
+                    ->whereNull('school_family_assignments.deleted_at')
+                    ->value('schools.tenant_id');
+            }
 
             $medication = Medication::withoutGlobalScopes()->create([
                 'name' => trim($request->name),
-                'tenant_id' => $familyProfile?->tenant_id,
+                'tenant_id' => $tenantId,
                 'status' => 'pending',
                 'suggested_by_user_id' => $this->user()->id,
                 'created_by' => $this->user()->id,

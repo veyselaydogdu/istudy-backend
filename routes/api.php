@@ -441,6 +441,16 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{allergen_id}', [\App\Http\Controllers\Schools\TenantAllergenController::class, 'destroy']);
         });
 
+        // ───────────────────────────────────────────────────
+        // TIBBİ DURUM YÖNETİMİ (Tenant tarafı)
+        // ───────────────────────────────────────────────────
+        Route::prefix('medical-conditions')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\TenantMedicalConditionController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\TenantMedicalConditionController::class, 'store']);
+            Route::put('/{condition_id}', [\App\Http\Controllers\Schools\TenantMedicalConditionController::class, 'update']);
+            Route::delete('/{condition_id}', [\App\Http\Controllers\Schools\TenantMedicalConditionController::class, 'destroy']);
+        });
+
         // Veli önerileri onay (tenant)
         Route::get('/health-suggestions', [\App\Http\Controllers\Schools\TenantHealthSuggestionController::class, 'index']);
         Route::post('/health-suggestions/approve', [\App\Http\Controllers\Schools\TenantHealthSuggestionController::class, 'approve']);

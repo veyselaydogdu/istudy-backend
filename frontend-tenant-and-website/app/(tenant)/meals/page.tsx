@@ -4,9 +4,27 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { FoodIngredient, Meal, School, Allergen, SchoolMealType } from '@/types';
-import { Plus, Trash2, Edit2, X, Utensils, Leaf, ShieldAlert, Settings, Lock } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Utensils, Leaf, ShieldAlert, Settings, Lock, Stethoscope, Clock, Check, XCircle } from 'lucide-react';
 
-type Tab = 'meals' | 'ingredients' | 'allergens' | 'meal-types';
+type Tab = 'meals' | 'ingredients' | 'allergens' | 'conditions' | 'meal-types';
+type HealthSubTab = 'approved' | 'pending';
+
+interface HealthSuggestion {
+    id: number;
+    name: string;
+    description?: string | null;
+    risk_level?: string | null;
+    suggested_by_user_id: number;
+    suggested_by?: { id: number; name: string; surname: string; email: string } | null;
+    created_at: string;
+}
+
+interface MedicalCondition {
+    id: number;
+    name: string;
+    description?: string | null;
+    tenant_id: number | null;
+}
 
 const RISK_LABELS: Record<string, string> = { low: 'Düşük', medium: 'Orta', high: 'Yüksek' };
 const RISK_BADGE: Record<string, string> = { low: 'badge-outline-success', medium: 'badge-outline-warning', high: 'badge-outline-danger' };
@@ -38,11 +56,26 @@ export default function MealsPage() {
     const [ingredientForm, setIngredientForm] = useState({ name: '', allergen_ids: [] as number[] });
     const [savingIngredient, setSavingIngredient] = useState(false);
 
+    // Allergen sub-tabs + pending suggestions
+    const [allergenSubTab, setAllergenSubTab] = useState<HealthSubTab>('approved');
+    const [allergenSuggestions, setAllergenSuggestions] = useState<HealthSuggestion[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
     // Tenant allergen CRUD
     const [showAllergenModal, setShowAllergenModal] = useState(false);
     const [editingAllergen, setEditingAllergen] = useState<Allergen | null>(null);
     const [allergenForm, setAllergenForm] = useState({ name: '', description: '', risk_level: '' });
     const [savingAllergen, setSavingAllergen] = useState(false);
+
+    // Medical conditions
+    const [conditions, setConditions] = useState<MedicalCondition[]>([]);
+    const [loadingConditions, setLoadingConditions] = useState(false);
+    const [conditionSubTab, setConditionSubTab] = useState<HealthSubTab>('approved');
+    const [conditionSuggestions, setConditionSuggestions] = useState<HealthSuggestion[]>([]);
+    const [showConditionModal, setShowConditionModal] = useState(false);
+    const [editingCondition, setEditingCondition] = useState<MedicalCondition | null>(null);
+    const [conditionForm, setConditionForm] = useState({ name: '', description: '' });
+    const [savingCondition, setSavingCondition] = useState(false);
 
     // School Meal Types
     const [mealTypes, setMealTypes] = useState<SchoolMealType[]>([]);
@@ -70,6 +103,26 @@ export default function MealsPage() {
             setAllergens(res.data?.data ?? []);
         } catch { /* sessizce geç */ }
         finally { setLoadingAllergens(false); }
+    }, []);
+
+    const fetchConditions = useCallback(async () => {
+        setLoadingConditions(true);
+        try {
+            const res = await apiClient.get('/medical-conditions');
+            setConditions(res.data?.data ?? []);
+        } catch { /* sessizce geç */ }
+        finally { setLoadingConditions(false); }
+    }, []);
+
+    const fetchSuggestions = useCallback(async () => {
+        setLoadingSuggestions(true);
+        try {
+            const res = await apiClient.get('/health-suggestions');
+            const data = res.data?.data ?? {};
+            setAllergenSuggestions(data.allergens ?? []);
+            setConditionSuggestions(data.conditions ?? []);
+        } catch { /* sessizce geç */ }
+        finally { setLoadingSuggestions(false); }
     }, []);
 
     const fetchMeals = useCallback(async () => {
@@ -111,6 +164,15 @@ export default function MealsPage() {
     }, [activeTab, selectedSchoolId, fetchMeals, fetchMealTypes]);
     useEffect(() => { if (activeTab === 'ingredients') fetchIngredients(); }, [activeTab, fetchIngredients]);
     useEffect(() => { if (activeTab === 'meal-types' && selectedSchoolId) fetchMealTypes(); }, [activeTab, selectedSchoolId, fetchMealTypes]);
+    useEffect(() => {
+        if (activeTab === 'conditions') fetchConditions();
+    }, [activeTab, fetchConditions]);
+    useEffect(() => {
+        if ((activeTab === 'allergens' && allergenSubTab === 'pending') ||
+            (activeTab === 'conditions' && conditionSubTab === 'pending')) {
+            fetchSuggestions();
+        }
+    }, [activeTab, allergenSubTab, conditionSubTab, fetchSuggestions]);
 
     // ── Yemek CRUD ──────────────────────────────────────────────
     const openCreateMeal = () => {
@@ -299,6 +361,86 @@ export default function MealsPage() {
         } catch { toast.error('Silme başarısız.'); }
     };
 
+    // ── Tıbbi Durum CRUD ─────────────────────────────────────────
+    const openCreateCondition = () => {
+        setEditingCondition(null);
+        setConditionForm({ name: '', description: '' });
+        setShowConditionModal(true);
+    };
+
+    const openEditCondition = (c: MedicalCondition) => {
+        if (c.tenant_id === null || c.tenant_id === undefined) {
+            toast.error('Global tıbbi durumlar düzenlenemez.'); return;
+        }
+        setEditingCondition(c);
+        setConditionForm({ name: c.name, description: c.description ?? '' });
+        setShowConditionModal(true);
+    };
+
+    const handleConditionSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!conditionForm.name.trim()) { toast.error('Tıbbi durum adı zorunludur.'); return; }
+        setSavingCondition(true);
+        const payload = { name: conditionForm.name.trim(), description: conditionForm.description || null };
+        try {
+            if (editingCondition) {
+                await apiClient.put(`/medical-conditions/${editingCondition.id}`, payload);
+                toast.success('Tıbbi durum güncellendi.');
+            } else {
+                await apiClient.post('/medical-conditions', payload);
+                toast.success('Tıbbi durum eklendi.');
+            }
+            setShowConditionModal(false);
+            fetchConditions();
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+        } finally { setSavingCondition(false); }
+    };
+
+    const handleDeleteCondition = async (c: MedicalCondition) => {
+        if (c.tenant_id === null || c.tenant_id === undefined) {
+            toast.error('Global tıbbi durumlar silinemez.'); return;
+        }
+        const result = await Swal.fire({
+            title: 'Tıbbi Durumu Sil', text: `"${c.name}" silinecek.`, icon: 'warning',
+            showCancelButton: true, confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal', confirmButtonColor: '#e7515a',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.delete(`/medical-conditions/${c.id}`);
+            toast.success('Tıbbi durum silindi.');
+            fetchConditions();
+        } catch { toast.error('Silme başarısız.'); }
+    };
+
+    // ── Sağlık Önerisi Onayla / Reddet ──────────────────────────
+    const handleApproveSuggestion = async (type: 'allergen' | 'condition', id: number) => {
+        try {
+            await apiClient.post('/health-suggestions/approve', { type, id });
+            toast.success('Öneri onaylandı ve listeye eklendi.');
+            fetchSuggestions();
+            if (type === 'allergen') fetchAllergens();
+            else fetchConditions();
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Onaylama başarısız.');
+        }
+    };
+
+    const handleRejectSuggestion = async (type: 'allergen' | 'condition', id: number, name: string) => {
+        const result = await Swal.fire({
+            title: 'Öneriyi Reddet', text: `"${name}" önerisi reddedilecek.`, icon: 'warning',
+            showCancelButton: true, confirmButtonText: 'Reddet', cancelButtonText: 'İptal', confirmButtonColor: '#e7515a',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.post('/health-suggestions/reject', { type, id });
+            toast.success('Öneri reddedildi.');
+            fetchSuggestions();
+        } catch { toast.error('Reddetme başarısız.'); }
+    };
+
     // ── Öğün Türleri CRUD ───────────────────────────────────────
     const openCreateMealType = () => {
         setEditingMealType(null);
@@ -358,6 +500,8 @@ export default function MealsPage() {
 
     const globalAllergens = allergens.filter(a => a.tenant_id === null || a.tenant_id === undefined);
     const tenantAllergens = allergens.filter(a => a.tenant_id !== null && a.tenant_id !== undefined);
+    const globalConditions = conditions.filter(c => c.tenant_id === null || c.tenant_id === undefined);
+    const tenantConditions = conditions.filter(c => c.tenant_id !== null && c.tenant_id !== undefined);
 
     /** Seçili besin öğelerinden otomatik türetilen allerjenler (meal modalinde kilitli gösterilir) */
     const lockedAllergens = useMemo(() => {
@@ -373,10 +517,11 @@ export default function MealsPage() {
             <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">Yemek Yönetimi</h1>
 
             <div className="panel">
-                <div className="mb-4 flex gap-2 border-b border-[#ebedf2] dark:border-[#1b2e4b]">
+                <div className="mb-4 flex flex-wrap gap-2 border-b border-[#ebedf2] dark:border-[#1b2e4b]">
                     {tabBtn('meals', 'Yemekler', <Utensils className="h-4 w-4" />)}
                     {tabBtn('ingredients', 'Besin Öğeleri', <Leaf className="h-4 w-4" />)}
                     {tabBtn('allergens', 'Allerjenler', <ShieldAlert className="h-4 w-4" />)}
+                    {tabBtn('conditions', 'Tıbbi Durumlar', <Stethoscope className="h-4 w-4" />)}
                     {tabBtn('meal-types', 'Öğün Türleri', <Settings className="h-4 w-4" />)}
                 </div>
 
@@ -541,66 +686,291 @@ export default function MealsPage() {
                 {/* ── Allerjenler ── */}
                 {activeTab === 'allergens' && (
                     <>
-                        <div className="mb-4 flex justify-end">
-                            <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openCreateAllergen}>
-                                <Plus className="h-4 w-4" />
-                                Allerjen Ekle
-                            </button>
-                        </div>
-
-                        {globalAllergens.length > 0 && (
-                            <div className="mb-6">
-                                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Global Allerjenler</h3>
-                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                                    {globalAllergens.map(a => (
-                                        <div key={a.id} className="flex items-center justify-between rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
-                                            <div>
-                                                <p className="font-medium text-dark dark:text-white">{a.name}</p>
-                                                {a.risk_level && (
-                                                    <span className={`badge ${RISK_BADGE[a.risk_level] ?? 'badge-outline-secondary'} mt-1 text-xs`}>
-                                                        {RISK_LABELS[a.risk_level] ?? a.risk_level}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span className="badge badge-outline-secondary text-xs">Global</span>
-                                        </div>
-                                    ))}
-                                </div>
+                        {/* Alt sekmeler */}
+                        <div className="mb-4 flex items-center justify-between">
+                            <div className="flex gap-1 rounded-lg bg-[#f1f3f6] p-1 dark:bg-[#1b2e4b]">
+                                <button
+                                    type="button"
+                                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${allergenSubTab === 'approved' ? 'bg-white shadow text-dark dark:bg-[#0e1726] dark:text-white' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
+                                    onClick={() => setAllergenSubTab('approved')}
+                                >
+                                    Onaylı Allerjenler
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${allergenSubTab === 'pending' ? 'bg-white shadow text-dark dark:bg-[#0e1726] dark:text-white' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
+                                    onClick={() => setAllergenSubTab('pending')}
+                                >
+                                    <Clock className="h-3.5 w-3.5" />
+                                    Bekleyen Öneriler
+                                    {allergenSuggestions.length > 0 && (
+                                        <span className="rounded-full bg-warning px-1.5 py-0.5 text-xs text-white">{allergenSuggestions.length}</span>
+                                    )}
+                                </button>
                             </div>
-                        )}
-
-                        <div>
-                            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Kuruma Özel Allerjenler</h3>
-                            {tenantAllergens.length === 0 ? (
-                                <p className="py-4 text-sm text-[#515365] dark:text-[#888ea8]">Henüz allerjen eklenmemiş.</p>
-                            ) : (
-                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                                    {tenantAllergens.map(a => (
-                                        <div key={a.id} className="flex items-start justify-between rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
-                                            <div>
-                                                <p className="font-medium text-dark dark:text-white">{a.name}</p>
-                                                {a.description && (
-                                                    <p className="mt-0.5 text-xs text-[#888ea8]">{a.description}</p>
-                                                )}
-                                                {a.risk_level && (
-                                                    <span className={`badge ${RISK_BADGE[a.risk_level] ?? 'badge-outline-secondary'} mt-1 text-xs`}>
-                                                        {RISK_LABELS[a.risk_level] ?? a.risk_level}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex shrink-0 gap-1">
-                                                <button type="button" className="btn btn-sm btn-outline-primary p-1.5" onClick={() => openEditAllergen(a)}>
-                                                    <Edit2 className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button type="button" className="btn btn-sm btn-outline-danger p-1.5" onClick={() => handleDeleteAllergen(a)}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                            {allergenSubTab === 'approved' && (
+                                <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openCreateAllergen}>
+                                    <Plus className="h-4 w-4" />
+                                    Allerjen Ekle
+                                </button>
                             )}
                         </div>
+
+                        {/* Onaylı listesi */}
+                        {allergenSubTab === 'approved' && (
+                            <>
+                                {loadingAllergens ? (
+                                    <div className="flex h-32 items-center justify-center">
+                                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                    </div>
+                                ) : (
+                                    <>
+                                        {globalAllergens.length > 0 && (
+                                            <div className="mb-6">
+                                                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Global Allerjenler</h3>
+                                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                                    {globalAllergens.map(a => (
+                                                        <div key={a.id} className="flex items-center justify-between rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                                            <div>
+                                                                <p className="font-medium text-dark dark:text-white">{a.name}</p>
+                                                                {a.risk_level && (
+                                                                    <span className={`badge ${RISK_BADGE[a.risk_level] ?? 'badge-outline-secondary'} mt-1 text-xs`}>
+                                                                        {RISK_LABELS[a.risk_level] ?? a.risk_level}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="badge badge-outline-secondary text-xs">Global</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Kuruma Özel</h3>
+                                            {tenantAllergens.length === 0 ? (
+                                                <p className="py-4 text-sm text-[#515365] dark:text-[#888ea8]">Henüz kuruma özel allerjen eklenmemiş.</p>
+                                            ) : (
+                                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                                    {tenantAllergens.map(a => (
+                                                        <div key={a.id} className="flex items-start justify-between rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                                            <div>
+                                                                <p className="font-medium text-dark dark:text-white">{a.name}</p>
+                                                                {a.description && <p className="mt-0.5 text-xs text-[#888ea8]">{a.description}</p>}
+                                                                {a.risk_level && (
+                                                                    <span className={`badge ${RISK_BADGE[a.risk_level] ?? 'badge-outline-secondary'} mt-1 text-xs`}>
+                                                                        {RISK_LABELS[a.risk_level] ?? a.risk_level}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex shrink-0 gap-1">
+                                                                <button type="button" className="btn btn-sm btn-outline-primary p-1.5" onClick={() => openEditAllergen(a)}>
+                                                                    <Edit2 className="h-3.5 w-3.5" />
+                                                                </button>
+                                                                <button type="button" className="btn btn-sm btn-outline-danger p-1.5" onClick={() => handleDeleteAllergen(a)}>
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </>
+                        )}
+
+                        {/* Bekleyen öneriler */}
+                        {allergenSubTab === 'pending' && (
+                            loadingSuggestions ? (
+                                <div className="flex h-32 items-center justify-center">
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                </div>
+                            ) : allergenSuggestions.length === 0 ? (
+                                <div className="py-12 text-center">
+                                    <Clock className="mx-auto mb-2 h-10 w-10 text-[#e0e6ed]" />
+                                    <p className="text-sm text-[#888ea8]">Bekleyen allerjen önerisi yok.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {allergenSuggestions.map(s => (
+                                        <div key={s.id} className="flex items-center justify-between rounded border border-warning/30 bg-warning/5 p-4">
+                                            <div>
+                                                <p className="font-semibold text-dark dark:text-white">{s.name}</p>
+                                                {s.description && <p className="mt-0.5 text-xs text-[#888ea8]">{s.description}</p>}
+                                                {s.suggested_by ? (
+                                                    <p className="mt-1 text-xs text-[#515365] dark:text-[#888ea8]">
+                                                        <span className="font-medium">{s.suggested_by.name} {s.suggested_by.surname}</span>
+                                                        {' · '}{s.suggested_by.email}
+                                                        {' · '}{new Date(s.created_at).toLocaleDateString('tr-TR')}
+                                                    </p>
+                                                ) : (
+                                                    <p className="mt-1 text-xs text-[#888ea8]">{new Date(s.created_at).toLocaleDateString('tr-TR')}</p>
+                                                )}
+                                            </div>
+                                            <div className="flex shrink-0 gap-2">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-success gap-1"
+                                                    onClick={() => handleApproveSuggestion('allergen', s.id)}
+                                                >
+                                                    <Check className="h-3.5 w-3.5" />
+                                                    Onayla
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-danger gap-1"
+                                                    onClick={() => handleRejectSuggestion('allergen', s.id, s.name)}
+                                                >
+                                                    <XCircle className="h-3.5 w-3.5" />
+                                                    Reddet
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
+                    </>
+                )}
+
+                {/* ── Tıbbi Durumlar ── */}
+                {activeTab === 'conditions' && (
+                    <>
+                        {/* Alt sekmeler */}
+                        <div className="mb-4 flex items-center justify-between">
+                            <div className="flex gap-1 rounded-lg bg-[#f1f3f6] p-1 dark:bg-[#1b2e4b]">
+                                <button
+                                    type="button"
+                                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${conditionSubTab === 'approved' ? 'bg-white shadow text-dark dark:bg-[#0e1726] dark:text-white' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
+                                    onClick={() => setConditionSubTab('approved')}
+                                >
+                                    Onaylı Durumlar
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${conditionSubTab === 'pending' ? 'bg-white shadow text-dark dark:bg-[#0e1726] dark:text-white' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
+                                    onClick={() => setConditionSubTab('pending')}
+                                >
+                                    <Clock className="h-3.5 w-3.5" />
+                                    Bekleyen Öneriler
+                                    {conditionSuggestions.length > 0 && (
+                                        <span className="rounded-full bg-warning px-1.5 py-0.5 text-xs text-white">{conditionSuggestions.length}</span>
+                                    )}
+                                </button>
+                            </div>
+                            {conditionSubTab === 'approved' && (
+                                <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openCreateCondition}>
+                                    <Plus className="h-4 w-4" />
+                                    Tıbbi Durum Ekle
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Onaylı liste */}
+                        {conditionSubTab === 'approved' && (
+                            loadingConditions ? (
+                                <div className="flex h-32 items-center justify-center">
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                </div>
+                            ) : (
+                                <>
+                                    {globalConditions.length > 0 && (
+                                        <div className="mb-6">
+                                            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Global Tıbbi Durumlar</h3>
+                                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                                {globalConditions.map(c => (
+                                                    <div key={c.id} className="flex items-center justify-between rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                                        <div>
+                                                            <p className="font-medium text-dark dark:text-white">{c.name}</p>
+                                                            {c.description && <p className="mt-0.5 text-xs text-[#888ea8]">{c.description}</p>}
+                                                        </div>
+                                                        <span className="badge badge-outline-secondary text-xs">Global</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Kuruma Özel</h3>
+                                        {tenantConditions.length === 0 ? (
+                                            <p className="py-4 text-sm text-[#515365] dark:text-[#888ea8]">Henüz kuruma özel tıbbi durum eklenmemiş.</p>
+                                        ) : (
+                                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                                {tenantConditions.map(c => (
+                                                    <div key={c.id} className="flex items-start justify-between rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                                        <div>
+                                                            <p className="font-medium text-dark dark:text-white">{c.name}</p>
+                                                            {c.description && <p className="mt-0.5 text-xs text-[#888ea8]">{c.description}</p>}
+                                                        </div>
+                                                        <div className="flex shrink-0 gap-1">
+                                                            <button type="button" className="btn btn-sm btn-outline-primary p-1.5" onClick={() => openEditCondition(c)}>
+                                                                <Edit2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <button type="button" className="btn btn-sm btn-outline-danger p-1.5" onClick={() => handleDeleteCondition(c)}>
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )
+                        )}
+
+                        {/* Bekleyen öneriler */}
+                        {conditionSubTab === 'pending' && (
+                            loadingSuggestions ? (
+                                <div className="flex h-32 items-center justify-center">
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                </div>
+                            ) : conditionSuggestions.length === 0 ? (
+                                <div className="py-12 text-center">
+                                    <Clock className="mx-auto mb-2 h-10 w-10 text-[#e0e6ed]" />
+                                    <p className="text-sm text-[#888ea8]">Bekleyen tıbbi durum önerisi yok.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {conditionSuggestions.map(s => (
+                                        <div key={s.id} className="flex items-center justify-between rounded border border-warning/30 bg-warning/5 p-4">
+                                            <div>
+                                                <p className="font-semibold text-dark dark:text-white">{s.name}</p>
+                                                {s.description && <p className="mt-0.5 text-xs text-[#888ea8]">{s.description}</p>}
+                                                {s.suggested_by ? (
+                                                    <p className="mt-1 text-xs text-[#515365] dark:text-[#888ea8]">
+                                                        <span className="font-medium">{s.suggested_by.name} {s.suggested_by.surname}</span>
+                                                        {' · '}{s.suggested_by.email}
+                                                        {' · '}{new Date(s.created_at).toLocaleDateString('tr-TR')}
+                                                    </p>
+                                                ) : (
+                                                    <p className="mt-1 text-xs text-[#888ea8]">{new Date(s.created_at).toLocaleDateString('tr-TR')}</p>
+                                                )}
+                                            </div>
+                                            <div className="flex shrink-0 gap-2">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-success gap-1"
+                                                    onClick={() => handleApproveSuggestion('condition', s.id)}
+                                                >
+                                                    <Check className="h-3.5 w-3.5" />
+                                                    Onayla
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-danger gap-1"
+                                                    onClick={() => handleRejectSuggestion('condition', s.id, s.name)}
+                                                >
+                                                    <XCircle className="h-3.5 w-3.5" />
+                                                    Reddet
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
                     </>
                 )}
 
@@ -918,6 +1288,48 @@ export default function MealsPage() {
                                     {savingAllergen ? 'Kaydediliyor...' : (editingAllergen ? 'Güncelle' : 'Kaydet')}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowAllergenModal(false)}>İptal</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Tıbbi Durum Modal */}
+            {showConditionModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">
+                                {editingCondition ? 'Tıbbi Durum Düzenle' : 'Yeni Tıbbi Durum'}
+                            </h2>
+                            <button type="button" onClick={() => setShowConditionModal(false)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleConditionSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Ad *</label>
+                                <input
+                                    type="text"
+                                    className="form-input mt-1"
+                                    value={conditionForm.name}
+                                    onChange={e => setConditionForm(p => ({ ...p, name: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Açıklama</label>
+                                <textarea
+                                    className="form-input mt-1"
+                                    rows={2}
+                                    value={conditionForm.description}
+                                    onChange={e => setConditionForm(p => ({ ...p, description: e.target.value }))}
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="submit" className="btn btn-primary flex-1" disabled={savingCondition}>
+                                    {savingCondition ? 'Kaydediliyor...' : (editingCondition ? 'Güncelle' : 'Kaydet')}
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowConditionModal(false)}>İptal</button>
                             </div>
                         </form>
                     </div>
