@@ -39,6 +39,11 @@ class TeacherProfile extends BaseModel
         'profile_completeness',
         'languages',
         'certifications',
+        'phone_country_code',
+        'whatsapp_number',
+        'whatsapp_country_code',
+        'identity_number',
+        'passport_number',
         'created_by',
         'updated_by',
     ];

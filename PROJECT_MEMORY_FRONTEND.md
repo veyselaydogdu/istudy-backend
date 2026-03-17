@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Tenant & Website — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-03-16 (Okul Detayı: Öğrenci kayıt sistemi — "Onay Bekleyen Öğrenciler" sekmesi, öğrenci listesinde veli bilgisi, child detail modal, tarih formatlama)
+> **Son Güncelleme:** 2026-03-17 (Okul Detayı tab count fix: teachers+parents loadData'ya eklendi; Öğrenci listesi: Sınıf kolonu + göz ikonu; Sınıf listesi: Öğrenci Ata butonu; Child detail modal: Sınıf Atamaları bölümü; Öğretmen formu: phone_country_code/whatsapp/uyruk/kimlik genişletme)
 > **Amaç:** Bu dosya, `frontend-tenant-and-website` projesinin mimarisini, kararlarını ve kodlama standartlarını tüm AI ajanlarının doğru davranış üretebilmesi için belgeler.
 
 ---
@@ -866,7 +866,7 @@ CMD ["npm", "start"]
 
 ---
 
-## 📌 19. Okul Detayı (`/schools/[id]`) — Tab Mimarisi (2026-03-16)
+## 📌 19. Okul Detayı (`/schools/[id]`) — Tab Mimarisi (2026-03-17 güncellendi)
 
 Tüm state ve fetch işlemleri tek dosya: `app/(tenant)/schools/[id]/page.tsx`
 
@@ -874,36 +874,76 @@ Tüm state ve fetch işlemleri tek dosya: `app/(tenant)/schools/[id]/page.tsx`
 
 | Tab key | İçerik | Fetch Zamanı |
 |---------|--------|--------------|
-| `classes` | Sınıf CRUD | `loadData()` (ilk yükleme) |
-| `children` | Öğrenciler + veli adı/tel | `loadData()` (ilk yükleme) |
-| `teachers` | Öğretmenler | Tab tıklandığında (lazy, `teachersFetched` flag) |
+| `classes` | Sınıf CRUD + Öğrenci Ata butonu | `loadData()` (ilk yükleme) |
+| `children` | Öğrenciler + veli + sınıf + göz ikonu | `loadData()` (ilk yükleme) |
+| `teachers` | Öğretmenler | `loadData()` (ilk yükleme) ✅ artık lazy değil |
 | `requests` | Veli kayıt talepleri | Tab tıklandığında (lazy, `requestsFetched` flag) |
-| `parents` | Onaylı veliler | Tab tıklandığında (lazy, `parentsFetched` flag) |
+| `parents` | Onaylı veliler | `loadData()` (ilk yükleme) ✅ artık lazy değil |
 | `child-requests` | **Onay Bekleyen Öğrenciler** | `loadData()` parallel (badge sayısı için) + tab değişiminde full refresh |
 
-### Öğrenciler Sekmesi (`children` tab)
-- **Veli kolonu**: `child.family_profile?.owner?.name + surname + phone` — backend `ChildController::index()` artık `familyProfile.owner` eager load eder
-- **Satır tıklama**: `openChildDetail(child.id)` → `GET /schools/{id}/children/{childId}` → detay modal
-- **Detay modal**: Kişisel bilgiler (doğum tarihi, cinsiyet, kan grubu, TC, pasaport, uyruk, diller) + Sağlık (allerjenler, ilaçlar, rahatsızlıklar) + Aile üyeleri
+> **⚠️ Tab count 0 tuzağı**: Bir sekme sayısını loadData'da çekmeyip lazy yüklersen → sayfa açılınca sekme etiketinde 0 görünür. `teachers` ve `parents` bu yüzden `loadData()` Promise.all'a alındı.
+
+### Öğrenciler Sekmesi (`children` tab) — 2026-03-17
+- **Veli kolonu**: `child.family_profile?.owner` — ad/soyad/telefon
+- **Sınıf kolonu**: `child.classes[]` → `badge-outline-info` badge'ler — backend `ChildController::index()` artık `classes` eager load eder
+- **Göz ikonu butonu**: `openChildDetail(child.id)` → detay modal (satır tıklama kaldırıldı)
+- **Detay modal**: Kişisel bilgiler + Sağlık + Aile üyeleri + **Sınıf Atamaları bölümü**
+  - Mevcut sınıflar listelenir + X butonu ile sınıftan çıkarma
+  - "Sınıfa Ata" butonu → sınıf seçim modali → `POST /schools/{id}/classes/{classId}/children`
+
+### Sınıflar Sekmesi (`classes` tab) — 2026-03-17
+- Her sınıf satırına **"Öğrenci Ata" butonu** (Baby ikonu, yeşil `btn-outline-success`) eklendi
+- Tıklanınca öğrenci seçim modali açılır — sadece **sınıfsız öğrenciler** listelenir (`classes.length === 0` filtresi)
+- Öğrenci yanında tahmini yaş gösterilir
+- Yaş uyumsuzluğu veya tek sınıf kuralı ihlali → backend 422 → `toast.error` ile gösterilir
+
+### Sınıfa Öğrenci Atama — İki Akış
+| Akış | Başlangıç | State | Handler |
+|------|-----------|-------|---------|
+| Sınıf listesinden | Sınıf satırındaki Baby butonu | `classForStudentAssign`, `studentAssignChildId` | `handleAssignStudentToClass` |
+| Öğrenci detay modalinden | "Sınıfa Ata" butonu | `selectedClassIdForAssign` | `handleAssignChildToClass` |
 
 ### Onay Bekleyen Öğrenciler Sekmesi (`child-requests` tab)
-- **Badge sayısı**: `loadData()` içinde `pending` talepler parallel çekilir → sayfa açılır açılmaz sekme etiketi üzerinde görünür
-- **Tip**: `ChildEnrollmentRequest` — `id, status, rejection_reason, created_at, parent{}, child{}`
-- **Onaylama** (`handleApproveChildRequest`): SweetAlert2 onay → `PATCH .../approve` → hem `fetchChildEnrollmentRequests` hem `children` listesini yeniler (sayfa yenilemeden öğrenci listesine eklenir)
-- **Reddetme** (`openRejectChildModal`): `rejection_reason` modal → `PATCH .../reject`
+- **Badge sayısı**: `loadData()` içinde `pending` talepler parallel çekilir
+- **Onaylama**: SweetAlert2 → `PATCH .../approve` → `children` listesi ve `fetchChildEnrollmentRequests` yenilenir
+- **Reddetme**: `rejection_reason` modal → `PATCH .../reject`
 
-### Tarih Formatlama Kuralı
-Tüm tarih alanları `toLocaleDateString('tr-TR')` ile formatlanır:
+### Tarih Formatlama
 ```tsx
 {date ? new Date(date).toLocaleDateString('tr-TR') : '—'}
 ```
-- Öğrenciler tablosunda `birth_date`
-- Onay Bekleyen Öğrenciler tablosunda `child?.birth_date`, `created_at`
-- Detay modallerinde doğum tarihi alanları
 
 ### ChildResource ve Tip Uyumu
-- Backend `ChildResource` artık `name`/`surname` alias + `first_name`/`last_name` + `family_profile` (owner + members) + sağlık verileri döner
-- TypeScript `Child` tipi (`types/index.ts`): `first_name`, `last_name`, `full_name`, `family_profile.owner`, `family_profile.members`, `allergens[].status`, `conditions[].status` içerir
+- Backend `ChildResource`: `name`/`surname` alias + `first_name`/`last_name` + `family_profile` (owner + members) + sağlık verileri + `classes[]`
+- TypeScript `Child` tipi (`types/index.ts`): `classes?: Array<{id, name, school_id}>` **eklendi**
+
+## 📌 20. Öğretmen Formu Genişletme (2026-03-17)
+
+`app/(tenant)/teachers/page.tsx` — Oluştur ve Düzenle modalları:
+
+### Yeni Alanlar
+| Alan | UI | Açıklama |
+|------|----|---------|
+| `phone_country_code` | `<select>` (ülke kodu) + `<input>` | Telefon ülke kodu |
+| `whatsapp_number` + `whatsapp_country_code` | Aynı yapı | WhatsApp ayrı alan |
+| `country_id` | `<select>` (ülkeler) | Uyruk |
+| `identity_number` | `<input>` | TC Kimlik No |
+| `passport_number` | `<input>` | Pasaport No |
+
+- **Ülke listesi**: `GET /api/parent/auth/countries` (public endpoint, auth gerektirmez) — `countries` state + `fetchCountries()`
+- **Telefon input sınırlaması**: `.replace(/\D/g, '').slice(0, 10)` — sadece rakam, max 10 karakter
+- **Payload**: `country_id` → `Number(val) || null`
+
+### Güncellenen Tipler (`types/index.ts` — `TeacherProfile`)
+```typescript
+phone_country_code?: string | null
+whatsapp_number?: string | null
+whatsapp_country_code?: string | null
+nationality_country_id?: number | null
+nationality?: { id: number; name: string; iso2: string; flag_emoji: string | null } | null
+identity_number?: string | null
+passport_number?: string | null
+```
 
 ---
 

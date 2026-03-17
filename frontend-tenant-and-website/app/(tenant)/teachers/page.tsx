@@ -22,26 +22,38 @@ const EMPLOYMENT_BADGE: Record<string, string> = {
     volunteer: 'badge-outline-primary',
 };
 
+type Country = { id: number; name: string; iso2: string; phone_code: string; flag_emoji: string | null };
+
 type StoreForm = {
-    name: string; surname: string; email: string; phone: string; password: string;
+    name: string; surname: string; email: string; phone: string; phone_country_code: string; password: string;
     title: string; specialization: string; bio: string; experience_years: string;
     employment_type: string; hire_date: string;
+    whatsapp_number: string; whatsapp_country_code: string;
+    country_id: string; identity_number: string; passport_number: string;
 };
 
 type UpdateForm = {
     title: string; specialization: string; bio: string; experience_years: string;
-    employment_type: string; hire_date: string; phone: string;
+    employment_type: string; hire_date: string;
+    phone: string; phone_country_code: string;
+    whatsapp_number: string; whatsapp_country_code: string;
+    country_id: string; identity_number: string; passport_number: string;
 };
 
 const emptyStore: StoreForm = {
-    name: '', surname: '', email: '', phone: '', password: '',
+    name: '', surname: '', email: '', phone: '', phone_country_code: '+90', password: '',
     title: '', specialization: '', bio: '', experience_years: '',
     employment_type: 'full_time', hire_date: '',
+    whatsapp_number: '', whatsapp_country_code: '+90',
+    country_id: '', identity_number: '', passport_number: '',
 };
 
 const emptyUpdate: UpdateForm = {
     title: '', specialization: '', bio: '', experience_years: '',
-    employment_type: 'full_time', hire_date: '', phone: '',
+    employment_type: 'full_time', hire_date: '',
+    phone: '', phone_country_code: '+90',
+    whatsapp_number: '', whatsapp_country_code: '+90',
+    country_id: '', identity_number: '', passport_number: '',
 };
 
 type RoleTypeForm = { name: string; sort_order: string };
@@ -71,6 +83,8 @@ export default function TeachersPage() {
     const [assignSchoolId, setAssignSchoolId] = useState('');
     const [assignRoleTypeId, setAssignRoleTypeId] = useState('');
     const [assigningSchool, setAssigningSchool] = useState(false);
+
+    const [countries, setCountries] = useState<Country[]>([]);
 
     // ── Görev Türleri ─────────────────────────────────────────
     const [roleTypes, setRoleTypes] = useState<TeacherRoleType[]>([]);
@@ -108,8 +122,16 @@ export default function TeachersPage() {
         } catch { /* sessiz */ }
     }, []);
 
+    const fetchCountries = useCallback(async () => {
+        try {
+            const res = await apiClient.get('/parent/auth/countries');
+            setCountries(res.data?.data ?? []);
+        } catch { /* sessiz */ }
+    }, []);
+
     useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
     useEffect(() => { fetchRoleTypes(); }, [fetchRoleTypes]);
+    useEffect(() => { fetchCountries(); }, [fetchCountries]);
 
     // ── Öğretmen CRUD ─────────────────────────────────────────
     const handleCreate = async (e: React.FormEvent) => {
@@ -125,6 +147,10 @@ export default function TeachersPage() {
                 experience_years: storeForm.experience_years ? Number(storeForm.experience_years) : undefined,
                 password: storeForm.password || undefined,
                 hire_date: storeForm.hire_date || undefined,
+                whatsapp_number: storeForm.whatsapp_number || undefined,
+                country_id: storeForm.country_id ? Number(storeForm.country_id) : undefined,
+                identity_number: storeForm.identity_number || undefined,
+                passport_number: storeForm.passport_number || undefined,
             };
             await apiClient.post('/teachers', payload);
             toast.success('Öğretmen oluşturuldu.');
@@ -144,6 +170,12 @@ export default function TeachersPage() {
             experience_years: t.experience_years ? String(t.experience_years) : '',
             employment_type: t.employment_type ?? 'full_time',
             hire_date: t.hire_date ?? '', phone: t.phone ?? '',
+            phone_country_code: t.phone_country_code ?? '+90',
+            whatsapp_number: t.whatsapp_number ?? '',
+            whatsapp_country_code: t.whatsapp_country_code ?? '+90',
+            country_id: t.nationality_country_id ? String(t.nationality_country_id) : '',
+            identity_number: t.identity_number ?? '',
+            passport_number: t.passport_number ?? '',
         });
     };
 
@@ -156,6 +188,10 @@ export default function TeachersPage() {
                 ...updateForm,
                 experience_years: updateForm.experience_years ? Number(updateForm.experience_years) : undefined,
                 hire_date: updateForm.hire_date || undefined,
+                whatsapp_number: updateForm.whatsapp_number || undefined,
+                country_id: updateForm.country_id ? Number(updateForm.country_id) : null,
+                identity_number: updateForm.identity_number || undefined,
+                passport_number: updateForm.passport_number || undefined,
             };
             await apiClient.put(`/teachers/${editingTeacher.id}`, payload);
             toast.success('Öğretmen güncellendi.');
@@ -506,14 +542,44 @@ export default function TeachersPage() {
                                 <label className="mb-1 block text-sm font-medium">E-posta *</label>
                                 <input type="email" className="form-input" value={storeForm.email} onChange={e => setStoreForm(p => ({ ...p, email: e.target.value }))} />
                             </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Telefon</label>
+                                <div className="flex gap-2">
+                                    <select className="form-select w-36 shrink-0" value={storeForm.phone_country_code} onChange={e => setStoreForm(p => ({ ...p, phone_country_code: e.target.value }))}>
+                                        {countries.map(c => <option key={c.id} value={c.phone_code}>{c.flag_emoji} {c.iso2} {c.phone_code}</option>)}
+                                    </select>
+                                    <input className="form-input flex-1" placeholder="5xx xxx xxxx" value={storeForm.phone} onChange={e => setStoreForm(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">WhatsApp <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                <div className="flex gap-2">
+                                    <select className="form-select w-36 shrink-0" value={storeForm.whatsapp_country_code} onChange={e => setStoreForm(p => ({ ...p, whatsapp_country_code: e.target.value }))}>
+                                        {countries.map(c => <option key={c.id} value={c.phone_code}>{c.flag_emoji} {c.iso2} {c.phone_code}</option>)}
+                                    </select>
+                                    <input className="form-input flex-1" placeholder="5xx xxx xxxx" value={storeForm.whatsapp_number} onChange={e => setStoreForm(p => ({ ...p, whatsapp_number: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Şifre <span className="text-xs text-[#888ea8]">(boş=otomatik)</span></label>
+                                <input type="password" className="form-input" value={storeForm.password} onChange={e => setStoreForm(p => ({ ...p, password: e.target.value }))} />
+                            </div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Kimlik & Uyruk</p>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Uyruk <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                <select className="form-select" value={storeForm.country_id} onChange={e => setStoreForm(p => ({ ...p, country_id: e.target.value }))}>
+                                    <option value="">— Seçiniz —</option>
+                                    {countries.map(c => <option key={c.id} value={c.id}>{c.flag_emoji} {c.name}</option>)}
+                                </select>
+                            </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium">Telefon</label>
-                                    <input className="form-input" maxLength={12} value={storeForm.phone} onChange={e => setStoreForm(p => ({ ...p, phone: e.target.value }))} />
+                                    <label className="mb-1 block text-sm font-medium">TC Kimlik No <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                    <input className="form-input" maxLength={11} value={storeForm.identity_number} onChange={e => setStoreForm(p => ({ ...p, identity_number: e.target.value }))} />
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium">Şifre <span className="text-xs text-[#888ea8]">(boş=otomatik)</span></label>
-                                    <input type="password" className="form-input" value={storeForm.password} onChange={e => setStoreForm(p => ({ ...p, password: e.target.value }))} />
+                                    <label className="mb-1 block text-sm font-medium">Pasaport No <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                    <input className="form-input" maxLength={20} value={storeForm.passport_number} onChange={e => setStoreForm(p => ({ ...p, passport_number: e.target.value }))} />
                                 </div>
                             </div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Profil Bilgileri</p>
@@ -569,15 +635,44 @@ export default function TeachersPage() {
                             </button>
                         </div>
                         <form onSubmit={handleUpdate} className="space-y-4">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Telefon</label>
+                                <div className="flex gap-2">
+                                    <select className="form-select w-36 shrink-0" value={updateForm.phone_country_code} onChange={e => setUpdateForm(p => ({ ...p, phone_country_code: e.target.value }))}>
+                                        {countries.map(c => <option key={c.id} value={c.phone_code}>{c.flag_emoji} {c.iso2} {c.phone_code}</option>)}
+                                    </select>
+                                    <input className="form-input flex-1" placeholder="5xx xxx xxxx" value={updateForm.phone} onChange={e => setUpdateForm(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">WhatsApp <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                <div className="flex gap-2">
+                                    <select className="form-select w-36 shrink-0" value={updateForm.whatsapp_country_code} onChange={e => setUpdateForm(p => ({ ...p, whatsapp_country_code: e.target.value }))}>
+                                        {countries.map(c => <option key={c.id} value={c.phone_code}>{c.flag_emoji} {c.iso2} {c.phone_code}</option>)}
+                                    </select>
+                                    <input className="form-input flex-1" placeholder="5xx xxx xxxx" value={updateForm.whatsapp_number} onChange={e => setUpdateForm(p => ({ ...p, whatsapp_number: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Uyruk <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                <select className="form-select" value={updateForm.country_id} onChange={e => setUpdateForm(p => ({ ...p, country_id: e.target.value }))}>
+                                    <option value="">— Seçiniz —</option>
+                                    {countries.map(c => <option key={c.id} value={c.id}>{c.flag_emoji} {c.name}</option>)}
+                                </select>
+                            </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium">Telefon</label>
-                                    <input className="form-input" maxLength={12} value={updateForm.phone} onChange={e => setUpdateForm(p => ({ ...p, phone: e.target.value }))} />
+                                    <label className="mb-1 block text-sm font-medium">TC Kimlik No <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                    <input className="form-input" maxLength={11} value={updateForm.identity_number} onChange={e => setUpdateForm(p => ({ ...p, identity_number: e.target.value }))} />
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium">Unvan</label>
-                                    <input className="form-input" placeholder="Dr., Uzm., vb." value={updateForm.title} onChange={e => setUpdateForm(p => ({ ...p, title: e.target.value }))} />
+                                    <label className="mb-1 block text-sm font-medium">Pasaport No <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                    <input className="form-input" maxLength={20} value={updateForm.passport_number} onChange={e => setUpdateForm(p => ({ ...p, passport_number: e.target.value }))} />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Unvan</label>
+                                <input className="form-input" placeholder="Dr., Uzm., vb." value={updateForm.title} onChange={e => setUpdateForm(p => ({ ...p, title: e.target.value }))} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>

@@ -65,10 +65,10 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="family"
+        name="stats"
         options={{
-          title: 'Aile',
-          tabBarIcon: ({ focused }) => tabIcon(focused, 'heart', 'heart-outline'),
+          title: 'İstatistikler',
+          tabBarIcon: ({ focused }) => tabIcon(focused, 'bar-chart', 'bar-chart-outline'),
         }}
       />
       <Tabs.Screen
@@ -81,6 +81,7 @@ export default function AppLayout() {
 
       {/* Tab bar'da gizlenecek ekranlar */}
       <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="family" options={{ href: null }} />
     </Tabs>
   );
 }

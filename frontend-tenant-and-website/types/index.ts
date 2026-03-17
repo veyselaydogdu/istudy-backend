@@ -157,6 +157,13 @@ export type TeacherProfile = {
     name: string
     email?: string
     phone?: string
+    phone_country_code?: string | null
+    whatsapp_number?: string | null
+    whatsapp_country_code?: string | null
+    nationality_country_id?: number | null
+    nationality?: { id: number; name: string; iso2: string; flag_emoji: string | null } | null
+    identity_number?: string | null
+    passport_number?: string | null
     title?: string
     specialization?: string
     employment_type?: 'full_time' | 'part_time' | 'contract' | 'intern' | 'volunteer'
@@ -289,6 +296,7 @@ export type Child = {
             user?: { id: number; name: string; surname: string; email: string; phone?: string } | null
         }>
     } | null
+    classes?: Array<{ id: number; name: string; school_id: number }>
     allergens?: Array<{ id: number; name: string; status?: string }>
     conditions?: Array<{ id: number; name: string; status?: string }>
     medications?: Array<{ id: number; name: string }>

@@ -20,6 +20,15 @@ export default function SchoolDetailPage() {
     const [children, setChildren] = useState<Child[]>([]);
     const [selectedChild, setSelectedChild] = useState<Child | null>(null);
     const [loadingChildDetail, setLoadingChildDetail] = useState(false);
+    const [showClassAssignModal, setShowClassAssignModal] = useState(false);
+    const [assigningChildToClass, setAssigningChildToClass] = useState(false);
+    const [selectedClassIdForAssign, setSelectedClassIdForAssign] = useState('');
+
+    // Sınıf satırından öğrenci atama
+    const [showClassStudentModal, setShowClassStudentModal] = useState(false);
+    const [classForStudentAssign, setClassForStudentAssign] = useState<SchoolClass | null>(null);
+    const [studentAssignChildId, setStudentAssignChildId] = useState('');
+    const [assigningStudentToClass, setAssigningStudentToClass] = useState(false);
     const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'classes' | 'children' | 'teachers' | 'requests' | 'parents' | 'child-requests'>('classes');
@@ -108,12 +117,14 @@ export default function SchoolDetailPage() {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [schoolRes, classesRes, childrenRes, yearsRes, childRequestsRes] = await Promise.all([
+            const [schoolRes, classesRes, childrenRes, yearsRes, childRequestsRes, teachersRes, parentsRes] = await Promise.all([
                 apiClient.get(`/schools/${id}`),
                 apiClient.get(`/schools/${id}/classes`).catch(() => ({ data: { data: [] } })),
                 apiClient.get(`/schools/${id}/children`).catch(() => ({ data: { data: [] } })),
                 apiClient.get('/academic-years', { params: { school_id: id } }).catch(() => ({ data: { data: [] } })),
                 apiClient.get(`/schools/${id}/child-enrollment-requests`, { params: { status: 'pending' } }).catch(() => ({ data: { data: [] } })),
+                apiClient.get(`/schools/${id}/teachers`, { params: { detailed: 1 } }).catch(() => ({ data: { data: [] } })),
+                apiClient.get(`/schools/${id}/parents`).catch(() => ({ data: { data: [] } })),
             ]);
             if (schoolRes.data?.data) setSchool(schoolRes.data.data);
             if (classesRes.data?.data) setClasses(classesRes.data.data);
@@ -123,6 +134,14 @@ export default function SchoolDetailPage() {
                 setChildEnrollmentRequests(childRequestsRes.data.data);
                 setChildRequestsFetched(true);
             }
+            if (teachersRes.data?.data) {
+                setSchoolLevelTeachers(teachersRes.data.data);
+                setTeachersFetched(true);
+            }
+            if (parentsRes.data?.data) {
+                setParents(parentsRes.data.data);
+                setParentsFetched(true);
+            }
         } catch {
             toast.error('Okul bilgileri yüklenemedi.');
         } finally {
@@ -131,6 +150,73 @@ export default function SchoolDetailPage() {
     }, [id]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    const handleAssignChildToClass = async () => {
+        if (!selectedChild || !selectedClassIdForAssign) return;
+        setAssigningChildToClass(true);
+        try {
+            await apiClient.post(`/schools/${id}/classes/${selectedClassIdForAssign}/children`, {
+                child_id: selectedChild.id,
+            });
+            toast.success('Öğrenci sınıfa atandı.');
+            setShowClassAssignModal(false);
+            setSelectedClassIdForAssign('');
+            // Çocuk detayını yenile
+            const res = await apiClient.get(`/schools/${id}/children/${selectedChild.id}`);
+            setSelectedChild(res.data?.data ?? null);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Atama başarısız.');
+        } finally {
+            setAssigningChildToClass(false);
+        }
+    };
+
+    const openClassStudentModal = (cls: SchoolClass) => {
+        setClassForStudentAssign(cls);
+        setStudentAssignChildId('');
+        setShowClassStudentModal(true);
+    };
+
+    const handleAssignStudentToClass = async () => {
+        if (!classForStudentAssign || !studentAssignChildId) return;
+        setAssigningStudentToClass(true);
+        try {
+            await apiClient.post(`/schools/${id}/classes/${classForStudentAssign.id}/children`, {
+                child_id: Number(studentAssignChildId),
+            });
+            toast.success('Öğrenci sınıfa atandı.');
+            setShowClassStudentModal(false);
+            loadData();
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast.error(error.response?.data?.message ?? 'Atama başarısız.');
+        } finally {
+            setAssigningStudentToClass(false);
+        }
+    };
+
+    const handleRemoveChildFromClass = async (classId: number, className: string) => {
+        if (!selectedChild) return;
+        const result = await Swal.fire({
+            title: 'Sınıftan Çıkar',
+            text: `"${selectedChild.full_name}" adlı öğrenciyi "${className}" sınıfından çıkarmak istediğinize emin misiniz?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Çıkar',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.delete(`/schools/${id}/classes/${classId}/children/${selectedChild.id}`);
+            toast.success('Öğrenci sınıftan çıkarıldı.');
+            const res = await apiClient.get(`/schools/${id}/children/${selectedChild.id}`);
+            setSelectedChild(res.data?.data ?? null);
+        } catch {
+            toast.error('İşlem başarısız.');
+        }
+    };
 
     const openChildDetail = async (childId: number) => {
         setLoadingChildDetail(true);
@@ -194,6 +280,27 @@ export default function SchoolDetailPage() {
             toast.error(error.response?.data?.message ?? 'Atama başarısız.');
         } finally {
             setSavingSchoolTeacher(false);
+        }
+    };
+
+    const handleUnenrollChild = async (child: Child, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const result = await Swal.fire({
+            title: 'Öğrenciyi Çıkar',
+            text: `"${child.first_name} ${child.last_name}" adlı öğrenciyi okuldan çıkarmak istediğinize emin misiniz? İstatistikler korunacaktır.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Çıkar',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.patch(`/schools/${id}/children/${child.id}/unenroll`);
+            toast.success('Öğrenci okuldan çıkarıldı.');
+            setChildren((prev) => prev.filter((c) => c.id !== child.id));
+        } catch {
+            toast.error('İşlem başarısız.');
         }
     };
 
@@ -807,6 +914,9 @@ export default function SchoolDetailPage() {
                                                                 : <ToggleLeft className="h-4 w-4" />
                                                             }
                                                         </button>
+                                                        <button type="button" className="btn btn-sm btn-outline-success p-2" onClick={() => openClassStudentModal(cls)} title="Öğrenci Ata">
+                                                            <Baby className="h-4 w-4" />
+                                                        </button>
                                                         <button type="button" className="btn btn-sm btn-outline-info p-2" onClick={() => openTeacherModal(cls)} title="Öğretmen Ata">
                                                             <UserPlus className="h-4 w-4" />
                                                         </button>
@@ -838,16 +948,18 @@ export default function SchoolDetailPage() {
                                     <tr>
                                         <th>Ad Soyad</th>
                                         <th>Veli</th>
+                                        <th>Sınıf</th>
                                         <th>Doğum Tarihi</th>
                                         <th>Cinsiyet</th>
                                         <th>Durum</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {children.map((child) => (
-                                        <tr key={child.id} className="cursor-pointer hover:bg-primary/5" onClick={() => openChildDetail(child.id)}>
+                                        <tr key={child.id} className="hover:bg-primary/5">
                                             <td>
-                                                <span className="font-medium text-primary hover:underline">
+                                                <span className="font-medium text-dark dark:text-white">
                                                     {child.first_name} {child.last_name}
                                                 </span>
                                             </td>
@@ -863,6 +975,15 @@ export default function SchoolDetailPage() {
                                                     </div>
                                                 ) : <span className="text-[#888ea8]">—</span>}
                                             </td>
+                                            <td>
+                                                {(child.classes?.length ?? 0) > 0 ? (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {child.classes!.map(cls => (
+                                                            <span key={cls.id} className="badge badge-outline-info text-xs">{cls.name}</span>
+                                                        ))}
+                                                    </div>
+                                                ) : <span className="text-[#888ea8]">—</span>}
+                                            </td>
                                             <td className="text-sm text-[#515365] dark:text-[#888ea8]">{child.birth_date ? new Date(child.birth_date).toLocaleDateString('tr-TR') : '—'}</td>
                                             <td className="text-sm text-[#515365] dark:text-[#888ea8]">
                                                 {child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : '—'}
@@ -871,6 +992,26 @@ export default function SchoolDetailPage() {
                                                 <span className={`badge ${child.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
                                                     {child.status === 'active' ? 'Aktif' : (child.status ?? '—')}
                                                 </span>
+                                            </td>
+                                            <td>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-primary p-2"
+                                                        onClick={() => openChildDetail(child.id)}
+                                                        title="Detay"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-danger p-2"
+                                                        onClick={(e) => handleUnenrollChild(child, e)}
+                                                        title="Okuldan Çıkar"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -1549,9 +1690,141 @@ export default function SchoolDetailPage() {
                                     </div>
                                 )}
 
+                                {/* Sınıf Atamaları */}
+                                <div>
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <p className="text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Sınıf Atamaları</p>
+                                        <button
+                                            type="button"
+                                            className="btn btn-xs btn-outline-primary gap-1"
+                                            onClick={() => { setSelectedClassIdForAssign(''); setShowClassAssignModal(true); }}
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                            Sınıfa Ata
+                                        </button>
+                                    </div>
+                                    {(selectedChild.classes?.length ?? 0) === 0 ? (
+                                        <p className="text-sm text-[#888ea8]">Henüz bir sınıfa atanmamış.</p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedChild.classes!.map((cls: { id: number; name: string }) => (
+                                                <div key={cls.id} className="flex items-center gap-1.5 rounded-lg border border-[#ebedf2] bg-white px-3 py-1.5 dark:border-[#1b2e4b] dark:bg-[#0e1726]">
+                                                    <BookOpen className="h-3.5 w-3.5 text-primary" />
+                                                    <span className="text-sm font-medium text-dark dark:text-white">{cls.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="ml-1 text-[#888ea8] hover:text-danger"
+                                                        onClick={() => handleRemoveChildFromClass(cls.id, cls.name)}
+                                                        title="Sınıftan çıkar"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedChild(null)}>Kapat</button>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Sınıf Satırından Öğrenci Atama Modal */}
+            {showClassStudentModal && classForStudentAssign && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğrenci Ata</h2>
+                            <button type="button" onClick={() => setShowClassStudentModal(false)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <p className="mb-4 text-sm text-[#515365] dark:text-[#888ea8]">
+                            <strong className="text-dark dark:text-white">{classForStudentAssign.name}</strong> sınıfına öğrenci seçin.
+                            {(classForStudentAssign.age_min != null || classForStudentAssign.age_max != null) && (
+                                <span className="ml-1 text-xs text-[#888ea8]">
+                                    (Yaş aralığı: {classForStudentAssign.age_min ?? '?'}–{classForStudentAssign.age_max ?? '?'})
+                                </span>
+                            )}
+                        </p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Öğrenci *</label>
+                                <select
+                                    className="form-select mt-1"
+                                    value={studentAssignChildId}
+                                    onChange={e => setStudentAssignChildId(e.target.value)}
+                                >
+                                    <option value="">Öğrenci seçin</option>
+                                    {children.filter(c => (c.classes?.length ?? 0) === 0).map(c => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.first_name} {c.last_name}
+                                            {c.birth_date ? ` (${new Date().getFullYear() - new Date(c.birth_date).getFullYear()} yaş)` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex gap-3 pt-1">
+                                <button
+                                    type="button"
+                                    className="btn btn-primary flex-1"
+                                    disabled={!studentAssignChildId || assigningStudentToClass}
+                                    onClick={handleAssignStudentToClass}
+                                >
+                                    {assigningStudentToClass ? 'Atanıyor...' : 'Ata'}
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassStudentModal(false)}>İptal</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sınıfa Öğrenci Atama Modal */}
+            {showClassAssignModal && selectedChild && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Sınıfa Ata</h2>
+                            <button type="button" onClick={() => setShowClassAssignModal(false)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <p className="mb-4 text-sm text-[#515365] dark:text-[#888ea8]">
+                            <strong className="text-dark dark:text-white">{selectedChild.full_name}</strong> için sınıf seçin.
+                        </p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Sınıf *</label>
+                                <select
+                                    className="form-select mt-1"
+                                    value={selectedClassIdForAssign}
+                                    onChange={e => setSelectedClassIdForAssign(e.target.value)}
+                                >
+                                    <option value="">Sınıf seçin</option>
+                                    {classes.filter(c => c.is_active !== false).map(c => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.name}
+                                            {(c.age_min != null || c.age_max != null) && ` (${c.age_min ?? '?'}-${c.age_max ?? '?'} yaş)`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex gap-3 pt-1">
+                                <button
+                                    type="button"
+                                    className="btn btn-primary flex-1"
+                                    disabled={!selectedClassIdForAssign || assigningChildToClass}
+                                    onClick={handleAssignChildToClass}
+                                >
+                                    {assigningChildToClass ? 'Atanıyor...' : 'Ata'}
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassAssignModal(false)}>İptal</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

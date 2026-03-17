@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Schools;
 
 use App\Http\Controllers\Base\BaseController;
 use App\Models\Academic\SchoolClass;
+use App\Models\Child\Child;
 use App\Models\School\TeacherProfile;
 use App\Models\School\TeacherRoleType;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -236,6 +238,103 @@ class ClassManagementController extends BaseController
             return $this->errorResponse('Öğretmen bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('ClassManagementController::removeTeacherFromSchool Error: '.$e->getMessage());
+
+            return $this->errorResponse('İşlem başarısız.', 500);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // ÖĞRENCİ ATAMA
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Sınıfa öğrenci ata (yaş aralığı kontrolü ile)
+     */
+    public function assignChild(Request $request, int $schoolId, int $classId): JsonResponse
+    {
+        $request->validate([
+            'child_id' => ['required', 'integer', 'exists:children,id'],
+        ]);
+
+        try {
+            $class = SchoolClass::where('id', $classId)
+                ->where('school_id', $schoolId)
+                ->firstOrFail();
+
+            if (! $class->is_active) {
+                return $this->errorResponse('Pasif sınıfa öğrenci ataması yapılamaz.', 422);
+            }
+
+            $child = Child::withoutGlobalScope('tenant')
+                ->where('id', $request->child_id)
+                ->where('school_id', $schoolId)
+                ->first();
+
+            if (! $child) {
+                return $this->errorResponse('Öğrenci bu okula kayıtlı değil.', 422);
+            }
+
+            // Yaş aralığı kontrolü
+            if ($child->birth_date) {
+                $age = Carbon::parse($child->birth_date)->age;
+
+                if ($class->age_min !== null && $age < $class->age_min) {
+                    return $this->errorResponse(
+                        "{$child->full_name} adlı öğrencinin yaşı ({$age}) sınıfın minimum yaş sınırının ({$class->age_min}) altında.",
+                        422
+                    );
+                }
+
+                if ($class->age_max !== null && $age > $class->age_max) {
+                    return $this->errorResponse(
+                        "{$child->full_name} adlı öğrencinin yaşı ({$age}) sınıfın maksimum yaş sınırını ({$class->age_max}) aşıyor.",
+                        422
+                    );
+                }
+            }
+
+            // Herhangi bir sınıfa kayıtlı mı? (bir öğrenci tek sınıfa kayıt olabilir)
+            $existingClass = $child->classes()->first();
+            if ($existingClass) {
+                if ($existingClass->id === $class->id) {
+                    return $this->errorResponse('Öğrenci zaten bu sınıfa kayıtlı.', 422);
+                }
+
+                return $this->errorResponse(
+                    "{$child->full_name} adlı öğrenci zaten \"{$existingClass->name}\" sınıfına kayıtlı. Önce mevcut sınıftan çıkarın.",
+                    422
+                );
+            }
+
+            $class->children()->attach($child->id);
+
+            return $this->successResponse(null, 'Öğrenci sınıfa atandı.', 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Sınıf bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ClassManagementController::assignChild Error: '.$e->getMessage());
+
+            return $this->errorResponse('Atama başarısız.', 500);
+        }
+    }
+
+    /**
+     * Öğrenciyi sınıftan çıkar
+     */
+    public function removeChild(int $schoolId, int $classId, int $childId): JsonResponse
+    {
+        try {
+            $class = SchoolClass::where('id', $classId)
+                ->where('school_id', $schoolId)
+                ->firstOrFail();
+
+            $class->children()->detach($childId);
+
+            return $this->successResponse(null, 'Öğrenci sınıftan çıkarıldı.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Sınıf bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ClassManagementController::removeChild Error: '.$e->getMessage());
 
             return $this->errorResponse('İşlem başarısız.', 500);
         }

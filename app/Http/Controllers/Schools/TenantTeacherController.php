@@ -34,7 +34,7 @@ class TenantTeacherController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            $query = TeacherProfile::with('user', 'schools')
+            $query = TeacherProfile::with('user', 'schools', 'country')
                 ->where('tenant_id', $tenantId)
                 ->when($request->search, function ($q) use ($request) {
                     $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%")
@@ -88,10 +88,16 @@ class TenantTeacherController extends BaseController
                 'hire_date' => $request->hire_date,
                 'linkedin_url' => $request->linkedin_url,
                 'website_url' => $request->website_url,
+                'phone_country_code' => $request->phone_country_code,
+                'whatsapp_number' => $request->whatsapp_number,
+                'whatsapp_country_code' => $request->whatsapp_country_code,
+                'country_id' => $request->country_id,
+                'identity_number' => $request->identity_number,
+                'passport_number' => $request->passport_number,
                 'created_by' => $this->user()->id,
             ]);
 
-            $teacher->load('user', 'schools');
+            $teacher->load('user', 'schools', 'country');
 
             DB::commit();
 
@@ -110,7 +116,7 @@ class TenantTeacherController extends BaseController
     public function show(int $id): JsonResponse
     {
         try {
-            $teacher = TeacherProfile::with('user', 'schools', 'classes.school')
+            $teacher = TeacherProfile::with('user', 'schools', 'country', 'classes.school')
                 ->where('id', $id)
                 ->where('tenant_id', $this->user()->tenant_id)
                 ->firstOrFail();
@@ -144,6 +150,12 @@ class TenantTeacherController extends BaseController
                 'hire_date' => $request->hire_date ?? $teacher->hire_date,
                 'linkedin_url' => $request->linkedin_url ?? $teacher->linkedin_url,
                 'website_url' => $request->website_url ?? $teacher->website_url,
+                'phone_country_code' => $request->has('phone_country_code') ? $request->phone_country_code : $teacher->phone_country_code,
+                'whatsapp_number' => $request->has('whatsapp_number') ? $request->whatsapp_number : $teacher->whatsapp_number,
+                'whatsapp_country_code' => $request->has('whatsapp_country_code') ? $request->whatsapp_country_code : $teacher->whatsapp_country_code,
+                'country_id' => $request->has('country_id') ? $request->country_id : $teacher->country_id,
+                'identity_number' => $request->has('identity_number') ? $request->identity_number : $teacher->identity_number,
+                'passport_number' => $request->has('passport_number') ? $request->passport_number : $teacher->passport_number,
                 'updated_by' => $this->user()->id,
             ]);
 
@@ -151,7 +163,7 @@ class TenantTeacherController extends BaseController
                 $teacher->user->update(['phone' => $request->phone]);
             }
 
-            $teacher->load('user', 'schools');
+            $teacher->load('user', 'schools', 'country');
 
             return $this->successResponse($this->formatTeacher($teacher), 'Öğretmen güncellendi.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
@@ -304,6 +316,18 @@ class TenantTeacherController extends BaseController
             'name' => trim(($t->user?->name ?? '').' '.($t->user?->surname ?? '')),
             'email' => $t->user?->email,
             'phone' => $t->user?->phone,
+            'phone_country_code' => $t->phone_country_code,
+            'whatsapp_number' => $t->whatsapp_number,
+            'whatsapp_country_code' => $t->whatsapp_country_code,
+            'nationality_country_id' => $t->country_id,
+            'nationality' => $t->country_id && $t->country ? [
+                'id' => $t->country->id,
+                'name' => $t->country->name,
+                'iso2' => $t->country->iso2,
+                'flag_emoji' => $t->country->flag_emoji,
+            ] : null,
+            'identity_number' => $t->identity_number,
+            'passport_number' => $t->passport_number,
             'title' => $t->title,
             'specialization' => $t->specialization,
             'employment_type' => $t->employment_type,

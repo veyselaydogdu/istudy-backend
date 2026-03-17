@@ -4,6 +4,7 @@ namespace App\Http\Resources\Parent;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\URL;
 
 class ParentChildResource extends JsonResource
 {
@@ -22,9 +23,22 @@ class ParentChildResource extends JsonResource
             'parent_notes' => $this->parent_notes,
             'special_notes' => $this->special_notes,
             'languages' => $this->languages,
-            'profile_photo' => $this->profile_photo,
+            'profile_photo' => $this->profile_photo
+                ? URL::signedRoute('parent.child.photo', ['child' => $this->id], now()->addHours(1))
+                : null,
             'status' => $this->status,
             'enrollment_date' => $this->enrollment_date?->format('Y-m-d'),
+            'school_id' => $this->school_id,
+            'school' => $this->whenLoaded('school', function () {
+                if (! $this->school || ! $this->school->id) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->school->id,
+                    'name' => $this->school->name,
+                ];
+            }),
             'nationality' => $this->whenLoaded('nationality', function () {
                 if (! $this->nationality || ! $this->nationality->id) {
                     return null;

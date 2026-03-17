@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-03-16 (Çocuk okul kayıt talebi sistemi; ChildController nested route düzeltmesi; FamilyProfile/allerjen tenant scope düzeltmeleri)
+> **Son Güncelleme:** 2026-03-17 (Öğretmen formu genişletme: phone_country_code/whatsapp/uyruk/kimlik; EnrollmentRequestService parentsForSchool withoutGlobalScope fix; ClassManagementController assignChild/removeChild yaş+tek sınıf kontrolü; ChildController::index class_id filtre + classes eager load; Tab count fix: teachers+parents loadData'ya eklendi)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -996,6 +996,42 @@ $pivotMap = DB::table('school_teacher_assignments')
 
 **Kural:** Pivot verilerini okurken ORM `->pivot` accessor yerine `DB::table(pivot_table)` kullanmayı tercih et. Özellikle `whereHas`/constraint ile filtrelenmiş eager loading'de.
 
+### 10.1h Laravel 12 Filesystem — Private Disk (KRİTİK)
+
+**Laravel 12 `config/filesystems.php` varsayılanı:**
+```php
+'local' => [
+    'driver' => 'local',
+    'root' => storage_path('app/private'),  // ← private klasörü
+    'serve' => true,
+    'throw' => false,
+],
+```
+
+- `local` disk = `storage/app/private/` — web'den **hiçbir şekilde doğrudan erişilemez**
+- `Storage::disk('private')` → **HATA** ("disk private does not have a configured driver") — bu isimde disk tanımlı değil
+- Özel (auth-protected) dosyalar için `Storage::disk('local')` kullan
+- `public` disk = `storage/app/public/` — `storage:link` ile web'e açılır
+
+**Signed URL Pattern (auth-protected dosya sunma):**
+```php
+// 1. Dosyayı local diske kaydet (private klasör)
+$path = $request->file('photo')->store('children/photos', 'local');
+
+// 2. Signed URL üret (1 saatlik)
+$signedUrl = URL::signedRoute('parent.child.photo', ['child' => $id], now()->addHours(1));
+
+// 3. Route: signed middleware, auth:sanctum OLMADAN (Image component header gönderemez)
+Route::get('/parent/children/{child}/photo', [ParentChildController::class, 'servePhoto'])
+    ->name('parent.child.photo')
+    ->middleware('signed');
+
+// 4. Controller: stream et
+return Storage::disk('local')->response($childModel->profile_photo);
+```
+
+**Avantaj:** Mobil `<Image source={{ uri: signedUrl }}>` — özel Authorization header gerekmez. URL'yi ele geçiren biri imzayı taklit edemez ve URL 1 saat sonra geçersiz olur. Her API çağrısında `ParentChildResource` taze signed URL üretir.
+
 ### 10.1g Docker PHP Opcache (KRİTİK)
 
 **Sorun:** Docker volume mount ile çalışırken (`../:/var/www/html`) PHP dosyası değişse bile API eski kodu döndürmeye devam edebilir.
@@ -1748,6 +1784,60 @@ Global allerjenler (`tenant_id=NULL`) ve parent önerilen allerjenler (`tenant_i
 
 **ChildController::index() ChildResource dönüşümü:**
 `paginatedResponse($plainPaginator)` raw model data döndürür (ChildResource bypass edilir). `ChildResource::collection($paginator)` ile döndür ki `family_profile` alanı doğru serialize edilsin.
+
+### 17.7 Öğretmen Profil — Yeni Alanlar (2026-03-17)
+
+Migration: `2026_03_16_125757_add_contact_fields_to_teacher_profiles.php`
+
+```php
+$table->string('phone_country_code', 10)->nullable();
+$table->string('whatsapp_number', 30)->nullable();
+$table->string('whatsapp_country_code', 10)->nullable();
+$table->string('identity_number', 50)->nullable();
+$table->string('passport_number', 50)->nullable();
+// country_id zaten vardı → uyruk olarak kullanılır
+```
+
+- `TeacherProfile::$fillable` ve `StoreTeacherRequest`/`UpdateTeacherRequest` validation'ına eklendi
+- `TenantTeacherController::formatTeacher()` döner: `nationality` (id/name/iso2/flag_emoji), `phone_country_code`, `whatsapp_number`, `whatsapp_country_code`, `identity_number`, `passport_number`
+- **API ülke listesi**: `/api/parent/auth/countries` (public, auth gerektirmez) — tenant frontend'den de kullanılır
+
+### 17.8 Sınıfa Öğrenci Ataması (2026-03-17)
+
+**Yeni endpoint'ler** (`ClassManagementController`):
+```
+POST   /schools/{school_id}/classes/{class_id}/children   → assignChild
+DELETE /schools/{school_id}/classes/{class_id}/children/{child_id} → removeChild
+```
+
+**`assignChild` kontrol sırası:**
+1. Sınıf aktif mi? (pasifse 422)
+2. Öğrenci bu okula kayıtlı mı? (değilse 422)
+3. Yaş aralığı: `Carbon::parse($child->birth_date)->age` — `age_min`/`age_max` ihlali → 422 + açıklayıcı mesaj
+4. **Tek sınıf kuralı**: `$child->classes()->first()` → başka sınıfa kayıtlıysa 422: _"X adlı öğrenci zaten Y sınıfına kayıtlı. Önce mevcut sınıftan çıkarın."_
+5. `$class->children()->attach($child->id)` ile kayıt
+
+**`ChildController::index()` güncellemesi:**
+- `?class_id=X` filtresi eklendi: `->when($classId, fn($q) => $q->whereHas('classes', fn($c) => $c->where('classes.id', $classId)))`
+- `'classes'` eager load eklendi → `ChildResource` artık listede de sınıf bilgisi döner
+
+### 17.9 Veliler Sekmesi — Tenant Scope Fix (2026-03-17)
+
+`EnrollmentRequestService::parentsForSchool()`:
+```php
+// ÖNCE (çalışmıyor):
+return FamilyProfile::whereHas('schools', ...)...
+
+// SONRA (düzeltildi):
+return FamilyProfile::withoutGlobalScope('tenant')
+    ->whereHas('schools', fn($q) => $q->where('schools.id', $schoolId))
+    ->with([
+        'owner',
+        'children' => fn($q) => $q->withoutGlobalScope('tenant')->where('school_id', $schoolId),
+    ])
+    ->paginate($perPage);
+```
+**Neden**: Veli `FamilyProfile` kayıtları `tenant_id = NULL` — BaseModel tenant scope filtreler → sayfa 0 dönerdi.
 
 ### 17.6 Bilinen Bug Referansı (TASKS_FOR_FIX.md)
 

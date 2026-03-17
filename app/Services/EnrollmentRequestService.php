@@ -221,10 +221,11 @@ class EnrollmentRequestService extends BaseService
      */
     public function parentsForSchool(int $schoolId, int $perPage = 15)
     {
-        return FamilyProfile::whereHas('schools', fn ($q) => $q->where('schools.id', $schoolId))
+        return FamilyProfile::withoutGlobalScope('tenant')
+            ->whereHas('schools', fn ($q) => $q->where('schools.id', $schoolId))
             ->with([
                 'owner',
-                'children' => fn ($q) => $q->where('school_id', $schoolId),
+                'children' => fn ($q) => $q->withoutGlobalScope('tenant')->where('school_id', $schoolId),
             ])
             ->paginate($perPage);
     }

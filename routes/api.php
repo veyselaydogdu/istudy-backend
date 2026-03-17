@@ -74,6 +74,13 @@ Route::prefix('countries')->group(function () {
 });
 
 // ═══════════════════════════════════════════════════════════
+// VELİ ÇOCUK FOTOĞRAFI — İmzalı URL (auth header gerektirmez)
+// ═══════════════════════════════════════════════════════════
+Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
+    ->name('parent.child.photo')
+    ->middleware('signed');
+
+// ═══════════════════════════════════════════════════════════
 // VELİ AUTH (Public — Mobil uygulama)
 // ═══════════════════════════════════════════════════════════
 Route::prefix('parent/auth')->group(function () {
@@ -136,6 +143,12 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
     Route::post('/children/{child}/suggest-allergen', [\App\Http\Controllers\Parents\ParentChildController::class, 'suggestAllergen']);
     Route::post('/children/{child}/suggest-condition', [\App\Http\Controllers\Parents\ParentChildController::class, 'suggestCondition']);
     Route::post('/children/{child}/suggest-medication', [\App\Http\Controllers\Parents\ParentChildController::class, 'suggestMedication']);
+
+    // Çocuk profil fotoğrafı
+    Route::post('/children/{child}/profile-photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'uploadProfilePhoto']);
+
+    // Çocuk istatistikleri
+    Route::get('/children/{child}/stats', [\App\Http\Controllers\Parents\ParentChildController::class, 'stats']);
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -348,6 +361,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('classes', \App\Http\Controllers\Schools\ClassController::class);
             Route::patch('classes/{class}/toggle-status', [\App\Http\Controllers\Schools\ClassController::class, 'toggleStatus']);
             Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
+            Route::patch('children/{child}/unenroll', [\App\Http\Controllers\Schools\ChildController::class, 'unenroll']);
             Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
             Route::apiResource('families', \App\Http\Controllers\Schools\FamilyProfileController::class);
 
@@ -365,6 +379,10 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::get('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'classTeachers']);
                 Route::post('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'assignTeacher']);
                 Route::delete('/teachers/{teacher_profile_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'removeTeacher']);
+
+                // Öğrenci atama (yaş kontrolü ile)
+                Route::post('/children', [\App\Http\Controllers\Schools\ClassManagementController::class, 'assignChild']);
+                Route::delete('/children/{child_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'removeChild']);
 
                 // İhtiyaç listesi (supply list)
                 Route::get('/supply-list', [\App\Http\Controllers\Schools\ClassManagementController::class, 'supplyList']);

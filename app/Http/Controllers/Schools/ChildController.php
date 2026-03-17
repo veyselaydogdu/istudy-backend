@@ -29,10 +29,14 @@ class ChildController extends BaseSchoolController
 
             $schoolId = (int) request()->route('school_id');
 
+            $classId = request('class_id');
+
             $query = Child::query()
                 ->where('school_id', $schoolId)
+                ->when($classId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('classes.id', $classId)))
                 ->with([
                     'familyProfile' => fn ($q) => $q->withoutGlobalScope('tenant')->with('owner'),
+                    'classes',
                 ]);
 
             $perPage = request('per_page', 15);
@@ -179,6 +183,43 @@ class ChildController extends BaseSchoolController
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ChildController::destroy Error', [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    /**
+     * Öğrenciyi okuldan çıkar (school_id ve academic_year_id null yapar, istatistikler korunur)
+     */
+    public function unenroll(int $school_id, Child $child): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+            $this->authorize('update', $child);
+
+            if ($child->school_id !== $school_id) {
+                return $this->errorResponse('Öğrenci bu okula kayıtlı değil.', 422);
+            }
+
+            $child->update([
+                'school_id' => null,
+                'academic_year_id' => null,
+                'status' => 'inactive',
+            ]);
+
+            DB::commit();
+
+            return $this->successResponse(null, 'Öğrenci okuldan çıkarıldı.');
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ChildController::unenroll Error', [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
                 'file' => $e->getFile(),

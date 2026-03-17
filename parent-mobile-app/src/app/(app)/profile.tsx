@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -103,6 +104,25 @@ export default function ProfileScreen() {
             <InfoRow icon="call-outline" label="Telefon" value={user.phone} />
           )}
         </View>
+
+        {/* Family */}
+        <TouchableOpacity
+          style={styles.section}
+          onPress={() => router.push('/(app)/family')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.sectionTitle}>Aile</Text>
+          <View style={styles.navRow}>
+            <View style={styles.infoIconWrap}>
+              <Ionicons name="heart-outline" size={17} color="#208AEF" />
+            </View>
+            <View style={styles.infoText}>
+              <Text style={styles.infoValue}>Aile Yönetimi</Text>
+              <Text style={styles.infoLabel}>Üyeler ve acil durum kişileri</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
 
         {/* App info */}
         <View style={styles.section}>
@@ -249,4 +269,10 @@ const styles = StyleSheet.create({
   },
   logoutButtonDisabled: { opacity: 0.6 },
   logoutButtonText: { color: '#EF4444', fontSize: 16, fontWeight: '700' },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
 });

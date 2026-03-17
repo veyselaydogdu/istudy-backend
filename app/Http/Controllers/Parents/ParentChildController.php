@@ -13,6 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class ParentChildController extends BaseParentController
 {
@@ -27,7 +29,7 @@ class ParentChildController extends BaseParentController
 
             $children = $familyProfile->children()
                 ->withoutGlobalScope('tenant')
-                ->with(['allergens', 'conditions', 'medications', 'nationality'])
+                ->with(['allergens', 'conditions', 'medications', 'nationality', 'school'])
                 ->get();
 
             return $this->successResponse(
@@ -104,7 +106,7 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
-            $childModel->load(['allergens', 'conditions', 'medications', 'nationality']);
+            $childModel->load(['allergens', 'conditions', 'medications', 'nationality', 'school']);
 
             return $this->successResponse(
                 ParentChildResource::make($childModel),
@@ -421,6 +423,116 @@ class ParentChildController extends BaseParentController
 
             return $this->errorResponse($e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Çocuğun istatistiklerini döner.
+     */
+    public function stats(int $child): JsonResponse
+    {
+        try {
+            $childModel = $this->findOwnedChild($child);
+
+            if (! $childModel) {
+                return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            $attendanceCounts = DB::table('attendances')
+                ->where('child_id', $childModel->id)
+                ->selectRaw('status, COUNT(*) as count')
+                ->groupBy('status')
+                ->pluck('count', 'status')
+                ->toArray();
+
+            $totalAttendance = array_sum($attendanceCounts);
+
+            $classes = DB::table('child_class_assignments')
+                ->join('classes', 'classes.id', '=', 'child_class_assignments.class_id')
+                ->where('child_class_assignments.child_id', $childModel->id)
+                ->select('classes.id', 'classes.name')
+                ->get()
+                ->toArray();
+
+            $school = null;
+            if ($childModel->school_id) {
+                $school = DB::table('schools')
+                    ->where('id', $childModel->school_id)
+                    ->select('id', 'name')
+                    ->first();
+            }
+
+            return $this->successResponse([
+                'child' => [
+                    'id' => $childModel->id,
+                    'full_name' => $childModel->full_name,
+                ],
+                'school' => $school ? ['id' => $school->id, 'name' => $school->name] : null,
+                'classes' => $classes,
+                'attendance' => [
+                    'total' => $totalAttendance,
+                    'present' => (int) ($attendanceCounts['present'] ?? 0),
+                    'absent' => (int) ($attendanceCounts['absent'] ?? 0),
+                    'late' => (int) ($attendanceCounts['late'] ?? 0),
+                    'excused' => (int) ($attendanceCounts['excused'] ?? 0),
+                ],
+            ], 'İstatistikler.');
+        } catch (\Throwable $e) {
+            Log::error('ParentChildController::stats Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Çocuğun profil fotoğrafını private diske yükler ve imzalı URL döner.
+     */
+    public function uploadProfilePhoto(Request $request, int $child): JsonResponse
+    {
+        $request->validate([
+            'photo' => ['required', 'image', 'max:5120'],
+        ]);
+
+        try {
+            $childModel = $this->findOwnedChild($child);
+
+            if (! $childModel) {
+                return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            // Eski fotoğrafı private diskten sil
+            if ($childModel->profile_photo && Storage::disk('local')->exists($childModel->profile_photo)) {
+                Storage::disk('local')->delete($childModel->profile_photo);
+            }
+
+            $path = $request->file('photo')->store('children/photos', 'local');
+            $childModel->update(['profile_photo' => $path]);
+
+            $signedUrl = URL::signedRoute('parent.child.photo', ['child' => $childModel->id], now()->addHours(1));
+
+            return $this->successResponse(['profile_photo' => $signedUrl], 'Profil fotoğrafı güncellendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentChildController::uploadProfilePhoto Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * İmzalı URL ile çocuğun profil fotoğrafını private diskten sunar.
+     */
+    public function servePhoto(int $child): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $childModel = Child::withoutGlobalScope('tenant')->find($child);
+
+        if (! $childModel || ! $childModel->profile_photo) {
+            abort(404);
+        }
+
+        if (! Storage::disk('local')->exists($childModel->profile_photo)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($childModel->profile_photo);
     }
 
     /**

@@ -130,9 +130,12 @@ POST   /api/parent/children
 GET    /api/parent/children/{id}
 PUT    /api/parent/children/{id}
 DELETE /api/parent/children/{id}
-POST   /api/parent/children/{id}/allergens    ← {allergen_ids[], custom_name?}
-POST   /api/parent/children/{id}/medications  ← [{medication_id?, custom_name?, dose, usage_time[], usage_days[]}]
-POST   /api/parent/children/{id}/conditions   ← {condition_ids[]}
+POST   /api/parent/children/{id}/allergens      ← {allergen_ids[], custom_name?}
+POST   /api/parent/children/{id}/medications    ← [{medication_id?, custom_name?, dose, usage_time[], usage_days[]}]
+POST   /api/parent/children/{id}/conditions     ← {condition_ids[]}
+POST   /api/parent/children/{id}/profile-photo  ← multipart/form-data {photo: image} — auth:sanctum gerekli
+GET    /api/parent/children/{id}/photo          ← imzalı URL ile erişim (auth header GEREKMİYOR — signed middleware)
+GET    /api/parent/children/{id}/stats          ← çocuk istatistikleri (attendance, classes, school)
 ```
 
 ### Aile
@@ -232,9 +235,39 @@ success: '#10B981'
 - `super_parent` hiçbir co_parent tarafından kaldırılamaz
 - co_parent yalnızca kendini kaldırabilir; super_parent herkesi kaldırabilir
 
-### Acil Durum Kişileri
+### Çocuk Profil Fotoğrafı (2026-03-16)
+- Fotoğraflar `storage/app/private/children/photos/` klasöründe saklanır (`Storage::disk('local')`)
+- **Laravel 12'de `local` disk = private**: root `storage_path('app/private')` — web'den doğrudan erişilemez
+- `ParentChildResource::profile_photo` → `URL::signedRoute('parent.child.photo', ['child' => id], now()->addHours(1))` ile 1 saatlik imzalı URL döner
+- Mobil: `<Image source={{ uri: child.profile_photo }}>` — standart URL, auth header gerekmez
+- Her `fetchChild()` çağrısında yeni signed URL üretilir (token cache süresi önemli değil)
+- Yükleme: `POST /api/parent/children/{id}/profile-photo` (auth:sanctum) — multipart/form-data
+- Eski fotoğraf: yeni yüklemede `Storage::disk('local')->delete(oldPath)` ile silinir
+- **DİKKAT:** `Storage::disk('private')` hata verir — Laravel 12 bu adda disk tanımlamaz; `local` kullan
+
+### Tab Navigasyonu (2026-03-16)
+- **5 tab**: Anasayfa, Çocuklar, Okullar, İstatistikler, Profil
+- **İstatistikler** sekmesi eklendi (`stats.tsx`) — çocuk seçici + devamsızlık kartları + okul/sınıf bilgisi
+- **Aile** sekmesi kaldırıldı — Profil ekranına "Aile Yönetimi" butonu eklendi → `/(app)/family`
+- `(app)/_layout.tsx`: `family` için `href: null` (gizli, doğrudan URL ile erişilebilir)
+
+### Okul Detay Ekranı (2026-03-16)
+- Çocuk o okula kayıtlıysa "Çocuğumu Bu Okula Ekle" butonu GÖSTERİLMEZ
+- Kayıtlı çocuklar yeşil "Bu Okula Kayıtlı Çocuklar" bölümünde listelenir (tıklanabilir → child detay)
+- `enrolledHere = allFamilyChildren.filter(c => c.school_id === schoolId)` mantığı
+
+### Çocuk Detay Ekranı (2026-03-16)
+- Kayıtlı okul varsa mavi "🏫 OkulAdı" badge gösterilir (tıklanabilir → okul detay)
+- Avatar tıklanabilir → kamera/galeri seçim alert → `expo-image-picker` ile fotoğraf seçilir
+- Fotoğraf yükleme spinner overlay (uploadingPhoto state)
+
+### Acil Durum Kişileri (2026-03-16)
+- Telefon: ülke kodu seçici + numara alanı (register.tsx ile aynı pattern) — inline dropdown, Modal içinde açılmaz
+- Uyruk: opsiyonel ülke seçici (inline dropdown) — seçilirse TC Kimlik / Pasaport alanları görünür
+- Kimlik/pasaport tamamen isteğe bağlı, her ikisi de boş geçilebilir
+- `emergency_contacts` tablosu yeni kolonlar: `phone_country_code (varchar10)`, `nationality_country_id (FK countries)`, `passport_number (varchar50)`
+- **React Native nested Modal kısıtı**: Modal içinde başka Modal açılmaz (iOS) → inline dropdown pattern zorunlu
 - Max sayı: `app_settings` tablosundan `max_emergency_contacts` key'i (default 5)
-- Alanlar: ad, soyad, telefon, yakınlık derecesi, fotoğraf, kimlik no, sıra
 
 ---
 
@@ -245,7 +278,7 @@ success: '#10B981'
   - `getFamilyProfile()`: owner_user_id → family_members (co_parent) sırasıyla arar
   - `findOwnedChild(int $childId)`: getFamilyProfile + family_profile_id kontrolü
 - `ParentAuthController.php` — register/login/logout/me/forgotPassword/resetPassword/verifyEmail/resendVerification
-- `ParentChildController.php` — CRUD + syncAllergens/syncMedications/syncConditions + suggestAllergen/suggestCondition/suggestMedication + `saveMedications()` private
+- `ParentChildController.php` — CRUD + syncAllergens/syncMedications/syncConditions + suggestAllergen/suggestCondition/suggestMedication + `saveMedications()` private + `uploadProfilePhoto()` + `servePhoto()` + `stats()`
 - `ParentFamilyController.php` — members/addMember/removeMember + emergency contacts CRUD
 - `ParentSchoolController.php` — mySchools/schoolDetail/joinSchool/socialFeed/globalFeed
 - `ParentReferenceController.php` — allergens/conditions/medications/countries/bloodTypes
@@ -280,10 +313,20 @@ success: '#10B981'
 - `2026_03_13_100000_create_blood_types_table.php` — blood_types tablosu + 8 standart kan grubu seed
 - `2026_03_13_100001_add_suggestion_fields_to_health_tables.php` — allergens/medical_conditions/medications'a status + suggested_by_user_id
 - `2026_03_13_100002_add_passport_number_to_children_table.php` — children.passport_number nullable
+- `2026_03_16_115737_add_passport_and_nationality_to_emergency_contacts.php` — emergency_contacts.phone_country_code + passport_number + nationality_country_id ✅
 
 ---
 
-## 8. Kritik Düzeltmeler (2026-03-13)
+## 8. Kritik Düzeltmeler (2026-03-16)
+
+- **Çocuk profil fotoğrafı private storage** — `Storage::disk('local')` (Laravel 12: local disk root = storage/app/private). Signed URL (`URL::signedRoute`, 1 saat) döner. Mobil `<Image>` header gerektirmez.
+- **`Storage::disk('private')` HATA VERIR** — Laravel 12 default config'de `private` adında disk YOK, `local` kullan.
+- **React Native nested Modal kısıtı** — iOS'ta açık Modal içinde yeni Modal açılamaz. emergency.tsx'teki ülke/uyruk seçicileri inline dropdown olarak yazıldı.
+- **Tab navigasyonu yenilendi** — "Aile" sekmesi → Profil altına taşındı. "İstatistikler" sekmesi eklendi.
+- **Okul ekranı `school_id` kontrolü** — `ParentChildResource` artık `school_id` + `school{id,name}` döndürür. Mobil bunula enrolled check yapar.
+- **Tenant çocuk okuldan çıkar** — `PATCH /api/schools/{school_id}/children/{child}/unenroll` → `school_id=null, academic_year_id=null, status=inactive`
+
+## Eski Kritik Düzeltmeler (2026-03-13)
 
 - **`blood_types` tablosu eklendi** — Super admin CRUD (`/api/admin/blood-types`), mobil referans: `/api/parent/blood-types` + public `/api/parent/auth/blood-types`
 - **Sağlık öneri sistemi** — allergens/conditions/medications tablolarına `status` + `suggested_by_user_id` eklendi. Pending öneriler çocuğa hemen bağlanır, "Onay Bekleniyor" badge ile gösterilir

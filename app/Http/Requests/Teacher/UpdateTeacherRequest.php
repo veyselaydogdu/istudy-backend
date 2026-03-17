@@ -28,7 +28,13 @@ class UpdateTeacherRequest extends FormRequest
             'hire_date' => ['nullable', 'date'],
             'linkedin_url' => ['nullable', 'url', 'max:255'],
             'website_url' => ['nullable', 'url', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:12'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'phone_country_code' => ['nullable', 'string', 'max:10'],
+            'whatsapp_number' => ['nullable', 'string', 'max:30'],
+            'whatsapp_country_code' => ['nullable', 'string', 'max:10'],
+            'country_id' => ['nullable', 'integer', 'exists:countries,id'],
+            'identity_number' => ['nullable', 'string', 'max:50'],
+            'passport_number' => ['nullable', 'string', 'max:50'],
         ];
     }
 }

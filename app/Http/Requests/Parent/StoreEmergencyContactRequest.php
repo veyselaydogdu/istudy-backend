@@ -17,9 +17,12 @@ class StoreEmergencyContactRequest extends FormRequest
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'phone' => ['required', 'string', 'max:30'],
+            'phone_country_code' => ['nullable', 'string', 'max:10'],
             'relationship' => ['required', 'string', 'max:100'],
             'photo' => ['nullable', 'string', 'max:500'],
             'identity_number' => ['nullable', 'string', 'max:50'],
+            'passport_number' => ['nullable', 'string', 'max:50'],
+            'nationality_country_id' => ['nullable', 'integer', 'exists:countries,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ];
     }

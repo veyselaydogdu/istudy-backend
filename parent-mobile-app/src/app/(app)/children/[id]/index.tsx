@@ -1,8 +1,10 @@
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -29,6 +31,8 @@ interface Child {
   languages: string[] | null;
   profile_photo: string | null;
   status: string;
+  school_id: number | null;
+  school: { id: number; name: string } | null;
   nationality: { id: number; name: string; name_tr: string | null; flag_emoji: string | null } | null;
   allergens: Array<{ id: number; name: string; status?: string }>;
   conditions: Array<{ id: number; name: string; status?: string }>;
@@ -73,6 +77,7 @@ export default function ChildDetailScreen() {
   const [child, setChild] = useState<Child | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const fetchChild = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -112,6 +117,77 @@ export default function ChildDetailScreen() {
         },
       ]
     );
+  };
+
+  const handlePickPhoto = () => {
+    Alert.alert('Profil Fotoğrafı', 'Fotoğraf kaynağını seçin', [
+      {
+        text: 'Galeriden Seç',
+        onPress: () => void pickFromGallery(),
+      },
+      {
+        text: 'Kameradan Çek',
+        onPress: () => void pickFromCamera(),
+      },
+      { text: 'İptal', style: 'cancel' },
+    ]);
+  };
+
+  const pickFromGallery = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('İzin Gerekli', 'Galeri erişimi için izin vermeniz gerekiyor.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      await uploadPhoto(result.assets[0]);
+    }
+  };
+
+  const pickFromCamera = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('İzin Gerekli', 'Kamera erişimi için izin vermeniz gerekiyor.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      await uploadPhoto(result.assets[0]);
+    }
+  };
+
+  const uploadPhoto = async (asset: ImagePicker.ImagePickerAsset) => {
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      const filename = asset.uri.split('/').pop() ?? 'photo.jpg';
+      const type = asset.mimeType ?? 'image/jpeg';
+      formData.append('photo', { uri: asset.uri, name: filename, type } as unknown as Blob);
+
+      const res = await api.post<{ data: { profile_photo: string } }>(
+        `/parent/children/${id}/profile-photo`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      setChild((prev) =>
+        prev ? { ...prev, profile_photo: res.data.data.profile_photo } : prev
+      );
+    } catch (err: unknown) {
+      Alert.alert('Hata', getApiError(err));
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   if (loading || !child) {
@@ -155,14 +231,40 @@ export default function ChildDetailScreen() {
         }
       >
         <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.8} disabled={uploadingPhoto}>
+            <View style={styles.avatarContainer}>
+              {child.profile_photo ? (
+                <Image source={{ uri: child.profile_photo }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initials}</Text>
+                </View>
+              )}
+              {uploadingPhoto ? (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                </View>
+              ) : (
+                <View style={styles.photoEditBadge}>
+                  <Text style={styles.photoEditIcon}>📷</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
           <Text style={styles.childName}>{child.full_name}</Text>
           {child.status === 'active' && (
             <View style={styles.activeBadge}>
               <Text style={styles.activeBadgeText}>Aktif</Text>
             </View>
+          )}
+          {child.school && (
+            <TouchableOpacity
+              style={styles.schoolBadge}
+              onPress={() => child.school && router.push(`/(app)/schools/${child.school.id}`)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.schoolBadgeText}>🏫 {child.school.name}</Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -341,14 +443,47 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     gap: 10,
   },
+  avatarContainer: {
+    position: 'relative',
+  },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#208AEF',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  photoEditIcon: { fontSize: 14 },
   avatarText: {
     color: '#FFFFFF',
     fontSize: 28,
@@ -368,6 +503,19 @@ const styles = StyleSheet.create({
   activeBadgeText: {
     color: '#059669',
     fontSize: 12,
+    fontWeight: '600',
+  },
+  schoolBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  schoolBadgeText: {
+    color: '#1D4ED8',
+    fontSize: 13,
     fontWeight: '600',
   },
   card: {

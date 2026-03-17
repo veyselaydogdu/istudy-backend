@@ -64,6 +64,7 @@ interface ChildEnrollment {
 
 export default function SchoolDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const schoolId = Number(id);
   const [school, setSchool] = useState<SchoolDetail | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +75,7 @@ export default function SchoolDetailScreen() {
 
   // Child enrollment
   const [showEnrollModal, setShowEnrollModal] = useState(false);
-  const [familyChildren, setFamilyChildren] = useState<FamilyChild[]>([]);
+  const [allFamilyChildren, setAllFamilyChildren] = useState<FamilyChild[]>([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [childEnrollments, setChildEnrollments] = useState<ChildEnrollment[]>([]);
@@ -121,12 +122,21 @@ export default function SchoolDetailScreen() {
     }
   }, [id]);
 
+  const fetchAllChildren = useCallback(async () => {
+    try {
+      const res = await api.get<{ data: FamilyChild[] }>('/parent/children');
+      setAllFamilyChildren(res.data.data ?? []);
+    } catch {
+      // sessizce geç
+    }
+  }, []);
+
   const loadAll = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
-    await Promise.all([fetchSchool(), fetchPosts(1, isRefresh), fetchChildEnrollments()]);
+    await Promise.all([fetchSchool(), fetchPosts(1, isRefresh), fetchChildEnrollments(), fetchAllChildren()]);
     setLoading(false);
     setRefreshing(false);
-  }, [fetchSchool, fetchPosts, fetchChildEnrollments]);
+  }, [fetchSchool, fetchPosts, fetchChildEnrollments, fetchAllChildren]);
 
   useEffect(() => {
     void loadAll();
@@ -148,9 +158,19 @@ export default function SchoolDetailScreen() {
     setLoadingChildren(true);
     try {
       const res = await api.get<{ data: FamilyChild[] }>('/parent/children');
-      // Sadece henüz bir okula kayıtlı olmayan çocukları göster
-      const unenrolled = (res.data.data ?? []).filter((c) => !c.school_id);
-      setFamilyChildren(unenrolled);
+      const all = res.data.data ?? [];
+      setAllFamilyChildren(all);
+      // Modalda sadece bu okula kayıtlı olmayan ve onay beklemeyen çocukları göster
+      const pendingChildIds = new Set(
+        childEnrollments
+          .filter((e) => e.status === 'pending')
+          .map((e) => e.child?.id)
+          .filter(Boolean)
+      );
+      const eligible = all.filter(
+        (c) => c.school_id !== schoolId && !pendingChildIds.has(c.id)
+      );
+      setModalChildren(eligible);
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
       setShowEnrollModal(false);
@@ -158,6 +178,8 @@ export default function SchoolDetailScreen() {
       setLoadingChildren(false);
     }
   };
+
+  const [modalChildren, setModalChildren] = useState<FamilyChild[]>([]);
 
   const handleEnrollChild = async (child: FamilyChild) => {
     setEnrolling(true);
@@ -168,7 +190,7 @@ export default function SchoolDetailScreen() {
         'Talep Gönderildi',
         `${child.full_name} için okul kayıt talebiniz gönderildi. Okul onayını bekliyorsunuz.`
       );
-      void fetchChildEnrollments();
+      await Promise.all([fetchChildEnrollments(), fetchAllChildren()]);
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
     } finally {
@@ -186,7 +208,17 @@ export default function SchoolDetailScreen() {
     );
   }
 
+  // Bu okula kayıtlı çocuklar (school_id eşleşiyor)
+  const enrolledHere = allFamilyChildren.filter((c) => c.school_id === schoolId);
+
+  // Bu okul için onay bekleyen talepler
   const pendingEnrollments = childEnrollments.filter((e) => e.status === 'pending');
+
+  // Bu okula kayıtlı olmayan VE bekleyen talebi olmayan çocuklar var mı?
+  const pendingChildIds = new Set(pendingEnrollments.map((e) => e.child?.id).filter(Boolean));
+  const hasEligibleChildren = allFamilyChildren.some(
+    (c) => c.school_id !== schoolId && !pendingChildIds.has(c.id)
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -259,13 +291,47 @@ export default function SchoolDetailScreen() {
                     </Text>
                   </View>
                 )}
-                <TouchableOpacity
-                  style={styles.enrollButton}
-                  onPress={openEnrollModal}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.enrollButtonText}>👶 Çocuğumu Bu Okula Ekle</Text>
-                </TouchableOpacity>
+
+                {/* Kayıtlı çocuklar */}
+                {enrolledHere.length > 0 && (
+                  <View style={styles.enrolledSection}>
+                    <Text style={styles.enrolledTitle}>✅ Bu Okula Kayıtlı Çocuklar</Text>
+                    {enrolledHere.map((c) => (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={styles.enrolledItem}
+                        onPress={() => router.push(`/(app)/children/${c.id}`)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.enrolledAvatar}>
+                          <Text style={styles.enrolledAvatarText}>
+                            {c.first_name.charAt(0)}{c.last_name.charAt(0)}
+                          </Text>
+                        </View>
+                        <View style={styles.enrolledInfo}>
+                          <Text style={styles.enrolledName}>{c.full_name}</Text>
+                          {c.birth_date && (
+                            <Text style={styles.enrolledBirth}>
+                              {new Date(c.birth_date).toLocaleDateString('tr-TR')}
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={styles.enrolledArrow}>›</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Kayıt butonu — sadece uygun çocuk varsa göster */}
+                {hasEligibleChildren && (
+                  <TouchableOpacity
+                    style={styles.enrollButton}
+                    onPress={openEnrollModal}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.enrollButtonText}>👶 Çocuğumu Bu Okula Ekle</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {pendingEnrollments.length > 0 && (
@@ -330,10 +396,10 @@ export default function SchoolDetailScreen() {
 
             {loadingChildren ? (
               <ActivityIndicator color="#208AEF" style={{ marginVertical: 32 }} />
-            ) : familyChildren.length === 0 ? (
+            ) : modalChildren.length === 0 ? (
               <View style={styles.emptyModal}>
                 <Text style={styles.emptyModalText}>
-                  Tüm çocuklarınız zaten bir okula kayıtlı veya henüz çocuk eklenmemiş.
+                  Tüm çocuklarınız zaten bu okula kayıtlı veya başvuru bekleniyor.
                 </Text>
                 <TouchableOpacity
                   style={styles.addChildBtn}
@@ -347,7 +413,7 @@ export default function SchoolDetailScreen() {
               </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false}>
-                {familyChildren.map((child) => (
+                {modalChildren.map((child) => (
                   <TouchableOpacity
                     key={child.id}
                     style={styles.childItem}
@@ -430,12 +496,43 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   yearBadgeText: { color: '#059669', fontSize: 12, fontWeight: '600' },
+  // Kayıtlı çocuklar bölümü
+  enrolledSection: {
+    alignSelf: 'stretch',
+    marginTop: 8,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    gap: 8,
+  },
+  enrolledTitle: { fontSize: 13, fontWeight: '700', color: '#166534', marginBottom: 4 },
+  enrolledItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  enrolledAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#16A34A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  enrolledAvatarText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  enrolledInfo: { flex: 1 },
+  enrolledName: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
+  enrolledBirth: { fontSize: 11, color: '#6B7280', marginTop: 1 },
+  enrolledArrow: { fontSize: 20, color: '#16A34A', fontWeight: '700' },
   enrollButton: {
     backgroundColor: '#208AEF',
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    marginTop: 8,
+    marginTop: 4,
     alignSelf: 'stretch',
     alignItems: 'center',
   },

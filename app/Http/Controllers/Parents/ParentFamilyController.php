@@ -186,6 +186,7 @@ class ParentFamilyController extends BaseParentController
 
             $contacts = EmergencyContact::withoutGlobalScope('tenant')
                 ->where('family_profile_id', $familyProfile->id)
+                ->with('nationality')
                 ->orderBy('sort_order')
                 ->get();
 
