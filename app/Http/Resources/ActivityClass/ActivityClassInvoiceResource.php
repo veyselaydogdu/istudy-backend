@@ -12,6 +12,9 @@ class ActivityClassInvoiceResource extends JsonResource
         return [
             'id' => $this->id,
             'invoice_number' => $this->invoice_number,
+            'invoice_type' => $this->invoice_type ?? 'invoice',
+            'original_invoice_id' => $this->original_invoice_id,
+            'refund_reason' => $this->refund_reason,
             'amount' => $this->amount,
             'currency' => $this->currency,
             'status' => $this->status,
@@ -31,6 +34,11 @@ class ActivityClassInvoiceResource extends JsonResource
                     'id' => $this->familyProfile->owner->id,
                     'name' => $this->familyProfile->owner->name.' '.$this->familyProfile->owner->surname,
                 ] : null,
+            ] : null),
+            'refund_invoice' => $this->whenLoaded('refundInvoice', fn () => $this->refundInvoice?->id ? [
+                'id' => $this->refundInvoice->id,
+                'invoice_number' => $this->refundInvoice->invoice_number,
+                'status' => $this->refundInvoice->status,
             ] : null),
         ];
     }

@@ -30,7 +30,7 @@ export default function ActivityClassDetailPage() {
 
     // Teachers
     const [teachers, setTeachers] = useState<Array<{ id: number; name: string; role?: string | null }>>([]);
-    const [schoolTeachers, setSchoolTeachers] = useState<Array<{ id: number; user: { id: number; name: string; surname: string } }>>([]);
+    const [schoolTeachers, setSchoolTeachers] = useState<Array<{ id: number; name: string }>>([]);
     const [showTeacherModal, setShowTeacherModal] = useState(false);
     const [assignTeacherId, setAssignTeacherId] = useState('');
     const [assignTeacherRole, setAssignTeacherRole] = useState('');
@@ -265,6 +265,28 @@ export default function ActivityClassDetailPage() {
             toast.success('Fatura güncellendi.');
             loadInvoices();
         } catch { toast.error('Güncellenemedi.'); }
+    };
+
+    const handleRefundInvoice = async (invoice: ActivityClassInvoice) => {
+        if (!activityClass) return;
+        const { value: reason, isConfirmed } = await Swal.fire({
+            title: 'İade Faturası Oluştur',
+            text: `${invoice.invoice_number} numaralı fatura için iade oluşturulacak.`,
+            input: 'textarea',
+            inputPlaceholder: 'İade nedeni (isteğe bağlı)...',
+            showCancelButton: true,
+            confirmButtonText: 'İade Oluştur',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+        });
+        if (!isConfirmed) return;
+        try {
+            await apiClient.post(`/activity-classes/${activityClass.id}/invoices/${invoice.id}/refund`, { refund_reason: reason });
+            toast.success('İade faturası oluşturuldu.');
+            loadInvoices();
+        } catch (err: unknown) {
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'İade oluşturulamadı.');
+        }
     };
 
     if (loading) {
@@ -568,6 +590,7 @@ export default function ActivityClassDetailPage() {
                                         <thead>
                                             <tr>
                                                 <th>Fatura No</th>
+                                                <th>Tür</th>
                                                 <th>Öğrenci</th>
                                                 <th>Tutar</th>
                                                 <th>Durum</th>
@@ -577,22 +600,39 @@ export default function ActivityClassDetailPage() {
                                         </thead>
                                         <tbody>
                                             {invoices.map(inv => (
-                                                <tr key={inv.id}>
-                                                    <td className="font-mono text-sm">{inv.invoice_number}</td>
-                                                    <td>—</td>
+                                                <tr key={inv.id} className={inv.invoice_type === 'refund' ? 'bg-red-50 dark:bg-red-900/10' : ''}>
+                                                    <td className="font-mono text-sm">
+                                                        {inv.invoice_number}
+                                                        {inv.original_invoice_id && (
+                                                            <div className="text-xs text-[#888ea8]">İade</div>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <span className={`badge ${inv.invoice_type === 'refund' ? 'badge-outline-danger' : 'badge-outline-info'}`}>
+                                                            {inv.invoice_type === 'refund' ? 'İade' : 'Fatura'}
+                                                        </span>
+                                                    </td>
+                                                    <td>{inv.child?.full_name ?? '—'}</td>
                                                     <td>{inv.amount} {inv.currency}</td>
                                                     <td>
-                                                        <span className={`badge ${inv.status === 'paid' ? 'badge-outline-success' : inv.status === 'cancelled' ? 'badge-outline-danger' : inv.status === 'overdue' ? 'badge-outline-warning' : 'badge-outline-info'}`}>
-                                                            {inv.status === 'paid' ? 'Ödendi' : inv.status === 'cancelled' ? 'İptal' : inv.status === 'overdue' ? 'Gecikmiş' : 'Bekliyor'}
+                                                        <span className={`badge ${inv.status === 'paid' ? 'badge-outline-success' : inv.status === 'cancelled' ? 'badge-outline-danger' : inv.status === 'refunded' ? 'badge-outline-warning' : inv.status === 'overdue' ? 'badge-outline-warning' : 'badge-outline-info'}`}>
+                                                            {inv.status === 'paid' ? 'Ödendi' : inv.status === 'cancelled' ? 'İptal' : inv.status === 'refunded' ? 'İade Edildi' : inv.status === 'overdue' ? 'Gecikmiş' : 'Bekliyor'}
                                                         </span>
                                                     </td>
                                                     <td className="text-sm">{inv.due_date ? new Date(inv.due_date).toLocaleDateString('tr-TR') : '—'}</td>
                                                     <td>
-                                                        {inv.status === 'pending' && (
-                                                            <button type="button" onClick={() => handleMarkPaid(inv)} className="btn btn-sm btn-outline-success flex items-center gap-1">
-                                                                <Check className="h-3 w-3" /> Ödendi
-                                                            </button>
-                                                        )}
+                                                        <div className="flex gap-1">
+                                                            {inv.status === 'pending' && (
+                                                                <button type="button" onClick={() => handleMarkPaid(inv)} className="btn btn-sm btn-outline-success flex items-center gap-1">
+                                                                    <Check className="h-3 w-3" /> Ödendi
+                                                                </button>
+                                                            )}
+                                                            {inv.status === 'paid' && inv.invoice_type !== 'refund' && !inv.refund_invoice && (
+                                                                <button type="button" onClick={() => handleRefundInvoice(inv)} className="btn btn-sm btn-outline-danger flex items-center gap-1">
+                                                                    <X className="h-3 w-3" /> İade
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -661,7 +701,7 @@ export default function ActivityClassDetailPage() {
                                 <select className="form-select mt-1 w-full" value={assignTeacherId} onChange={e => setAssignTeacherId(e.target.value)}>
                                     <option value="">Öğretmen seçin...</option>
                                     {schoolTeachers.filter(t => !teachers.some(at => at.id === t.id)).map(t => (
-                                        <option key={t.id} value={t.id}>{t.user.name} {t.user.surname}</option>
+                                        <option key={t.id} value={t.id}>{t.name}</option>
                                     ))}
                                 </select>
                             </div>

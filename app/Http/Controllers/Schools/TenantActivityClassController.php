@@ -9,6 +9,7 @@ use App\Models\ActivityClass\ActivityClassGalleryItem;
 use App\Models\ActivityClass\ActivityClassInvoice;
 use App\Models\ActivityClass\ActivityClassMaterial;
 use App\Models\Child\Child;
+use App\Services\ActivityClassInvoiceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -235,6 +236,13 @@ class TenantActivityClassController extends BaseController
                 return $this->errorResponse("{$child->full_name} zaten bu etkinlik sınıfına kayıtlı.", 422);
             }
 
+            // Daha önce iptal edilmiş (soft-deleted) kayıt varsa unique constraint çakışmasını önlemek için sil
+            ActivityClassEnrollment::withTrashed()
+                ->where('activity_class_id', $activityClass->id)
+                ->where('child_id', $child->id)
+                ->whereNotNull('deleted_at')
+                ->forceDelete();
+
             if ($activityClass->age_min !== null || $activityClass->age_max !== null) {
                 $age = Carbon::parse($child->birth_date)->age;
                 if ($activityClass->age_min !== null && $age < $activityClass->age_min) {
@@ -294,17 +302,26 @@ class TenantActivityClassController extends BaseController
         }
     }
 
-    public function enrollmentDestroy(int $activity_class_id, int $enrollment_id): JsonResponse
+    public function enrollmentDestroy(Request $request, int $activity_class_id, int $enrollment_id): JsonResponse
     {
         try {
             DB::beginTransaction();
             $enrollment = ActivityClassEnrollment::where('activity_class_id', $activity_class_id)
                 ->findOrFail($enrollment_id);
+
+            $billingResult = (new ActivityClassInvoiceService)->handleEnrollmentCancellation(
+                $enrollment->id,
+                $request->input('refund_reason')
+            );
+
             $enrollment->update(['status' => 'cancelled', 'cancelled_at' => now()]);
             $enrollment->delete();
             DB::commit();
 
-            return $this->successResponse(null, 'Kayıt iptal edildi.');
+            return $this->successResponse(
+                ['refunded' => $billingResult['refunded']],
+                $billingResult['refunded'] ? 'Kayıt iptal edildi ve iade faturası oluşturuldu.' : 'Kayıt iptal edildi.'
+            );
         } catch (\Throwable $e) {
             DB::rollBack();
 

@@ -502,7 +502,7 @@ GET/POST/DELETE activity-classes/{id}/enrollments
 POST/DELETE activity-classes/{id}/teachers
 POST/PUT/DELETE activity-classes/{id}/materials
 GET/POST/DELETE activity-classes/{id}/gallery
-GET/PATCH activity-classes/{id}/invoices
+GET/PATCH/POST activity-classes/{id}/invoices (PATCH mark-paid, PATCH cancel, POST {invoice}/refund)
 GET invoices/tenant
 GET/POST notifications; PATCH notifications/{id}/read; PATCH notifications/read-all
 GET/POST/PUT/DELETE health-suggestions (tenant onay)
@@ -773,7 +773,9 @@ ActivityClass           // id, school_id: number|null, name, description?, langu
                         //   location?, notes?, school_classes?, teachers?, materials?
 ActivityClassMaterial   // id, activity_class_id, name, description?, url?, type?
 ActivityClassEnrollment // id, activity_class_id, child_id, family_profile_id, status, enrolled_at, invoice?
-ActivityClassInvoice    // id, enrollment_id, invoice_number, amount, currency, status, due_date, payment_required
+ActivityClassInvoice    // id, enrollment_id, invoice_number, invoice_type('invoice'|'refund'), original_invoice_id?,
+                        //   refund_reason?, amount, currency, status('pending'|'paid'|'overdue'|'cancelled'|'refunded'),
+                        //   due_date, payment_required, refundInvoice? (hasOne self)
 ActivityClassGalleryItem // id, caption?, url, sort_order, created_at
 ```
 
@@ -1289,7 +1291,48 @@ return Storage::disk('local')->response($child->profile_photo);
 
 ---
 
-## 13. Yeni Modül Ekleme Checklist
+## 13. Faturalandırma Modülü (ActivityClass)
+
+### ActivityClassInvoice Mimarisi
+- **Tablo**: `activity_class_invoices` — her kayıt (enrollment) için 1 fatura
+- **invoice_type**: `'invoice'` (normal) | `'refund'` (iade/credit note)
+- **status değerleri**: `pending | paid | overdue | cancelled | refunded`
+  - `refunded` = orijinal fatura iade edildiğinde set edilir, refund kaydı ayrıca `status: paid` olarak oluşturulur
+- **original_invoice_id**: iade faturasının hangi faturaya ait olduğunu gösterir (self FK)
+- **refund_reason**: iade nedeni (nullable text)
+- **Model ilişkileri**: `originalInvoice()` (belongsTo self) + `refundInvoice()` (hasOne self)
+
+### ActivityClassInvoiceService
+- **Dosya**: `app/Services/ActivityClassInvoiceService.php`
+- `createRefund(ActivityClassInvoice $original, ?string $reason): ActivityClassInvoice`
+  - Orijinal fatura status → `refunded`; yeni iade faturası `invoice_type=refund, status=paid` oluşturulur
+  - Fatura numarası: `REF-AC-XXXXXXXX`
+- `handleEnrollmentCancellation(int $enrollmentId, ?string $reason): array{refunded, refund}`
+  - Aktif fatura (`invoice_type=invoice, status ∈ [pending, paid, overdue]`) bulunur
+  - Ödenmişse → `createRefund()` çağrılır
+  - Ödenmemişse → `status = cancelled` yapılır
+
+### Kayıt İptalinde Otomatik İade
+Hem `TenantActivityClassController::enrollmentDestroy()` hem `ParentActivityClassController::unenroll()`:
+1. `ActivityClassInvoiceService->handleEnrollmentCancellation($enrollment->id)` çağrılır
+2. Ödenmişse: iade faturası otomatik oluşturulur + response'da `refunded: true` döner
+3. Ödenmemişse: fatura sadece iptal edilir, `refunded: false` döner
+
+### Manuel İade Endpoint
+`POST /api/schools/{id}/activity-classes/{aid}/invoices/{inv}/refund`
+- Body: `{ refund_reason?: string }`
+- Sadece `status=paid` ve `invoice_type=invoice` faturalara uygulanabilir
+- Zaten iade faturası varsa 422 döner
+- Controller: `ActivityClassInvoiceController::refund()`
+
+### Frontend (activity-classes/[id]/page.tsx — Faturalar tab)
+- İade faturası satırları kırmızı arka plan ile ayrışır
+- Tür kolonu: `Fatura` / `İade` badge
+- Ödenmiş + iade edilmemiş faturalarda `İade` butonu görünür → `handleRefundInvoice()` → Swal nedenini sorar → `POST .../refund`
+
+---
+
+## 14. Yeni Modül Ekleme Checklist
 
 1. Migration (+ opsiyonel `{table}_histories` geriye dönük uyumluluk için)
 2. Model → `BaseModel`'den türet → activity log otomatik

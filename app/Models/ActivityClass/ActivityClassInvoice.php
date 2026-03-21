@@ -20,6 +20,9 @@ class ActivityClassInvoice extends Model
         'child_id',
         'family_profile_id',
         'invoice_number',
+        'invoice_type',
+        'original_invoice_id',
+        'refund_reason',
         'amount',
         'currency',
         'status',
@@ -70,5 +73,25 @@ class ActivityClassInvoice extends Model
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by')->withDefault();
+    }
+
+    public function originalInvoice()
+    {
+        return $this->belongsTo(self::class, 'original_invoice_id')->withDefault();
+    }
+
+    public function refundInvoice()
+    {
+        return $this->hasOne(self::class, 'original_invoice_id');
+    }
+
+    public function isRefunded(): bool
+    {
+        return $this->status === 'refunded';
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->status === 'paid';
     }
 }

@@ -489,14 +489,19 @@ export type ActivityClassEnrollment = {
 export type ActivityClassInvoice = {
     id: number
     invoice_number: string
+    invoice_type: 'invoice' | 'refund'
+    original_invoice_id?: number | null
+    refund_reason?: string | null
     amount: string
     currency: string
-    status: 'pending' | 'paid' | 'overdue' | 'cancelled'
+    status: 'pending' | 'paid' | 'overdue' | 'cancelled' | 'refunded'
     payment_required: boolean
     due_date?: string | null
     paid_at?: string | null
     payment_method?: string | null
     notes?: string | null
+    child?: { id: number; full_name: string } | null
+    refund_invoice?: { id: number; invoice_number: string; status: string } | null
 }
 
 export type ActivityClassGalleryItem = {

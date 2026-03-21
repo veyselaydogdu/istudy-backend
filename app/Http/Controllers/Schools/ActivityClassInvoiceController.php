@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Schools;
 
 use App\Models\ActivityClass\ActivityClass;
 use App\Models\ActivityClass\ActivityClassInvoice;
+use App\Services\ActivityClassInvoiceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class ActivityClassInvoiceController extends BaseSchoolController
             $activityClass = ActivityClass::where('school_id', $school_id)->findOrFail($activity_class_id);
 
             $invoices = ActivityClassInvoice::where('activity_class_id', $activityClass->id)
-                ->with(['child:id,first_name,last_name', 'familyProfile.owner:id,name,surname'])
+                ->with(['child:id,first_name,last_name', 'familyProfile.owner:id,name,surname', 'refundInvoice:id,invoice_number,status'])
                 ->latest()
                 ->paginate(request('per_page', 20));
 
@@ -68,6 +69,43 @@ class ActivityClassInvoiceController extends BaseSchoolController
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ActivityClassInvoiceController::cancel', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    public function refund(Request $request, int $school_id, int $activity_class_id, ActivityClassInvoice $invoice): JsonResponse
+    {
+        $request->validate([
+            'refund_reason' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            if (! $invoice->isPaid()) {
+                return $this->errorResponse('Sadece ödenmiş faturalar iade edilebilir.', 422);
+            }
+
+            if ($invoice->invoice_type === 'refund') {
+                return $this->errorResponse('İade faturaları tekrar iade edilemez.', 422);
+            }
+
+            if ($invoice->refundInvoice()->exists()) {
+                return $this->errorResponse('Bu fatura için zaten bir iade faturası mevcut.', 422);
+            }
+
+            DB::beginTransaction();
+            $refund = (new ActivityClassInvoiceService)->createRefund($invoice, $request->input('refund_reason'));
+            $refund->load(['child:id,first_name,last_name', 'familyProfile.owner:id,name,surname']);
+            DB::commit();
+
+            return $this->successResponse(
+                \App\Http\Resources\ActivityClass\ActivityClassInvoiceResource::make($refund),
+                'İade faturası oluşturuldu.',
+                201
+            );
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ActivityClassInvoiceController::refund', ['message' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), $e->getCode() ?: 400);
         }

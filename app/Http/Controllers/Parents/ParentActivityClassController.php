@@ -7,6 +7,7 @@ use App\Models\ActivityClass\ActivityClassEnrollment;
 use App\Models\ActivityClass\ActivityClassInvoice;
 use App\Models\Child\Child;
 use App\Models\School\School;
+use App\Services\ActivityClassInvoiceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -153,6 +154,13 @@ class ParentActivityClassController extends BaseParentController
                 return $this->errorResponse("{$child->full_name} zaten bu etkinlik sınıfına kayıtlı.", 422);
             }
 
+            // Daha önce iptal edilmiş (soft-deleted) kayıt varsa unique constraint çakışmasını önlemek için sil
+            ActivityClassEnrollment::withTrashed()
+                ->where('activity_class_id', $activityClass->id)
+                ->where('child_id', $child->id)
+                ->whereNotNull('deleted_at')
+                ->forceDelete();
+
             // Age check
             if ($activityClass->age_min !== null || $activityClass->age_max !== null) {
                 $age = Carbon::parse($child->birth_date)->age;
@@ -214,7 +222,7 @@ class ParentActivityClassController extends BaseParentController
         }
     }
 
-    public function unenroll(int $activity_class_id, int $child_id): JsonResponse
+    public function unenroll(Request $request, int $activity_class_id, int $child_id): JsonResponse
     {
         try {
             DB::beginTransaction();
@@ -232,12 +240,20 @@ class ParentActivityClassController extends BaseParentController
                 ->where('child_id', $child->id)
                 ->firstOrFail();
 
+            $billingResult = (new ActivityClassInvoiceService)->handleEnrollmentCancellation(
+                $enrollment->id,
+                $request->input('refund_reason')
+            );
+
             $enrollment->update(['status' => 'cancelled', 'cancelled_at' => now()]);
             $enrollment->delete();
 
             DB::commit();
 
-            return $this->successResponse(null, 'Kayıt iptal edildi.');
+            return $this->successResponse(
+                ['refunded' => $billingResult['refunded']],
+                $billingResult['refunded'] ? 'Kayıt iptal edildi ve iade faturası oluşturuldu.' : 'Kayıt iptal edildi.'
+            );
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ParentActivityClassController::unenroll', ['message' => $e->getMessage()]);

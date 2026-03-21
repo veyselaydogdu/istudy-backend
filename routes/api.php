@@ -498,6 +498,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::get('/{activity_class_id}/invoices', [\App\Http\Controllers\Schools\ActivityClassInvoiceController::class, 'index']);
                 Route::patch('/{activity_class_id}/invoices/{invoice}/mark-paid', [\App\Http\Controllers\Schools\ActivityClassInvoiceController::class, 'markPaid']);
                 Route::patch('/{activity_class_id}/invoices/{invoice}/cancel', [\App\Http\Controllers\Schools\ActivityClassInvoiceController::class, 'cancel']);
+                Route::post('/{activity_class_id}/invoices/{invoice}/refund', [\App\Http\Controllers\Schools\ActivityClassInvoiceController::class, 'refund']);
             });
 
             // ───────────────────────────────────────────────────
