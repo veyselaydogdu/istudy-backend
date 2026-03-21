@@ -2,10 +2,12 @@
 
 namespace App\Models\ActivityClass;
 
+use App\Models\Billing\Invoice;
 use App\Models\Child\Child;
 use App\Models\Child\FamilyProfile;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ActivityClassInvoice extends Model
@@ -15,6 +17,7 @@ class ActivityClassInvoice extends Model
     protected $table = 'activity_class_invoices';
 
     protected $fillable = [
+        'main_invoice_id',
         'activity_class_enrollment_id',
         'activity_class_id',
         'child_id',
@@ -49,6 +52,11 @@ class ActivityClassInvoice extends Model
     | Relations
     |--------------------------------------------------------------------------
     */
+
+    public function mainInvoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class, 'main_invoice_id')->withDefault();
+    }
 
     public function enrollment()
     {

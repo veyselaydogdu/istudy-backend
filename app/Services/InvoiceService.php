@@ -53,18 +53,48 @@ class InvoiceService extends BaseService
     }
 
     /**
-     * Tenant'ın faturalarını listele (B2B)
+     * Tenant'ın faturalarını listele — tüm modüller dahil (B2B + etkinlik sınıfı vb.)
      */
     public function listForTenant(int $tenantId, array $filters = []): LengthAwarePaginator
     {
-        $query = Invoice::forTenant($tenantId)
-            ->with(['items', 'transactions']);
+        $query = Invoice::withoutGlobalScope('tenant')
+            ->forTenant($tenantId)
+            ->with(['items', 'transactions', 'school:id,name', 'user:id,name,surname,email', 'activityClassInvoice.child:id,first_name,last_name']);
 
         if (! empty($filters['status'])) {
             $query->byStatus($filters['status']);
         }
 
-        $perPage = $filters['per_page'] ?? 15;
+        if (! empty($filters['module'])) {
+            $query->where('module', $filters['module']);
+        }
+
+        if (! empty($filters['school_id'])) {
+            $query->forSchool((int) $filters['school_id']);
+        }
+
+        if (! empty($filters['invoice_type'])) {
+            $query->where('invoice_type', $filters['invoice_type']);
+        }
+
+        if (! empty($filters['date_from'])) {
+            $query->whereDate('issue_date', '>=', $filters['date_from']);
+        }
+
+        if (! empty($filters['date_to'])) {
+            $query->whereDate('issue_date', '<=', $filters['date_to']);
+        }
+
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_no', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
+                    ->orWhereHas('activityClassInvoice.child', fn ($cq) => $cq->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"));
+            });
+        }
+
+        $perPage = min((int) ($filters['per_page'] ?? 20), 100);
 
         return $query->latest()->paginate($perPage);
     }
@@ -101,7 +131,7 @@ class InvoiceService extends BaseService
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('invoice_no', 'like', "%{$search}%")
-                  ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
             });
         }
 
@@ -119,8 +149,8 @@ class InvoiceService extends BaseService
     /**
      * Yeni fatura oluştur + kalemlerini ekle
      *
-     * @param array $data    Fatura verileri
-     * @param array $items   Fatura kalemleri [['description'=>'...', 'quantity'=>1, 'unit_price'=>100, ...], ...]
+     * @param  array  $data  Fatura verileri
+     * @param  array  $items  Fatura kalemleri [['description'=>'...', 'quantity'=>1, 'unit_price'=>100, ...], ...]
      */
     public function createInvoice(array $data, array $items = []): Invoice
     {
@@ -128,8 +158,8 @@ class InvoiceService extends BaseService
             // Fatura numarası üret
             $data['invoice_no'] = Invoice::generateInvoiceNo();
             $data['issue_date'] = $data['issue_date'] ?? now()->toDateString();
-            $data['due_date']   = $data['due_date'] ?? now()->addDays(7)->toDateString();
-            $data['status']     = $data['status'] ?? 'pending';
+            $data['due_date'] = $data['due_date'] ?? now()->addDays(7)->toDateString();
+            $data['status'] = $data['status'] ?? 'pending';
             $data['created_by'] = $data['created_by'] ?? auth()->id();
 
             $invoice = Invoice::create($data);
@@ -197,20 +227,20 @@ class InvoiceService extends BaseService
 
         // Transaction kaydı oluştur — status: 0 (Bekliyor)
         $transaction = Transaction::create([
-            'order_id'        => $orderId,
-            'invoice_id'      => $invoice->id,
-            'user_id'         => $invoice->user_id,
-            'tenant_id'       => $invoice->tenant_id,
-            'school_id'       => $invoice->school_id,
-            'amount'          => $invoice->total_amount,
-            'currency'        => $invoice->currency,
-            'status'          => Transaction::STATUS_PENDING,
+            'order_id' => $orderId,
+            'invoice_id' => $invoice->id,
+            'user_id' => $invoice->user_id,
+            'tenant_id' => $invoice->tenant_id,
+            'school_id' => $invoice->school_id,
+            'amount' => $invoice->total_amount,
+            'currency' => $invoice->currency,
+            'status' => Transaction::STATUS_PENDING,
             'payment_gateway' => $paymentData['payment_gateway'] ?? config('services.virtual_pos.default_gateway', 'paytr'),
-            'hash'            => $hash,
-            'installment'     => $paymentData['installment'] ?? 1,
-            'ip_address'      => request()->ip(),
-            'user_agent'      => request()->userAgent(),
-            'created_by'      => auth()->id(),
+            'hash' => $hash,
+            'installment' => $paymentData['installment'] ?? 1,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'created_by' => auth()->id(),
         ]);
 
         // Sanal POS'a gönderilecek form verisi
@@ -222,11 +252,11 @@ class InvoiceService extends BaseService
         ]);
 
         return [
-            'transaction'    => $transaction,
-            'order_id'       => $orderId,
-            'hash'           => $hash,
-            'form_data'      => $formData,
-            'payment_url'    => config('services.virtual_pos.payment_url', ''),
+            'transaction' => $transaction,
+            'order_id' => $orderId,
+            'hash' => $hash,
+            'form_data' => $formData,
+            'payment_url' => config('services.virtual_pos.payment_url', ''),
             'payment_method' => 'POST',
         ];
     }
@@ -240,21 +270,21 @@ class InvoiceService extends BaseService
     private function buildPaymentForm(Transaction $transaction, Invoice $invoice, array $paymentData): array
     {
         return [
-            'merchant_id'     => config('services.virtual_pos.merchant_id', ''),
-            'merchant_key'    => config('services.virtual_pos.merchant_key', ''),
-            'order_id'        => $transaction->order_id,
-            'amount'          => (int) ($transaction->amount * 100), // Kuruş cinsinden
-            'currency'        => $transaction->currency,
-            'installment'     => $transaction->installment,
-            'user_name'       => $invoice->user->name ?? '',
-            'user_email'      => $invoice->user->email ?? '',
-            'user_phone'      => $invoice->user->phone ?? '',
-            'user_ip'         => $transaction->ip_address,
-            'hash'            => $transaction->hash,
-            'success_url'     => config('services.virtual_pos.success_url', ''),
-            'fail_url'        => config('services.virtual_pos.fail_url', ''),
-            'callback_url'    => config('services.virtual_pos.callback_url', ''),
-            'user_basket'     => $this->buildBasketItems($invoice),
+            'merchant_id' => config('services.virtual_pos.merchant_id', ''),
+            'merchant_key' => config('services.virtual_pos.merchant_key', ''),
+            'order_id' => $transaction->order_id,
+            'amount' => (int) ($transaction->amount * 100), // Kuruş cinsinden
+            'currency' => $transaction->currency,
+            'installment' => $transaction->installment,
+            'user_name' => $invoice->user->name ?? '',
+            'user_email' => $invoice->user->email ?? '',
+            'user_phone' => $invoice->user->phone ?? '',
+            'user_ip' => $transaction->ip_address,
+            'hash' => $transaction->hash,
+            'success_url' => config('services.virtual_pos.success_url', ''),
+            'fail_url' => config('services.virtual_pos.fail_url', ''),
+            'callback_url' => config('services.virtual_pos.callback_url', ''),
+            'user_basket' => $this->buildBasketItems($invoice),
         ];
     }
 
@@ -265,9 +295,9 @@ class InvoiceService extends BaseService
     {
         return $invoice->items->map(function (InvoiceItem $item) {
             return [
-                'name'  => $item->description,
+                'name' => $item->description,
                 'price' => (int) ($item->total_price * 100), // Kuruş
-                'qty'   => $item->quantity,
+                'qty' => $item->quantity,
             ];
         })->toArray();
     }
@@ -293,9 +323,9 @@ class InvoiceService extends BaseService
             $transaction->invoice->markAsPaid();
 
             Log::info('Ödeme başarılı', [
-                'order_id'   => $orderId,
+                'order_id' => $orderId,
                 'invoice_id' => $transaction->invoice_id,
-                'amount'     => $transaction->amount,
+                'amount' => $transaction->amount,
             ]);
 
             return $transaction->fresh(['invoice']);
@@ -315,10 +345,10 @@ class InvoiceService extends BaseService
         $transaction->markAsFailed($gatewayResponse, $errorMessage, $errorCode);
 
         Log::warning('Ödeme başarısız', [
-            'order_id'      => $orderId,
-            'invoice_id'    => $transaction->invoice_id,
+            'order_id' => $orderId,
+            'invoice_id' => $transaction->invoice_id,
             'error_message' => $errorMessage,
-            'error_code'    => $errorCode,
+            'error_code' => $errorCode,
         ]);
 
         return $transaction->fresh(['invoice']);
@@ -341,14 +371,25 @@ class InvoiceService extends BaseService
             $query->forTenant($tenantId);
         }
 
+        $thisMonth = (clone $query)->whereMonth('issue_date', now()->month)->whereYear('issue_date', now()->year);
+
         return [
-            'total_invoices'  => (clone $query)->count(),
-            'draft_count'     => (clone $query)->byStatus('draft')->count(),
-            'pending_count'   => (clone $query)->byStatus('pending')->count(),
-            'paid_count'      => (clone $query)->byStatus('paid')->count(),
+            'total_invoices' => (clone $query)->where('invoice_type', 'invoice')->count(),
+            'draft_count' => (clone $query)->byStatus('draft')->count(),
+            'pending_count' => (clone $query)->byStatus('pending')->count(),
+            'paid_count' => (clone $query)->byStatus('paid')->count(),
+            'overdue_count' => (clone $query)->byStatus('pending')->whereDate('due_date', '<', now())->count(),
             'cancelled_count' => (clone $query)->byStatus('cancelled')->count(),
-            'total_revenue'   => (clone $query)->byStatus('paid')->sum('total_amount'),
-            'pending_revenue' => (clone $query)->byStatus('pending')->sum('total_amount'),
+            'refunded_count' => (clone $query)->byStatus('refunded')->count(),
+            'total_revenue' => (clone $query)->byStatus('paid')->where('invoice_type', 'invoice')->sum('total_amount'),
+            'pending_revenue' => (clone $query)->byStatus('pending')->where('invoice_type', 'invoice')->sum('total_amount'),
+            'this_month_revenue' => (clone $thisMonth)->byStatus('paid')->where('invoice_type', 'invoice')->sum('total_amount'),
+            'this_month_invoices' => (clone $thisMonth)->where('invoice_type', 'invoice')->count(),
+            'by_module' => [
+                'subscription' => (clone $query)->where('module', 'subscription')->where('invoice_type', 'invoice')->count(),
+                'activity_class' => (clone $query)->where('module', 'activity_class')->where('invoice_type', 'invoice')->count(),
+                'manual' => (clone $query)->where('module', 'manual')->where('invoice_type', 'invoice')->count(),
+            ],
         ];
     }
 }

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Parents;
 
 use App\Models\ActivityClass\ActivityClass;
 use App\Models\ActivityClass\ActivityClassEnrollment;
-use App\Models\ActivityClass\ActivityClassInvoice;
 use App\Models\Child\Child;
 use App\Models\School\School;
 use App\Services\ActivityClassInvoiceService;
@@ -192,19 +191,13 @@ class ParentActivityClassController extends BaseParentController
 
             // Generate invoice if paid
             if ($activityClass->is_paid) {
-                $invoiceNumber = 'INV-AC-'.strtoupper(substr(uniqid(), -8));
-                ActivityClassInvoice::create([
-                    'activity_class_enrollment_id' => $enrollment->id,
-                    'activity_class_id' => $activityClass->id,
-                    'child_id' => $child->id,
-                    'family_profile_id' => $familyProfile->id,
-                    'invoice_number' => $invoiceNumber,
-                    'amount' => $activityClass->price,
-                    'currency' => $activityClass->currency,
-                    'status' => 'pending',
-                    'payment_required' => $activityClass->invoice_required,
-                    'created_by' => $this->user()->id,
-                ]);
+                (new ActivityClassInvoiceService)->createForEnrollment(
+                    $enrollment,
+                    $activityClass,
+                    $this->user()->id,
+                    null,
+                    $activityClass->invoice_required
+                );
             }
 
             DB::commit();

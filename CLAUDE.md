@@ -1291,7 +1291,7 @@ return Storage::disk('local')->response($child->profile_photo);
 
 ---
 
-## 13. Faturalandırma Modülü (ActivityClass)
+## 13. Birleşik Faturalandırma Modülü
 
 ### ActivityClassInvoice Mimarisi
 - **Tablo**: `activity_class_invoices` — her kayıt (enrollment) için 1 fatura
@@ -1329,6 +1329,32 @@ Hem `TenantActivityClassController::enrollmentDestroy()` hem `ParentActivityClas
 - İade faturası satırları kırmızı arka plan ile ayrışır
 - Tür kolonu: `Fatura` / `İade` badge
 - Ödenmiş + iade edilmemiş faturalarda `İade` butonu görünür → `handleRefundInvoice()` → Swal nedenini sorar → `POST .../refund`
+
+### Birleşik Fatura Sistemi (Ana `invoices` Tablosu)
+- **Tek kaynak**: `invoices` tablosu TÜM ödemelerin kaydını tutar (abonelik + etkinlik sınıfı + manuel)
+- **module** alanı: `subscription | activity_class | manual | event | activity` — hangi sistemden geldiğini gösterir
+- **invoice_type**: `invoice | refund` — iade faturası desteği
+- **original_invoice_id**: self FK — iade faturasının orijinal faturaya bağlantısı
+- **ActivityClassInvoice.main_invoice_id**: `activity_class_invoices` → `invoices` FK bağlantısı
+- `ActivityClassInvoiceService::createForEnrollment()` her enrollment'ta HEM ActivityClassInvoice HEM Invoice oluşturur
+- `ActivityClassInvoiceService::createRefund()` refund'ta her iki tabloda da kayıt oluşturur/günceller
+
+### API Endpointleri
+```
+GET  /api/invoices/tenant      — tüm modüller, gelişmiş filtreler (module, status, school_id, date_from, date_to, search)
+GET  /api/invoices/stats       — dashboard stats (total_revenue, pending, overdue, this_month, by_module)
+GET  /api/invoices/{id}        — detay (items, transactions, school, user, activityClassInvoice.child)
+GET  /api/invoices/{id}/transactions — ödeme geçmişi
+```
+
+### Frontend Fatura Sayfaları
+- **`/invoices/page.tsx`**: Stats kartları + modül tabları + gelişmiş filtreler (status/tarih/arama) + gelişmiş tablo + pagination
+- **`/invoices/[id]/page.tsx`**: Header (no/status/modül/iade badge) + fatura kalemleri + totals + transaction geçmişi + müşteri/okul sidebar + iade nedeni + etkinlik detayı
+
+### TypeScript Tipleri (types/index.ts)
+- `Invoice` — tam güncellendi: `invoice_no, module, invoice_type, original_invoice_id, refund_reason, is_overdue, user, school, activity_class_invoice`
+- `Transaction` — yeni tip: order_id, status(0|1|2), payment_gateway, bank_name, card_last_four, error_message
+- `InvoiceStats` — yeni tip: tüm stats alanları
 
 ---
 

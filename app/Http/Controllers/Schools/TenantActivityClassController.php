@@ -272,19 +272,13 @@ class TenantActivityClassController extends BaseController
             ]);
 
             if ($activityClass->is_paid && $request->boolean('generate_invoice', true)) {
-                ActivityClassInvoice::create([
-                    'activity_class_enrollment_id' => $enrollment->id,
-                    'activity_class_id' => $activityClass->id,
-                    'child_id' => $child->id,
-                    'family_profile_id' => $child->family_profile_id,
-                    'invoice_number' => 'INV-AC-'.strtoupper(substr(uniqid(), -8)),
-                    'amount' => $activityClass->price,
-                    'currency' => $activityClass->currency,
-                    'status' => 'pending',
-                    'payment_required' => $request->boolean('invoice_required', $activityClass->invoice_required),
-                    'due_date' => $request->due_date,
-                    'created_by' => $this->user()->id,
-                ]);
+                (new ActivityClassInvoiceService)->createForEnrollment(
+                    $enrollment,
+                    $activityClass,
+                    $this->user()->id,
+                    $request->due_date,
+                    $request->boolean('invoice_required', $activityClass->invoice_required)
+                );
             }
 
             $enrollment->load(['child', 'invoice']);

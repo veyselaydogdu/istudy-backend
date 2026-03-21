@@ -47,7 +47,7 @@ class InvoiceController extends BaseController
     }
 
     /**
-     * Tenant faturalarını listele (B2B)
+     * Tenant faturalarını listele — tüm modüller dahil, gelişmiş filtreler ile
      */
     public function tenantInvoices(Request $request): JsonResponse
     {
@@ -58,7 +58,10 @@ class InvoiceController extends BaseController
                 return $this->errorResponse('Bir kuruma bağlı değilsiniz.', 403);
             }
 
-            $filters = $request->only(['status', 'per_page']);
+            $filters = $request->only([
+                'status', 'module', 'invoice_type', 'school_id',
+                'date_from', 'date_to', 'search', 'per_page',
+            ]);
             $invoices = $this->invoiceService->listForTenant($tenantId, $filters);
 
             return $this->paginatedResponse(
@@ -68,6 +71,28 @@ class InvoiceController extends BaseController
             Log::error('InvoiceController::tenantInvoices Error', [
                 'message' => $e->getMessage(),
             ]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Fatura istatistikleri — tenant dashboard için
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        try {
+            $tenantId = $this->user()->tenant_id;
+
+            if (! $tenantId) {
+                return $this->errorResponse('Bir kuruma bağlı değilsiniz.', 403);
+            }
+
+            $stats = $this->invoiceService->getStats($tenantId);
+
+            return $this->successResponse($stats);
+        } catch (\Throwable $e) {
+            Log::error('InvoiceController::stats Error', ['message' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 500);
         }
@@ -92,7 +117,7 @@ class InvoiceController extends BaseController
             );
         } catch (\Throwable $e) {
             Log::error('InvoiceController::show Error', [
-                'message'    => $e->getMessage(),
+                'message' => $e->getMessage(),
                 'invoice_id' => $invoice->id ?? null,
             ]);
 
@@ -106,33 +131,33 @@ class InvoiceController extends BaseController
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'type'             => 'required|in:subscription,enrollment,manual,other',
-            'school_id'        => 'nullable|exists:schools,id',
-            'tax_rate'         => 'nullable|numeric|min:0|max:100',
-            'discount_amount'  => 'nullable|numeric|min:0',
-            'notes'            => 'nullable|string|max:1000',
-            'due_date'         => 'nullable|date|after_or_equal:today',
-            'items'            => 'required|array|min:1',
+            'type' => 'required|in:subscription,enrollment,manual,other',
+            'school_id' => 'nullable|exists:schools,id',
+            'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'discount_amount' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+            'due_date' => 'nullable|date|after_or_equal:today',
+            'items' => 'required|array|min:1',
             'items.*.description' => 'required|string|max:255',
-            'items.*.quantity'    => 'required|integer|min:1',
-            'items.*.unit_price'  => 'required|numeric|min:0',
-            'items.*.discount'    => 'nullable|numeric|min:0',
-            'items.*.item_type'   => 'nullable|string|max:50',
-            'items.*.item_id'     => 'nullable|integer',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.item_type' => 'nullable|string|max:50',
+            'items.*.item_id' => 'nullable|integer',
         ]);
 
         try {
             DB::beginTransaction();
 
             $data = [
-                'user_id'         => $this->user()->id,
-                'tenant_id'       => $this->user()->tenant_id,
-                'school_id'       => $request->school_id,
-                'type'            => $request->type,
-                'tax_rate'        => $request->tax_rate ?? 0,
+                'user_id' => $this->user()->id,
+                'tenant_id' => $this->user()->tenant_id,
+                'school_id' => $request->school_id,
+                'type' => $request->type,
+                'tax_rate' => $request->tax_rate ?? 0,
                 'discount_amount' => $request->discount_amount ?? 0,
-                'notes'           => $request->notes,
-                'due_date'        => $request->due_date,
+                'notes' => $request->notes,
+                'due_date' => $request->due_date,
             ];
 
             $invoice = $this->invoiceService->createInvoice($data, $request->items);
@@ -148,7 +173,7 @@ class InvoiceController extends BaseController
             DB::rollBack();
             Log::error('InvoiceController::store Error', [
                 'message' => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return $this->errorResponse($e->getMessage(), 500);
@@ -165,7 +190,7 @@ class InvoiceController extends BaseController
     {
         $request->validate([
             'payment_gateway' => 'nullable|string|in:paytr,iyzico,param,stripe',
-            'installment'     => 'nullable|integer|min:1|max:12',
+            'installment' => 'nullable|integer|min:1|max:12',
         ]);
 
         try {
@@ -180,15 +205,15 @@ class InvoiceController extends BaseController
 
             return $this->successResponse([
                 'transaction' => TransactionResource::make($result['transaction']),
-                'order_id'    => $result['order_id'],
-                'hash'        => $result['hash'],
-                'form_data'   => $result['form_data'],
+                'order_id' => $result['order_id'],
+                'hash' => $result['hash'],
+                'form_data' => $result['form_data'],
                 'payment_url' => $result['payment_url'],
-                'method'      => $result['payment_method'],
+                'method' => $result['payment_method'],
             ], 'Ödeme işlemi başlatıldı. Form verilerini sanal POS URL\'sine POST edin.');
         } catch (\Throwable $e) {
             Log::error('InvoiceController::initiatePayment Error', [
-                'message'    => $e->getMessage(),
+                'message' => $e->getMessage(),
                 'invoice_id' => $invoice->id,
             ]);
 
@@ -227,8 +252,8 @@ class InvoiceController extends BaseController
             );
         } catch (\Throwable $e) {
             Log::error('InvoiceController::paymentSuccess Error', [
-                'message'   => $e->getMessage(),
-                'order_id'  => $request->input('order_id'),
+                'message' => $e->getMessage(),
+                'order_id' => $request->input('order_id'),
                 'full_data' => $request->all(),
             ]);
 
@@ -262,8 +287,8 @@ class InvoiceController extends BaseController
             );
         } catch (\Throwable $e) {
             Log::error('InvoiceController::paymentFail Error', [
-                'message'   => $e->getMessage(),
-                'order_id'  => $request->input('order_id'),
+                'message' => $e->getMessage(),
+                'order_id' => $request->input('order_id'),
                 'full_data' => $request->all(),
             ]);
 
@@ -281,7 +306,7 @@ class InvoiceController extends BaseController
     {
         try {
             $orderId = $request->input('order_id') ?? $request->input('merchant_oid');
-            $status  = $request->input('status') ?? $request->input('payment_status');
+            $status = $request->input('status') ?? $request->input('payment_status');
 
             if (! $orderId) {
                 return $this->errorResponse('order_id bulunamadı.', 400);
@@ -299,7 +324,7 @@ class InvoiceController extends BaseController
             );
         } catch (\Throwable $e) {
             Log::error('InvoiceController::paymentCallback Error', [
-                'message'   => $e->getMessage(),
+                'message' => $e->getMessage(),
                 'full_data' => $request->all(),
             ]);
 

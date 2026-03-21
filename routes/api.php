@@ -278,6 +278,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [\App\Http\Controllers\Billing\InvoiceController::class, 'index']);
         Route::post('/', [\App\Http\Controllers\Billing\InvoiceController::class, 'store']);
         Route::get('/tenant', [\App\Http\Controllers\Billing\InvoiceController::class, 'tenantInvoices']);
+        Route::get('/stats', [\App\Http\Controllers\Billing\InvoiceController::class, 'stats']);
         Route::get('/{invoice}', [\App\Http\Controllers\Billing\InvoiceController::class, 'show']);
         Route::get('/{invoice}/transactions', [\App\Http\Controllers\Billing\InvoiceController::class, 'transactions']);
         Route::post('/{invoice}/pay', [\App\Http\Controllers\Billing\InvoiceController::class, 'initiatePayment']);

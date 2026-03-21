@@ -2,12 +2,14 @@
 
 namespace App\Models\Billing;
 
+use App\Models\ActivityClass\ActivityClassInvoice;
 use App\Models\Base\BaseModel;
 use App\Models\School\School;
 use App\Models\Tenant\Tenant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
@@ -26,6 +28,10 @@ class Invoice extends BaseModel
         'user_id',
         'school_id',
         'type',
+        'module',
+        'invoice_type',
+        'original_invoice_id',
+        'refund_reason',
         'status',
         'subtotal',
         'tax_rate',
@@ -44,14 +50,14 @@ class Invoice extends BaseModel
     ];
 
     protected $casts = [
-        'subtotal'        => 'decimal:2',
-        'tax_rate'        => 'decimal:2',
-        'tax_amount'      => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
-        'total_amount'    => 'decimal:2',
-        'issue_date'      => 'date',
-        'due_date'        => 'date',
-        'paid_at'         => 'datetime',
+        'total_amount' => 'decimal:2',
+        'issue_date' => 'date',
+        'due_date' => 'date',
+        'paid_at' => 'datetime',
     ];
 
     /*
@@ -91,6 +97,21 @@ class Invoice extends BaseModel
     public function payable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function originalInvoice(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'original_invoice_id')->withDefault();
+    }
+
+    public function refundInvoice(): HasOne
+    {
+        return $this->hasOne(self::class, 'original_invoice_id');
+    }
+
+    public function activityClassInvoice(): HasOne
+    {
+        return $this->hasOne(ActivityClassInvoice::class, 'main_invoice_id');
     }
 
     /*
@@ -144,7 +165,7 @@ class Invoice extends BaseModel
         $prefix = "INV-{$year}-";
 
         $lastInvoice = static::withTrashed()
-            ->where('invoice_no', 'like', $prefix . '%')
+            ->where('invoice_no', 'like', $prefix.'%')
             ->orderByDesc('invoice_no')
             ->first();
 
@@ -155,7 +176,7 @@ class Invoice extends BaseModel
             $newNumber = 1;
         }
 
-        return $prefix . str_pad($newNumber, 6, '0', STR_PAD_LEFT);
+        return $prefix.str_pad($newNumber, 6, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -178,7 +199,7 @@ class Invoice extends BaseModel
     public function markAsPaid(): self
     {
         $this->update([
-            'status'  => 'paid',
+            'status' => 'paid',
             'paid_at' => now(),
         ]);
 

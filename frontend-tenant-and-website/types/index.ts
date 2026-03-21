@@ -306,19 +306,38 @@ export type Child = {
 
 export type Invoice = {
     id: number
-    invoice_number?: string
-    user_id?: number
-    tenant_id?: number
-    type: 'b2b' | 'b2c'
-    status: 'draft' | 'pending' | 'paid' | 'cancelled' | 'overdue'
+    invoice_no?: string
+    invoice_number?: string  // legacy compat
+    type: string
+    module: 'subscription' | 'activity_class' | 'manual' | 'event' | 'activity'
+    invoice_type: 'invoice' | 'refund'
+    original_invoice_id?: number | null
+    refund_reason?: string | null
+    status: 'draft' | 'pending' | 'paid' | 'cancelled' | 'overdue' | 'refunded'
     subtotal: number
+    tax_rate: number
     tax_amount: number
+    discount_amount: number
     total_amount: number
     currency: string
-    due_date?: string
-    paid_at?: string
+    notes?: string | null
+    issue_date?: string | null
+    due_date?: string | null
+    paid_at?: string | null
+    is_overdue?: boolean
     created_at: string
+    updated_at?: string
+    user?: { id: number; name: string; email: string } | null
+    school?: { id: number; name: string } | null
+    tenant?: { id: number; name: string } | null
+    activity_class_invoice?: {
+        id: number
+        invoice_number: string
+        child?: { id: number; full_name: string } | null
+    } | null
     items?: InvoiceItem[]
+    transactions?: Transaction[]
+    transactions_count?: number
 }
 
 export type InvoiceItem = {
@@ -328,6 +347,43 @@ export type InvoiceItem = {
     quantity: number
     unit_price: number
     total_price: number
+    item_type?: string | null
+}
+
+export type Transaction = {
+    id: number
+    order_id: string
+    invoice_id: number
+    amount: number
+    currency: string
+    status: 0 | 1 | 2  // 0=Bekliyor, 1=Başarılı, 2=Başarısız
+    payment_gateway?: string
+    bank_name?: string | null
+    card_last_four?: string | null
+    card_type?: string | null
+    installment?: number
+    error_message?: string | null
+    completed_at?: string | null
+    created_at: string
+}
+
+export type InvoiceStats = {
+    total_invoices: number
+    draft_count: number
+    pending_count: number
+    paid_count: number
+    overdue_count: number
+    cancelled_count: number
+    refunded_count: number
+    total_revenue: number
+    pending_revenue: number
+    this_month_revenue: number
+    this_month_invoices: number
+    by_module: {
+        subscription: number
+        activity_class: number
+        manual: number
+    }
 }
 
 // ─── Teacher Role Type ────────────────────────────────────────────────────────
