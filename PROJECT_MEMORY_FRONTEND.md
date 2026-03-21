@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Tenant & Website — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-03-17 (Okul Detayı tab count fix: teachers+parents loadData'ya eklendi; Öğrenci listesi: Sınıf kolonu + göz ikonu; Sınıf listesi: Öğrenci Ata butonu; Child detail modal: Sınıf Atamaları bölümü; Öğretmen formu: phone_country_code/whatsapp/uyruk/kimlik genişletme)
+> **Son Güncelleme:** 2026-04-02 (Etkinlik Sınıfları modülü: liste + detay sayfası; okul seçimi opsiyonel; filterSchoolId/formSchoolId ayrımı; tenant-level endpoint geçişi)
 > **Amaç:** Bu dosya, `frontend-tenant-and-website` projesinin mimarisini, kararlarını ve kodlama standartlarını tüm AI ajanlarının doğru davranış üretebilmesi için belgeler.
 
 ---
@@ -943,6 +943,68 @@ nationality_country_id?: number | null
 nationality?: { id: number; name: string; iso2: string; flag_emoji: string | null } | null
 identity_number?: string | null
 passport_number?: string | null
+```
+
+---
+
+## 📌 21. Etkinlik Sınıfları Modülü (2026-04-02)
+
+### Sayfalar
+| Sayfa | Dosya | Açıklama |
+|-------|-------|----------|
+| Liste | `app/(tenant)/activity-classes/page.tsx` | Tablo + filtre + oluştur/düzenle modal |
+| Detay | `app/(tenant)/activity-classes/[id]/page.tsx` | 6 tab: Genel Bilgi, Kayıtlar, Öğretmenler, Materyaller, Galeri, Faturalar |
+
+### Kritik Mimari Kararlar
+
+**Tenant-level endpoint** — Okul opsiyonel:
+```typescript
+// Liste: GET /activity-classes?school_id=X (opsiyonel)
+// Kaydet: POST /activity-classes (body'de school_id: number|null)
+// Güncelle: PUT /activity-classes/{id}
+// Sil: DELETE /activity-classes/{id}
+// Alt kaynaklar: /activity-classes/{id}/enrollments|teachers|materials|gallery|invoices
+```
+
+**Çift state — filtre vs form:**
+```typescript
+const [filterSchoolId, setFilterSchoolId] = useState('');  // Liste filtresi
+const [formSchoolId, setFormSchoolId] = useState('');      // Modal form okul seçimi
+const [formSchoolClasses, setFormSchoolClasses] = useState<SchoolClass[]>([]);
+```
+- `filterSchoolId = ''` → "Tüm Okullar" görünür
+- `formSchoolId = ''` → okul seçilmedi → sınıf seçimi GÖSTERİLMEZ, `school_id: null` gönderilir
+- Sınıf seçimi yalnızca `formSchoolId` dolu iken aktif
+
+**`openEdit()` pattern:**
+```typescript
+const schoolId = ac.school_id ? String(ac.school_id) : '';
+setFormSchoolId(schoolId);
+if (schoolId) fetchFormSchoolClasses(schoolId); else setFormSchoolClasses([]);
+```
+
+**`ActivityClass` tipinde `school_id: number | null`** — nullable çünkü tenant-wide olabilir.
+
+### Detay Sayfası ([id]/page.tsx)
+- `bootstrap()` artık school iterasyonu yapmıyor — doğrudan `GET /activity-classes/{id}` çağırır
+- `ac.school_id` set ise o okulun children + teachers'ı yüklenir; null ise tüm tenant okullarından dedup yapılır
+- Gallery: signed URL'ler (2 saatlik) — `<img src={item.url}>` ile direkt gösterilir
+
+### Types (`types/index.ts`)
+```typescript
+export type ActivityClass = {
+    id: number
+    school_id: number | null  // null = tenant-wide
+    name: string
+    // ... diğer alanlar
+    school_classes?: Array<{ id: number; name: string }>
+    teachers?: Array<{ id: number; name: string; role?: string | null }>
+    materials?: ActivityClassMaterial[]
+}
+export type ActivityClassMaterial = { ... }
+export type ActivityClassEnrollment = { ... }
+export type ActivityClassInvoice = { ... }
+export type ActivityClassGalleryItem = { ... }
 ```
 
 ---

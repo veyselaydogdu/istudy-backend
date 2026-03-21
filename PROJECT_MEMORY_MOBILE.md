@@ -1,6 +1,6 @@
 # 📱 iStudy — Veli Mobil Uygulaması (PROJECT_MEMORY_MOBILE)
 
-> **Son Güncelleme:** 2026-03-16
+> **Son Güncelleme:** 2026-04-02
 > **Uygulama:** React Native (Expo ~55) — `istudy-backend/parent-mobile-app/`
 
 ---
@@ -68,10 +68,15 @@ parent-mobile-app/
 │   │       │       ├── edit.tsx     ← Çocuk düzenle
 │   │       │       └── health.tsx   ← Sağlık bilgileri (alerjen/hastalık/ilaç)
 │   │       ├── schools/
+│   │       │   ├── _layout.tsx      ← Stack navigator (index + [id] ayrı tab olmasın diye)
 │   │       │   ├── index.tsx        ← Okullarım listesi
 │   │       │   ├── join.tsx         ← Okula katıl (davet kodu)
 │   │       │   └── [id]/
-│   │       │       └── index.tsx    ← Okul detay + sosyal feed
+│   │       │       └── index.tsx    ← Okul detay + sosyal feed + "Etkinlik Sınıfları" quick link
+│   │       ├── activity-classes/
+│   │       │   ├── _layout.tsx      ← Stack navigator (index + [id] ayrı tab olmasın diye) — KRİTİK
+│   │       │   ├── index.tsx        ← Etkinlik listesi (FlatList, pagination, enrolled badge)
+│   │       │   └── [id].tsx         ← Etkinlik detay (kayıt/çıkış, öğretmenler, materyaller, galeri modal)
 │   │       ├── family/
 │   │       │   ├── index.tsx        ← Aile üyeleri + ortak erişim yönetimi
 │   │       │   └── emergency.tsx    ← Acil durum kişileri CRUD
@@ -156,6 +161,16 @@ GET  /api/parent/schools/{id}
 POST /api/parent/schools/join                 ← {registration_code? | invite_token?}
 GET  /api/parent/schools/{id}/feed            ← Okul sosyal feed (paginated)
 GET  /api/parent/feed/global                  ← Global feed (paginated)
+```
+
+### Etkinlik Sınıfları
+```
+GET  /api/parent/activity-classes                             ← Liste (paginated, enrolled_child_ids dahil)
+GET  /api/parent/activity-classes/{id}                        ← Detay (teachers, materials dahil)
+GET  /api/parent/activity-classes/my-enrollments              ← Tüm kayıtlar (invoice dahil)
+POST /api/parent/activity-classes/{id}/enroll                 ← Kayıt {child_id}
+DELETE /api/parent/activity-classes/{id}/children/{child_id}/unenroll ← Kayıt iptal
+GET  /api/parent/activity-classes/{id}/gallery                ← Galeri (signed URL'ler)
 ```
 
 ### Referans Verileri
@@ -245,7 +260,32 @@ success: '#10B981'
 - Eski fotoğraf: yeni yüklemede `Storage::disk('local')->delete(oldPath)` ile silinir
 - **DİKKAT:** `Storage::disk('private')` hata verir — Laravel 12 bu adda disk tanımlamaz; `local` kullan
 
-### Tab Navigasyonu (2026-03-16)
+### Tab Navigasyonu (2026-04-02 güncelleme)
+- **6 tab**: Anasayfa, Çocuklar, Okullarım, **Etkinlik Sınıfları**, İstatistikler, Profil
+- **Etkinlik Sınıfları** sekmesi: Okullarım sekmesinin hemen sağında
+- Tab label stillemesi: `fontSize: 8, fontWeight: '600', flexWrap: 'wrap', textAlign: 'center'` — uzun label alt satıra geçmesi için
+- Tab bar height: Android 72, iOS 96 (uzun label için artırıldı)
+- **Aile** sekmesi kaldırıldı — Profil ekranına "Aile Yönetimi" butonu eklendi → `/(app)/family`
+- `(app)/_layout.tsx`: `family`, `activity-classes/[id]` için `href: null` (gizli stack screen'ler)
+
+### Expo Router — Stack Layout Zorunluluğu (KRİTİK)
+Bir klasördeki her `.tsx` dosyası Expo Router'da ayrı tab olarak görünür. Alt ekranların (detail page gibi) ayrı tab olmasını önlemek için klasörde `_layout.tsx` ile Stack navigator tanımlanmalı:
+
+```typescript
+// activity-classes/_layout.tsx — ZORUNLU
+export default function ActivityClassesLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="[id]" />
+    </Stack>
+  );
+}
+```
+
+Aynı pattern `schools/_layout.tsx`'te de uygulanmış. Yeni klasör eklendiğinde bu pattern takip edilmeli.
+
+### Tab Navigasyonu (2026-03-16 — eski)
 - **5 tab**: Anasayfa, Çocuklar, Okullar, İstatistikler, Profil
 - **İstatistikler** sekmesi eklendi (`stats.tsx`) — çocuk seçici + devamsızlık kartları + okul/sınıf bilgisi
 - **Aile** sekmesi kaldırıldı — Profil ekranına "Aile Yönetimi" butonu eklendi → `/(app)/family`
@@ -316,6 +356,19 @@ success: '#10B981'
 - `2026_03_16_115737_add_passport_and_nationality_to_emergency_contacts.php` — emergency_contacts.phone_country_code + passport_number + nationality_country_id ✅
 
 ---
+
+## 8. Kritik Düzeltmeler (2026-04-02)
+
+- **Mobil activity-classes endpoint prefix eksikti** — Tüm çağrılar `/activity-classes` olarak yazılmıştı. Doğrusu `/parent/activity-classes`. Veli token'ıyla tenant endpoint'ine gidindiğinde `subscription.active` middleware yetki hatası veriyordu.
+- **`paginatedResponse` plain Collection hatası** — `ParentActivityClassController::index()` `collect($result)` geçiyordu → `Collection::items does not exist`. Fix: `$data->getCollection()->map()` + `$data->setCollection($result)` + `$data->items()`.
+- **Route cache 404** — Yeni route eklendikten sonra `php artisan route:clear` + container restart gerekiyordu.
+- **Expo Router ayrı tab sorunu** — `activity-classes/[id].tsx` ayrı tab olarak görünüyordu. `activity-classes/_layout.tsx` Stack navigator eklenerek çözüldü (aynı `schools/_layout.tsx` pattern'i).
+- **Tab label alt satıra geçmiyordu** — `fontSize: 8, flexWrap: 'wrap', textAlign: 'center'` + tab bar height 72/96 ile çözüldü.
+
+### Etkinlik Sınıfları Ekranı Davranışları
+- **index.tsx**: FlatList + paginate + RefreshControl. `enrolled_child_ids[]` ile hangi çocukların kayıtlı olduğu gösterilir (mavi "Kayıtlı" badge).
+- **[id].tsx**: Paralel yükleme (detay + my-enrollments + children). Kayıt: çocuk seçimi → `POST .../enroll`. İptal: `DELETE .../children/{id}/unenroll`. Galeri lazy load (butona tıklanınca). Fotoğraflar full-screen Modal'da gösterilir.
+- **Okul detay (schools/[id]/index.tsx)**: "Etkinlik Sınıfları" quick-access butonu eklendi → `/(app)/activity-classes`.
 
 ## 8. Kritik Düzeltmeler (2026-03-16)
 

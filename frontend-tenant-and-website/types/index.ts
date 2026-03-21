@@ -433,3 +433,79 @@ export type TenantNotification = {
     is_read: boolean
     created_at: string
 }
+
+// ─── Activity Classes ─────────────────────────────────────────────────────────
+
+export type ActivityClass = {
+    id: number
+    school_id: number | null
+    name: string
+    description?: string | null
+    language: string
+    age_min?: number | null
+    age_max?: number | null
+    capacity?: number | null
+    active_enrollments_count?: number
+    is_school_wide: boolean
+    is_active: boolean
+    is_paid: boolean
+    price?: string | null
+    currency: string
+    invoice_required: boolean
+    start_date?: string | null
+    end_date?: string | null
+    schedule?: string | null
+    location?: string | null
+    notes?: string | null
+    school_classes?: Array<{ id: number; name: string }>
+    teachers?: Array<{ id: number; name: string; role?: string | null }>
+    materials?: ActivityClassMaterial[]
+    created_at: string
+    updated_at: string
+}
+
+export type ActivityClassMaterial = {
+    id: number
+    activity_class_id: number
+    name: string
+    description?: string | null
+    quantity?: string | null
+    is_required: boolean
+    sort_order: number
+}
+
+export type ActivityClassEnrollment = {
+    id: number
+    activity_class_id: number
+    child_id: number
+    status: 'pending' | 'active' | 'cancelled'
+    enrolled_by: 'tenant' | 'parent'
+    enrolled_at: string
+    notes?: string | null
+    child?: { id: number; full_name: string; birth_date?: string }
+    invoice?: ActivityClassInvoice | null
+}
+
+export type ActivityClassInvoice = {
+    id: number
+    invoice_number: string
+    amount: string
+    currency: string
+    status: 'pending' | 'paid' | 'overdue' | 'cancelled'
+    payment_required: boolean
+    due_date?: string | null
+    paid_at?: string | null
+    payment_method?: string | null
+    notes?: string | null
+}
+
+export type ActivityClassGalleryItem = {
+    id: number
+    caption?: string | null
+    url: string
+    sort_order: number
+    original_name?: string | null
+    mime_type?: string | null
+    file_size?: number | null
+    created_at: string
+}

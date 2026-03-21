@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-03-17 (Öğretmen formu genişletme: phone_country_code/whatsapp/uyruk/kimlik; EnrollmentRequestService parentsForSchool withoutGlobalScope fix; ClassManagementController assignChild/removeChild yaş+tek sınıf kontrolü; ChildController::index class_id filtre + classes eager load; Tab count fix: teachers+parents loadData'ya eklendi)
+> **Son Güncelleme:** 2026-04-02 (Etkinlik Sınıfları modülü: activity_classes + enrollments + teachers + materials + gallery + invoices; TenantActivityClassController (okul opsiyonel); ParentActivityClassController tenant-wide etkinlik desteği; MySQL 64-char FK name limiti; paginatedResponse plain Collection bug fix)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -93,6 +93,8 @@ istudy-backend/
 │   │   │   │   ├── TenantAllergenController.php    ← Tenant allerjen CRUD (global+özel)
 │   │   │   │   ├── TenantTeacherController.php     ← YENİ: Tenant-level öğretmen CRUD + school assignment
 │   │   │   │   ├── TeacherRoleTypeController.php    ← YENİ: Tenant-level görev türü CRUD (Sınıf Öğretmeni vb.)
+│   │   │   │   ├── TenantActivityClassController.php ← YENİ: Tenant geneli etkinlik sınıfı CRUD + alt kaynak (enrollment/teacher/material/gallery/invoice)
+│   │   │   │   ├── ActivityClassGalleryController.php ← imzalı URL ile galeri dosyası serve eder
 │   │   │   │   └── FamilyProfileController.php
 │   │   │   ├── Tenant/
 │   │   │   │   ├── BaseTenantController.php
@@ -106,6 +108,7 @@ istudy-backend/
 │   │   │   │   ├── ParentFamilyController.php       ← members/addMember/removeMember + emergency contacts
 │   │   │   │   ├── ParentSchoolController.php       ← mySchools/joinSchool/socialFeed/globalFeed
 │   │   │   │   ├── ParentReferenceController.php    ← allergens/conditions/medications/countries
+│   │   │   │   ├── ParentActivityClassController.php ← YENİ: etkinlik listesi + kayıt (okul-specific + tenant-wide) + galeri
 │   │   │   │   └── AuthorizedPickupController.php
 │   │   │   └── Teachers/
 │   │   │       └── BaseTeacherController.php
@@ -136,6 +139,13 @@ istudy-backend/
 │   ├── Models/
 │   │   ├── Base/     (BaseModel, Role, Permission, AuditLog, ActivityLog, Country, UserContactNumber)
 │   │   ├── Tenant/   (Tenant)                    ← + activeSubscription(), canCreateSchool(), canEnrollStudent()
+│   │   ├── ActivityClass/                         ← YENİ: Etkinlik Sınıfı Modülü
+│   │   │   ├── ActivityClass.php                 ← BaseModel; school_id nullable (tenant-wide için)
+│   │   │   ├── ActivityClassEnrollment.php       ← plain Model (NOT BaseModel — parent tenant_id=NULL)
+│   │   │   ├── ActivityClassTeacher.php          ← pivot teacher ataması
+│   │   │   ├── ActivityClassMaterial.php         ← materyal listesi
+│   │   │   ├── ActivityClassGallery.php          ← galeri öğesi (private storage, signed URL)
+│   │   │   └── ActivityClassInvoice.php          ← ücretli kayıt faturası
 │   │   ├── Package/                               ← B2B Paket Sistemi
 │   │   │   ├── Package.php                        ← Limitler + fiyat + features
 │   │   │   ├── TenantSubscription.php             ← Abonelik durumu + dönem
@@ -197,7 +207,11 @@ istudy-backend/
 │   │   ├── 2026_03_06_120405_make_academic_year_nullable_on_classes_table.php
 │   │   ├── 2026_03_06_130545_add_age_min_age_max_to_classes_table.php ← hasColumn guard'lı; Docker ile çalıştırıldı ✅
 │   │   ├── 2026_03_06_131331_add_tenant_id_to_teacher_profiles_and_create_school_assignments.php ← tenant_id backfill + school_teacher_assignments pivot ✅
-│   │   └── 2026_03_06_200942_create_teacher_role_types_and_add_to_assignments.php ← teacher_role_types tablosu + school_teacher_assignments.teacher_role_type_id FK ✅
+│   │   ├── 2026_03_06_200942_create_teacher_role_types_and_add_to_assignments.php ← teacher_role_types tablosu + school_teacher_assignments.teacher_role_type_id FK ✅
+│   │   ├── 2026_04_01_000001_create_activity_classes_table.php ← activity_classes + activity_class_school_class_assignments (kısa FK: acsc_*) ✅
+│   │   ├── 2026_04_01_000002_create_activity_class_enrollments_table.php ← activity_class_enrollments (ace_unique_enrollment) ✅
+│   │   ├── 2026_04_01_000003_create_activity_class_support_tables.php ← teachers + materials + gallery + invoices (act_unique) ✅
+│   │   └── 2026_04_02_000001_make_activity_class_school_id_nullable.php ← activity_classes.school_id nullable (tenant-wide destek) ✅
 │   └── seeders/
 │       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
 │       ├── RoleSeeder.php                        ← 5 temel rol
@@ -642,6 +656,13 @@ Frontend `register/page.tsx` ve `reset-password/page.tsx`'te aynı kurallar Zod 
 │   POST: notifications (gönder)                          │
 │   GET: notifications + PATCH read                       │
 │   GET: invoices/tenant                                  │
+│   GET/POST/PUT/DELETE: activity-classes (tenant geneli) │ ← okul opsiyonel
+│   GET/POST/DELETE: activity-classes/{id}/enrollments   │
+│   POST/DELETE: activity-classes/{id}/teachers          │
+│   POST/PUT/DELETE: activity-classes/{id}/materials     │
+│   GET/POST/DELETE: activity-classes/{id}/gallery       │
+│   GET/PATCH: activity-classes/{id}/invoices            │
+│   GET/POST/PUT/DELETE: schools/{id}/activity-classes   │ ← okul-specific (eski uyumluluk)
 ├──────────────────────────────────────────────────────────┤
 │ 4️⃣ ADMIN ONLY (Super Admin)                              │
 │   apiResource: admin/packages                           │
@@ -1257,6 +1278,16 @@ AUDIT_DB_CONNECTION=mysql
 | `ExchangeRateLog` | exchange_rate_logs | API güncelleme logları |
 | `ActivityLog` | activity_logs (AUDIT DB) | Merkezi CRUD log (old/new values, denormalize) |
 
+### 🆕 Yeni Eklenen Modeller (2026-04-02) — Etkinlik Sınıfları
+| Model | Tablo | Açıklama |
+|-------|-------|----------|
+| `ActivityClass` | activity_classes | Etkinlik sınıfı. `school_id` nullable = tenant-wide. BaseModel'den türer (tenant scope aktif). |
+| `ActivityClassEnrollment` | activity_class_enrollments | Öğrenci kaydı. **plain Model** (NOT BaseModel) — parent tenant_id=NULL olduğu için. |
+| `ActivityClassTeacher` | activity_class_teachers | Öğretmen ataması (belongsToMany pivot). |
+| `ActivityClassMaterial` | activity_class_materials | Materyal listesi. |
+| `ActivityClassGallery` | activity_class_gallery | Galeri öğesi. Private storage + signed URL. SoftDeletes. |
+| `ActivityClassInvoice` | activity_class_invoices | Ücretli kayıt faturası. |
+
 ### 🆕 Yeni Eklenen Modeller (2026-02-24)
 | Model | Namespace | Tablo | Açıklama |
 |-------|-----------|-------|----------|
@@ -1858,6 +1889,160 @@ return FamilyProfile::withoutGlobalScope('tenant')
 | BUG-013 | ChildController::show/update/destroy nested route positional arg hatası (school_id) | ✅ Düzeltildi |
 | BUG-014 | ChildController::show FamilyProfile tenant scope → NULL parent profile yüklenmiyor | ✅ Düzeltildi |
 | BUG-015 | ChildController::index FamilyProfile tenant scope → veli bilgisi listede görünmüyor | ✅ Düzeltildi |
+| BUG-016 | ParentActivityClassController::index plain Collection → paginatedResponse items() hatası | ✅ Düzeltildi |
+| BUG-017 | Mobil activity-classes endpoint'leri /parent prefix eksikti → 404/403 | ✅ Düzeltildi |
+| BUG-018 | Route cache stale → php artisan route:clear + container restart gerekti | ✅ Düzeltildi |
+
+---
+
+## 🌟 18. Etkinlik Sınıfları Modülü (2026-04-02)
+
+### 18.1 Mimari Genel Bakış
+
+```
+ActivityClass
+├── school_id = null  → Tenant geneli (tüm okullarda görünür)
+├── school_id = X     → Okul-specific (sadece o okul)
+├── is_school_wide    → Okuldaki tüm sınıflar mı, yoksa belirli sınıflar mı?
+└── school_class_ids  → Belirli sınıflar (activity_class_school_class_assignments)
+
+ActivityClassEnrollment  ← plain Model (NOT BaseModel)
+└── Neden plain Model: Parent kullanıcıların tenant_id=NULL, BaseModel scope bozar
+
+ActivityClassInvoice  ← Ücretli kayıtta otomatik oluşur (is_paid=true ise)
+```
+
+### 18.2 TenantActivityClassController — Kritik Mimari
+
+```php
+// Extends BaseController (NOT BaseSchoolController) — school_id URL param'ı YOK
+class TenantActivityClassController extends BaseController
+
+// store(): school_id opsiyonel
+$validated = $request->validate([
+    'school_id' => 'nullable|integer|exists:schools,id',
+    ...
+]);
+ActivityClass::create(array_merge($validated, [
+    'tenant_id' => $this->user()->tenant_id,
+    'school_id' => $validated['school_id'] ?? null,  // null = tenant-wide
+]));
+
+// index(): ?school_id filtresi — null ise tenant-wide + school-specific birlikte döner
+if ($schoolId = request('school_id')) {
+    $query->where(fn($q) => $q->where('school_id', $schoolId)->orWhereNull('school_id'));
+}
+
+// authorizeOwnership(): school nested route değil, tenant_id kontrolü
+if ($activityClass->tenant_id !== $this->user()->tenant_id) {
+    return $this->errorResponse('Bu etkinlik sınıfına erişim yetkiniz yok.', 403);
+}
+```
+
+### 18.3 ParentActivityClassController — Tenant-Wide Etkinlik Keşfi
+
+```php
+// index(): çocukların okul + tenant'ı üzerinden hem school-specific hem tenant-wide etkinlikleri bulur
+$schoolIds = Child::withoutGlobalScope('tenant')
+    ->where('family_profile_id', $familyProfile->id)
+    ->whereNotNull('school_id')->pluck('school_id')->unique()->filter();
+
+$tenantIds = School::whereIn('id', $schoolIds)->pluck('tenant_id')->unique()->filter();
+
+ActivityClass::withoutGlobalScope('tenant')
+    ->where('is_active', true)
+    ->where(function ($q) use ($schoolIds, $tenantIds) {
+        $q->whereIn('school_id', $schoolIds)
+          ->orWhere(fn($q2) => $q2->whereNull('school_id')->whereIn('tenant_id', $tenantIds));
+    });
+
+// enroll(): school_id=null etkinlikte okul kontrolü atlanır, tenant kontrolü yapılır
+if ($activityClass->school_id !== null && $child->school_id !== $activityClass->school_id) {
+    return $this->errorResponse('Çocuğunuz bu etkinlik sınıfının okuluna kayıtlı değil.', 422);
+}
+if ($activityClass->school_id === null) {
+    $childSchool = School::find($child->school_id);
+    if (!$childSchool || $childSchool->tenant_id !== $activityClass->tenant_id) {
+        return $this->errorResponse('Bu etkinlik sınıfına erişim yetkiniz yok.', 422);
+    }
+}
+```
+
+### 18.4 paginatedResponse — plain Collection Bug Fix
+
+**Sorun:** `paginatedResponse(collect($result), $data)` → `collect()` plain Collection döndürür, `items()` metodu YOK → `Collection::items does not exist` hatası.
+
+**Çözüm:** Paginator'ın `getCollection()` → map → `setCollection()` döngüsü:
+```php
+$result = $data->getCollection()->map(function ($ac) use ($enrolledMap) {
+    return array_merge($this->formatActivityClass($ac), [
+        'enrolled_child_ids' => $enrolledMap->get($ac->id, collect())->values(),
+    ]);
+});
+$data->setCollection($result);
+
+return response()->json([
+    'success' => true,
+    'data' => $data->items(),
+    'meta' => [
+        'current_page' => $data->currentPage(),
+        'last_page' => $data->lastPage(),
+        'per_page' => $data->perPage(),
+        'total' => $data->total(),
+    ],
+]);
+```
+
+**Kural:** Paginator üzerinde map yapıp özel alanlar ekleyeceksen `$data->map()` KULLANMA (plain Collection döner). `getCollection()->map()` + `setCollection()` kullan.
+
+### 18.5 MySQL 64-Char FK İsim Limiti (KRİTİK)
+
+MySQL FK constraint ismi maksimum **64 karakter** olabilir. Uzun tablo isimlerinde Laravel'in otomatik oluşturduğu FK isimleri bu limiti aşar → `SQLSTATE[42000]: Identifier name '...' is too long`.
+
+**Etkilenen tablolar ve çözüm:**
+```php
+// activity_class_school_class_assignments — uzun tablo adı:
+$table->foreign('activity_class_id', 'acsc_activity_class_fk')->references('id')->on('activity_classes');
+$table->foreign('school_class_id', 'acsc_school_class_fk')->references('id')->on('classes');
+$table->unique(['activity_class_id', 'school_class_id'], 'acsc_unique');
+
+// activity_class_teachers:
+$table->unique(['activity_class_id', 'teacher_profile_id'], 'act_unique');
+
+// activity_class_enrollments:
+$table->unique(['activity_class_id', 'child_id'], 'ace_unique_enrollment');
+```
+
+**Kural:** Yeni pivot/junction tablo migration'ında FK/unique constraint isimlerini explicit kısa isimle yaz, özellikle tablo adı 25+ karakter olduğunda.
+
+### 18.6 Galeri — Private Storage + Signed URL
+
+Etkinlik sınıfı galeri fotoğrafları private storage'da saklanır, signed URL ile serve edilir:
+
+```php
+// Kaydetme:
+$path = $request->file('image')->store("activity-classes/{$activityClass->id}/gallery", 'local');
+
+// Signed URL üretme (2 saatlik):
+URL::signedRoute('activity-class-gallery.serve', ['galleryItem' => $item->id], now()->addHours(2))
+
+// Route (auth header gerektirmez — signed middleware yeterli):
+Route::get('/activity-class-gallery/{galleryItem}/serve', [ActivityClassGalleryController::class, 'serve'])
+    ->name('activity-class-gallery.serve')
+    ->middleware('signed');
+```
+
+### 18.7 Route Cache Sorunu
+
+Yeni route ekledikten sonra Laravel route cache'i eski kalabilir → 404 döner.
+
+**Çözüm:**
+```bash
+docker compose -f dockerfiles/docker-compose.yml exec app php artisan route:clear
+docker compose -f dockerfiles/docker-compose.yml restart app
+```
+
+**Kural:** API 404 dönüyorsa ve route doğruysa → önce `route:clear` + `container restart` dene.
 
 ---
 

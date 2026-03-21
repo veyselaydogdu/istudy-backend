@@ -348,6 +348,15 @@ export default function SchoolDetailScreen() {
                 </View>
               )}
 
+              <TouchableOpacity
+                style={styles.activityClassesBtn}
+                onPress={() => router.push('/(app)/activity-classes')}
+              >
+                <Ionicons name="star-outline" size={18} color="#208AEF" />
+                <Text style={styles.activityClassesBtnText}>Etkinlik Sınıfları</Text>
+                <Ionicons name="chevron-forward" size={16} color="#208AEF" />
+              </TouchableOpacity>
+
               <Text style={styles.feedTitle}>Okul Akışı</Text>
             </View>
           ) : null
@@ -561,6 +570,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   pendingBadgeText: { fontSize: 11, color: '#92400E', fontWeight: '600' },
+  activityClassesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+  },
+  activityClassesBtnText: {
+    flex: 1,
+    color: '#208AEF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
   feedTitle: {
     fontSize: 18,
     fontWeight: '700',

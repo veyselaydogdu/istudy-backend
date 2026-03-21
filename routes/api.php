@@ -81,6 +81,13 @@ Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\Pare
     ->middleware('signed');
 
 // ═══════════════════════════════════════════════════════════
+// ETKİNLİK SINIFI GALERİ — İmzalı URL (auth header gerektirmez)
+// ═══════════════════════════════════════════════════════════
+Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'serve'])
+    ->name('activity-class-gallery.serve')
+    ->middleware('signed');
+
+// ═══════════════════════════════════════════════════════════
 // VELİ AUTH (Public — Mobil uygulama)
 // ═══════════════════════════════════════════════════════════
 Route::prefix('parent/auth')->group(function () {
@@ -149,6 +156,18 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
 
     // Çocuk istatistikleri
     Route::get('/children/{child}/stats', [\App\Http\Controllers\Parents\ParentChildController::class, 'stats']);
+
+    // ───────────────────────────────────────────────────
+    // ETKİNLİK SINIFLARI (Veli)
+    // ───────────────────────────────────────────────────
+    Route::prefix('activity-classes')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Parents\ParentActivityClassController::class, 'index']);
+        Route::get('/my-enrollments', [\App\Http\Controllers\Parents\ParentActivityClassController::class, 'myEnrollments']);
+        Route::get('/{activity_class_id}', [\App\Http\Controllers\Parents\ParentActivityClassController::class, 'show']);
+        Route::post('/{activity_class_id}/enroll', [\App\Http\Controllers\Parents\ParentActivityClassController::class, 'enroll']);
+        Route::delete('/{activity_class_id}/children/{child_id}/unenroll', [\App\Http\Controllers\Parents\ParentActivityClassController::class, 'unenroll']);
+        Route::get('/{activity_class_id}/gallery', [\App\Http\Controllers\Parents\ParentActivityClassController::class, 'gallery']);
+    });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -275,6 +294,36 @@ Route::middleware('auth:sanctum')->group(function () {
         // Okul işlemleri
         Route::apiResource('schools', \App\Http\Controllers\Schools\SchoolController::class);
         Route::patch('schools/{school}/toggle-status', [\App\Http\Controllers\Schools\SchoolController::class, 'toggleStatus']);
+
+        // ───────────────────────────────────────────────────
+        // ETKİNLİK SINIFLARI — Tenant Geneli (okul seçimi opsiyonel)
+        // ───────────────────────────────────────────────────
+        Route::prefix('activity-classes')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'store']);
+            Route::get('/{activityClass}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'show']);
+            Route::put('/{activityClass}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'update']);
+            Route::delete('/{activityClass}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'destroy']);
+
+            Route::get('/{activity_class_id}/enrollments', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'enrollmentIndex']);
+            Route::post('/{activity_class_id}/enrollments', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'enrollmentStore']);
+            Route::delete('/{activity_class_id}/enrollments/{enrollment_id}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'enrollmentDestroy']);
+
+            Route::post('/{activity_class_id}/teachers', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'teacherStore']);
+            Route::delete('/{activity_class_id}/teachers/{teacher_profile_id}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'teacherDestroy']);
+
+            Route::post('/{activity_class_id}/materials', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'materialStore']);
+            Route::put('/{activity_class_id}/materials/{material}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'materialUpdate']);
+            Route::delete('/{activity_class_id}/materials/{material}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'materialDestroy']);
+
+            Route::get('/{activity_class_id}/gallery', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'galleryIndex']);
+            Route::post('/{activity_class_id}/gallery', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'galleryStore']);
+            Route::delete('/{activity_class_id}/gallery/{galleryItem}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'galleryDestroy']);
+
+            Route::get('/{activity_class_id}/invoices', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'invoiceIndex']);
+            Route::patch('/{activity_class_id}/invoices/{invoice}/mark-paid', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'invoiceMarkPaid']);
+            Route::patch('/{activity_class_id}/invoices/{invoice}/cancel', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'invoiceCancel']);
+        });
 
         // ───────────────────────────────────────────────────
         // KAYIT TALEPLERİ (Genel — eski uyumluluk için pending)
@@ -415,6 +464,41 @@ Route::middleware('auth:sanctum')->group(function () {
             // Okula öğretmen ata / çıkar (school_teacher_assignments)
             Route::post('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'assignTeacherToSchool']);
             Route::delete('/teachers/{teacher_profile_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'removeTeacherFromSchool']);
+
+            // ───────────────────────────────────────────────────
+            // ETKİNLİK SINIFLARI
+            // ───────────────────────────────────────────────────
+            Route::prefix('activity-classes')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Schools\ActivityClassController::class, 'index']);
+                Route::post('/', [\App\Http\Controllers\Schools\ActivityClassController::class, 'store']);
+                Route::get('/{activityClass}', [\App\Http\Controllers\Schools\ActivityClassController::class, 'show']);
+                Route::put('/{activityClass}', [\App\Http\Controllers\Schools\ActivityClassController::class, 'update']);
+                Route::delete('/{activityClass}', [\App\Http\Controllers\Schools\ActivityClassController::class, 'destroy']);
+
+                // Kayıtlar
+                Route::get('/{activity_class_id}/enrollments', [\App\Http\Controllers\Schools\ActivityClassEnrollmentController::class, 'index']);
+                Route::post('/{activity_class_id}/enrollments', [\App\Http\Controllers\Schools\ActivityClassEnrollmentController::class, 'store']);
+                Route::delete('/{activity_class_id}/enrollments/{enrollment_id}', [\App\Http\Controllers\Schools\ActivityClassEnrollmentController::class, 'destroy']);
+
+                // Öğretmen atama
+                Route::post('/{activity_class_id}/teachers', [\App\Http\Controllers\Schools\ActivityClassTeacherController::class, 'store']);
+                Route::delete('/{activity_class_id}/teachers/{teacher_profile_id}', [\App\Http\Controllers\Schools\ActivityClassTeacherController::class, 'destroy']);
+
+                // Materyaller
+                Route::post('/{activity_class_id}/materials', [\App\Http\Controllers\Schools\ActivityClassMaterialController::class, 'store']);
+                Route::put('/{activity_class_id}/materials/{material}', [\App\Http\Controllers\Schools\ActivityClassMaterialController::class, 'update']);
+                Route::delete('/{activity_class_id}/materials/{material}', [\App\Http\Controllers\Schools\ActivityClassMaterialController::class, 'destroy']);
+
+                // Galeri
+                Route::get('/{activity_class_id}/gallery', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'index']);
+                Route::post('/{activity_class_id}/gallery', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'store']);
+                Route::delete('/{activity_class_id}/gallery/{galleryItem}', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'destroy']);
+
+                // Faturalar
+                Route::get('/{activity_class_id}/invoices', [\App\Http\Controllers\Schools\ActivityClassInvoiceController::class, 'index']);
+                Route::patch('/{activity_class_id}/invoices/{invoice}/mark-paid', [\App\Http\Controllers\Schools\ActivityClassInvoiceController::class, 'markPaid']);
+                Route::patch('/{activity_class_id}/invoices/{invoice}/cancel', [\App\Http\Controllers\Schools\ActivityClassInvoiceController::class, 'cancel']);
+            });
 
             // ───────────────────────────────────────────────────
             // SOSYAL AĞ (Social Feed)

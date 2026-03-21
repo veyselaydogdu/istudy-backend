@@ -24,7 +24,7 @@ export default function AppLayout() {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#F3F4F6',
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 64,
+          height: Platform.OS === 'ios' ? 96 : 72,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
           elevation: 8,
@@ -62,6 +62,20 @@ export default function AppLayout() {
         options={{
           title: 'Okullarım',
           tabBarIcon: ({ focused }) => tabIcon(focused, 'school', 'school-outline'),
+        }}
+      />
+      <Tabs.Screen
+        name="activity-classes"
+        options={{
+          title: 'Etkinlik Sınıfları',
+          tabBarIcon: ({ focused }) => tabIcon(focused, 'star', 'star-outline'),
+          tabBarLabelStyle: {
+            fontSize: 8,
+            fontWeight: '600',
+            marginTop: 2,
+            flexWrap: 'wrap',
+            textAlign: 'center',
+          },
         }}
       />
       <Tabs.Screen
