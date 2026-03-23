@@ -168,6 +168,15 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
         Route::delete('/{activity_class_id}/children/{child_id}/unenroll', [\App\Http\Controllers\Parents\ParentActivityClassController::class, 'unenroll']);
         Route::get('/{activity_class_id}/gallery', [\App\Http\Controllers\Parents\ParentActivityClassController::class, 'gallery']);
     });
+
+    // ───────────────────────────────────────────────────
+    // FATURALARIM (Veli)
+    // ───────────────────────────────────────────────────
+    Route::prefix('invoices')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Parents\ParentInvoiceController::class, 'index']);
+        Route::get('/stats', [\App\Http\Controllers\Parents\ParentInvoiceController::class, 'stats']);
+        Route::get('/{invoice}', [\App\Http\Controllers\Parents\ParentInvoiceController::class, 'show']);
+    });
 });
 
 // ═══════════════════════════════════════════════════════════

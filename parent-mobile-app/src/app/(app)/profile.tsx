@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { useFocusEffect, router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
+import api from '../../lib/api';
 import { getApiError, logoutRequest } from '../../lib/auth';
+
+interface InvoiceStats {
+  pending_count: number;
+  overdue_count: number;
+  pending_amount: number;
+}
 
 interface InfoRowProps {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -38,6 +45,21 @@ function InfoRow({ icon, label, value }: InfoRowProps) {
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [invoiceStats, setInvoiceStats] = useState<InvoiceStats | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchInvoiceStats = async () => {
+        try {
+          const res = await api.get<{ data: InvoiceStats }>('/parent/invoices/stats');
+          setInvoiceStats(res.data.data);
+        } catch {
+          // sessizce geç
+        }
+      };
+      void fetchInvoiceStats();
+    }, [])
+  );
 
   const handleLogout = () => {
     Alert.alert(
@@ -70,6 +92,8 @@ export default function ProfileScreen() {
 
   const fullName = user ? `${user.name ?? ''} ${user.surname ?? ''}`.trim() : '';
 
+  const pendingCount = (invoiceStats?.pending_count ?? 0) + (invoiceStats?.overdue_count ?? 0);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -94,6 +118,21 @@ export default function ProfileScreen() {
             </View>
           )}
         </View>
+
+        {/* Bekleyen fatura uyarısı */}
+        {pendingCount > 0 && (
+          <TouchableOpacity
+            style={styles.invoiceAlert}
+            onPress={() => router.push('/(app)/invoices')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="alert-circle" size={20} color="#D97706" />
+            <Text style={styles.invoiceAlertText}>
+              {pendingCount} adet ödeme bekleyen faturanız var
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color="#D97706" />
+          </TouchableOpacity>
+        )}
 
         {/* Contact info */}
         <View style={styles.section}>
@@ -121,6 +160,31 @@ export default function ProfileScreen() {
               <Text style={styles.infoLabel}>Üyeler ve acil durum kişileri</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Faturalarım */}
+        <TouchableOpacity
+          style={styles.section}
+          onPress={() => router.push('/(app)/invoices')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.sectionTitle}>Ödeme</Text>
+          <View style={styles.navRow}>
+            <View style={styles.infoIconWrap}>
+              <Ionicons name="receipt-outline" size={17} color="#208AEF" />
+            </View>
+            <View style={styles.infoText}>
+              <Text style={styles.infoValue}>Faturalarım</Text>
+              <Text style={styles.infoLabel}>Tüm ödemeleriniz</Text>
+            </View>
+            {pendingCount > 0 ? (
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
+              </View>
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+            )}
           </View>
         </TouchableOpacity>
 
@@ -212,6 +276,23 @@ const styles = StyleSheet.create({
   },
   unverifiedText: { color: '#D97706', fontSize: 12, fontWeight: '600' },
 
+  invoiceAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  invoiceAlertText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#D97706',
+    fontWeight: '600',
+  },
+
   section: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -250,6 +331,24 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500', marginBottom: 2 },
   infoValue: { fontSize: 14, color: '#1F2937', fontWeight: '600' },
 
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
+
+  pendingBadge: {
+    backgroundColor: '#D97706',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  pendingBadgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -269,10 +368,4 @@ const styles = StyleSheet.create({
   },
   logoutButtonDisabled: { opacity: 0.6 },
   logoutButtonText: { color: '#EF4444', fontSize: 16, fontWeight: '700' },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-  },
 });

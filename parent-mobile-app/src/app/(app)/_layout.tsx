@@ -96,6 +96,7 @@ export default function AppLayout() {
       {/* Tab bar'da gizlenecek ekranlar */}
       <Tabs.Screen name="explore" options={{ href: null }} />
       <Tabs.Screen name="family" options={{ href: null }} />
+      <Tabs.Screen name="invoices" options={{ href: null }} />
     </Tabs>
   );
 }
