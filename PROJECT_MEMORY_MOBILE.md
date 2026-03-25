@@ -1,6 +1,6 @@
 # 📱 iStudy — Veli Mobil Uygulaması (PROJECT_MEMORY_MOBILE)
 
-> **Son Güncelleme:** 2026-04-02
+> **Son Güncelleme:** 2026-04-07 (Faturalarım modülü: ParentInvoiceController + invoices ekranları; schools/[id] Ionicons import fix)
 > **Uygulama:** React Native (Expo ~55) — `istudy-backend/parent-mobile-app/`
 
 ---
@@ -58,7 +58,7 @@ parent-mobile-app/
 │   │   │   ├── forgot-password.tsx
 │   │   │   └── verify-email.tsx
 │   │   └── (app)/
-│   │       ├── _layout.tsx          ← Bottom tab navigation (5 tab)
+│   │       ├── _layout.tsx          ← Bottom tab navigation (6 tab; invoices gizli)
 │   │       ├── index.tsx            ← Ana akış (Global feed + okul feed)
 │   │       ├── children/
 │   │       │   ├── index.tsx        ← Çocuk listesi
@@ -77,10 +77,14 @@ parent-mobile-app/
 │   │       │   ├── _layout.tsx      ← Stack navigator (index + [id] ayrı tab olmasın diye) — KRİTİK
 │   │       │   ├── index.tsx        ← Etkinlik listesi (FlatList, pagination, enrolled badge)
 │   │       │   └── [id].tsx         ← Etkinlik detay (kayıt/çıkış, öğretmenler, materyaller, galeri modal)
+│   │       ├── invoices/            ← YENİ — Tab bar'da GİZLİ (href: null), Profil'den açılır
+│   │       │   ├── _layout.tsx      ← Stack navigator (index + [id]) — KRİTİK
+│   │       │   ├── index.tsx        ← Fatura listesi (stats kartları + modül badge + durum renkleri)
+│   │       │   └── [id].tsx         ← Fatura detayı (kalemler + işlemler + iade linkleri)
 │   │       ├── family/
 │   │       │   ├── index.tsx        ← Aile üyeleri + ortak erişim yönetimi
 │   │       │   └── emergency.tsx    ← Acil durum kişileri CRUD
-│   │       └── profile.tsx          ← Kullanıcı profili + çıkış
+│   │       └── profile.tsx          ← Kullanıcı profili + "Faturalarım" navrow + bekleyen fatura uyarısı + çıkış
 │   ├── lib/
 │   │   ├── api.ts                   ← Axios instance (token interceptor + authEvent)
 │   │   ├── auth.ts                  ← Auth helpers (loginRequest, registerRequest, TOKEN_KEY vb.)
@@ -172,6 +176,20 @@ POST /api/parent/activity-classes/{id}/enroll                 ← Kayıt {child_
 DELETE /api/parent/activity-classes/{id}/children/{child_id}/unenroll ← Kayıt iptal
 GET  /api/parent/activity-classes/{id}/gallery                ← Galeri (signed URL'ler)
 ```
+
+### Faturalar (YENİ — 2026-04-07)
+```
+GET /api/parent/invoices              ← Tüm faturalar (paginated, status/invoice_type filtre)
+GET /api/parent/invoices/stats        ← İstatistik (total, pending, paid, overdue sayıları + bekleyen tutar)
+GET /api/parent/invoices/{id}         ← Detay (items, transactions, activity_class, child, refund linkleri)
+```
+
+**Sorgu stratejisi (`ParentInvoiceController`):**
+- Canonical `invoices` tablosu sorgulanır (ActivityClassInvoice değil)
+- `user_id = auth()->id()` (veli kayıt yaptırdığında) **VEYA**
+- `payable_type = ActivityClassEnrollment` + `payable_id IN (ailenin çocuklarının enrollment_id'leri)` (tenant kayıt yaptırdığında)
+- → Tüm senaryolar kapsanır: hem veli hem tenant kayıt akışı
+- `invoice.module` alanı ile her türlü fatura görünür: `activity_class`, `subscription`, `manual`, `event`
 
 ### Referans Verileri
 ```
@@ -266,7 +284,8 @@ success: '#10B981'
 - Tab label stillemesi: `fontSize: 8, fontWeight: '600', flexWrap: 'wrap', textAlign: 'center'` — uzun label alt satıra geçmesi için
 - Tab bar height: Android 72, iOS 96 (uzun label için artırıldı)
 - **Aile** sekmesi kaldırıldı — Profil ekranına "Aile Yönetimi" butonu eklendi → `/(app)/family`
-- `(app)/_layout.tsx`: `family`, `activity-classes/[id]` için `href: null` (gizli stack screen'ler)
+- `(app)/_layout.tsx`: `family`, `activity-classes/[id]`, `invoices` için `href: null` (gizli screen'ler)
+- **Faturalarım**: Tab'da görünmez, Profil ekranından `router.push('/(app)/invoices')` ile açılır
 
 ### Expo Router — Stack Layout Zorunluluğu (KRİTİK)
 Bir klasördeki her `.tsx` dosyası Expo Router'da ayrı tab olarak görünür. Alt ekranların (detail page gibi) ayrı tab olmasını önlemek için klasörde `_layout.tsx` ile Stack navigator tanımlanmalı:
@@ -322,6 +341,8 @@ Aynı pattern `schools/_layout.tsx`'te de uygulanmış. Yeni klasör eklendiğin
 - `ParentFamilyController.php` — members/addMember/removeMember + emergency contacts CRUD
 - `ParentSchoolController.php` — mySchools/schoolDetail/joinSchool/socialFeed/globalFeed
 - `ParentReferenceController.php` — allergens/conditions/medications/countries/bloodTypes
+- `ParentActivityClassController.php` — etkinlik listesi + kayıt (okul-specific + tenant-wide) + galeri
+- `ParentInvoiceController.php` — **YENİ (2026-04-07)**: index/stats/show; canonical `invoices` tablosunu sorgular; dual-strategy (user_id + enrollment payable)
 
 ### Form Requests (`app/Http/Requests/Parent/`)
 - `RegisterParentRequest.php`
@@ -356,6 +377,17 @@ Aynı pattern `schools/_layout.tsx`'te de uygulanmış. Yeni klasör eklendiğin
 - `2026_03_16_115737_add_passport_and_nationality_to_emergency_contacts.php` — emergency_contacts.phone_country_code + passport_number + nationality_country_id ✅
 
 ---
+
+## 8. Kritik Düzeltmeler (2026-04-07)
+
+- **`schools/[id]/index.tsx` Ionicons import eksikti** — `import { Ionicons } from '@expo/vector-icons'` satırı yoktu. "Etkinlik Sınıfları" quick-link butonu `<Ionicons>` kullandığı için `Ionicons doesn't exist` crash'i veriyordu. Düzeltildi.
+- **Fatura listesi boş görünüyordu** — İlk implementasyon `ActivityClassInvoice` tablosunu `family_profile_id` ile sorguluyordu. Tenant tarafından kayıt yapıldığında faturanın `user_id` veli değil tenant admin olduğundan bazı senaryolarda kayıplar oluşuyordu. **Canonical `invoices` tablosuna geçildi** + dual-strategy sorgu (`user_id = parent` OR `payable_id IN enrollmentIds`).
+- **"Sadece etkinlik sınıfları faturaları" kısıtı kaldırıldı** — Artık `invoices.module` ne olursa olsun (activity_class, subscription, manual, event) tüm faturalar görünür. Profil ekranındaki açıklama "Tüm ödemeleriniz" olarak güncellendi.
+
+### Faturalarım Ekranı Davranışları (2026-04-07)
+- **`invoices/index.tsx`**: FlatList + stats row (bekleyen/gecikmiş/ödendi kartları). Her fatura: fatura no, modül badge (Etkinlik Sınıfı / Abonelik vb.), çocuk adı, tutar, durum badge. Overdue → kırmızı sol border + kırmızı tutar. Refund → mor sol border + eksi tutar.
+- **`invoices/[id].tsx`**: Hero card (tutar + durum + modül). Fatura bilgileri (tarihler, çocuk). Kalemler tablosu. Ödeme işlemleri geçmişi (bank, kart, hata mesajı). İade/orijinal fatura çift-yönlü linkleme.
+- **`profile.tsx`**: `useFocusEffect` ile her odaklanmada `/parent/invoices/stats` fetch eder. Bekleyen fatura varsa amber banner gösterir. "Faturalarım" nav row → `/(app)/invoices`. Bekleyen count badge (turuncu).
 
 ## 8. Kritik Düzeltmeler (2026-04-02)
 

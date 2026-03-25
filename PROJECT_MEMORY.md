@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-04-02 (Etkinlik Sınıfları modülü: activity_classes + enrollments + teachers + materials + gallery + invoices; TenantActivityClassController (okul opsiyonel); ParentActivityClassController tenant-wide etkinlik desteği; MySQL 64-char FK name limiti; paginatedResponse plain Collection bug fix)
+> **Son Güncelleme:** 2026-04-07 (Veli Faturalarım modülü: ParentInvoiceController — canonical invoices tablosu, dual-strategy sorgu; schools/[id] Ionicons import fix)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -109,6 +109,7 @@ istudy-backend/
 │   │   │   │   ├── ParentSchoolController.php       ← mySchools/joinSchool/socialFeed/globalFeed
 │   │   │   │   ├── ParentReferenceController.php    ← allergens/conditions/medications/countries
 │   │   │   │   ├── ParentActivityClassController.php ← YENİ: etkinlik listesi + kayıt (okul-specific + tenant-wide) + galeri
+│   │   │   │   ├── ParentInvoiceController.php      ← YENİ (2026-04-07): index/stats/show — canonical invoices tablosu, dual-strategy sorgu
 │   │   │   │   └── AuthorizedPickupController.php
 │   │   │   └── Teachers/
 │   │   │       └── BaseTeacherController.php
@@ -211,7 +212,10 @@ istudy-backend/
 │   │   ├── 2026_04_01_000001_create_activity_classes_table.php ← activity_classes + activity_class_school_class_assignments (kısa FK: acsc_*) ✅
 │   │   ├── 2026_04_01_000002_create_activity_class_enrollments_table.php ← activity_class_enrollments (ace_unique_enrollment) ✅
 │   │   ├── 2026_04_01_000003_create_activity_class_support_tables.php ← teachers + materials + gallery + invoices (act_unique) ✅
-│   │   └── 2026_04_02_000001_make_activity_class_school_id_nullable.php ← activity_classes.school_id nullable (tenant-wide destek) ✅
+│   │   ├── 2026_04_02_000001_make_activity_class_school_id_nullable.php ← activity_classes.school_id nullable (tenant-wide destek) ✅
+│   │   ├── 2026_04_02_000001_add_refund_fields_to_activity_class_invoices.php ← invoice_type enum + original_invoice_id (self FK) + refund_reason + refunded status ✅
+│   │   ├── 2026_04_02_000002_add_billing_module_fields_to_invoices.php ← invoices: module + invoice_type + original_invoice_id (self FK) + refund_reason ✅
+│   │   └── 2026_04_02_000003_add_main_invoice_id_to_activity_class_invoices.php ← activity_class_invoices.main_invoice_id → invoices.id FK ✅
 │   └── seeders/
 │       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
 │       ├── RoleSeeder.php                        ← 5 temel rol

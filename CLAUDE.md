@@ -536,6 +536,7 @@ POST activity-classes/{id}/enroll; DELETE activity-classes/{id}/children/{child_
 GET activity-classes/{id}/gallery
 GET allergens; conditions; medications; countries; blood-types
 GET/POST schools/{school}/enroll-child (çocuk okul kayıt talebi)
+GET invoices; GET invoices/stats; GET invoices/{id}
 ```
 
 ---
@@ -1136,9 +1137,13 @@ parent-mobile-app/
 │   │       │   ├── _layout.tsx      ← Stack navigator (KRİTİK)
 │   │       │   ├── index.tsx        ← FlatList, pagination, enrolled badge
 │   │       │   └── [id].tsx         ← Detay (kayıt/çıkış, galeri modal)
+│   │       ├── invoices/            ← YENİ — tab bar'da GİZLİ (href: null)
+│   │       │   ├── _layout.tsx      ← Stack navigator (KRİTİK)
+│   │       │   ├── index.tsx        ← Fatura listesi (stats + modül badge + durum renkleri)
+│   │       │   └── [id].tsx         ← Fatura detayı (kalemler + işlemler + iade linkleri)
 │   │       ├── family/
 │   │       │   ├── index.tsx, emergency.tsx
-│   │       └── profile.tsx
+│   │       └── profile.tsx          ← useFocusEffect: bekleyen fatura uyarısı + "Faturalarım" navrow
 │   ├── lib/
 │   │   ├── api.ts                   ← Axios + token interceptor + authEvent
 │   │   ├── auth.ts                  ← loginRequest, registerRequest, TOKEN_KEY
@@ -1160,7 +1165,7 @@ App başlar → AsyncStorage: parent_token + parent_user
 ### 11.5 Tab Navigasyonu (6 tab — 2026-04-02)
 - Anasayfa, Çocuklar, Okullarım, **Etkinlik Sınıfları**, İstatistikler, Profil
 - "Aile" sekmesi kaldırıldı → Profil ekranına "Aile Yönetimi" butonu
-- `(app)/_layout.tsx`: `family`, `activity-classes/[id]` → `href: null` (gizli stack screen)
+- `(app)/_layout.tsx`: `family`, `activity-classes/[id]`, `invoices` → `href: null` (gizli stack screen)
 - Tab bar height: Android 72, iOS 96 (uzun label için)
 - Tab label style: `fontSize: 8, fontWeight: '600', flexWrap: 'wrap', textAlign: 'center'`
 
@@ -1227,6 +1232,7 @@ return Storage::disk('local')->response($child->profile_photo);
 - `ParentSchoolController.php` — mySchools/schoolDetail/joinSchool/socialFeed/globalFeed
 - `ParentReferenceController.php` — allergens/conditions/medications/countries/bloodTypes
 - `ParentActivityClassController.php` — index/show/enroll/unenroll/myEnrollments/gallery
+- `ParentInvoiceController.php` — index/stats/show; canonical `invoices` tablosunu sorgular (dual-strategy)
 
 **Form Requests (`app/Http/Requests/Parent/`):**
 - `RegisterParentRequest.php`, `StoreParentChildRequest.php`, `UpdateParentChildRequest.php`, `StoreEmergencyContactRequest.php`
@@ -1254,7 +1260,35 @@ return Storage::disk('local')->response($child->profile_photo);
 - `2026_03_13_100002_add_passport_number_to_children_table.php`
 - `2026_03_16_115737_add_passport_and_nationality_to_emergency_contacts.php`
 
-### 11.14 Önemli Davranış Notları
+### 11.14 Veli Faturalarım Modülü
+
+**Backend — `ParentInvoiceController`:**
+- Canonical `invoices` tablosunu sorgular (tüm modüller: activity_class, subscription, manual, event, activity)
+- **Dual-strategy sorgu** — veli kendi faturalarını iki şekilde görebilir:
+  1. `invoices.user_id = parent_user_id` (veli kendi kayıt olduğunda)
+  2. `payable_type = ActivityClassEnrollment AND payable_id IN enrollment_ids` (tenant admin kayıt yaptırdığında)
+- `getFamilyEnrollmentIds()`: `ActivityClassEnrollment::withTrashed()` — soft-deleted enrollment'lar da dahil
+- `withoutGlobalScope('tenant')` — cross-tenant invoice sorgusu için zorunlu
+- 3 endpoint: `GET /parent/invoices`, `GET /parent/invoices/stats`, `GET /parent/invoices/{invoice}`
+
+**Mobil Ekranlar:**
+- `invoices/_layout.tsx` — Stack navigator (Expo Router tab pollution önleme)
+- `invoices/index.tsx` — pagination, stats row (pending/overdue/paid), modül badge, renk kodlu kartlar
+- `invoices/[id].tsx` — hero card, kalemler tablosu, ödeme geçmişi, etkinlik detayı, iade bilgileri
+- `(app)/_layout.tsx`'te `invoices` → `href: null` (tab bar'da gizli)
+
+**`profile.tsx` stats pattern:**
+```tsx
+useFocusEffect(useCallback(() => {
+  void (async () => {
+    const res = await api.get('/parent/invoices/stats');
+    setInvoiceStats(res.data.data);
+  })();
+}, []));
+// pendingCount = pending_count + overdue_count → badge + uyarı banner
+```
+
+### 11.15 Önemli Davranış Notları
 - `withoutGlobalScope('tenant')` parent kullanıcıda zaten tenant_id=NULL olduğu için scope atlanır; yine de yazmak güvenli
 - `AppSetting` plain `Model`'den türer — tenant scope uygulanmaz, `getByKey()`/`setByKey()` 1 saatlik cache
 - iOS geliştirme: `app.json extra.apiUrl` varsayılanı Android için (`10.0.2.2:8000`). iOS simülatörde `localhost:8000`
@@ -1288,6 +1322,9 @@ return Storage::disk('local')->response($child->profile_photo);
 | `children.school_id` nullable değil | Migration uygulandı |
 | `src/app/index.tsx` Expo karşılama ekranı | Silindi — root routing bozuyordu |
 | Tab label alt satıra geçmiyordu | `fontSize:8, flexWrap:'wrap', textAlign:'center'` + tab bar height artırıldı |
+| `schools/[id]/index.tsx` Ionicons crash | `import { Ionicons } from '@expo/vector-icons'` eksikti, eklendi |
+| Mobil veli faturası gözükmüyordu | `ActivityClassInvoice` tablosu yerine canonical `invoices` tablosuna geçildi; dual-strategy: `user_id=parent` OR `payable_id IN enrollment_ids` |
+| Expo Router `invoices/[id]` ayrı tab görünür | `invoices/_layout.tsx` Stack navigator + `invoices` `href: null` eklendi |
 
 ---
 
