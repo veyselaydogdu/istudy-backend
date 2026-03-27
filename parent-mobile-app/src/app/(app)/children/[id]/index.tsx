@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
+
+interface ClassInfo {
+  id: number;
+  name: string;
+  color: string | null;
+  age_min: number | null;
+  age_max: number | null;
+  capacity: number | null;
+  student_count: number;
+  male_count: number;
+  female_count: number;
+  teachers: Array<{ id: number; name: string }>;
+}
+
+interface PendingEnrollment {
+  id: number;
+  school_id: number;
+  school_name: string | null;
+  created_at: string;
+}
 
 interface Child {
   id: number;
@@ -37,6 +57,8 @@ interface Child {
   allergens: Array<{ id: number; name: string; status?: string }>;
   conditions: Array<{ id: number; name: string; status?: string }>;
   medications: Array<{ id: number; name: string; dose: string | null; usage_time: string[] | null; usage_days: string[] | null }>;
+  class_info: ClassInfo | null;
+  pending_enrollment: PendingEnrollment | null;
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -93,30 +115,61 @@ export default function ChildDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    void fetchChild();
-  }, [fetchChild]);
+  // Edit ekranından geri dönünce güncel veriyi çek
+  useFocusEffect(
+    useCallback(() => {
+      void fetchChild();
+    }, [fetchChild])
+  );
+
+  const sendRemovalRequest = async () => {
+    try {
+      await api.post(`/parent/children/${id}/removal-request`, {});
+      Alert.alert(
+        'Talep Gönderildi',
+        'Silme talebiniz okul yönetimine iletildi. Okul onayladıktan sonra çocuk kaydı silinecektir.'
+      );
+    } catch (err: unknown) {
+      Alert.alert('Hata', getApiError(err));
+    }
+  };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Çocuğu Sil',
-      `${child?.full_name} adlı çocuğu silmek istediğinize emin misiniz?`,
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Sil',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/parent/children/${id}`);
-              router.back();
-            } catch (err: unknown) {
-              Alert.alert('Hata', getApiError(err));
-            }
+    if (child?.school_id) {
+      // Çocuk okula kayıtlı — silme talebi akışı
+      Alert.alert(
+        'Okul Kaydı Mevcut',
+        `${child.full_name} adlı çocuk ${child.school?.name ?? 'bir okula'} kayıtlı.\n\nSilmek için okul yönetimine talep gönderilecektir. Onay sonrasında çocuk kaydı silinecektir.`,
+        [
+          { text: 'İptal', style: 'cancel' },
+          {
+            text: 'Talep Gönder',
+            onPress: () => void sendRemovalRequest(),
           },
-        },
-      ]
-    );
+        ]
+      );
+    } else {
+      // Okul kaydı yok — direkt sil
+      Alert.alert(
+        'Çocuğu Sil',
+        `${child?.full_name} adlı çocuğu silmek istediğinize emin misiniz?`,
+        [
+          { text: 'İptal', style: 'cancel' },
+          {
+            text: 'Sil',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.delete(`/parent/children/${id}`);
+                router.back();
+              } catch (err: unknown) {
+                Alert.alert('Hata', getApiError(err));
+              }
+            },
+          },
+        ]
+      );
+    }
   };
 
   const handlePickPhoto = () => {
@@ -268,6 +321,84 @@ export default function ChildDetailScreen() {
           )}
         </View>
 
+        {/* Bekleyen Kayıt Talebi */}
+        {child.pending_enrollment && (
+          <View style={classStyles.pendingCard}>
+            <View style={classStyles.pendingIcon}>
+              <Text style={classStyles.pendingIconText}>⏳</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={classStyles.pendingTitle}>Kayıt Talebi Beklemede</Text>
+              <Text style={classStyles.pendingSchool}>
+                {child.pending_enrollment.school_name ?? 'Okul'}
+              </Text>
+              <Text style={classStyles.pendingDate}>
+                {new Date(child.pending_enrollment.created_at).toLocaleDateString('tr-TR')} tarihinde gönderildi
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Sınıf Bilgisi */}
+        {child.class_info && (
+          <View style={styles.card}>
+            <View style={classStyles.classHeader}>
+              {child.class_info.color ? (
+                <View style={[classStyles.classColorDot, { backgroundColor: child.class_info.color }]} />
+              ) : null}
+              <Text style={styles.cardTitle}>{child.class_info.name}</Text>
+            </View>
+
+            <View style={classStyles.statsRow}>
+              <View style={classStyles.statBox}>
+                <Text style={classStyles.statNumber}>{child.class_info.student_count}</Text>
+                <Text style={classStyles.statLabel}>Toplam</Text>
+              </View>
+              <View style={classStyles.statDivider} />
+              <View style={classStyles.statBox}>
+                <Text style={[classStyles.statNumber, { color: '#3B82F6' }]}>{child.class_info.male_count}</Text>
+                <Text style={classStyles.statLabel}>Erkek</Text>
+              </View>
+              <View style={classStyles.statDivider} />
+              <View style={classStyles.statBox}>
+                <Text style={[classStyles.statNumber, { color: '#EC4899' }]}>{child.class_info.female_count}</Text>
+                <Text style={classStyles.statLabel}>Kız</Text>
+              </View>
+              {child.class_info.capacity ? (
+                <>
+                  <View style={classStyles.statDivider} />
+                  <View style={classStyles.statBox}>
+                    <Text style={classStyles.statNumber}>{child.class_info.capacity}</Text>
+                    <Text style={classStyles.statLabel}>Kapasite</Text>
+                  </View>
+                </>
+              ) : null}
+            </View>
+
+            {(child.class_info.age_min !== null || child.class_info.age_max !== null) && (
+              <View style={detailStyles.infoRow}>
+                <Text style={detailStyles.infoLabel}>Yaş Aralığı</Text>
+                <Text style={detailStyles.infoValue}>
+                  {child.class_info.age_min ?? '?'} - {child.class_info.age_max ?? '?'} yaş
+                </Text>
+              </View>
+            )}
+
+            {child.class_info.teachers.length > 0 && (
+              <View style={classStyles.teachersSection}>
+                <Text style={classStyles.teachersLabel}>Öğretmenler</Text>
+                <View style={classStyles.teachersList}>
+                  {child.class_info.teachers.map((t) => (
+                    <View key={t.id} style={classStyles.teacherChip}>
+                      <Text style={classStyles.teacherChipText}>👩‍🏫 {t.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
           <InfoRow label="Doğum Tarihi" value={child.birth_date} />
@@ -394,6 +525,112 @@ export default function ChildDetailScreen() {
     </SafeAreaView>
   );
 }
+
+const classStyles = StyleSheet.create({
+  pendingCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  pendingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pendingIconText: { fontSize: 20 },
+  pendingTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  pendingSchool: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B45309',
+    marginBottom: 2,
+  },
+  pendingDate: {
+    fontSize: 12,
+    color: '#D97706',
+  },
+  classHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  classColorDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E5E7EB',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  teachersSection: {
+    paddingTop: 8,
+    gap: 8,
+  },
+  teachersLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  teachersList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  teacherChip: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  teacherChipText: {
+    fontSize: 12,
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
+});
 
 const styles = StyleSheet.create({
   safeArea: {

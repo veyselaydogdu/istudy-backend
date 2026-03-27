@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-04-07 (Veli Faturalarım modülü: ParentInvoiceController — canonical invoices tablosu, dual-strategy sorgu; schools/[id] Ionicons import fix)
+> **Son Güncelleme:** 2026-03-27 (Etkinlik fatura sistemi: invoice/refund/cancellation; start_time/end_time; ActivityInvoiceService)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -109,7 +109,9 @@ istudy-backend/
 │   │   │   │   ├── ParentSchoolController.php       ← mySchools/joinSchool/socialFeed/globalFeed
 │   │   │   │   ├── ParentReferenceController.php    ← allergens/conditions/medications/countries
 │   │   │   │   ├── ParentActivityClassController.php ← YENİ: etkinlik listesi + kayıt (okul-specific + tenant-wide) + galeri
-│   │   │   │   ├── ParentInvoiceController.php      ← YENİ (2026-04-07): index/stats/show — canonical invoices tablosu, dual-strategy sorgu
+│   │   │   │   ├── ParentInvoiceController.php      ← (2026-04-07): index/stats/show — canonical invoices tablosu, dual-strategy sorgu
+│   │   │   │   ├── ParentActivityController.php     ← (2026-04-11): index/show/enroll/unenroll/gallery — show() 403 DÖNDÜRMEZ, galeri koşullu
+│   │   │   │   ├── ParentMealMenuController.php     ← YENİ (2026-04-10): children + index — çocuğun sınıfına göre aylık yemek takvimi
 │   │   │   │   └── AuthorizedPickupController.php
 │   │   │   └── Teachers/
 │   │   │       └── BaseTeacherController.php
@@ -137,6 +139,7 @@ istudy-backend/
 │   │       ├── TenantPaymentResource.php         ← Ödeme kaydı
 │   │       ├── UserResource.php                  ← Kullanıcı bilgisi
 │   │       ├── AcademicYearResource.php ... SchoolResource.php ... TenantResource.php
+│   │       ├── ActivityResource.php      ← (2026-04-10) school alanı eklendi: whenLoaded('school') ile {id,name}
 │   ├── Models/
 │   │   ├── Base/     (BaseModel, Role, Permission, AuditLog, ActivityLog, Country, UserContactNumber)
 │   │   ├── Tenant/   (Tenant)                    ← + activeSubscription(), canCreateSchool(), canEnrollStudent()
@@ -667,6 +670,26 @@ Frontend `register/page.tsx` ve `reset-password/page.tsx`'te aynı kurallar Zod 
 │   GET/POST/DELETE: activity-classes/{id}/gallery       │
 │   GET/PATCH: activity-classes/{id}/invoices            │
 │   GET/POST/PUT/DELETE: schools/{id}/activity-classes   │ ← okul-specific (eski uyumluluk)
+├──────────────────────────────────────────────────────────┤
+│ VELİ MOBIL API (prefix: /api/parent/, auth:sanctum)     │
+│   POST parent/auth/register|login|logout|forgot-password│
+│   GET  parent/auth/me                                   │
+│   GET/POST/PUT/DELETE parent/children + sağlık sync    │
+│   POST parent/children/{id}/profile-photo               │
+│   GET  parent/children/{id}/photo (signed)              │
+│   GET/POST/DELETE parent/family/members                 │
+│   CRUD parent/family/emergency-contacts                 │
+│   GET/POST parent/schools; POST parent/schools/join     │
+│   GET  parent/schools/{id}/feed                         │
+│   GET  parent/feed/global                               │
+│   GET  parent/activity-classes (+enroll/unenroll/gallery)│
+│   GET  parent/activities                ← YENİ 2026-04-10│
+│   GET  parent/meal-menus/children       ← YENİ 2026-04-10│
+│   GET  parent/meal-menus                ← YENİ 2026-04-10│
+│   GET  parent/invoices|invoices/stats|invoices/{id}     │
+│   GET  parent/allergens|conditions|medications          │
+│   GET  parent/countries|blood-types                     │
+│   POST parent/children/{id}/enroll-child (okul talebi) │
 ├──────────────────────────────────────────────────────────┤
 │ 4️⃣ ADMIN ONLY (Super Admin)                              │
 │   apiResource: admin/packages                           │
@@ -2036,7 +2059,62 @@ Route::get('/activity-class-gallery/{galleryItem}/serve', [ActivityClassGalleryC
     ->middleware('signed');
 ```
 
-### 18.7 Route Cache Sorunu
+### 18.6 Etkinlik Fatura Sistemi (2026-03-27)
+
+**Yeni alanlar — `activities` tablosu:**
+- `start_time` / `end_time`: `TIME` nullable — etkinlik saati
+- `cancellation_allowed`: boolean default false — kayıt iptali açık mı
+- `cancellation_deadline`: DATETIME nullable — son iptal tarihi (null ise etkinlik başlamadan iptal edilebilir)
+
+**Yeni alan — `activity_enrollments` tablosu:**
+- `invoice_id`: nullable FK → `invoices.id` (nullOnDelete)
+
+**`ActivityInvoiceService`** (`app/Services/ActivityInvoiceService.php`) — ActivityClassInvoiceService ile aynı pattern:
+- `createForEnrollment(enrollment, activity, userId)` → `invoices` tablosuna `module=activity`, `type=activity`, `payable_type=ActivityEnrollment::class` ile kayıt + item + `enrollment.invoice_id` günceller
+- `createRefund(invoice, reason)` → iade faturası (`invoice_type=refund`, `status=paid`) + orijinali `refunded` yapar
+- `handleEnrollmentCancellation(enrollment, reason)` → paid → iade, pending/overdue → iptal
+- `handleActivityPaidToFree(activity)` → tüm kayıtlı enrollments için toplu işlem; `{refunded_count, cancelled_count}` döner
+
+**`ParentActivityController::enroll()`** → `is_paid && price > 0` ise `ActivityInvoiceService::createForEnrollment()` çağırır
+
+**`ParentActivityController::unenroll()`** → İptal politikası kontrolü:
+1. `cancellation_allowed = false` → 422
+2. `cancellation_deadline` varsa geçmişse → 422
+3. Deadline yoksa etkinlik başlamış mı kontrol (start_date + start_time)
+4. Fatura varsa `handleEnrollmentCancellation()` çağırır → iade/iptal
+
+**`ActivityController::update()`** → `wasPaid && becomingFree` ise `handleActivityPaidToFree()` çağırır (toplu fatura işleme)
+
+**Tenant frontend `/activities`:** Form'a `start_time`, `end_time`, `cancellation_allowed`, `cancellation_deadline` (datetime-local) alanları eklendi. İptal seçenekleri sadece `is_enrollment_required=true` iken görünür.
+
+**Fatura modülü entegrasyonu:** `module='activity'` olarak ana `invoices` tablosuna yazılır → `InvoiceService::listForTenant()` filtrelenebilir. `by_module.activity` stats'a eklenmesi gerekebilir.
+
+### 18.7 Etkinlik Detay Sayfası — Tenant Frontend (2026-04-11)
+
+`/activities/[id]/page.tsx` — 3 sekmeli detay sayfası:
+- **Detaylar sekmesi**: etkinlik bilgileri (açıklama, tarihler, fiyat, sınıflar, materyaller), katılımcı sayısı
+- **Katılımcılar sekmesi**: `GET /schools/{school_id}/activities/{id}/enrollments` → tablo (veli adı + kayıt tarihi)
+- **Galeri sekmesi**: `GET /schools/{school_id}/activities/{id}/gallery` → grid; `POST` upload (FormData); `DELETE /gallery/{galleryItem}` sil; hover'da X butonu
+- Sayfa, okul listesini fetch edip hangi okula ait olduğunu bulur (school_id önce bilinmediği için)
+- Etkinlik listesine "Detay" butonu eklendi (ExternalLink ikonu, `router.push('/activities/{id}')`)
+
+**Tenant ActivityController'a eklenen:**
+- `enrollmentIndex(int $school_id, Activity $activity)` → katılımcılar (familyProfile.owner eager load, `owner_name` birleştirilmiş)
+- Route: `GET /api/schools/{school_id}/activities/{activity}/enrollments`
+
+### 18.8 Etkinlik Materyalleri (2026-04-11)
+
+`activities.materials` → JSON dizi (`string[]`), ör: `["Kalem","Defter","Makas"]`.
+
+- **Migration:** `2026_03_26_120129_add_materials_to_activities_table.php` — `$table->json('materials')->nullable()`
+- **Model:** `Activity::$fillable` + `casts()` → `'materials' => 'array'`
+- **Requests:** `StoreActivityRequest` + `UpdateActivityRequest` → `'materials' => ['nullable','array'], 'materials.*' => ['string','max:255']`
+- **ActivityResource:** `'materials' => $this->materials ?? []` — her zaman döner (boş dizi varsayılan)
+- **ParentActivityController::show():** `$canSeeExtras = !is_enrollment_required || $isEnrolled` → `materials` yalnızca bu koşulda response'a eklenir (liste içeriği gizlenir, galeri ile birlikte)
+- **Frontend tenant form:** Tek input + "Ekle" butonu (Enter da çalışır) → liste halinde gösterilir, X ile silinir. `payload.materials = form.materials.length > 0 ? form.materials : null`
+- **Mobil detay ekranı:** `showGallery` koşulunun arkasında → kayıtlıysa `checkmark-circle-outline` ikonlu liste; kayıtlı değilse "Materyaller Kilitli" notice (galeri ile ortak kilit mesajı)
+
+### 18.9 Route Cache Sorunu
 
 Yeni route ekledikten sonra Laravel route cache'i eski kalabilir → 404 döner.
 

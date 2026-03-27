@@ -4,28 +4,39 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { Activity, School, SchoolClass } from '@/types';
-import { Plus, Trash2, Edit2, X, Calendar, DollarSign } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw } from 'lucide-react';
 
 type ActivityForm = {
     name: string;
     description: string;
     is_paid: boolean;
+    is_enrollment_required: boolean;
+    cancellation_allowed: boolean;
+    cancellation_deadline: string;
     price: string;
     start_date: string;
+    start_time: string;
     end_date: string;
+    end_time: string;
     class_ids: number[];
+    materials: string[];
 };
 
 const emptyForm: ActivityForm = {
-    name: '', description: '', is_paid: false, price: '',
-    start_date: '', end_date: '', class_ids: [],
+    name: '', description: '', is_paid: false, is_enrollment_required: false,
+    cancellation_allowed: false, cancellation_deadline: '',
+    price: '', start_date: '', start_time: '', end_date: '', end_time: '',
+    class_ids: [], materials: [],
 };
 
 export default function ActivitiesPage() {
+    const router = useRouter();
     const [schools, setSchools] = useState<School[]>([]);
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
     const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
 
+    const [statusFilter, setStatusFilter] = useState<'active' | 'ended' | 'deleted'>('active');
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
@@ -35,6 +46,7 @@ export default function ActivitiesPage() {
     const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
     const [form, setForm] = useState<ActivityForm>(emptyForm);
     const [saving, setSaving] = useState(false);
+    const [materialInput, setMaterialInput] = useState('');
 
     const fetchSchools = useCallback(async () => {
         try {
@@ -59,7 +71,14 @@ export default function ActivitiesPage() {
         if (!selectedSchoolId) return;
         setLoading(true);
         try {
-            const res = await apiClient.get(`/schools/${selectedSchoolId}/activities`, { params: { page } });
+            const params: Record<string, string | number> = { page };
+            if (statusFilter === 'deleted') {
+                params.with_trashed = 'true';
+                params.status = 'deleted';
+            } else {
+                params.status = statusFilter;
+            }
+            const res = await apiClient.get(`/schools/${selectedSchoolId}/activities`, { params });
             setActivities(res.data?.data ?? []);
             setLastPage(res.data?.meta?.last_page ?? 1);
         } catch {
@@ -67,22 +86,25 @@ export default function ActivitiesPage() {
         } finally {
             setLoading(false);
         }
-    }, [selectedSchoolId, page]);
+    }, [selectedSchoolId, page, statusFilter]);
 
     useEffect(() => { fetchSchools(); }, [fetchSchools]);
     useEffect(() => {
         if (selectedSchoolId) {
             setPage(1);
             fetchSchoolClasses();
-            fetchActivities();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedSchoolId]);
+    useEffect(() => {
+        setPage(1);
+    }, [statusFilter]);
     useEffect(() => { if (selectedSchoolId) fetchActivities(); }, [fetchActivities]);
 
     const openCreate = () => {
         setEditingActivity(null);
         setForm(emptyForm);
+        setMaterialInput('');
         setShowModal(true);
     };
 
@@ -92,13 +114,35 @@ export default function ActivitiesPage() {
             name: activity.name,
             description: activity.description ?? '',
             is_paid: activity.is_paid ?? false,
+            is_enrollment_required: activity.is_enrollment_required ?? false,
+            cancellation_allowed: activity.cancellation_allowed ?? false,
+            cancellation_deadline: activity.cancellation_deadline
+                ? activity.cancellation_deadline.slice(0, 16)
+                : '',
             price: activity.price != null ? String(activity.price) : '',
-            start_date: activity.start_date ?? '',
-            end_date: activity.end_date ?? '',
+            start_date: activity.start_date ? activity.start_date.slice(0, 10) : '',
+            start_time: activity.start_time ?? '',
+            end_date: activity.end_date ? activity.end_date.slice(0, 10) : '',
+            end_time: activity.end_time ?? '',
             class_ids: activity.classes?.map(c => c.id) ?? [],
+            materials: activity.materials ?? [],
         });
+        setMaterialInput('');
         setShowModal(true);
     };
+
+    const addMaterial = () => {
+        const trimmed = materialInput.trim();
+        if (!trimmed) return;
+        setForm(prev => ({ ...prev, materials: [...prev.materials, trimmed] }));
+        setMaterialInput('');
+    };
+
+    const removeMaterial = (index: number) => {
+        setForm(prev => ({ ...prev, materials: prev.materials.filter((_, i) => i !== index) }));
+    };
+
+    const today = new Date().toISOString().slice(0, 10);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -112,6 +156,19 @@ export default function ActivitiesPage() {
             toast.error('Lütfen bir okul seçin.');
             return;
         }
+        if (form.start_date && form.start_date < today) {
+            toast.error('Başlangıç tarihi geçmiş bir tarih olamaz.');
+            return;
+        }
+        if (form.end_date && form.end_date < today) {
+            toast.error('Bitiş tarihi geçmiş bir tarih olamaz.');
+            return;
+        }
+        if (form.cancellation_allowed && form.cancellation_deadline && form.start_date
+            && form.cancellation_deadline > form.start_date) {
+            toast.error('İptal son tarihi başlangıç tarihinden sonra olamaz.');
+            return;
+        }
 
         setSaving(true);
         const payload = {
@@ -119,10 +176,18 @@ export default function ActivitiesPage() {
             name: form.name.trim(),
             description: form.description || null,
             is_paid: form.is_paid,
+            is_enrollment_required: form.is_enrollment_required,
+            cancellation_allowed: form.cancellation_allowed,
+            cancellation_deadline: form.cancellation_allowed && form.cancellation_deadline
+                ? form.cancellation_deadline
+                : null,
             price: form.is_paid && form.price ? Number(form.price) : null,
             start_date: form.start_date || null,
+            start_time: form.start_time || null,
             end_date: form.end_date || null,
+            end_time: form.end_time || null,
             class_ids: form.class_ids,
+            materials: form.materials.length > 0 ? form.materials : null,
         };
         try {
             if (editingActivity) {
@@ -139,6 +204,16 @@ export default function ActivitiesPage() {
             toast.error(error.response?.data?.message ?? 'Hata oluştu.');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleRestore = async (activity: Activity) => {
+        try {
+            await apiClient.post(`/schools/${selectedSchoolId}/activities/${activity.id}/restore`);
+            toast.success('Etkinlik geri yüklendi.');
+            fetchActivities();
+        } catch {
+            toast.error('Geri yükleme başarısız.');
         }
     };
 
@@ -185,17 +260,31 @@ export default function ActivitiesPage() {
             </div>
 
             <div className="panel">
-                {/* Okul seçici */}
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-dark dark:text-white-light">Okul</label>
-                    <select
-                        className="form-select mt-1 max-w-xs"
-                        value={selectedSchoolId}
-                        onChange={e => setSelectedSchoolId(e.target.value)}
-                    >
-                        {schools.length === 0 && <option value="">Okul yok</option>}
-                        {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                {/* Okul seçici + durum filtresi */}
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div>
+                        <label className="block text-sm font-medium text-dark dark:text-white-light">Okul</label>
+                        <select
+                            className="form-select mt-1 max-w-xs"
+                            value={selectedSchoolId}
+                            onChange={e => setSelectedSchoolId(e.target.value)}
+                        >
+                            {schools.length === 0 && <option value="">Okul yok</option>}
+                            {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex gap-1">
+                        {(['active', 'ended', 'deleted'] as const).map(s => (
+                            <button
+                                key={s}
+                                type="button"
+                                onClick={() => setStatusFilter(s)}
+                                className={`btn btn-sm ${statusFilter === s ? 'btn-primary' : 'btn-outline-secondary'}`}
+                            >
+                                {s === 'active' ? 'Aktif' : s === 'ended' ? 'Biten' : 'Silinen'}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {loading ? (
@@ -209,14 +298,28 @@ export default function ActivitiesPage() {
                 ) : (
                     <>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {activities.map(activity => (
-                                <div key={activity.id} className="rounded border border-[#ebedf2] p-4 dark:border-[#1b2e4b]">
+                            {activities.map(activity => {
+                                const isDeleted = !!activity.deleted_at;
+                                const isEnded = !isDeleted && activity.end_date
+                                    ? new Date(activity.end_date) < new Date(new Date().toDateString())
+                                    : false;
+                                return (
+                                <div key={activity.id} className={`rounded border p-4 ${isDeleted ? 'border-danger/30 bg-danger/5 dark:border-danger/20' : 'border-[#ebedf2] dark:border-[#1b2e4b]'}`}>
                                     <div className="mb-2 flex items-start justify-between gap-2">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="font-semibold text-dark dark:text-white">{activity.name}</h3>
+                                                <h3 className={`font-semibold text-dark dark:text-white ${isDeleted ? 'line-through opacity-60' : ''}`}>{activity.name}</h3>
+                                                {isDeleted && (
+                                                    <span className="badge badge-outline-danger text-xs">Silindi</span>
+                                                )}
+                                                {isEnded && (
+                                                    <span className="badge badge-outline-warning text-xs">Sona Erdi</span>
+                                                )}
                                                 {activity.is_paid && (
                                                     <span className="badge badge-outline-success text-xs">Ücretli</span>
+                                                )}
+                                                {activity.is_enrollment_required && (
+                                                    <span className="badge badge-outline-info text-xs">Kayıt Gerekli</span>
                                                 )}
                                             </div>
                                             {activity.description && (
@@ -239,22 +342,45 @@ export default function ActivitiesPage() {
                                             )}
                                         </div>
                                         <div className="flex shrink-0 gap-1">
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline-primary p-1.5"
-                                                onClick={() => openEdit(activity)}
-                                                title="Düzenle"
-                                            >
-                                                <Edit2 className="h-3.5 w-3.5" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline-danger p-1.5"
-                                                onClick={() => handleDelete(activity)}
-                                                title="Sil"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </button>
+                                            {!isDeleted && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-info p-1.5"
+                                                    onClick={() => router.push(`/activities/${activity.id}`)}
+                                                    title="Detay"
+                                                >
+                                                    <ExternalLink className="h-3.5 w-3.5" />
+                                                </button>
+                                            )}
+                                            {isDeleted ? (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-success p-1.5"
+                                                    onClick={() => handleRestore(activity)}
+                                                    title="Geri Yükle"
+                                                >
+                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                </button>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-primary p-1.5"
+                                                        onClick={() => openEdit(activity)}
+                                                        title="Düzenle"
+                                                    >
+                                                        <Edit2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-danger p-1.5"
+                                                        onClick={() => handleDelete(activity)}
+                                                        title="Sil"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -264,8 +390,23 @@ export default function ActivitiesPage() {
                                             {Number(activity.price).toFixed(2)} ₺
                                         </div>
                                     )}
+                                    {activity.materials && activity.materials.length > 0 && (
+                                        <div className="mt-2">
+                                            <p className="mb-1 text-xs font-medium text-[#515365] dark:text-[#888ea8]">
+                                                Materyaller ({activity.materials.length}):
+                                            </p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {activity.materials.map((m, i) => (
+                                                    <span key={i} className="rounded bg-[#f1f3f5] px-1.5 py-0.5 text-xs text-dark dark:bg-[#1b2e4b] dark:text-white">
+                                                        {m}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
+                            );
+                            })}
                         </div>
 
                         {lastPage > 1 && (
@@ -330,26 +471,55 @@ export default function ActivitiesPage() {
                                 />
                             </div>
 
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid gap-3 sm:grid-cols-2">
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">Başlangıç Tarihi</label>
-                                    <input
-                                        type="date"
-                                        className="form-input mt-1"
-                                        value={form.start_date}
-                                        onChange={f('start_date')}
-                                    />
+                                    <input type="date" className="form-input mt-1" value={form.start_date} onChange={f('start_date')} min={today} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Başlangıç Saati</label>
+                                    <input type="time" className="form-input mt-1" value={form.start_time} onChange={f('start_time')} />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">Bitiş Tarihi</label>
-                                    <input
-                                        type="date"
-                                        className="form-input mt-1"
-                                        value={form.end_date}
-                                        onChange={f('end_date')}
-                                    />
+                                    <input type="date" className="form-input mt-1" value={form.end_date} onChange={f('end_date')} min={form.start_date || today} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Bitiş Saati</label>
+                                    <input type="time" className="form-input mt-1" value={form.end_time} onChange={f('end_time')} />
                                 </div>
                             </div>
+
+                            {/* Kayıt İptali Seçenekleri */}
+                            {form.is_enrollment_required && (
+                                <div className="space-y-3 rounded-lg border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                    <label className="flex cursor-pointer items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            className="form-checkbox"
+                                            checked={form.cancellation_allowed}
+                                            onChange={e => setForm(prev => ({ ...prev, cancellation_allowed: e.target.checked, cancellation_deadline: '' }))}
+                                        />
+                                        <span className="text-sm font-medium text-dark dark:text-white">Kayıt iptali yapılabilir</span>
+                                    </label>
+                                    {form.cancellation_allowed && (
+                                        <div>
+                                            <label className="mb-1 block text-xs text-[#515365] dark:text-[#888ea8]">
+                                                Son İptal Tarihi
+                                                <span className="ml-1 opacity-60">(opsiyonel — boşsa etkinlik başlamadan iptal edilebilir)</span>
+                                            </label>
+                                            <input
+                                                type="datetime-local"
+                                                className="form-input"
+                                                value={form.cancellation_deadline}
+                                                onChange={e => setForm(prev => ({ ...prev, cancellation_deadline: e.target.value }))}
+                                                min={today + 'T00:00'}
+                                                max={form.start_date ? form.start_date + 'T23:59' : undefined}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {schoolClasses.length > 0 && (
                                 <div>
@@ -381,10 +551,33 @@ export default function ActivitiesPage() {
                                         type="checkbox"
                                         className="form-checkbox"
                                         checked={form.is_paid}
-                                        onChange={e => setForm(prev => ({ ...prev, is_paid: e.target.checked, price: e.target.checked ? prev.price : '' }))}
+                                        onChange={e => setForm(prev => ({
+                                            ...prev,
+                                            is_paid: e.target.checked,
+                                            price: e.target.checked ? prev.price : '',
+                                            // Ücretli etkinlikte kayıt zorunlu olmalı
+                                            is_enrollment_required: e.target.checked ? true : prev.is_enrollment_required,
+                                        }))}
                                     />
                                     <span className="text-sm font-medium text-dark dark:text-white-light">Ücretli Etkinlik</span>
                                 </label>
+                            </div>
+
+                            <div className="flex items-center gap-3 rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                <label className="flex cursor-pointer items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        className="form-checkbox"
+                                        checked={form.is_enrollment_required}
+                                        disabled={form.is_paid}
+                                        onChange={e => setForm(prev => ({ ...prev, is_enrollment_required: e.target.checked }))}
+                                    />
+                                    <span className="text-sm font-medium text-dark dark:text-white-light">
+                                        Katılım Kaydı Zorunlu
+                                        {form.is_paid && <span className="ml-1 text-xs text-[#888ea8]">(ücretli etkinlikte zorunlu)</span>}
+                                    </span>
+                                </label>
+                                <p className="text-xs text-[#888ea8]">Veliler katılmak için kaydolmalı; galeri yalnızca kayıtlılara görünür.</p>
                             </div>
 
                             {form.is_paid && (
@@ -401,6 +594,47 @@ export default function ActivitiesPage() {
                                     />
                                 </div>
                             )}
+
+                            {/* Materyaller */}
+                            <div>
+                                <label className="mb-2 flex items-center gap-1 text-sm font-medium text-dark dark:text-white-light">
+                                    <PackagePlus className="h-4 w-4 text-primary" />
+                                    Getirilmesi Gereken Materyaller
+                                </label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        className="form-input flex-1"
+                                        value={materialInput}
+                                        onChange={e => setMaterialInput(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMaterial(); } }}
+                                        placeholder="Örn: Kalem, Makas..."
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-primary px-3"
+                                        onClick={addMaterial}
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                {form.materials.length > 0 && (
+                                    <ul className="mt-2 space-y-1">
+                                        {form.materials.map((m, i) => (
+                                            <li key={i} className="flex items-center justify-between rounded border border-[#ebedf2] px-3 py-1.5 text-sm dark:border-[#1b2e4b]">
+                                                <span className="text-dark dark:text-white">{m}</span>
+                                                <button
+                                                    type="button"
+                                                    className="text-danger hover:opacity-70"
+                                                    onClick={() => removeMaterial(i)}
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
 
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={saving}>

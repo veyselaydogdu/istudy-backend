@@ -1,0 +1,501 @@
+'use client';
+import { useEffect, useState, useCallback } from 'react';
+import { toast } from 'sonner';
+import Swal from 'sweetalert2';
+import apiClient from '@/lib/apiClient';
+import { CheckCircle, XCircle, Clock, Users, UserMinus, Edit3, RefreshCw } from 'lucide-react';
+
+type EnrollmentRequest = {
+    id: number;
+    type: 'enrollment';
+    school_id: number;
+    school_name: string | null;
+    child_name: string | null;
+    owner_name: string | null;
+    created_at: string;
+};
+
+type RemovalRequest = {
+    id: number;
+    type: 'removal';
+    school_id: number;
+    school_name: string | null;
+    child_name: string | null;
+    owner_name: string | null;
+    reason: string | null;
+    created_at: string;
+};
+
+type FieldChangeRequest = {
+    id: number;
+    type: 'field_change';
+    school_id: number;
+    school_name: string | null;
+    child_name: string | null;
+    field_label: string;
+    field_name: string;
+    old_value: string | null;
+    new_value: string;
+    requested_by: string | null;
+    created_at: string;
+};
+
+type ApprovalsData = {
+    child_enrollment_requests: EnrollmentRequest[];
+    child_removal_requests: RemovalRequest[];
+    child_field_change_requests: FieldChangeRequest[];
+    counts: {
+        enrollment: number;
+        removal: number;
+        field_change: number;
+        total: number;
+    };
+};
+
+type ActiveTab = 'enrollment' | 'removal' | 'field_change';
+
+export default function ApprovalsPage() {
+    const [data, setData] = useState<ApprovalsData | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState<ActiveTab>('enrollment');
+    const [rejectModal, setRejectModal] = useState<{ open: boolean; type: ActiveTab; id: number; schoolId: number } | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [processing, setProcessing] = useState(false);
+
+    const fetchApprovals = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await apiClient.get('/pending-approvals');
+            setData(res.data?.data ?? null);
+        } catch {
+            toast.error('Onaylar yüklenirken hata oluştu.');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchApprovals();
+    }, [fetchApprovals]);
+
+    const handleApproveEnrollment = async (req: EnrollmentRequest) => {
+        const result = await Swal.fire({
+            title: 'Kaydı onayla?',
+            text: `${req.child_name ?? 'Çocuk'} adlı öğrencinin ${req.school_name ?? 'okul'} kaydı onaylanacak.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Onayla',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#16a34a',
+        });
+        if (!result.isConfirmed) return;
+        setProcessing(true);
+        try {
+            await apiClient.patch(`/schools/${req.school_id}/child-enrollment-requests/${req.id}/approve`);
+            toast.success('Kayıt talebi onaylandı.');
+            fetchApprovals();
+        } catch (err: unknown) {
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Hata oluştu.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleApproveRemoval = async (req: RemovalRequest) => {
+        const result = await Swal.fire({
+            title: 'Silme talebini onayla?',
+            text: `${req.child_name ?? 'Çocuk'} adlı öğrenci okuldan silinecek. Bu işlem geri alınamaz.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Onayla',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#dc2626',
+        });
+        if (!result.isConfirmed) return;
+        setProcessing(true);
+        try {
+            await apiClient.patch(`/schools/${req.school_id}/child-removal-requests/${req.id}/approve`);
+            toast.success('Silme talebi onaylandı.');
+            fetchApprovals();
+        } catch (err: unknown) {
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Hata oluştu.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleApproveFieldChange = async (req: FieldChangeRequest) => {
+        const result = await Swal.fire({
+            title: 'Değişikliği onayla?',
+            text: `${req.child_name ?? 'Çocuk'} için ${req.field_label}: "${req.old_value ?? '-'}" → "${req.new_value}"`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Onayla',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#16a34a',
+        });
+        if (!result.isConfirmed) return;
+        setProcessing(true);
+        try {
+            await apiClient.patch(`/schools/${req.school_id}/child-field-change-requests/${req.id}/approve`);
+            toast.success('Değişiklik onaylandı ve güncellendi.');
+            fetchApprovals();
+        } catch (err: unknown) {
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Hata oluştu.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const openRejectModal = (type: ActiveTab, id: number, schoolId: number) => {
+        setRejectReason('');
+        setRejectModal({ open: true, type, id, schoolId });
+    };
+
+    const handleReject = async () => {
+        if (!rejectModal) return;
+        if (!rejectReason.trim() || rejectReason.trim().length < 5) {
+            toast.error('Reddetme sebebi en az 5 karakter olmalıdır.');
+            return;
+        }
+        setProcessing(true);
+        try {
+            const endpoint = rejectModal.type === 'enrollment'
+                ? `/schools/${rejectModal.schoolId}/child-enrollment-requests/${rejectModal.id}/reject`
+                : rejectModal.type === 'removal'
+                    ? `/schools/${rejectModal.schoolId}/child-removal-requests/${rejectModal.id}/reject`
+                    : `/schools/${rejectModal.schoolId}/child-field-change-requests/${rejectModal.id}/reject`;
+
+            await apiClient.patch(endpoint, { rejection_reason: rejectReason });
+            toast.success('Talep reddedildi.');
+            setRejectModal(null);
+            fetchApprovals();
+        } catch (err: unknown) {
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Hata oluştu.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const tabs: { key: ActiveTab; label: string; icon: React.ReactNode; count: number; color: string }[] = [
+        {
+            key: 'enrollment',
+            label: 'Kayıt Talepleri',
+            icon: <Users size={16} />,
+            count: data?.counts.enrollment ?? 0,
+            color: 'text-blue-600',
+        },
+        {
+            key: 'removal',
+            label: 'Silme Talepleri',
+            icon: <UserMinus size={16} />,
+            count: data?.counts.removal ?? 0,
+            color: 'text-red-600',
+        },
+        {
+            key: 'field_change',
+            label: 'Alan Değişikliği',
+            icon: <Edit3 size={16} />,
+            count: data?.counts.field_change ?? 0,
+            color: 'text-orange-600',
+        },
+    ];
+
+    return (
+        <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Bekleyen Onaylar</h1>
+                    {data && (
+                        <p className="text-sm text-gray-500 mt-1">
+                            Toplam <span className="font-semibold text-gray-700">{data.counts.total}</span> bekleyen onay
+                        </p>
+                    )}
+                </div>
+                <button
+                    onClick={fetchApprovals}
+                    disabled={loading}
+                    className="btn btn-outline-primary flex items-center gap-2"
+                >
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    Yenile
+                </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="panel mb-4">
+                <div className="flex border-b border-gray-200">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                                activeTab === tab.key
+                                    ? `border-primary ${tab.color} bg-primary/5`
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                            {tab.count > 0 && (
+                                <span className={`ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold text-white ${
+                                    tab.key === 'removal' ? 'bg-red-500' : tab.key === 'field_change' ? 'bg-orange-500' : 'bg-blue-500'
+                                }`}>
+                                    {tab.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Tab Content */}
+                <div className="pt-4">
+                    {loading ? (
+                        <div className="flex justify-center py-12">
+                            <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                        </div>
+                    ) : (
+                        <>
+                            {/* Enrollment Requests */}
+                            {activeTab === 'enrollment' && (
+                                <div>
+                                    {(data?.child_enrollment_requests ?? []).length === 0 ? (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <Users size={40} className="mx-auto mb-2 text-gray-300" />
+                                            <p>Bekleyen kayıt talebi yok.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="table-responsive">
+                                            <table className="table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Çocuk</th>
+                                                        <th>Veli</th>
+                                                        <th>Okul</th>
+                                                        <th>Tarih</th>
+                                                        <th className="text-center">İşlem</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {data!.child_enrollment_requests.map(req => (
+                                                        <tr key={req.id}>
+                                                            <td className="font-medium">{req.child_name ?? '-'}</td>
+                                                            <td>{req.owner_name ?? '-'}</td>
+                                                            <td>{req.school_name ?? '-'}</td>
+                                                            <td className="text-sm text-gray-500">
+                                                                {new Date(req.created_at).toLocaleDateString('tr-TR')}
+                                                            </td>
+                                                            <td>
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleApproveEnrollment(req)}
+                                                                        disabled={processing}
+                                                                        className="btn btn-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
+                                                                    >
+                                                                        <CheckCircle size={14} />
+                                                                        Onayla
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => openRejectModal('enrollment', req.id, req.school_id)}
+                                                                        disabled={processing}
+                                                                        className="btn btn-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
+                                                                    >
+                                                                        <XCircle size={14} />
+                                                                        Reddet
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Removal Requests */}
+                            {activeTab === 'removal' && (
+                                <div>
+                                    {(data?.child_removal_requests ?? []).length === 0 ? (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <UserMinus size={40} className="mx-auto mb-2 text-gray-300" />
+                                            <p>Bekleyen silme talebi yok.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="table-responsive">
+                                            <table className="table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Çocuk</th>
+                                                        <th>Veli</th>
+                                                        <th>Okul</th>
+                                                        <th>Sebep</th>
+                                                        <th>Tarih</th>
+                                                        <th className="text-center">İşlem</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {data!.child_removal_requests.map(req => (
+                                                        <tr key={req.id}>
+                                                            <td className="font-medium">{req.child_name ?? '-'}</td>
+                                                            <td>{req.owner_name ?? '-'}</td>
+                                                            <td>{req.school_name ?? '-'}</td>
+                                                            <td className="text-sm max-w-xs truncate" title={req.reason ?? undefined}>
+                                                                {req.reason ?? '-'}
+                                                            </td>
+                                                            <td className="text-sm text-gray-500">
+                                                                {new Date(req.created_at).toLocaleDateString('tr-TR')}
+                                                            </td>
+                                                            <td>
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleApproveRemoval(req)}
+                                                                        disabled={processing}
+                                                                        className="btn btn-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
+                                                                    >
+                                                                        <CheckCircle size={14} />
+                                                                        Onayla
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => openRejectModal('removal', req.id, req.school_id)}
+                                                                        disabled={processing}
+                                                                        className="btn btn-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
+                                                                    >
+                                                                        <XCircle size={14} />
+                                                                        Reddet
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Field Change Requests */}
+                            {activeTab === 'field_change' && (
+                                <div>
+                                    {(data?.child_field_change_requests ?? []).length === 0 ? (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <Edit3 size={40} className="mx-auto mb-2 text-gray-300" />
+                                            <p>Bekleyen alan değişikliği talebi yok.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="table-responsive">
+                                            <table className="table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Çocuk</th>
+                                                        <th>Okul</th>
+                                                        <th>Alan</th>
+                                                        <th>Mevcut Değer</th>
+                                                        <th>Yeni Değer</th>
+                                                        <th>Talep Eden</th>
+                                                        <th>Tarih</th>
+                                                        <th className="text-center">İşlem</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {data!.child_field_change_requests.map(req => (
+                                                        <tr key={req.id}>
+                                                            <td className="font-medium">{req.child_name ?? '-'}</td>
+                                                            <td>{req.school_name ?? '-'}</td>
+                                                            <td>
+                                                                <span className="badge badge-outline-warning">{req.field_label}</span>
+                                                            </td>
+                                                            <td className="text-sm text-gray-500">{req.old_value ?? '-'}</td>
+                                                            <td className="text-sm font-medium text-green-700">{req.new_value}</td>
+                                                            <td className="text-sm">{req.requested_by ?? '-'}</td>
+                                                            <td className="text-sm text-gray-500">
+                                                                {new Date(req.created_at).toLocaleDateString('tr-TR')}
+                                                            </td>
+                                                            <td>
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleApproveFieldChange(req)}
+                                                                        disabled={processing}
+                                                                        className="btn btn-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
+                                                                    >
+                                                                        <CheckCircle size={14} />
+                                                                        Onayla
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => openRejectModal('field_change', req.id, req.school_id)}
+                                                                        disabled={processing}
+                                                                        className="btn btn-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
+                                                                    >
+                                                                        <XCircle size={14} />
+                                                                        Reddet
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Status legend */}
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+                <span className="flex items-center gap-1">
+                    <Clock size={14} className="text-yellow-500" />
+                    Bekleyen onaylar gösteriliyor
+                </span>
+                <span className="flex items-center gap-1">
+                    <CheckCircle size={14} className="text-green-500" />
+                    Onaylandıktan sonra otomatik uygulanır
+                </span>
+            </div>
+
+            {/* Reject Modal */}
+            {rejectModal?.open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Talebi Reddet</h3>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Reddetme Sebebi <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={rejectReason}
+                                onChange={e => setRejectReason(e.target.value)}
+                                rows={4}
+                                className="form-input w-full resize-none"
+                                placeholder="Reddetme sebebini açıklayın... (min 5 karakter)"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">{rejectReason.length} / 500</p>
+                        </div>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setRejectModal(null)}
+                                disabled={processing}
+                                className="btn btn-outline-secondary"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handleReject}
+                                disabled={processing || rejectReason.trim().length < 5}
+                                className="btn bg-red-600 text-white hover:bg-red-700 flex items-center gap-2"
+                            >
+                                {processing ? <div className="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent" /> : <XCircle size={16} />}
+                                Reddet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

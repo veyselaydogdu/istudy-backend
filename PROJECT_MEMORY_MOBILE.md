@@ -1,6 +1,6 @@
 # 📱 iStudy — Veli Mobil Uygulaması (PROJECT_MEMORY_MOBILE)
 
-> **Son Güncelleme:** 2026-04-07 (Faturalarım modülü: ParentInvoiceController + invoices ekranları; schools/[id] Ionicons import fix)
+> **Son Güncelleme:** 2026-04-10 (Menü yeniden yapılandırma: Yemek Listesi + Etkinlikler (2 sekme) tab'ları eklendi; Çocuklarım + Okullarım Profil'e taşındı)
 > **Uygulama:** React Native (Expo ~55) — `istudy-backend/parent-mobile-app/`
 
 ---
@@ -73,18 +73,25 @@ parent-mobile-app/
 │   │       │   ├── join.tsx         ← Okula katıl (davet kodu)
 │   │       │   └── [id]/
 │   │       │       └── index.tsx    ← Okul detay + sosyal feed + "Etkinlik Sınıfları" quick link
-│   │       ├── activity-classes/
-│   │       │   ├── _layout.tsx      ← Stack navigator (index + [id] ayrı tab olmasın diye) — KRİTİK
-│   │       │   ├── index.tsx        ← Etkinlik listesi (FlatList, pagination, enrolled badge)
-│   │       │   └── [id].tsx         ← Etkinlik detay (kayıt/çıkış, öğretmenler, materyaller, galeri modal)
-│   │       ├── invoices/            ← YENİ — Tab bar'da GİZLİ (href: null), Profil'den açılır
+│   │       ├── meal-menu/           ← YENİ — "Yemek Listesi" tab (restaurant ikonu)
+│   │       │   ├── _layout.tsx      ← Stack navigator
+│   │       │   └── index.tsx        ← Çocuk seçici + ay navigasyonu + accordion yemek takvimi
+│   │       ├── activities/          ← YENİ — "Etkinlikler" tab (flame ikonu), 2 sekme içerir
+│   │       │   ├── _layout.tsx      ← Stack navigator (index + [id])
+│   │       │   ├── index.tsx        ← 2 sekme: "Etkinlikler" | "Etkinlik Sınıfları"
+│   │       │   └── [id].tsx         ← Etkinlik sınıfı detay (activity-classes/[id].tsx kopyası)
+│   │       ├── activity-classes/    ← KORUNDU ama Tab bar'da GİZLİ (href: null)
+│   │       │   ├── _layout.tsx
+│   │       │   ├── index.tsx
+│   │       │   └── [id].tsx
+│   │       ├── invoices/            ← Tab bar'da GİZLİ (href: null), Profil'den açılır
 │   │       │   ├── _layout.tsx      ← Stack navigator (index + [id]) — KRİTİK
 │   │       │   ├── index.tsx        ← Fatura listesi (stats kartları + modül badge + durum renkleri)
 │   │       │   └── [id].tsx         ← Fatura detayı (kalemler + işlemler + iade linkleri)
 │   │       ├── family/
 │   │       │   ├── index.tsx        ← Aile üyeleri + ortak erişim yönetimi
 │   │       │   └── emergency.tsx    ← Acil durum kişileri CRUD
-│   │       └── profile.tsx          ← Kullanıcı profili + "Faturalarım" navrow + bekleyen fatura uyarısı + çıkış
+│   │       └── profile.tsx          ← Kullanıcı profili + "Bilgilerim" bölümü (Çocuklarım + Okullarım) + "Faturalarım" navrow + bekleyen fatura uyarısı + çıkış
 │   ├── lib/
 │   │   ├── api.ts                   ← Axios instance (token interceptor + authEvent)
 │   │   ├── auth.ts                  ← Auth helpers (loginRequest, registerRequest, TOKEN_KEY vb.)
@@ -177,7 +184,30 @@ DELETE /api/parent/activity-classes/{id}/children/{child_id}/unenroll ← Kayıt
 GET  /api/parent/activity-classes/{id}/gallery                ← Galeri (signed URL'ler)
 ```
 
-### Faturalar (YENİ — 2026-04-07)
+### Etkinlikler (YENİ — 2026-04-10, güncellendi 2026-04-11)
+```
+GET    /api/parent/activities                ← Liste (paginated, is_enrolled dahil)
+GET    /api/parent/activities/{id}           ← Detay — her zaman temel bilgiler döner; materials+gallery yalnızca kayıtlıysa/gerek yoksa
+POST   /api/parent/activities/{id}/enroll   ← Etkinliğe katıl (is_enrollment_required=true olan etkinlikler için)
+DELETE /api/parent/activities/{id}/unenroll ← Etkinlikten ayrıl
+GET    /api/parent/activities/{id}/gallery  ← Galeri (is_enrollment_required=true ise kayıt kontrolü)
+```
+- `ParentActivityController::index()` — `is_enrolled` bool her etkinliğe eklenir (`ActivityEnrollment` sorgusu)
+- `ParentActivityController::show()` — **403 DÖNDÜRMEZ** — temel bilgiler hep döner; `canSeeExtras = !is_enrollment_required || is_enrolled` → materials + gallery yalnızca bu koşulda döner
+- Response: `ActivityResource` + `gallery[]` (signed URL) + `materials[]` (string dizi)
+- Galeri dosyaları: `storage/app/private/activities/{id}/gallery/` — 2 saatlik signed URL (`parent.activity-gallery.serve`)
+- `activities.materials`: JSON dizi → `string[]` — tenant etkinlik oluştururken tek tek girilen materyal listesi
+
+### Yemek Takvimi (YENİ — 2026-04-10)
+```
+GET /api/parent/meal-menus/children                           ← Ailenin okula kayıtlı çocukları + sınıf bilgisi
+GET /api/parent/meal-menus?child_id=X&year=Y&month=M         ← Seçilen çocuğun sınıfına göre aylık yemek takvimi
+```
+- `ParentMealMenuController::children()` — seçici için çocuk listesi döner (school_name + class_name)
+- `ParentMealMenuController::index()` — `class_id = çocuğun sınıfı OR class_id IS NULL` filtresi (sınıfa özel + okul geneli)
+- Response: tarihe göre gruplu array `[{ date, meals: [{ id, schedule_type, meal: { name, meal_type, ingredients[{ name, allergens[{ name, risk_level }] }] } }] }]`
+
+### Faturalar (2026-04-07)
 ```
 GET /api/parent/invoices              ← Tüm faturalar (paginated, status/invoice_type filtre)
 GET /api/parent/invoices/stats        ← İstatistik (total, pending, paid, overdue sayıları + bekleyen tutar)
@@ -278,14 +308,14 @@ success: '#10B981'
 - Eski fotoğraf: yeni yüklemede `Storage::disk('local')->delete(oldPath)` ile silinir
 - **DİKKAT:** `Storage::disk('private')` hata verir — Laravel 12 bu adda disk tanımlamaz; `local` kullan
 
-### Tab Navigasyonu (2026-04-02 güncelleme)
-- **6 tab**: Anasayfa, Çocuklar, Okullarım, **Etkinlik Sınıfları**, İstatistikler, Profil
-- **Etkinlik Sınıfları** sekmesi: Okullarım sekmesinin hemen sağında
-- Tab label stillemesi: `fontSize: 8, fontWeight: '600', flexWrap: 'wrap', textAlign: 'center'` — uzun label alt satıra geçmesi için
-- Tab bar height: Android 72, iOS 96 (uzun label için artırıldı)
-- **Aile** sekmesi kaldırıldı — Profil ekranına "Aile Yönetimi" butonu eklendi → `/(app)/family`
-- `(app)/_layout.tsx`: `family`, `activity-classes/[id]`, `invoices` için `href: null` (gizli screen'ler)
-- **Faturalarım**: Tab'da görünmez, Profil ekranından `router.push('/(app)/invoices')` ile açılır
+### Tab Navigasyonu (2026-04-10 — güncel)
+- **5 görünür tab**: Akış, **Yemek Listesi**, **Etkinlikler**, İstatistikler, Profil
+- **Çocuklarım + Okullarım**: Tab'dan kaldırıldı → `profile.tsx`'e "Bilgilerim" bölümü olarak taşındı
+- **Yemek Listesi** (`meal-menu/`): restaurant ikonu
+- **Etkinlikler** (`activities/`): flame ikonu — 2 sekme içerir (Etkinlikler + Etkinlik Sınıfları)
+- **Gizli screen'ler** (`href: null`): `children`, `schools`, `activity-classes`, `family`, `invoices`, `explore`
+- Tab label stillemesi: `fontSize: 8, fontWeight: '600', flexWrap: 'wrap', textAlign: 'center'` — uzun label için
+- Tab bar height: Android 72, iOS 96
 
 ### Expo Router — Stack Layout Zorunluluğu (KRİTİK)
 Bir klasördeki her `.tsx` dosyası Expo Router'da ayrı tab olarak görünür. Alt ekranların (detail page gibi) ayrı tab olmasını önlemek için klasörde `_layout.tsx` ile Stack navigator tanımlanmalı:
@@ -303,6 +333,42 @@ export default function ActivityClassesLayout() {
 ```
 
 Aynı pattern `schools/_layout.tsx`'te de uygulanmış. Yeni klasör eklendiğinde bu pattern takip edilmeli.
+
+### Etkinlikler Ekranı (activities/index.tsx — 2026-04-10, güncellendi 2026-04-11)
+- **2 sekme**: "Etkinlikler" (okul etkinlikleri) | "Etkinlik Sınıfları" (activity classes)
+- Tab geçişi: `Animated.Value` ile kayar gösterge (`tabIndicator`, position absolute, bottom:0)
+- **Etkinlikler sekmesi**: `ActivityCard` — okul adı, tarih aralığı, sınıflar, ücret badge; **HER ZAMAN tıklanabilir** → `/(app)/activities/event/{id}`
+  - `is_enrollment_required=true` + `is_enrolled=false`: kilitli görsel (gri arka plan, kilit ikonu, "Detayları görmek için katılın" mesajı) — ama yine de tıklanabilir
+  - `isLocked` değişkeni kullanılır (`canOpen` kaldırıldı — non-tappable bug'ı önlendi)
+- **Etkinlik Sınıfları sekmesi**: `ActivityClassCard` — `router.push('/(app)/activities/${id}')` ile detaya gider
+- **Lazy yükleme**: Etkinlikler ilk açılışta, Etkinlik Sınıfları sadece sekme tıklanınca fetch edilir (`acFetched` flag)
+- **Sayfalama**: her iki sekme için ayrı pagination state (`actPage/actLastPage`, `acPage/acLastPage`)
+- `(app)/activities/[id].tsx` → `activity-classes/[id].tsx`'in kopyası (aynı detay ekranı)
+
+### Etkinlik Detay Ekranı (activities/event/[id].tsx — YENİ 2026-04-11)
+- `load()`: `GET /parent/activities/{id}` → `is_enrolled`, `is_enrollment_required`, `gallery[]`, `materials[]`, `participants[]` alanları
+- **Katıl/Ayrıl CTA**: yalnızca `is_enrollment_required=true` ise görünür; katılımcı sayısı (`enrollments_count`) da yalnızca kayıtlıysa görünür
+- **Her zaman görünür**: ad, açıklama, okul, sınıflar, tarihler, fiyat, kayıt durumu badge, katıl butonu
+- **Sadece kayıtlıya görünür** (`showGallery = !is_enrollment_required || is_enrolled`):
+  - Materyaller listesi (`materials[]` — `checkmark-circle-outline` ikonlu liste)
+  - Galeri grid (3 sütun, `TILE_SIZE = (SCREEN_W-32-12)/3`)
+  - Katılımcılar listesi (`participants[]` — avatar + isim satırları)
+- **Kilit notice**: `is_enrollment_required=true` + `is_enrolled=false` → "Materyaller Kilitli" notice
+- **Lightbox modal** (`GalleryModal`): image → fullscreen, video/doc → `Linking.openURL`
+- **Önemli**: Expo app'i reload etmek gerekir (Metro bundler `r` tuşu) — opcache değil JS bundle cache sorunu
+- `cancellation_allowed` / `cancellation_deadline` alanları eklendi — "Etkinlikten Ayrıl" butonu yalnızca `cancellation_allowed=true` ise görünür; `cancellation_deadline` varsa altında son iptal tarihi notu gösterilir
+- `start_time` / `end_time` `fmtDate(date, time)` helper ile birleştirilmiş olarak gösterilir
+- Ücretli etkinliğe katılınca backend otomatik fatura oluşturur; iptal edilince iade/iptal faturası kesilir (mobil bu süreci yönetmez, backend halleder)
+
+### Yemek Listesi Ekranı (meal-menu/index.tsx — 2026-04-10)
+- **Tek çocuk**: otomatik seçilir, seçici gösterilmez
+- **Birden fazla çocuk**: `ChildSelector` dropdown — açık/kapalı toggle, `position: absolute, zIndex: 10`
+- **Ay navigasyonu**: `MonthNav` — sol/sağ ok, gelecek aya geçiş engellenir
+- **Accordion**: `DayCard` — `Animated.Value(0→1)` ile chevron döner, gövde expand
+  - Kapalı: tarih + gün kısaltması (örn. "ÇAR") + öğün sayısı
+  - Açık: her öğün → yemek adı + besin öğeleri → alerjen chip'leri + risk badge (Düşük/Orta/Yüksek)
+- `RiskBadge`: `low=#DCFCE7/#16A34A`, `medium=#FEF3C7/#D97706`, `high=#FEE2E2/#DC2626`
+- Boş durumlar: okul kaydı yok / o ay menü yok / gün için menü girilmemiş
 
 ### Tab Navigasyonu (2026-03-16 — eski)
 - **5 tab**: Anasayfa, Çocuklar, Okullar, İstatistikler, Profil
@@ -378,7 +444,13 @@ Aynı pattern `schools/_layout.tsx`'te de uygulanmış. Yeni klasör eklendiğin
 
 ---
 
-## 8. Kritik Düzeltmeler (2026-04-07)
+## 8. Kritik Düzeltmeler (2026-04-11)
+
+- **Etkinliğe katıl butonu görünmüyordu (chicken-and-egg bug)** — `ActivityCard` `canOpen = !is_enrollment_required || is_enrolled` koşulunu kullanıyordu → kayıtsız kullanıcı kartı tıklayamıyordu, dolayısıyla kayıt olamaıyordu. Backend `show()` da 403 dönüyordu. İki taraflı fix:
+  1. Backend: `ParentActivityController::show()` 403 bloğu kaldırıldı → kayıtsız kullanıcı da etkinlik bilgilerini görebilir; galeri yalnızca `!is_enrollment_required || is_enrolled` koşuluyla eklenir.
+  2. Mobil: `ActivityCard` her zaman tıklanabilir (`activeOpacity=0.75`, `onPress` her zaman route push eder). `canOpen` → `isLocked` olarak yeniden adlandırıldı (sadece görsel stil için kullanılır).
+
+### Kritik Düzeltmeler (2026-04-07)
 
 - **`schools/[id]/index.tsx` Ionicons import eksikti** — `import { Ionicons } from '@expo/vector-icons'` satırı yoktu. "Etkinlik Sınıfları" quick-link butonu `<Ionicons>` kullandığı için `Ionicons doesn't exist` crash'i veriyordu. Düzeltildi.
 - **Fatura listesi boş görünüyordu** — İlk implementasyon `ActivityClassInvoice` tablosunu `family_profile_id` ile sorguluyordu. Tenant tarafından kayıt yapıldığında faturanın `user_id` veli değil tenant admin olduğundan bazı senaryolarda kayıplar oluşuyordu. **Canonical `invoices` tablosuna geçildi** + dual-strategy sorgu (`user_id = parent` OR `payable_id IN enrollmentIds`).

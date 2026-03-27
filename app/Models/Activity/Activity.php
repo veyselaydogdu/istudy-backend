@@ -18,19 +18,32 @@ class Activity extends BaseModel
         'name',
         'description',
         'is_paid',
+        'is_enrollment_required',
+        'cancellation_allowed',
+        'cancellation_deadline',
         'price',
         'start_date',
+        'start_time',
         'end_date',
+        'end_time',
+        'materials',
         'created_by',
         'updated_by',
     ];
 
-    protected $casts = [
-        'is_paid' => 'boolean',
-        'price' => 'decimal:2',
-        'start_date' => 'date',
-        'end_date' => 'date',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'is_paid' => 'boolean',
+            'is_enrollment_required' => 'boolean',
+            'cancellation_allowed' => 'boolean',
+            'cancellation_deadline' => 'datetime',
+            'price' => 'decimal:2',
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'materials' => 'array',
+        ];
+    }
 
     public function children()
     {
@@ -50,5 +63,15 @@ class Activity extends BaseModel
     public function classes()
     {
         return $this->belongsToMany(SchoolClass::class, 'activity_class_assignments', 'activity_id', 'class_id')->withTimestamps();
+    }
+
+    public function enrollments()
+    {
+        return $this->hasMany(ActivityEnrollment::class);
+    }
+
+    public function gallery()
+    {
+        return $this->hasMany(ActivityGalleryItem::class)->orderBy('sort_order')->orderBy('created_at');
     }
 }

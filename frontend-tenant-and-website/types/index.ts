@@ -246,11 +246,34 @@ export type Activity = {
     name: string
     description?: string
     is_paid?: boolean
+    is_enrollment_required?: boolean
+    cancellation_allowed?: boolean
+    cancellation_deadline?: string | null
     price?: number
     start_date?: string
+    start_time?: string | null
     end_date?: string
+    end_time?: string | null
+    materials?: string[]
+    school?: { id: number; name: string }
     classes?: SchoolClass[]
+    enrollments_count?: number
+    gallery_count?: number
     created_at?: string
+    updated_at?: string
+    deleted_at?: string | null
+}
+
+export type ActivityGalleryItem = {
+    id: number
+    file_type: 'image' | 'video' | 'document'
+    mime_type: string
+    file_size: number
+    original_name: string
+    caption?: string | null
+    sort_order: number
+    url: string
+    created_at: string
 }
 
 export type AcademicYear = {

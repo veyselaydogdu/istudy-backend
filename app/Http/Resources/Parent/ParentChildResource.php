@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Parent;
 
+use App\Models\School\SchoolChildEnrollmentRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\URL;
@@ -83,6 +84,52 @@ class ParentChildResource extends JsonResource
                     'status' => $row->med_status ?? 'approved',
                 ])
                 ->values(),
+            'classes' => $this->whenLoaded('classes', fn () => $this->classes->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+            ])->values()),
+            'class_info' => $this->whenLoaded('classes', function () {
+                $class = $this->classes->first();
+
+                if (! $class || ! $class->relationLoaded('children')) {
+                    return null;
+                }
+
+                $classChildren = $class->children;
+
+                return [
+                    'id' => $class->id,
+                    'name' => $class->name,
+                    'color' => $class->color,
+                    'age_min' => $class->age_min,
+                    'age_max' => $class->age_max,
+                    'capacity' => $class->capacity,
+                    'student_count' => $classChildren->count(),
+                    'male_count' => $classChildren->where('gender', 'male')->count(),
+                    'female_count' => $classChildren->where('gender', 'female')->count(),
+                    'teachers' => $class->teachers->map(fn ($t) => [
+                        'id' => $t->id,
+                        'name' => trim(($t->user->name ?? '').' '.($t->user->surname ?? '')),
+                    ])->values(),
+                ];
+            }),
+            'pending_enrollment' => (function () {
+                $req = SchoolChildEnrollmentRequest::where('child_id', $this->id)
+                    ->where('status', 'pending')
+                    ->with('school:id,name')
+                    ->first();
+
+                if (! $req) {
+                    return null;
+                }
+
+                return [
+                    'id' => $req->id,
+                    'school_id' => $req->school_id,
+                    'school_name' => $req->school?->name,
+                    'created_at' => $req->created_at,
+                ];
+            })(),
         ];
     }
 }

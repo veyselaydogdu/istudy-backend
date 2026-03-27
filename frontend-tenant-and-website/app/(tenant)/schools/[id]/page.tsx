@@ -31,7 +31,7 @@ export default function SchoolDetailPage() {
     const [assigningStudentToClass, setAssigningStudentToClass] = useState(false);
     const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'classes' | 'children' | 'teachers' | 'requests' | 'parents' | 'child-requests'>('classes');
+    const [activeTab, setActiveTab] = useState<'classes' | 'children' | 'teachers' | 'requests' | 'parents' | 'child-requests' | 'removal-requests'>('classes');
 
     // School-level teacher management
     const [schoolLevelTeachers, setSchoolLevelTeachers] = useState<SchoolTeacher[]>([]);
@@ -94,6 +94,27 @@ export default function SchoolDetailPage() {
     const [rejectChildTargetId, setRejectChildTargetId] = useState<number | null>(null);
     const [rejectionChildReason, setRejectionChildReason] = useState('');
     const [savingChildReject, setSavingChildReject] = useState(false);
+
+    // ── Çocuk Silme Talepleri ──
+    type RemovalRequest = {
+        id: number;
+        status: 'pending' | 'approved' | 'rejected';
+        reason: string | null;
+        rejection_reason: string | null;
+        reviewed_at: string | null;
+        created_at: string;
+        child: { id: number; full_name: string; birth_date: string | null; gender: string | null } | null;
+        owner_name: string | null;
+        owner_phone: string | null;
+        owner_email: string | null;
+    };
+    const [removalRequests, setRemovalRequests] = useState<RemovalRequest[]>([]);
+    const [removalRequestsFetched, setRemovalRequestsFetched] = useState(false);
+    const [removalRequestsFilter, setRemovalRequestsFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+    const [showRejectRemovalModal, setShowRejectRemovalModal] = useState(false);
+    const [rejectRemovalTargetId, setRejectRemovalTargetId] = useState<number | null>(null);
+    const [rejectionRemovalReason, setRejectionRemovalReason] = useState('');
+    const [savingRemovalReject, setSavingRemovalReject] = useState(false);
 
     // Invite info
     const [inviteInfo, setInviteInfo] = useState<{ registration_code: string; invite_token: string } | null>(null);
@@ -391,6 +412,60 @@ export default function SchoolDetailPage() {
         }
         if (tab === 'child-requests' && !childRequestsFetched && !loadingChildRequests) {
             fetchChildEnrollmentRequests('pending');
+        }
+        if (tab === 'removal-requests' && !removalRequestsFetched) {
+            void fetchRemovalRequests('pending');
+        }
+    };
+
+    const fetchRemovalRequests = async (status: 'pending' | 'approved' | 'rejected' | 'all') => {
+        try {
+            const res = await apiClient.get(`/schools/${id}/child-removal-requests`, { params: { status } });
+            setRemovalRequests(res.data?.data ?? []);
+            setRemovalRequestsFetched(true);
+        } catch {
+            toast.error('Silme talepleri yüklenemedi.');
+        }
+    };
+
+    const handleApproveRemoval = async (requestId: number) => {
+        const result = await Swal.fire({
+            title: 'Silme Talebini Onayla',
+            text: 'Çocuk tüm sınıflardan çıkarılacak ve kaydı silinecek. Bu işlem geri alınamaz.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Sil',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            await apiClient.patch(`/schools/${id}/child-removal-requests/${requestId}/approve`);
+            toast.success('Talep onaylandı ve çocuk kaydı silindi.');
+            void fetchRemovalRequests(removalRequestsFilter);
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
+            toast.error(e.response?.data?.message ?? 'Hata oluştu.');
+        }
+    };
+
+    const handleRejectRemoval = async () => {
+        if (!rejectRemovalTargetId || !rejectionRemovalReason.trim()) return;
+        setSavingRemovalReject(true);
+        try {
+            await apiClient.patch(`/schools/${id}/child-removal-requests/${rejectRemovalTargetId}/reject`, {
+                rejection_reason: rejectionRemovalReason.trim(),
+            });
+            toast.success('Talep reddedildi.');
+            setShowRejectRemovalModal(false);
+            setRejectionRemovalReason('');
+            setRejectRemovalTargetId(null);
+            void fetchRemovalRequests(removalRequestsFilter);
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
+            toast.error(e.response?.data?.message ?? 'Hata oluştu.');
+        } finally {
+            setSavingRemovalReject(false);
         }
     };
 
@@ -849,6 +924,17 @@ export default function SchoolDetailPage() {
                         Onay Bekleyen Öğrenciler
                         {childEnrollmentRequests.filter(r => r.status === 'pending').length > 0 && (
                             <span className="badge badge-outline-warning text-xs">{childEnrollmentRequests.filter(r => r.status === 'pending').length}</span>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors ${activeTab === 'removal-requests' ? 'border-b-2 border-danger text-danger' : 'text-[#515365] hover:text-danger dark:text-[#888ea8]'}`}
+                        onClick={() => handleTabChange('removal-requests')}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        Silme Talepleri
+                        {removalRequests.filter(r => r.status === 'pending').length > 0 && (
+                            <span className="badge badge-outline-danger text-xs">{removalRequests.filter(r => r.status === 'pending').length}</span>
                         )}
                     </button>
                 </div>
@@ -1388,7 +1474,150 @@ export default function SchoolDetailPage() {
                         )}
                     </>
                 )}
+
+                {/* ── Silme Talepleri Tab ── */}
+                {activeTab === 'removal-requests' && (
+                    <>
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-sm text-[#888ea8]">Velilerin çocuk silme talepleri. Onay sonrasında çocuk tüm sınıflardan çıkarılır ve kaydı silinir.</p>
+                            <div className="flex gap-2">
+                                {(['pending', 'approved', 'rejected', 'all'] as const).map(f => {
+                                    const labels = { pending: 'Bekleyen', approved: 'Onaylanan', rejected: 'Reddedilen', all: 'Tümü' };
+                                    const colors = { pending: 'btn-outline-warning', approved: 'btn-outline-success', rejected: 'btn-outline-danger', all: 'btn-outline-secondary' };
+                                    return (
+                                        <button
+                                            key={f}
+                                            type="button"
+                                            className={`btn btn-sm ${removalRequestsFilter === f ? colors[f].replace('outline-', '') : colors[f]}`}
+                                            onClick={() => {
+                                                setRemovalRequestsFilter(f);
+                                                void fetchRemovalRequests(f);
+                                            }}
+                                        >
+                                            {labels[f]}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {removalRequests.length === 0 ? (
+                            <p className="py-12 text-center text-sm text-[#888ea8]">
+                                {removalRequestsFilter === 'pending' ? 'Bekleyen silme talebi yok.' : 'Silme talebi bulunamadı.'}
+                            </p>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Çocuk</th>
+                                            <th>Veli</th>
+                                            <th>Neden</th>
+                                            <th>Durum</th>
+                                            <th>Tarih</th>
+                                            <th>İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {removalRequests.map(req => (
+                                            <tr key={req.id}>
+                                                <td className="font-medium text-dark dark:text-white">
+                                                    {req.child?.full_name ?? '—'}
+                                                </td>
+                                                <td>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-dark dark:text-white">{req.owner_name ?? '—'}</p>
+                                                        {req.owner_phone && <p className="text-xs text-[#888ea8]">{req.owner_phone}</p>}
+                                                        {req.owner_email && <p className="text-xs text-[#888ea8]">{req.owner_email}</p>}
+                                                    </div>
+                                                </td>
+                                                <td className="max-w-xs text-sm text-[#515365] dark:text-[#888ea8]">
+                                                    {req.reason ?? '—'}
+                                                </td>
+                                                <td>
+                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">Bekliyor</span>}
+                                                    {req.status === 'approved' && <span className="badge badge-outline-success">Onaylandı</span>}
+                                                    {req.status === 'rejected' && (
+                                                        <span className="badge badge-outline-danger cursor-help" title={req.rejection_reason ?? ''}>Reddedildi</span>
+                                                    )}
+                                                </td>
+                                                <td className="text-sm text-[#888ea8]">
+                                                    {new Date(req.created_at).toLocaleDateString('tr-TR')}
+                                                </td>
+                                                <td>
+                                                    {req.status === 'pending' && (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-danger p-2"
+                                                                onClick={() => handleApproveRemoval(req.id)}
+                                                                title="Onayla ve Sil"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-secondary p-2"
+                                                                onClick={() => {
+                                                                    setRejectRemovalTargetId(req.id);
+                                                                    setRejectionRemovalReason('');
+                                                                    setShowRejectRemovalModal(true);
+                                                                }}
+                                                                title="Reddet"
+                                                            >
+                                                                <XCircle className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
+
+            {/* Silme Talebi Reddetme Modalı */}
+            {showRejectRemovalModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Talebi Reddet</h2>
+                            <button type="button" onClick={() => setShowRejectRemovalModal(false)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Red Nedeni *</label>
+                                <textarea
+                                    className="form-textarea mt-1 w-full"
+                                    rows={3}
+                                    placeholder="Reddetme nedeninizi açıklayın..."
+                                    value={rejectionRemovalReason}
+                                    onChange={e => setRejectionRemovalReason(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectRemovalModal(false)}>
+                                    İptal
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-danger flex-1"
+                                    disabled={!rejectionRemovalReason.trim() || savingRemovalReject}
+                                    onClick={() => void handleRejectRemoval()}
+                                >
+                                    {savingRemovalReject ? 'Kaydediliyor...' : 'Reddet'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Veli Detay Modalı */}
             {selectedParentDetail && (
@@ -1759,12 +1988,27 @@ export default function SchoolDetailPage() {
                                     onChange={e => setStudentAssignChildId(e.target.value)}
                                 >
                                     <option value="">Öğrenci seçin</option>
-                                    {children.filter(c => (c.classes?.length ?? 0) === 0).map(c => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.first_name} {c.last_name}
-                                            {c.birth_date ? ` (${new Date().getFullYear() - new Date(c.birth_date).getFullYear()} yaş)` : ''}
-                                        </option>
-                                    ))}
+                                    {children.map(c => {
+                                        const hasClass = (c.classes?.length ?? 0) > 0;
+                                        const birthYear = c.birth_date ? new Date(c.birth_date + 'T00:00:00') : null;
+                                        let age: number | null = null;
+                                        if (birthYear) {
+                                            const today = new Date();
+                                            age = today.getFullYear() - birthYear.getFullYear();
+                                            const m = today.getMonth() - birthYear.getMonth();
+                                            if (m < 0 || (m === 0 && today.getDate() < birthYear.getDate())) age--;
+                                        }
+                                        const min = classForStudentAssign?.age_min ?? null;
+                                        const max = classForStudentAssign?.age_max ?? null;
+                                        const outOfRange = age !== null && ((min !== null && age < min) || (max !== null && age > max));
+                                        if (outOfRange) return null;
+                                        const label = `${c.first_name} ${c.last_name}${age !== null ? ` (${age} yaş)` : ''}${hasClass ? ` — ${c.classes![0].name} sınıfında` : ''}`;
+                                        return (
+                                            <option key={c.id} value={String(c.id)} disabled={hasClass}>
+                                                {label}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </div>
                             <div className="flex gap-3 pt-1">

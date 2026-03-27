@@ -144,6 +144,40 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* Çocuklarım & Okullarım */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Bilgilerim</Text>
+          <TouchableOpacity
+            style={styles.navRow}
+            onPress={() => router.push('/(app)/children')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.infoIconWrap}>
+              <Ionicons name="people-outline" size={17} color="#208AEF" />
+            </View>
+            <View style={styles.infoText}>
+              <Text style={styles.infoValue}>Çocuklarım</Text>
+              <Text style={styles.infoLabel}>Çocuk bilgileri ve sağlık kayıtları</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+          <View style={styles.navDivider} />
+          <TouchableOpacity
+            style={styles.navRow}
+            onPress={() => router.push('/(app)/schools')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.infoIconWrap}>
+              <Ionicons name="school-outline" size={17} color="#208AEF" />
+            </View>
+            <View style={styles.infoText}>
+              <Text style={styles.infoValue}>Okullarım</Text>
+              <Text style={styles.infoLabel}>Kayıtlı okullar ve detaylar</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+
         {/* Family */}
         <TouchableOpacity
           style={styles.section}
@@ -336,6 +370,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 8,
+  },
+  navDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 4,
   },
 
   pendingBadge: {

@@ -20,6 +20,7 @@ import {
     MessageSquare,
     Users,
     Star,
+    ClipboardCheck,
 } from 'lucide-react';
 
 type NavItem = {
@@ -48,6 +49,7 @@ const navGroups: NavGroup[] = [
             { title: 'Etkinlikler', href: '/activities', icon: Calendar },
             { title: 'Etkinlik Sınıfları', href: '/activity-classes', icon: Star },
             { title: 'Sosyal Ağ', href: '/social', icon: MessageSquare },
+            { title: 'Bekleyen Onaylar', href: '/approvals', icon: ClipboardCheck },
         ],
     },
     {

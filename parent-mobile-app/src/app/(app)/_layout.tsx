@@ -51,24 +51,10 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="children"
+        name="meal-menu"
         options={{
-          title: 'Çocuklarım',
-          tabBarIcon: ({ focused }) => tabIcon(focused, 'people', 'people-outline'),
-        }}
-      />
-      <Tabs.Screen
-        name="schools"
-        options={{
-          title: 'Okullarım',
-          tabBarIcon: ({ focused }) => tabIcon(focused, 'school', 'school-outline'),
-        }}
-      />
-      <Tabs.Screen
-        name="activity-classes"
-        options={{
-          title: 'Etkinlik Sınıfları',
-          tabBarIcon: ({ focused }) => tabIcon(focused, 'star', 'star-outline'),
+          title: 'Yemek Listesi',
+          tabBarIcon: ({ focused }) => tabIcon(focused, 'restaurant', 'restaurant-outline'),
           tabBarLabelStyle: {
             fontSize: 8,
             fontWeight: '600',
@@ -76,6 +62,13 @@ export default function AppLayout() {
             flexWrap: 'wrap',
             textAlign: 'center',
           },
+        }}
+      />
+      <Tabs.Screen
+        name="activities"
+        options={{
+          title: 'Etkinlikler',
+          tabBarIcon: ({ focused }) => tabIcon(focused, 'flame', 'flame-outline'),
         }}
       />
       <Tabs.Screen
@@ -95,6 +88,9 @@ export default function AppLayout() {
 
       {/* Tab bar'da gizlenecek ekranlar */}
       <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="children" options={{ href: null }} />
+      <Tabs.Screen name="schools" options={{ href: null }} />
+      <Tabs.Screen name="activity-classes" options={{ href: null }} />
       <Tabs.Screen name="family" options={{ href: null }} />
       <Tabs.Screen name="invoices" options={{ href: null }} />
     </Tabs>

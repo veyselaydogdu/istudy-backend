@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -95,9 +95,12 @@ export default function ChildrenScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void fetchChildren();
-  }, [fetchChildren]);
+  // Ekran her odaklandığında (add/edit'ten geri dönünce) listeyi güncelle
+  useFocusEffect(
+    useCallback(() => {
+      void fetchChildren();
+    }, [fetchChildren])
+  );
 
   const handleRefresh = () => {
     setRefreshing(true);

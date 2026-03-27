@@ -87,6 +87,16 @@ Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers
     ->name('activity-class-gallery.serve')
     ->middleware('signed');
 
+// ETKİNLİK GALERİSİ (Tenant) — İmzalı URL
+Route::get('/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityController::class, 'serveGalleryItem'])
+    ->name('activity-gallery.serve')
+    ->middleware('signed');
+
+// ETKİNLİK GALERİSİ (Veli) — İmzalı URL
+Route::get('/parent/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Parents\ParentActivityController::class, 'serveGalleryItem'])
+    ->name('parent.activity-gallery.serve')
+    ->middleware('signed');
+
 // ═══════════════════════════════════════════════════════════
 // VELİ AUTH (Public — Mobil uygulama)
 // ═══════════════════════════════════════════════════════════
@@ -114,6 +124,7 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
     Route::post('/children/{child}/allergens', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncAllergens']);
     Route::post('/children/{child}/medications', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncMedications']);
     Route::post('/children/{child}/conditions', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncConditions']);
+    Route::post('/children/{child}/removal-request', [\App\Http\Controllers\Parents\ParentChildController::class, 'requestRemoval']);
 
     // Aile üyeleri
     Route::get('/family/members', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'members']);
@@ -158,6 +169,17 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
     Route::get('/children/{child}/stats', [\App\Http\Controllers\Parents\ParentChildController::class, 'stats']);
 
     // ───────────────────────────────────────────────────
+    // ETKİNLİKLER (Veli)
+    // ───────────────────────────────────────────────────
+    Route::prefix('activities')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Parents\ParentActivityController::class, 'index']);
+        Route::get('/{activity}', [\App\Http\Controllers\Parents\ParentActivityController::class, 'show']);
+        Route::post('/{activity}/enroll', [\App\Http\Controllers\Parents\ParentActivityController::class, 'enroll']);
+        Route::delete('/{activity}/unenroll', [\App\Http\Controllers\Parents\ParentActivityController::class, 'unenroll']);
+        Route::get('/{activity}/gallery', [\App\Http\Controllers\Parents\ParentActivityController::class, 'gallery']);
+    });
+
+    // ───────────────────────────────────────────────────
     // ETKİNLİK SINIFLARI (Veli)
     // ───────────────────────────────────────────────────
     Route::prefix('activity-classes')->group(function () {
@@ -176,6 +198,14 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
         Route::get('/', [\App\Http\Controllers\Parents\ParentInvoiceController::class, 'index']);
         Route::get('/stats', [\App\Http\Controllers\Parents\ParentInvoiceController::class, 'stats']);
         Route::get('/{invoice}', [\App\Http\Controllers\Parents\ParentInvoiceController::class, 'show']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // YEMEK TAKVİMİ (Veli)
+    // ───────────────────────────────────────────────────
+    Route::prefix('meal-menus')->group(function () {
+        Route::get('/children', [\App\Http\Controllers\Parents\ParentMealMenuController::class, 'children']);
+        Route::get('/', [\App\Http\Controllers\Parents\ParentMealMenuController::class, 'index']);
     });
 });
 
@@ -297,6 +327,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // 3️⃣ ABONELİK GEREKLİ (Aktif paket zorunlu)
     // ═══════════════════════════════════════════════════════
     Route::middleware('subscription.active')->group(function () {
+
+        // Bekleyen onaylar — tenant geneli
+        Route::get('/pending-approvals', [\App\Http\Controllers\Schools\PendingApprovalsController::class, 'index']);
 
         // Aile abonelikleri (B2C)
         Route::apiResource('subscriptions', \App\Http\Controllers\Tenant\SubscriptionController::class);
@@ -422,6 +455,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
             Route::patch('children/{child}/unenroll', [\App\Http\Controllers\Schools\ChildController::class, 'unenroll']);
             Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
+            Route::post('activities/{activityId}/restore', [\App\Http\Controllers\Schools\ActivityController::class, 'restore']);
+            Route::get('activities/{activity}/enrollments', [\App\Http\Controllers\Schools\ActivityController::class, 'enrollmentIndex']);
+            Route::get('activities/{activity}/gallery', [\App\Http\Controllers\Schools\ActivityController::class, 'galleryIndex']);
+            Route::post('activities/{activity}/gallery', [\App\Http\Controllers\Schools\ActivityController::class, 'galleryStore']);
+            Route::delete('activities/{activity}/gallery/{galleryItem}', [\App\Http\Controllers\Schools\ActivityController::class, 'galleryDestroy']);
             Route::apiResource('families', \App\Http\Controllers\Schools\FamilyProfileController::class);
 
             // ───────────────────────────────────────────────────
@@ -467,6 +505,20 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Schools\ChildEnrollmentRequestController::class, 'index']);
                 Route::patch('/{id}/approve', [\App\Http\Controllers\Schools\ChildEnrollmentRequestController::class, 'approve']);
                 Route::patch('/{id}/reject', [\App\Http\Controllers\Schools\ChildEnrollmentRequestController::class, 'reject']);
+            });
+
+            // Çocuk silme talepleri (velinin gönderdiği okul çıkarma + silme talepleri)
+            Route::prefix('child-removal-requests')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Schools\ChildRemovalRequestController::class, 'index']);
+                Route::patch('/{id}/approve', [\App\Http\Controllers\Schools\ChildRemovalRequestController::class, 'approve']);
+                Route::patch('/{id}/reject', [\App\Http\Controllers\Schools\ChildRemovalRequestController::class, 'reject']);
+            });
+
+            // Çocuk alan değişiklik talepleri (doğum tarihi vb.)
+            Route::prefix('child-field-change-requests')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Schools\ChildFieldChangeRequestController::class, 'index']);
+                Route::patch('/{id}/approve', [\App\Http\Controllers\Schools\ChildFieldChangeRequestController::class, 'approve']);
+                Route::patch('/{id}/reject', [\App\Http\Controllers\Schools\ChildFieldChangeRequestController::class, 'reject']);
             });
 
             // Okuldaki öğretmenler (?detailed=1 ile zengin veri)

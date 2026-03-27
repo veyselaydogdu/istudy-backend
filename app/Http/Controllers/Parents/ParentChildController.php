@@ -6,6 +6,8 @@ use App\Http\Requests\Parent\StoreParentChildRequest;
 use App\Http\Requests\Parent\UpdateParentChildRequest;
 use App\Http\Resources\Parent\ParentChildResource;
 use App\Models\Child\Child;
+use App\Models\Child\ChildFieldChangeRequest;
+use App\Models\Child\ChildRemovalRequest;
 use App\Models\Health\Allergen;
 use App\Models\Health\MedicalCondition;
 use App\Models\Health\Medication;
@@ -29,7 +31,7 @@ class ParentChildController extends BaseParentController
 
             $children = $familyProfile->children()
                 ->withoutGlobalScope('tenant')
-                ->with(['allergens', 'conditions', 'medications', 'nationality', 'school'])
+                ->with(['allergens', 'conditions', 'medications', 'nationality', 'school', 'classes:id,name'])
                 ->get();
 
             return $this->successResponse(
@@ -106,7 +108,17 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
-            $childModel->load(['allergens', 'conditions', 'medications', 'nationality', 'school']);
+            $childModel->load([
+                'allergens',
+                'conditions',
+                'medications',
+                'nationality',
+                'school',
+                'classes' => fn ($q) => $q->with([
+                    'children:id,gender',
+                    'teachers' => fn ($tq) => $tq->with('user:id,name,surname'),
+                ]),
+            ]);
 
             return $this->successResponse(
                 ParentChildResource::make($childModel),
@@ -129,14 +141,54 @@ class ParentChildController extends BaseParentController
             }
 
             $data = $request->validated();
-            $data['updated_by'] = $this->user()->id;
 
+            // Okula kayıtlı çocuklarda doğum tarihi değişikliği tenant onayı gerektirir
+            $pendingMessage = null;
+            if (isset($data['birth_date']) && $childModel->school_id) {
+                $newBirthDate = $data['birth_date'];
+                $oldBirthDate = $childModel->birth_date?->format('Y-m-d') ?? null;
+
+                if ($newBirthDate !== $oldBirthDate) {
+                    $familyProfile = $this->getFamilyProfile();
+
+                    // Zaten bekleyen talep var mı?
+                    $existing = ChildFieldChangeRequest::where('child_id', $childModel->id)
+                        ->where('field_name', 'birth_date')
+                        ->where('status', 'pending')
+                        ->first();
+
+                    if (! $existing) {
+                        $school = $childModel->school;
+                        ChildFieldChangeRequest::create([
+                            'child_id' => $childModel->id,
+                            'family_profile_id' => $familyProfile->id,
+                            'school_id' => $childModel->school_id,
+                            'tenant_id' => $school?->tenant_id,
+                            'requested_by_user_id' => $this->user()->id,
+                            'field_name' => 'birth_date',
+                            'old_value' => $oldBirthDate,
+                            'new_value' => $newBirthDate,
+                            'status' => 'pending',
+                        ]);
+                        $pendingMessage = 'Doğum tarihi değişikliği okul yönetimine iletildi. Onay sonrasında güncellenecektir.';
+                    } else {
+                        $pendingMessage = 'Doğum tarihi için zaten bekleyen bir değişiklik talebi mevcut.';
+                    }
+
+                    // Doğum tarihi direkt güncellenmez
+                    unset($data['birth_date']);
+                }
+            }
+
+            $data['updated_by'] = $this->user()->id;
             $childModel->update($data);
             $childModel->load(['allergens', 'conditions', 'medications', 'nationality']);
 
+            $message = $pendingMessage ?? 'Çocuk bilgileri güncellendi.';
+
             return $this->successResponse(
                 ParentChildResource::make($childModel),
-                'Çocuk bilgileri güncellendi.'
+                $message
             );
         } catch (\Throwable $e) {
             Log::error('ParentChildController::update Error', ['message' => $e->getMessage()]);
@@ -154,11 +206,68 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
+            // Sınıfa kayıtlı çocuklar direkt silinemez
+            if ($childModel->school_id) {
+                return $this->errorResponse(
+                    'Bu çocuk bir okula kayıtlı. Silmek için okul yönetimine talep gönderebilirsiniz.',
+                    422
+                );
+            }
+
             $childModel->delete();
 
             return $this->successResponse(null, 'Çocuk kaydı silindi.');
         } catch (\Throwable $e) {
             Log::error('ParentChildController::destroy Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Çocuğun okuldan çıkarılması ve silinmesi için talep oluştur.
+     */
+    public function requestRemoval(Request $request, int $child): JsonResponse
+    {
+        $data = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $childModel = $this->findOwnedChild($child);
+
+            if (! $childModel) {
+                return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            if (! $childModel->school_id) {
+                return $this->errorResponse('Bu çocuk herhangi bir okula kayıtlı değil. Direkt silebilirsiniz.', 422);
+            }
+
+            // Bekleyen talep var mı?
+            $existing = ChildRemovalRequest::where('child_id', $childModel->id)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($existing) {
+                return $this->errorResponse('Bu çocuk için zaten bekleyen bir silme talebi mevcut.', 422);
+            }
+
+            $familyProfile = $this->getFamilyProfile();
+
+            ChildRemovalRequest::create([
+                'child_id' => $childModel->id,
+                'family_profile_id' => $familyProfile->id,
+                'school_id' => $childModel->school_id,
+                'tenant_id' => $childModel->school->tenant_id,
+                'requested_by_user_id' => $this->user()->id,
+                'status' => 'pending',
+                'reason' => $data['reason'] ?? null,
+            ]);
+
+            return $this->successResponse(null, 'Silme talebiniz okul yönetimine iletildi. Onay sonrasında çocuk kaydı silinecektir.');
+        } catch (\Throwable $e) {
+            Log::error('ParentChildController::requestRemoval Error', ['message' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 500);
         }
