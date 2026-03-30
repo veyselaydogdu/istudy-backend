@@ -63,6 +63,37 @@ return [
             ]) : [],
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | Audit / History Veritabanı Bağlantısı
+        |--------------------------------------------------------------------------
+        | Tüm history ve audit log verileri bu bağlantı üzerinden yazılır.
+        | Ana veritabanından ayrı tutularak:
+        | - Performans izolasyonu sağlanır
+        | - Ayrı backup/arşiv stratejisi uygulanabilir
+        | - İleride MongoDB gibi farklı storage'a geçiş kolaylaşır
+        |
+        | .env'de AUDIT_DB_* tanımlanmazsa ana DB bağlantısı kullanılır.
+        */
+        'audit' => [
+            'driver'    => env('AUDIT_DB_DRIVER', env('DB_CONNECTION', 'mysql')),
+            'host'      => env('AUDIT_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port'      => env('AUDIT_DB_PORT', env('DB_PORT', '3306')),
+            'database'  => env('AUDIT_DB_DATABASE', env('DB_DATABASE', 'laravel') . '_audit'),
+            'username'  => env('AUDIT_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password'  => env('AUDIT_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset'   => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix'    => '',
+            'prefix_indexes' => true,
+            'strict'    => true,
+            'engine'    => null,
+            'options'   => extension_loaded('pdo_mysql') ? array_filter([
+                (PHP_VERSION_ID >= 80500 ? \Pdo\Mysql::ATTR_SSL_CA : \PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

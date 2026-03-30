@@ -3,9 +3,9 @@
 namespace App\Models\Academic;
 
 use App\Models\Base\BaseModel;
-use App\Models\School\School;
 use App\Models\Child\Child;
-use App\Models\School\TeacherProfile; 
+use App\Models\School\School;
+use App\Models\School\TeacherProfile;
 
 // "CLASS" keyword issue -> naming it SchoolClass
 class SchoolClass extends BaseModel
@@ -16,11 +16,19 @@ class SchoolClass extends BaseModel
         'school_id',
         'academic_year_id',
         'name',
+        'description',
+        'age_min',
+        'age_max',
         'color',
         'logo',
         'capacity',
+        'is_active',
         'created_by',
-        'updated_by'
+        'updated_by',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     /*
@@ -64,6 +72,6 @@ class SchoolClass extends BaseModel
         // Maybe it's missing from migration request but required in Model relations.
         // I will expect a pivot table `class_teacher` or similar.
         return $this->belongsToMany(TeacherProfile::class, 'class_teacher_assignments', 'class_id', 'teacher_profile_id')
-                    ->withTimestamps(); 
+            ->withTimestamps();
     }
 }

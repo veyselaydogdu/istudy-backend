@@ -2,9 +2,9 @@
 
 namespace App\Models\Activity;
 
+use App\Models\Academic\SchoolClass;
 use App\Models\Base\BaseModel;
 use App\Models\Child\Child;
-use App\Models\Academic\SchoolClass;
 
 class Attendance extends BaseModel
 {
@@ -16,7 +16,7 @@ class Attendance extends BaseModel
         'attendance_date',
         'status',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [

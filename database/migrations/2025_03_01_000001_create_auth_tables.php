@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /*
     |--------------------------------------------------------------------------
     | Türkçe Açıklama
@@ -17,7 +18,7 @@ return new class extends Migration {
     public function up(): void
     {
         // 1. USERS
-        if (!Schema::hasTable('users')) {
+        if (! Schema::hasTable('users')) {
             Schema::create('users', function (Blueprint $table) {
                 $table->id()->comment('Kullanıcı ID');
                 $table->string('name')->comment('Ad Soyad');
@@ -26,26 +27,40 @@ return new class extends Migration {
                 $table->string('password')->comment('Şifre');
                 $table->string('locale')->default('tr')->comment('Dil Seçeneği');
                 $table->timestamp('last_login_at')->nullable()->comment('Son Giriş Tarihi');
-                
+
                 // Standart Alanlar (Users tablosunda created_by nullable olmak zorunda: first seed için)
-                $table->foreignId('created_by')->nullable()->constrained('users')->cascadeOnDelete()->comment('Oluşturan Kullanıcı');
-                $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete()->comment('Güncelleyen Kullanıcı');
+                $table->foreignId('created_by')->nullable()->constrained('users')->restrictOnDelete()->comment('Oluşturan Kullanıcı');
+                $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete()->comment('Güncelleyen Kullanıcı');
                 $table->timestamps();
                 $table->softDeletes();
-    
+
                 $table->index('email');
             });
         } else {
             Schema::table('users', function (Blueprint $table) {
-                if (!Schema::hasColumn('users', 'name')) $table->string('name')->comment('Ad Soyad');
-                
-                if (!Schema::hasColumn('users', 'phone')) $table->string('phone')->nullable()->comment('Telefon');
-                if (!Schema::hasColumn('users', 'locale')) $table->string('locale')->default('tr')->comment('Dil Seçeneği');
-                if (!Schema::hasColumn('users', 'last_login_at')) $table->timestamp('last_login_at')->nullable()->comment('Son Giriş Tarihi');
-                
-                if (!Schema::hasColumn('users', 'created_by')) $table->foreignId('created_by')->nullable()->constrained('users')->cascadeOnDelete()->comment('Oluşturan Kullanıcı');
-                if (!Schema::hasColumn('users', 'updated_by')) $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete()->comment('Güncelleyen Kullanıcı');
-                if (!Schema::hasColumn('users', 'deleted_at')) $table->softDeletes();
+                if (! Schema::hasColumn('users', 'name')) {
+                    $table->string('name')->comment('Ad Soyad');
+                }
+
+                if (! Schema::hasColumn('users', 'phone')) {
+                    $table->string('phone')->nullable()->comment('Telefon');
+                }
+                if (! Schema::hasColumn('users', 'locale')) {
+                    $table->string('locale')->default('tr')->comment('Dil Seçeneği');
+                }
+                if (! Schema::hasColumn('users', 'last_login_at')) {
+                    $table->timestamp('last_login_at')->nullable()->comment('Son Giriş Tarihi');
+                }
+
+                if (! Schema::hasColumn('users', 'created_by')) {
+                    $table->foreignId('created_by')->nullable()->constrained('users')->restrictOnDelete()->comment('Oluşturan Kullanıcı');
+                }
+                if (! Schema::hasColumn('users', 'updated_by')) {
+                    $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete()->comment('Güncelleyen Kullanıcı');
+                }
+                if (! Schema::hasColumn('users', 'deleted_at')) {
+                    $table->softDeletes();
+                }
             });
         }
 
@@ -55,7 +70,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type'); // create, update, delete
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
@@ -65,8 +80,8 @@ return new class extends Migration {
             $table->string('name')->unique(); // super_admin, tenant_owner, etc.
             $table->string('label')->nullable();
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -77,7 +92,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
@@ -87,8 +102,8 @@ return new class extends Migration {
             $table->string('name')->unique();
             $table->string('label')->nullable();
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -99,7 +114,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 

@@ -2,8 +2,6 @@
 
 namespace App\Models\Base;
 
-use App\Models\Base\BaseModel;
-
 class Permission extends BaseModel
 {
     protected $table = 'permissions';
@@ -12,7 +10,7 @@ class Permission extends BaseModel
         'name',
         'label',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function roles()

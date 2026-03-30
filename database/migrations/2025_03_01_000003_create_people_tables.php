@@ -21,16 +21,16 @@ return new class extends Migration
         // 1. TEACHER_PROFILES
         Schema::create('teacher_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->foreignId('school_id')->constrained()->restrictOnDelete();
             $table->text('bio')->nullable();
             $table->text('education_summary')->nullable();
             $table->integer('experience_years')->default(0);
             $table->json('languages')->nullable();
             $table->json('certifications')->nullable();
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -42,19 +42,19 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 2. FAMILY_PROFILES
         Schema::create('family_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('owner_user_id')->constrained('users')->cascadeOnDelete(); // Aile reisi
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('owner_user_id')->constrained('users')->restrictOnDelete(); // Aile reisi
+            $table->foreignId('tenant_id')->constrained()->restrictOnDelete();
             $table->string('family_name')->nullable();
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -66,19 +66,19 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 3. FAMILY_MEMBERS (Aileye bağlı diğer üyeler - Anne, Baba, Teyze vb.)
         Schema::create('family_members', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('family_profile_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('family_profile_id')->constrained()->restrictOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
             $table->string('relation_type'); // Father, Mother, Guardian, Aunt
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -88,26 +88,26 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
 
         // 4. CHILDREN
         Schema::create('children', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('family_profile_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('family_profile_id')->constrained()->restrictOnDelete();
+            $table->foreignId('school_id')->constrained()->restrictOnDelete();
             // academic_year_id can represent enrollment year or current assigned academic year default
-            $table->foreignId('academic_year_id')->constrained()->cascadeOnDelete(); 
-            
+            $table->foreignId('academic_year_id')->constrained()->restrictOnDelete();
+
             $table->string('first_name');
             $table->string('last_name');
             $table->date('birth_date');
             $table->string('gender')->nullable();
             $table->string('profile_photo')->nullable();
 
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -120,7 +120,7 @@ return new class extends Migration
             $table->unsignedBigInteger('original_id')->index();
             $table->string('operation_type');
             $table->json('snapshot');
-            $table->foreignId('operated_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('operated_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamps();
         });
     }

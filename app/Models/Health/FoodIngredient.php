@@ -13,9 +13,15 @@ class FoodIngredient extends BaseModel
         'name',
         'allergen_info',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
-    
+
+    // Allergen relation — withoutGlobalScopes() ensures global allergens (tenant_id=null) are always included.
+    public function allergens()
+    {
+        return $this->belongsToMany(Allergen::class, 'food_ingredient_allergens', 'ingredient_id', 'allergen_id')->withoutGlobalScopes();
+    }
+
     // Reverse relation
     public function meals()
     {

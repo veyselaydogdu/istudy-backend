@@ -13,7 +13,7 @@ class SubscriptionPlan extends BaseModel
         'billing_cycle',
         'base_price',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [

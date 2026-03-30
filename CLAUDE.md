@@ -180,3 +180,137 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - You must run `vendor/bin/pint --dirty` before finalizing changes to ensure your code matches the project's expected style.
 - Do not run `vendor/bin/pint --test`, simply run `vendor/bin/pint` to fix any formatting issues.
 </laravel-boost-guidelines>
+
+---
+
+# iStudy — Proje Genel Bakış
+
+> Multi-tenant SaaS anaokulu/kreş yönetim sistemi — PHP 8.4 / Laravel 12 / React Native / Next.js
+
+## Katman Haritası
+
+| Katman | Teknoloji | Port | Token |
+|--------|-----------|------|-------|
+| **Backend** | Laravel 12 / PHP 8.4, MySQL 8, Sanctum, Docker | 8000 / 443 | Bearer (Sanctum) |
+| **Frontend Admin** | Next.js 16, TypeScript 5, Tailwind v3, Vristo | 3001 | `admin_token` (localStorage) |
+| **Frontend Tenant** | Next.js 16, TypeScript 5, Tailwind v3, Vristo | 3002 | `tenant_token` (localStorage) |
+| **Mobil (Veli)** | React Native 0.83.2 + Expo ~55, Expo Router v3 | Android: `10.0.2.2:8000` / iOS: `localhost:8000` | `parent_token` (AsyncStorage) |
+
+**Proje yolları:**
+- Backend: `istudy-backend/`
+- Frontend Tenant: `istudy-backend/frontend-tenant-and-website/`
+- Frontend Admin: `istudy-backend/frontend-admin/`
+- Mobil: `istudy-backend/parent-mobile-app/`
+
+---
+
+## Hafıza Dosyaları — Detaylı Bilgi İçin
+
+> **Ajan talimatı:** Göreve başlamadan önce ilgili hafıza dosyasını oku. CLAUDE.md sadece özet ve yönlendirme içerir.
+
+| Dosya | Kapsam |
+|-------|--------|
+| `PROJECT_MEMORY.md` | Laravel backend: mimari, route'lar, controller şablonları, DB şeması, modüller, kritik kurallar |
+| `PROJECT_MEMORY_FRONTEND.md` | Frontend Tenant (port 3002): dizin yapısı, TS tipleri, UI standartları, sayfa detayları |
+| `PROJECT_MEMORY_FRONTEND_ADMIN.md` | Frontend Admin (port 3001): admin paneli, API eşleşmeleri, dashboard stats |
+| `PROJECT_MEMORY_MOBILE.md` | React Native veli uygulaması: Expo Router, ekranlar, auth akışı, fatura modülü |
+
+---
+
+## Multi-Tenant Mimari (Özet)
+
+```
+SUPER ADMIN → tüm tenant'lar
+Tenant (kurum) → 1..N Schools → Classes → Children / Teachers / Families
+```
+
+**Rol hiyerarşisi:** `super_admin` > `tenant_owner` > `school_admin` > `teacher` > `parent`
+
+- `BaseModel` → `WHERE {table}.tenant_id = auth()->user()->tenant_id` global scope otomatik
+- `User` modeli `Authenticatable`'dan türer → scope yok
+- **Veli kullanıcılar `tenant_id = NULL`** → Aile/sağlık verileri yüklenirken `withoutGlobalScope('tenant')` ZORUNLU
+
+---
+
+## Kritik Backend Kuralları
+
+### Nested Route Positional Arg
+```php
+// YANLIŞ:
+public function show(Child $child): JsonResponse
+// DOĞRU (schools/{school_id}/children/{child}):
+public function show(int $school_id, Child $child): JsonResponse
+```
+
+### paginatedResponse
+```php
+// DOĞRU:
+return $this->paginatedResponse(ChildResource::collection($paginator));
+// YANLIŞ — ->resource raw paginator döndürür:
+return $this->paginatedResponse(ChildResource::collection($paginator)->resource);
+// Custom alan eklemek için:
+$result = $data->getCollection()->map(fn($item) => [...]);
+$data->setCollection($result);
+```
+
+### Laravel 12 Filesystem
+```php
+Storage::disk('local')   // DOĞRU — storage/app/private/, web'den erişilemez
+Storage::disk('private') // HATA — Laravel 12'de bu disk yok
+// Private dosya için signed route zorunlu
+```
+
+### validate() Pozisyonu
+`$request->validate()` / FormRequest → try-catch DIŞINDA (422 garantisi için)
+
+### BelongsToMany Pivot Accessor
+Constraint callback'li eager load'da `->pivot` çalışmaz → `DB::table()` kullan
+
+### MySQL FK 64-Karakter Limiti
+Uzun tablo adlarında explicit kısa FK ismi zorunlu:
+```php
+$table->foreign('activity_class_id', 'acsc_activity_class_fk')->...
+```
+
+---
+
+## Docker Komutları
+
+```bash
+cd dockerfiles && docker compose up -d
+docker compose -f dockerfiles/docker-compose.yml exec app php artisan migrate
+docker compose -f dockerfiles/docker-compose.yml restart app   # PHP değişikliği sonrası ZORUNLU
+docker compose -f dockerfiles/docker-compose.yml exec app php artisan route:clear  # Yeni route 404 ise
+vendor/bin/pint --dirty   # Her PHP değişikliği sonrası
+```
+
+---
+
+## Frontend Kritik Kurallar
+
+- **Token:** Tenant frontend'de her zaman `tenant_token`, admin'de `admin_token`
+- **Tailwind:** v3 kullan — `@import "tailwindcss"` (v4) YAZMA
+- **`app/page.tsx`** OLUŞTURMA — `(website)/page.tsx` zaten `/` alır
+- **`(auth)/layout.tsx`**: SADECE `<>{children}</>` — wrapper div ekleme
+- **Tab Fetch Flag:** `const [xxxFetched, setXxxFetched] = useState(false)` — `data.length === 0` kontrolü YANLIŞ
+- **Zod v4:** `import * as z from 'zod'`
+- **ApexCharts:** `dynamic(..., { ssr: false })` zorunlu
+
+---
+
+## Mobil Kritik Kurallar
+
+- **Expo Router Stack Layout:** Alt ekranların ayrı tab olmaması için `_layout.tsx` ile Stack navigator ekle
+- **iOS Nested Modal:** Modal içinde Modal açılamaz → inline dropdown pattern kullan
+- **Signed URL:** Mobil `<Image>` auth header gönderemez → `middleware: 'signed'` kullan (NOT `auth:sanctum`)
+- **API prefix:** Tüm veli endpoint'leri `/parent/` prefix'li (ör: `/parent/activity-classes`)
+
+---
+
+## Yeni Modül Ekleme Checklist
+
+1. Migration + Model (`BaseModel`'den türet) + Factory + Seeder
+2. FormRequest (`Store`, `Update`) + API Resource + Service + Policy
+3. Controller (uygun base'den türet) + Route (`routes/api.php`)
+4. Tests (Feature) + `vendor/bin/pint --dirty`
+5. `php artisan route:clear` + `docker compose restart app`

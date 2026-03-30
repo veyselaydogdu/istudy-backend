@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+# Docker SSL Keys
+dockerfiles/ssl/*.key
+dockerfiles/ssl/*.crt
+aiconfig.json
+frontend-template

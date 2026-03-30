@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Http\Requests\ReportTemplate;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreReportTemplateRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'school_id' => 'required|exists:schools,id',
+            'name' => 'required|string|max:200',
+            'description' => 'nullable|string|max:1000',
+            'frequency' => 'required|string|in:daily,weekly,monthly',
+            'is_active' => 'nullable|boolean',
+            'sort_order' => 'nullable|integer',
+
+            // Dinamik inputlar
+            'inputs' => 'nullable|array',
+            'inputs.*.label' => 'required|string|max:200',
+            'inputs.*.input_type' => 'required|string|in:text,number,select,rating,boolean,textarea',
+            'inputs.*.options' => 'nullable|array',
+            'inputs.*.is_required' => 'nullable|boolean',
+            'inputs.*.sort_order' => 'nullable|integer',
+            'inputs.*.default_value' => 'nullable|string|max:500',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'school_id.required' => 'Okul seçimi zorunludur.',
+            'name.required' => 'Şablon adı zorunludur.',
+            'frequency.required' => 'Frekans zorunludur.',
+            'inputs.*.label.required' => 'Input etiketi zorunludur.',
+            'inputs.*.input_type.required' => 'Input tipi zorunludur.',
+        ];
+    }
+}

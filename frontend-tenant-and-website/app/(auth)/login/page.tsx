@@ -1,0 +1,136 @@
+'use client';
+
+import * as React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import apiClient from '@/lib/apiClient';
+import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
+
+const loginSchema = z.object({
+    email: z.string().email('Geçerli bir e-posta adresi giriniz.'),
+    password: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+export default function LoginPage() {
+    const router = useRouter();
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<LoginFormValues>({
+        resolver: zodResolver(loginSchema),
+    });
+
+    const onSubmit = async (data: LoginFormValues) => {
+        setIsLoading(true);
+        try {
+            const response = await apiClient.post('/auth/login', data);
+            const token = response.data?.data?.token;
+            if (!token) throw new Error('Token alınamadı.');
+            localStorage.setItem('tenant_token', token);
+            toast.success('Giriş başarılı!');
+            router.push('/dashboard');
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            const message = axiosError.response?.data?.message || 'E-posta veya şifre hatalı.';
+            toast.error('Giriş Başarısız', { description: message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div>
+            <div className="absolute inset-0">
+                <Image src="/assets/images/auth/bg-gradient.png" alt="background" fill className="object-cover" priority />
+            </div>
+
+            <div className="relative flex min-h-screen items-center justify-center bg-[url(/assets/images/auth/map.png)] bg-cover bg-center bg-no-repeat px-6 py-10 dark:bg-[#060818] sm:px-16">
+                <Image src="/assets/images/auth/coming-soon-object1.png" alt="" width={300} height={893} className="absolute left-0 top-1/2 h-full max-h-[893px] w-auto -translate-y-1/2 object-contain" />
+                <Image src="/assets/images/auth/coming-soon-object2.png" alt="" width={300} height={160} className="absolute left-24 top-0 h-40 w-auto md:left-[30%] object-contain" />
+                <Image src="/assets/images/auth/coming-soon-object3.png" alt="" width={300} height={300} className="absolute right-0 top-0 h-[300px] w-auto object-contain" />
+                <Image src="/assets/images/auth/polygon-object.svg" alt="" width={120} height={120} className="absolute bottom-0 end-[28%]" />
+
+                <div className="relative w-full max-w-[870px] rounded-md bg-[linear-gradient(45deg,#fff9f9_0%,rgba(255,255,255,0)_25%,rgba(255,255,255,0)_75%,_#fff9f9_100%)] p-2 dark:bg-[linear-gradient(52.22deg,#0E1726_0%,rgba(14,23,38,0)_18.66%,rgba(14,23,38,0)_51.04%,rgba(14,23,38,0)_80.07%,#0E1726_100%)]">
+                    <div className="relative flex flex-col justify-center rounded-md bg-white/60 px-6 py-20 backdrop-blur-lg dark:bg-black/50 lg:min-h-[758px]">
+                        <div className="mx-auto w-full max-w-[440px]">
+                            <div className="mb-10">
+                                <h1 className="text-3xl font-extrabold uppercase !leading-snug text-primary md:text-4xl">Giriş Yap</h1>
+                                <p className="text-base font-bold leading-normal text-white-dark">Kurum hesabınızla devam edin</p>
+                            </div>
+
+                            <form className="space-y-5 dark:text-white" onSubmit={handleSubmit(onSubmit)}>
+                                <div className={errors.email ? 'has-error' : ''}>
+                                    <label htmlFor="email">E-posta</label>
+                                    <input
+                                        id="email"
+                                        type="email"
+                                        placeholder="kurum@istudy.com"
+                                        className="form-input"
+                                        {...register('email')}
+                                        disabled={isLoading}
+                                    />
+                                    {errors.email && (
+                                        <p className="form-help mt-1 text-xs text-danger">{errors.email.message}</p>
+                                    )}
+                                </div>
+
+                                <div className={errors.password ? 'has-error' : ''}>
+                                    <label htmlFor="password">Şifre</label>
+                                    <input
+                                        id="password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        className="form-input"
+                                        {...register('password')}
+                                        disabled={isLoading}
+                                    />
+                                    {errors.password && (
+                                        <p className="form-help mt-1 text-xs text-danger">{errors.password.message}</p>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-end">
+                                    <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:underline">
+                                        Şifremi Unuttum
+                                    </Link>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="btn btn-gradient w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Giriş Yapılıyor...
+                                        </span>
+                                    ) : (
+                                        'Giriş Yap'
+                                    )}
+                                </button>
+                            </form>
+
+                            <p className="mt-6 text-center text-sm text-white-dark">
+                                Hesabınız yok mu?{' '}
+                                <Link href="/register" className="font-semibold text-primary hover:underline">
+                                    Kayıt Olun
+                                </Link>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

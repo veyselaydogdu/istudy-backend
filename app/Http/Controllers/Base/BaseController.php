@@ -2,31 +2,78 @@
 
 namespace App\Http\Controllers\Base;
 
-use Illuminate\Routing\Controller as BaseLaravelController;
+use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controller as BaseLaravelController;
 
-class BaseController extends BaseLaravelController
+abstract class BaseController extends BaseLaravelController
 {
     use AuthorizesRequests, ValidatesRequests;
-    
-    // Common Logic across API
-    
-    protected function success($data = [], $message = 'Success', $code = 200)
+
+    protected function user(): ?User
+    {
+        /** @var User|null */
+        return auth('sanctum')->user();
+    }
+
+    /**
+     * Başarılı (Succcess) Response Helper
+     */
+    protected function successResponse(mixed $data, ?string $message = null, int $code = 200): JsonResponse
     {
         return response()->json([
-            'status' => true,
-            'message' => $message,
-            'data' => $data
+            'success' => true,
+            'message' => $message ?? 'İşlem başarılı.',
+            'data' => $data,
         ], $code);
     }
-    
-    protected function error($message = 'Error', $code = 400, $errors = [])
+
+    /**
+     * Hatalı (Error) Response Helper
+     */
+    protected function errorResponse(string $message, int $code = 400): JsonResponse
     {
+        // Code 0 gelirse 500 yap, yoksa code kullan, ancak HTTP statuslarda 0 geçersiz.
+        // Throwable getCode() bazen 0 döner.
+        $statusCode = ($code > 0 && $code < 600) ? $code : 400;
+
         return response()->json([
-            'status' => false,
+            'success' => false,
             'message' => $message,
-            'errors' => $errors
-        ], $code);
+            'data' => null,
+        ], $statusCode);
+    }
+
+    /**
+     * Sayfalı (Pagination) Response Helper
+     *
+     * ResourceCollection veya plain paginator kabul eder.
+     * data alanı her zaman düz dizi döner.
+     */
+    protected function paginatedResponse(mixed $collection): JsonResponse
+    {
+        if ($collection instanceof \Illuminate\Http\Resources\Json\ResourceCollection) {
+            $paginator = $collection->resource;
+            // Get the resource class - collects is a property, not a method
+            $resourceClass = $collection->collects;
+            $data = collect($paginator->items())->map(fn ($item) => (new $resourceClass($item))->resolve(request()));
+        } else {
+            $paginator = $collection;
+            $data = collect($paginator->items());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Veriler başarıyla listelendi.',
+            'data' => $data,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ], 200);
     }
 }

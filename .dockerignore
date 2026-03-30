@@ -1,0 +1,24 @@
+# Git
+.git
+.gitignore
+
+# Laravel
+vendor/
+bootstrap/cache/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+
+# Frontend
+frontend-admin/node_modules/
+frontend-admin/.next/
+
+# Docker
+dockerfiles/
+
+# IDE & OS
+.idea/
+.vscode/
+*.DS_Store
+*.log

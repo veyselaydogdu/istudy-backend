@@ -1,0 +1,137 @@
+services:
+  app:
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    image: istudy-app
+    container_name: istudy-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ../:/var/www/html
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: istudy
+      DB_USERNAME: istudy
+      DB_PASSWORD: password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_CLIENT: phpredis
+      AUDIT_DB_CONNECTION: mysql
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - istudy-network
+
+  webserver:
+    image: nginx:alpine
+    container_name: istudy-webserver
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8000:8000"
+    volumes:
+      - ../:/var/www/html
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - ./ssl/:/etc/nginx/ssl/
+    networks:
+      - istudy-network
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    container_name: istudy-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: istudy
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: istudy
+      MYSQL_PASSWORD: password
+    volumes:
+      - istudy-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "istudy", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - istudy-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: istudy-redis
+    restart: unless-stopped
+    volumes:
+      - istudy-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - istudy-network
+
+  frontend-admin:
+    build:
+      context: ..
+      dockerfile: dockerfiles/node/Dockerfile
+    image: istudy-frontend-admin
+    container_name: istudy-frontend-admin
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: https://localhost/api
+    networks:
+      - istudy-network
+    depends_on:
+      - webserver
+
+  frontend-tenant:
+    build:
+      context: ..
+      dockerfile: dockerfiles/node/Dockerfile.tenant
+    image: istudy-frontend-tenant
+    container_name: istudy-frontend-tenant
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: https://localhost/api
+    networks:
+      - istudy-network
+    depends_on:
+      - webserver
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    platform: linux/amd64
+    container_name: istudy-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    networks:
+      - istudy-network
+
+networks:
+  istudy-network:
+    driver: bridge
+
+volumes:
+  istudy-db-data:
+  istudy-redis-data:

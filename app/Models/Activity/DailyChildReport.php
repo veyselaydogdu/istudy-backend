@@ -13,12 +13,13 @@ class DailyChildReport extends BaseModel
     protected $fillable = [
         'child_id',
         'teacher_id',
+        'report_template_id',
         'report_date',
         'mood',
         'appetite',
         'notes',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [
@@ -33,5 +34,15 @@ class DailyChildReport extends BaseModel
     public function teacher()
     {
         return $this->belongsTo(User::class, 'teacher_id')->withDefault();
+    }
+
+    public function inputValues()
+    {
+        return $this->hasMany(ReportInputValue::class, 'daily_child_report_id');
+    }
+
+    public function template()
+    {
+        return $this->belongsTo(ReportTemplate::class, 'report_template_id');
     }
 }
