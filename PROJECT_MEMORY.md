@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-03-27 (Etkinlik fatura sistemi: invoice/refund/cancellation; start_time/end_time; ActivityInvoiceService)
+> **Son Güncelleme:** 2026-04-30 (Kontenjan + adres: activities.capacity/address + activity_classes.address; kapasite dolunca kayıt engeli; frontend+mobil güncellendi)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -144,7 +144,7 @@ istudy-backend/
 │   │   ├── Base/     (BaseModel, Role, Permission, AuditLog, ActivityLog, Country, UserContactNumber)
 │   │   ├── Tenant/   (Tenant)                    ← + activeSubscription(), canCreateSchool(), canEnrollStudent()
 │   │   ├── ActivityClass/                         ← YENİ: Etkinlik Sınıfı Modülü
-│   │   │   ├── ActivityClass.php                 ← BaseModel; school_id nullable (tenant-wide için)
+│   │   │   ├── ActivityClass.php                 ← BaseModel; school_id nullable (tenant-wide için); capacity nullable (null=sınırsız); address nullable
 │   │   │   ├── ActivityClassEnrollment.php       ← plain Model (NOT BaseModel — parent tenant_id=NULL)
 │   │   │   ├── ActivityClassTeacher.php          ← pivot teacher ataması
 │   │   │   ├── ActivityClassMaterial.php         ← materyal listesi
@@ -218,7 +218,8 @@ istudy-backend/
 │   │   ├── 2026_04_02_000001_make_activity_class_school_id_nullable.php ← activity_classes.school_id nullable (tenant-wide destek) ✅
 │   │   ├── 2026_04_02_000001_add_refund_fields_to_activity_class_invoices.php ← invoice_type enum + original_invoice_id (self FK) + refund_reason + refunded status ✅
 │   │   ├── 2026_04_02_000002_add_billing_module_fields_to_invoices.php ← invoices: module + invoice_type + original_invoice_id (self FK) + refund_reason ✅
-│   │   └── 2026_04_02_000003_add_main_invoice_id_to_activity_class_invoices.php ← activity_class_invoices.main_invoice_id → invoices.id FK ✅
+│   │   ├── 2026_04_02_000003_add_main_invoice_id_to_activity_class_invoices.php ← activity_class_invoices.main_invoice_id → invoices.id FK ✅
+│   │   └── 2026_04_30_000001_add_capacity_address_to_activities_and_activity_classes.php ← activities: capacity (nullable uint) + address (nullable string); activity_classes: address (nullable string) ✅
 │   └── seeders/
 │       ├── DatabaseSeeder.php                    ← Super Admin + RoleSeeder + PackageSeeder
 │       ├── RoleSeeder.php                        ← 5 temel rol
@@ -311,7 +312,7 @@ istudy-backend/
 |-------|-------|----------|
 | `daily_child_reports` | `App\Models\Activity\DailyChildReport` | Günlük çocuk raporları (mood, appetite, notlar) |
 | `attendances` | `App\Models\Activity\Attendance` | Yoklama (present, absent, late, excused) |
-| `activities` | `App\Models\Activity\Activity` | Etkinlikler (ücretli/ücretsiz) — `id, school_id, academic_year_id, name, description, is_paid, price, start_date (date nullable), end_date (date nullable)` |
+| `activities` | `App\Models\Activity\Activity` | Etkinlikler (ücretli/ücretsiz) — `id, school_id, academic_year_id, name, description, is_paid, price, capacity (nullable uint — null=sınırsız), address (nullable), start_date (date nullable), end_date (date nullable)` |
 | `report_templates` | `App\Models\Activity\ReportTemplate` | Dinamik Rapor Şablonları (Okul Yöneticisi tanımlar) |
 | `report_template_inputs` | `App\Models\Activity\ReportTemplateInput` | Şablon Alanları (Label, Type: select/text/rating, Options: JSON) |
 | `report_input_values` | `App\Models\Activity\ReportInputValue` | Girilen Değerler (Öğretmen doldurur) |

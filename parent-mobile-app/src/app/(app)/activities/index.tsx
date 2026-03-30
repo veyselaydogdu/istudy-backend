@@ -26,6 +26,8 @@ interface Activity {
   is_paid: boolean;
   is_enrollment_required: boolean;
   price: string | null;
+  capacity: number | null;
+  address: string | null;
   start_date: string | null;
   end_date: string | null;
   school: { id: number; name: string } | null;
@@ -51,6 +53,7 @@ interface ActivityClass {
   end_date: string | null;
   schedule: string | null;
   location: string | null;
+  address: string | null;
   is_school_wide: boolean;
   school_classes: Array<{ id: number; name: string }>;
   enrolled_child_ids: number[];
@@ -134,7 +137,22 @@ function ActivityCard({ item }: { item: Activity }) {
               : 'Her sınıfa açık'}
           </Text>
         </View>
-        {item.enrollments_count != null && (
+        {item.capacity != null && (
+          <View style={styles.metaItem}>
+            <Ionicons name="people-outline" size={13} color={item.enrollments_count != null && item.enrollments_count >= item.capacity ? '#EF4444' : '#9CA3AF'} />
+            <Text style={[styles.metaText, item.enrollments_count != null && item.enrollments_count >= item.capacity ? { color: '#EF4444' } : null]}>
+              {item.enrollments_count ?? 0}/{item.capacity}
+              {item.enrollments_count != null && item.enrollments_count >= item.capacity ? ' (Dolu)' : ' kontenjan'}
+            </Text>
+          </View>
+        )}
+        {item.address && (
+          <View style={styles.metaItem}>
+            <Ionicons name="location-outline" size={13} color="#9CA3AF" />
+            <Text style={styles.metaText}>{item.address}</Text>
+          </View>
+        )}
+        {item.enrollments_count != null && item.capacity == null && (
           <View style={styles.metaItem}>
             <Ionicons name="people-outline" size={13} color="#9CA3AF" />
             <Text style={styles.metaText}>{item.enrollments_count} katılımcı</Text>
@@ -199,8 +217,14 @@ function ActivityClassCard({ item }: { item: ActivityClass }) {
         )}
         {item.location && (
           <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={13} color="#9CA3AF" />
+            <Ionicons name="business-outline" size={13} color="#9CA3AF" />
             <Text style={styles.metaText}>{item.location}</Text>
+          </View>
+        )}
+        {item.address && (
+          <View style={styles.metaItem}>
+            <Ionicons name="location-outline" size={13} color="#9CA3AF" />
+            <Text style={styles.metaText}>{item.address}</Text>
           </View>
         )}
         {item.capacity ? (

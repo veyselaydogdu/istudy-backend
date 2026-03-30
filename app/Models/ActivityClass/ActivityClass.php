@@ -32,6 +32,7 @@ class ActivityClass extends BaseModel
         'end_date',
         'schedule',
         'location',
+        'address',
         'notes',
         'created_by',
         'updated_by',

@@ -342,6 +342,7 @@ class ParentActivityClassController extends BaseParentController
             'end_date' => $ac->end_date,
             'schedule' => $ac->schedule,
             'location' => $ac->location,
+            'address' => $ac->address,
             'notes' => $ac->notes,
             'school_classes' => $ac->relationLoaded('schoolClasses') ? $ac->schoolClasses->map(fn ($c) => ['id' => $c->id, 'name' => $c->name]) : null,
             'teachers' => $ac->relationLoaded('teachers') ? $ac->teachers->map(fn ($t) => ['id' => $t->id, 'name' => $t->user->name.' '.$t->user->surname, 'role' => $t->pivot->role ?? null]) : null,

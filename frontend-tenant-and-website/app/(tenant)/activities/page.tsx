@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { Activity, School, SchoolClass } from '@/types';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw, Users, MapPin } from 'lucide-react';
 
 type ActivityForm = {
     name: string;
@@ -15,6 +15,8 @@ type ActivityForm = {
     cancellation_allowed: boolean;
     cancellation_deadline: string;
     price: string;
+    capacity: string;
+    address: string;
     start_date: string;
     start_time: string;
     end_date: string;
@@ -26,7 +28,8 @@ type ActivityForm = {
 const emptyForm: ActivityForm = {
     name: '', description: '', is_paid: false, is_enrollment_required: false,
     cancellation_allowed: false, cancellation_deadline: '',
-    price: '', start_date: '', start_time: '', end_date: '', end_time: '',
+    price: '', capacity: '', address: '',
+    start_date: '', start_time: '', end_date: '', end_time: '',
     class_ids: [], materials: [],
 };
 
@@ -120,6 +123,8 @@ export default function ActivitiesPage() {
                 ? activity.cancellation_deadline.slice(0, 16)
                 : '',
             price: activity.price != null ? String(activity.price) : '',
+            capacity: activity.capacity != null ? String(activity.capacity) : '',
+            address: activity.address ?? '',
             start_date: activity.start_date ? activity.start_date.slice(0, 10) : '',
             start_time: activity.start_time ?? '',
             end_date: activity.end_date ? activity.end_date.slice(0, 10) : '',
@@ -182,6 +187,8 @@ export default function ActivitiesPage() {
                 ? form.cancellation_deadline
                 : null,
             price: form.is_paid && form.price ? Number(form.price) : null,
+            capacity: form.capacity ? Number(form.capacity) : null,
+            address: form.address || null,
             start_date: form.start_date || null,
             start_time: form.start_time || null,
             end_date: form.end_date || null,
@@ -390,6 +397,25 @@ export default function ActivitiesPage() {
                                             {Number(activity.price).toFixed(2)} ₺
                                         </div>
                                     )}
+                                    {(activity.capacity != null || activity.address) && (
+                                        <div className="mt-2 flex flex-wrap gap-3">
+                                            {activity.capacity != null && (
+                                                <span className="flex items-center gap-1 text-xs text-[#515365] dark:text-[#888ea8]">
+                                                    <Users className="h-3 w-3" />
+                                                    Kontenjan: {activity.enrollments_count ?? 0}/{activity.capacity}
+                                                    {activity.enrollments_count != null && activity.enrollments_count >= activity.capacity && (
+                                                        <span className="ml-1 badge badge-outline-danger text-xs">Dolu</span>
+                                                    )}
+                                                </span>
+                                            )}
+                                            {activity.address && (
+                                                <span className="flex items-center gap-1 text-xs text-[#515365] dark:text-[#888ea8]">
+                                                    <MapPin className="h-3 w-3" />
+                                                    {activity.address}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                     {activity.materials && activity.materials.length > 0 && (
                                         <div className="mt-2">
                                             <p className="mb-1 text-xs font-medium text-[#515365] dark:text-[#888ea8]">
@@ -594,6 +620,35 @@ export default function ActivitiesPage() {
                                     />
                                 </div>
                             )}
+
+                            {/* Kontenjan & Adres */}
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                        Kontenjan <span className="text-xs text-[#888ea8] font-normal">(opsiyonel — boşsa sınırsız)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="form-input mt-1"
+                                        value={form.capacity}
+                                        onChange={f('capacity')}
+                                        min="1"
+                                        placeholder="Sınırsız"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                        Adres <span className="text-xs text-[#888ea8] font-normal">(opsiyonel)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-input mt-1"
+                                        value={form.address}
+                                        onChange={f('address')}
+                                        placeholder="Etkinlik adresi..."
+                                    />
+                                </div>
+                            </div>
 
                             {/* Materyaller */}
                             <div>

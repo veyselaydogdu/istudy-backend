@@ -44,6 +44,8 @@ class UpdateActivityRequest extends FormRequest
             'start_time' => ['nullable', 'date_format:H:i'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'end_time' => ['nullable', 'date_format:H:i'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
+            'address' => ['nullable', 'string', 'max:500'],
             'cancellation_allowed' => ['nullable', 'boolean'],
             'cancellation_deadline' => ['nullable', 'date', Rule::when($this->filled('start_date'), 'before_or_equal:start_date')],
             'class_ids' => ['nullable', 'array'],

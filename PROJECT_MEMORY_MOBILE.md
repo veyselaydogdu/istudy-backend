@@ -1,6 +1,6 @@
 # 📱 iStudy — Veli Mobil Uygulaması (PROJECT_MEMORY_MOBILE)
 
-> **Son Güncelleme:** 2026-04-10 (Menü yeniden yapılandırma: Yemek Listesi + Etkinlikler (2 sekme) tab'ları eklendi; Çocuklarım + Okullarım Profil'e taşındı)
+> **Son Güncelleme:** 2026-04-30 (Kontenjan+adres: activities/index.tsx → Activity+ActivityClass tiplerine capacity/address eklendi, kart görünümüne yansıtıldı; activities/[id].tsx → ActivityClassDetail tipine address eklendi, detay sayfasında gösterildi)
 > **Uygulama:** React Native (Expo ~55) — `istudy-backend/parent-mobile-app/`
 
 ---

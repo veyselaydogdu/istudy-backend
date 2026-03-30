@@ -210,6 +210,14 @@ class ParentActivityController extends BaseParentController
                 return $this->errorResponse('Bu çocuk etkinliğe zaten kayıtlı.', 422);
             }
 
+            // Kapasite kontrolü
+            if ($activity->capacity !== null) {
+                $enrollmentCount = ActivityEnrollment::where('activity_id', $activity->id)->count();
+                if ($enrollmentCount >= $activity->capacity) {
+                    return $this->errorResponse('Bu etkinliğin kontenjanı dolmuştur.', 422);
+                }
+            }
+
             DB::beginTransaction();
 
             $enrollment = ActivityEnrollment::create([

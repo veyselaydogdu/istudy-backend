@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Tenant & Website — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-04-02 (Etkinlik Sınıfları modülü: liste + detay sayfası; okul seçimi opsiyonel; filterSchoolId/formSchoolId ayrımı; tenant-level endpoint geçişi)
+> **Son Güncelleme:** 2026-04-30 (Kontenjan+adres: activities/page.tsx → capacity+address form alanları; activity-classes/page.tsx → address alan eklendi; types/index.ts güncellendi)
 > **Amaç:** Bu dosya, `frontend-tenant-and-website` projesinin mimarisini, kararlarını ve kodlama standartlarını tüm AI ajanlarının doğru davranış üretebilmesi için belgeler.
 
 ---

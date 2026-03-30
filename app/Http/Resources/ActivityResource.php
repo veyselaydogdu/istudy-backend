@@ -20,10 +20,12 @@ class ActivityResource extends JsonResource
             'cancellation_allowed' => $this->cancellation_allowed,
             'cancellation_deadline' => $this->cancellation_deadline?->toDateTimeString(),
             'price' => $this->price,
+            'capacity' => $this->capacity,
             'start_date' => $this->start_date?->toDateString(),
             'start_time' => $this->start_time,
             'end_date' => $this->end_date?->toDateString(),
             'end_time' => $this->end_time,
+            'address' => $this->address,
             'materials' => $this->materials ?? [],
             // Veliye özgü alanlar — parent controller tarafından model attribute olarak eklenir
             'enrolled_child_ids' => $this->when(

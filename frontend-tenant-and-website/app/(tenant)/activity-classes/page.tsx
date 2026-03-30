@@ -24,6 +24,7 @@ type ActivityClassForm = {
     end_date: string;
     schedule: string;
     location: string;
+    address: string;
     notes: string;
     school_class_ids: number[];
 };
@@ -34,7 +35,7 @@ const emptyForm: ActivityClassForm = {
     is_school_wide: true, is_active: true,
     is_paid: false, price: '', currency: 'TRY',
     invoice_required: false,
-    start_date: '', end_date: '', schedule: '', location: '', notes: '',
+    start_date: '', end_date: '', schedule: '', location: '', address: '', notes: '',
     school_class_ids: [],
 };
 
@@ -118,6 +119,7 @@ export default function ActivityClassesPage() {
             end_date: ac.end_date ?? '',
             schedule: ac.schedule ?? '',
             location: ac.location ?? '',
+            address: ac.address ?? '',
             notes: ac.notes ?? '',
             school_class_ids: ac.school_classes?.map(c => c.id) ?? [],
         });
@@ -134,6 +136,7 @@ export default function ActivityClassesPage() {
                 age_min: form.age_min ? parseInt(form.age_min) : null,
                 age_max: form.age_max ? parseInt(form.age_max) : null,
                 capacity: form.capacity ? parseInt(form.capacity) : null,
+                address: form.address || null,
                 price: form.is_paid && form.price ? parseFloat(form.price) : null,
                 // Okul seçilmediyse sınıf seçimi de temizlenir
                 school_class_ids: formSchoolId ? form.school_class_ids : [],
@@ -440,6 +443,19 @@ export default function ActivityClassesPage() {
                                     <label className="text-sm font-medium">Konum</label>
                                     <input className="form-input mt-1 w-full" placeholder="Derslik, salon..." value={form.location} onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))} />
                                 </div>
+                            </div>
+
+                            {/* Adres */}
+                            <div>
+                                <label className="text-sm font-medium">
+                                    Adres <span className="text-[#888ea8] font-normal">(opsiyonel)</span>
+                                </label>
+                                <input
+                                    className="form-input mt-1 w-full"
+                                    placeholder="Etkinlik sınıfının tam adresi..."
+                                    value={form.address}
+                                    onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))}
+                                />
                             </div>
 
                             {/* Kapsam — sadece okul seçiliyse sınıf seçimi göster */}

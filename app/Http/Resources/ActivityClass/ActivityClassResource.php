@@ -29,6 +29,7 @@ class ActivityClassResource extends JsonResource
             'end_date' => $this->end_date?->format('Y-m-d'),
             'schedule' => $this->schedule,
             'location' => $this->location,
+            'address' => $this->address,
             'notes' => $this->notes,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

@@ -250,10 +250,12 @@ export type Activity = {
     cancellation_allowed?: boolean
     cancellation_deadline?: string | null
     price?: number
+    capacity?: number | null
     start_date?: string
     start_time?: string | null
     end_date?: string
     end_time?: string | null
+    address?: string | null
     materials?: string[]
     school?: { id: number; name: string }
     classes?: SchoolClass[]
@@ -535,6 +537,7 @@ export type ActivityClass = {
     end_date?: string | null
     schedule?: string | null
     location?: string | null
+    address?: string | null
     notes?: string | null
     school_classes?: Array<{ id: number; name: string }>
     teachers?: Array<{ id: number; name: string; role?: string | null }>

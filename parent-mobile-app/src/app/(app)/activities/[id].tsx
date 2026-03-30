@@ -37,6 +37,7 @@ interface ActivityClassDetail {
   end_date: string | null;
   schedule: string | null;
   location: string | null;
+  address: string | null;
   is_school_wide: boolean;
   school_classes: Array<{ id: number; name: string }>;
   teachers: Array<{ id: number; name: string; role: string | null }>;
@@ -259,9 +260,16 @@ export default function ActivityClassDetailScreen() {
           ) : null}
           {activityClass.location ? (
             <View style={styles.infoCard}>
-              <Ionicons name="location-outline" size={20} color="#208AEF" />
+              <Ionicons name="business-outline" size={20} color="#208AEF" />
               <Text style={styles.infoLabel}>Konum</Text>
               <Text style={styles.infoValue}>{activityClass.location}</Text>
+            </View>
+          ) : null}
+          {activityClass.address ? (
+            <View style={[styles.infoCard, { flex: 2 }]}>
+              <Ionicons name="location-outline" size={20} color="#208AEF" />
+              <Text style={styles.infoLabel}>Adres</Text>
+              <Text style={styles.infoValue}>{activityClass.address}</Text>
             </View>
           ) : null}
           {(activityClass.start_date || activityClass.end_date) && (
