@@ -301,6 +301,55 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ───────────────────────────────────────────────────
+    // ÖĞRETMEN AUTH
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/auth')->group(function () {
+        Route::get('/me', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'me']);
+        Route::post('/logout', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'logout']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN SINIFLARI
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/classes')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'index']);
+        Route::get('/{classId}', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'show']);
+        Route::get('/{classId}/children', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'children']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN — ÖĞRENCİ DETAYI & TESLİM
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/children')->group(function () {
+        Route::get('/{childId}', [\App\Http\Controllers\Teachers\TeacherChildController::class, 'show']);
+        Route::get('/{childId}/today-medications', [\App\Http\Controllers\Teachers\TeacherChildController::class, 'todayMedications']);
+        Route::get('/{childId}/authorized-pickups', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'authorizedPickups']);
+        Route::post('/{childId}/record-pickup', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'recordPickup']);
+        Route::get('/{childId}/pickup-logs', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'pickupLogs']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN — İLAÇ TAKİBİ
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/medications')->group(function () {
+        Route::post('/mark-given', [\App\Http\Controllers\Teachers\TeacherMedicationController::class, 'markGiven']);
+        Route::get('/given-logs/{childId}', [\App\Http\Controllers\Teachers\TeacherMedicationController::class, 'givenLogs']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN — YOKLAMA
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/attendance')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Teachers\TeacherAttendanceController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Teachers\TeacherAttendanceController::class, 'store']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN — YEMEK MENÜSÜ
+    // ───────────────────────────────────────────────────
+    Route::get('teacher/meal-menus', [\App\Http\Controllers\Teachers\TeacherMealMenuController::class, 'index']);
+
+    // ───────────────────────────────────────────────────
     // ÖĞRETMEN GÜNLÜK RAPORLAMA (Teacher Daily Report)
     // ───────────────────────────────────────────────────
     Route::prefix('teacher/daily-reports')->group(function () {

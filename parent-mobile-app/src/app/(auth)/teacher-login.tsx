@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,10 +16,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
-import { getApiError, loginRequest } from '../../lib/auth';
+import { getApiError, saveTeacherAuth, teacherLoginRequest } from '../../lib/auth';
 
-export default function LoginScreen() {
-  const { signIn } = useAuth();
+export default function TeacherLoginScreen() {
+  const { signInAsTeacher } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,9 +33,10 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const response = await loginRequest(email.trim(), password);
-      await signIn(response.data.token, response.data.user);
-      router.replace('/(app)');
+      const response = await teacherLoginRequest(email.trim(), password);
+      await saveTeacherAuth(response.data.token, response.data.user);
+      await signInAsTeacher(response.data.token, response.data.user);
+      router.replace('/(teacher-app)');
     } catch (err: unknown) {
       Alert.alert('Giriş Başarısız', getApiError(err));
     } finally {
@@ -52,10 +53,10 @@ export default function LoginScreen() {
         {/* Blue header banner */}
         <View style={styles.heroBanner}>
           <View style={styles.logoCircle}>
-            <Ionicons name="school" size={32} color="#FFFFFF" />
+            <Ionicons name="person" size={32} color="#FFFFFF" />
           </View>
           <Text style={styles.heroTitle}>iStudy</Text>
-          <Text style={styles.heroSubtitle}>Veli Portalı</Text>
+          <Text style={styles.heroSubtitle}>Öğretmen Portalı</Text>
         </View>
 
         {/* White card form */}
@@ -65,8 +66,8 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.formTitle}>Giriş Yap</Text>
-            <Text style={styles.formSubtitle}>Hesabınıza erişin</Text>
+            <Text style={styles.formTitle}>Öğretmen Girişi</Text>
+            <Text style={styles.formSubtitle}>iStudy öğretmen hesabınızla giriş yapın</Text>
 
             <View style={styles.field}>
               <Text style={styles.label}>E-posta</Text>
@@ -97,7 +98,10 @@ export default function LoginScreen() {
                   placeholderTextColor="#C4C9D4"
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={18}
@@ -106,10 +110,6 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-
-            <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
-              Şifremi Unuttum
-            </Link>
 
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
@@ -124,19 +124,12 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Hesabınız yok mu?</Text>
-              <Link href="/(auth)/register" style={styles.footerLink}>
-                {' '}Kayıt Ol
-              </Link>
-            </View>
-
             <TouchableOpacity
-              onPress={() => router.push('/(auth)/teacher-login')}
-              style={styles.teacherLink}
+              onPress={() => router.push('/(auth)/login')}
+              style={styles.parentLink}
               activeOpacity={0.7}
             >
-              <Text style={styles.teacherLinkText}>Öğretmen Girişi →</Text>
+              <Text style={styles.parentLinkText}>← Veli Girişi</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -232,13 +225,6 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     padding: 0,
   },
-  forgotLink: {
-    color: '#208AEF',
-    fontSize: 13,
-    textAlign: 'right',
-    fontWeight: '600',
-    marginBottom: 24,
-  },
   button: {
     backgroundColor: '#208AEF',
     borderRadius: 14,
@@ -249,6 +235,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    marginTop: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -259,26 +246,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 28,
-  },
-  footerText: {
-    color: '#6B7280',
-    fontSize: 14,
-  },
-  footerLink: {
-    color: '#208AEF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  teacherLink: {
-    marginTop: 16,
+  parentLink: {
+    marginTop: 20,
     alignItems: 'center',
     paddingVertical: 8,
   },
-  teacherLinkText: {
+  parentLinkText: {
     color: '#208AEF',
     fontSize: 14,
     fontWeight: '600',

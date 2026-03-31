@@ -1,6 +1,6 @@
 # 📱 iStudy — Veli Mobil Uygulaması (PROJECT_MEMORY_MOBILE)
 
-> **Son Güncelleme:** 2026-04-30 (Kontenjan+adres: activities/index.tsx → Activity+ActivityClass tiplerine capacity/address eklendi, kart görünümüne yansıtıldı; activities/[id].tsx → ActivityClassDetail tipine address eklendi, detay sayfasında gösterildi)
+> **Son Güncelleme:** 2026-07-10 (Öğretmen Rolü Entegrasyonu: `(teacher-app)` route grubu eklendi, dual-token auth, 19 yeni ekran, backend 15 yeni endpoint)
 > **Uygulama:** React Native (Expo ~55) — `istudy-backend/parent-mobile-app/`
 
 ---
@@ -13,7 +13,7 @@
 | **Routing** | Expo Router v3 (file-based) |
 | **State** | React Context (AuthContext) |
 | **HTTP Client** | Axios + AsyncStorage interceptor |
-| **Token Key** | `parent_token` (AsyncStorage) |
+| **Token Key** | `parent_token` (veli) / `teacher_token` (öğretmen) (AsyncStorage) |
 | **API Base** | Android emulator: `http://10.0.2.2:8000/api` / iOS: `http://localhost:8000/api` |
 | **Dil** | TypeScript, Türkçe UI metinleri |
 
@@ -53,10 +53,34 @@ parent-mobile-app/
 │   │   ├── index.tsx                ← Expo default (kullanılmıyor)
 │   │   ├── (auth)/
 │   │   │   ├── _layout.tsx
-│   │   │   ├── login.tsx
+│   │   │   ├── login.tsx            ← Veli girişi (+ "Öğretmen Girişi →" linki)
+│   │   │   ├── teacher-login.tsx    ← YENİ: Öğretmen girişi (/auth/login → teacher_token)
 │   │   │   ├── register.tsx
 │   │   │   ├── forgot-password.tsx
 │   │   │   └── verify-email.tsx
+│   │   ├── (teacher-app)/           ← YENİ: Öğretmen uygulaması (tamamen bağımsız)
+│   │   │   ├── _layout.tsx          ← Öğretmen tab nav (5 tab) + teacherToken guard
+│   │   │   ├── index.tsx            ← Öğretmen anasayfası (sınıf özeti + quick links)
+│   │   │   ├── profile.tsx          ← Öğretmen profili + çıkış
+│   │   │   ├── classes/
+│   │   │   │   ├── _layout.tsx      ← Stack navigator
+│   │   │   │   ├── index.tsx        ← Sınıf listesi (GET /teacher/classes)
+│   │   │   │   └── [classId]/
+│   │   │   │       ├── index.tsx    ← Sınıf detayı + öğrenci listesi (alerjen/ilaç badge)
+│   │   │   │       ├── attendance.tsx ← Yoklama girişi (tarih seçici + durum butonları)
+│   │   │   │       └── reports.tsx  ← Günlük raporlar (mood + iştah + notlar modal)
+│   │   │   ├── children/
+│   │   │   │   ├── _layout.tsx      ← Stack navigator
+│   │   │   │   └── [childId]/
+│   │   │   │       ├── index.tsx    ← Öğrenci detayı + bugünün ilaçları (verildi checkbox)
+│   │   │   │       ├── health.tsx   ← Sağlık bilgileri (read-only: alerjenler/hastalıklar/ilaçlar)
+│   │   │   │       └── pickup.tsx   ← Teslim işlemi (yetkili listesi + fotoğraf + log)
+│   │   │   ├── daily/
+│   │   │   │   ├── _layout.tsx      ← Stack navigator
+│   │   │   │   └── index.tsx        ← Günlük özet (tüm sınıfların yoklama durumu)
+│   │   │   └── meal-menu/
+│   │   │       ├── _layout.tsx      ← Stack navigator
+│   │   │       └── index.tsx        ← Yemek menüsü + öğrenci alerjen uyarıları
 │   │   └── (app)/
 │   │       ├── _layout.tsx          ← Bottom tab navigation (6 tab; invoices gizli)
 │   │       ├── index.tsx            ← Ana akış (Global feed + okul feed)

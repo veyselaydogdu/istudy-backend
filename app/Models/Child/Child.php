@@ -160,6 +160,22 @@ class Child extends BaseModel
         return $this->hasMany(ActivityPayment::class, 'child_id');
     }
 
+    /**
+     * İlaç verilme logları
+     */
+    public function medicationLogs()
+    {
+        return $this->hasMany(ChildMedicationLog::class, 'child_id');
+    }
+
+    /**
+     * Teslim logları
+     */
+    public function pickupLogs()
+    {
+        return $this->hasMany(ChildPickupLog::class, 'child_id');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Scopes
