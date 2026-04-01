@@ -112,10 +112,25 @@ export async function teacherLoginRequest(
   email: string,
   password: string
 ): Promise<AuthResponse> {
-  const response = await api.post<AuthResponse>('/auth/login', {
+  const response = await api.post<AuthResponse>('/teacher/auth/login', {
     email,
     password,
   });
+  return response.data;
+}
+
+export async function teacherRegisterRequest(payload: {
+  name: string;
+  surname: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  phone?: string;
+  title?: string;
+  specialization?: string;
+  experience_years?: number;
+}): Promise<AuthResponse> {
+  const response = await api.post<AuthResponse>('/teacher/auth/register', payload);
   return response.data;
 }
 

@@ -125,6 +125,17 @@ export default function TeacherLoginScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              onPress={() => router.push('/(auth)/teacher-register')}
+              style={styles.registerLink}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.registerLinkText}>
+                Hesabınız yok mu?{' '}
+                <Text style={styles.registerLinkBold}>Kayıt Ol</Text>
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => router.push('/(auth)/login')}
               style={styles.parentLink}
               activeOpacity={0.7}
@@ -246,8 +257,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
+  registerLink: {
+    marginTop: 16,
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  registerLinkText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  registerLinkBold: {
+    color: '#208AEF',
+    fontWeight: '700',
+  },
   parentLink: {
-    marginTop: 20,
+    marginTop: 12,
     alignItems: 'center',
     paddingVertical: 8,
   },

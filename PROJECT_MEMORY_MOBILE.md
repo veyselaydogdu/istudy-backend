@@ -54,14 +54,15 @@ parent-mobile-app/
 │   │   ├── (auth)/
 │   │   │   ├── _layout.tsx
 │   │   │   ├── login.tsx            ← Veli girişi (+ "Öğretmen Girişi →" linki)
-│   │   │   ├── teacher-login.tsx    ← YENİ: Öğretmen girişi (/auth/login → teacher_token)
+│   │   │   ├── teacher-login.tsx    ← YENİ: Öğretmen girişi (/teacher/auth/login → teacher_token)
+│   │   │   ├── teacher-register.tsx ← YENİ: Öğretmen kaydı (/teacher/auth/register → teacher_token)
 │   │   │   ├── register.tsx
 │   │   │   ├── forgot-password.tsx
 │   │   │   └── verify-email.tsx
 │   │   ├── (teacher-app)/           ← YENİ: Öğretmen uygulaması (tamamen bağımsız)
 │   │   │   ├── _layout.tsx          ← Öğretmen tab nav (5 tab) + teacherToken guard
 │   │   │   ├── index.tsx            ← Öğretmen anasayfası (sınıf özeti + quick links)
-│   │   │   ├── profile.tsx          ← Öğretmen profili + çıkış
+│   │   │   ├── profile.tsx          ← Öğretmen profili: daveti kabul/reddet, kurumlarım listesi, kuruma katıl modal, blog yazıları + çıkış
 │   │   │   ├── classes/
 │   │   │   │   ├── _layout.tsx      ← Stack navigator
 │   │   │   │   ├── index.tsx        ← Sınıf listesi (GET /teacher/classes)
@@ -82,7 +83,7 @@ parent-mobile-app/
 │   │   │       ├── _layout.tsx      ← Stack navigator
 │   │   │       └── index.tsx        ← Yemek menüsü + öğrenci alerjen uyarıları
 │   │   └── (app)/
-│   │       ├── _layout.tsx          ← Bottom tab navigation (6 tab; invoices gizli)
+│   │       ├── _layout.tsx          ← Bottom tab navigation (6 tab; invoices+teachers gizli)
 │   │       ├── index.tsx            ← Ana akış (Global feed + okul feed)
 │   │       ├── children/
 │   │       │   ├── index.tsx        ← Çocuk listesi
@@ -104,6 +105,12 @@ parent-mobile-app/
 │   │       │   ├── _layout.tsx      ← Stack navigator (index + [id])
 │   │       │   ├── index.tsx        ← 2 sekme: "Etkinlikler" | "Etkinlik Sınıfları"
 │   │       │   └── [id].tsx         ← Etkinlik sınıfı detay (activity-classes/[id].tsx kopyası)
+│   │       ├── teachers/            ← YENİ — Tab bar'da GİZLİ (href: null), feed'den erişilir
+│   │       │   ├── _layout.tsx      ← Stack navigator ([id]/index + [id]/blog/[blogId])
+│   │       │   └── [id]/
+│   │       │       ├── index.tsx    ← Öğretmen profili (takip/bırak, blog listesi, CV sekmeleri)
+│   │       │       └── blog/
+│   │       │           └── [blogId].tsx ← Blog detay (yorum + beğeni + yanıt)
 │   │       ├── activity-classes/    ← KORUNDU ama Tab bar'da GİZLİ (href: null)
 │   │       │   ├── _layout.tsx
 │   │       │   ├── index.tsx
@@ -244,6 +251,51 @@ GET /api/parent/invoices/{id}         ← Detay (items, transactions, activity_c
 - `payable_type = ActivityClassEnrollment` + `payable_id IN (ailenin çocuklarının enrollment_id'leri)` (tenant kayıt yaptırdığında)
 - → Tüm senaryolar kapsanır: hem veli hem tenant kayıt akışı
 - `invoice.module` alanı ile her türlü fatura görünür: `activity_class`, `subscription`, `manual`, `event`
+
+### Öğretmen Profili & Sosyal (Veli)
+```
+GET    /api/parent/teachers/{id}           ← Öğretmen profil detayı (is_followed, blog_posts_count, followers_count dahil)
+POST   /api/parent/teachers/{id}/follow    ← Öğretmeni takip et
+DELETE /api/parent/teachers/{id}/follow    ← Takibi bırak
+GET    /api/parent/teachers/{id}/posts     ← Öğretmenin blog yazıları (paginated)
+GET    /api/parent/teacher-feed            ← Takip edilen öğretmenlerin blog akışı
+```
+
+### Öğretmen Blog (Veli)
+```
+POST   /api/parent/teacher-blogs/{postId}/like       ← Beğen
+DELETE /api/parent/teacher-blogs/{postId}/like       ← Beğeniyi kaldır
+GET    /api/parent/teacher-blogs/{postId}/comments   ← Yorum listesi (nested replies)
+POST   /api/parent/teacher-blogs/{postId}/comments   ← Yorum ekle {content, parent_comment_id?, quoted_content?}
+DELETE /api/parent/teacher-blogs/comments/{id}       ← Kendi yorumunu sil
+```
+
+### Öğretmen Auth (Public)
+```
+POST /api/teacher/auth/register    ← {name, surname, email, password, password_confirmation, phone?, title?, specialization?, experience_years?}
+POST /api/teacher/auth/login       ← {email, password} → {token, user}
+POST /api/teacher/auth/forgot-password
+POST /api/teacher/auth/reset-password
+```
+
+### Öğretmen Üyelik (teacher_token gerekli)
+```
+GET    /api/teacher/memberships              ← Öğretmenin tenant üyelikleri (aktif+bekleyen)
+GET    /api/teacher/memberships/invitations  ← Bekleyen tenant_invite daveti listesi
+POST   /api/teacher/memberships/join         ← {invite_code} Davet koduyla tenant'a katıl
+PATCH  /api/teacher/memberships/{id}/accept  ← Daveti kabul et
+PATCH  /api/teacher/memberships/{id}/reject  ← Daveti reddet
+DELETE /api/teacher/memberships/{id}         ← Üyeliği iptal et
+```
+
+### Öğretmen Blogu (teacher_token gerekli)
+```
+GET    /api/teacher/blogs           ← Öğretmenin kendi blog yazıları
+POST   /api/teacher/blogs           ← Yeni yazı {title, description, image?}
+PUT    /api/teacher/blogs/{id}      ← Yazıyı güncelle
+DELETE /api/teacher/blogs/{id}      ← Yazıyı sil
+GET    /api/teacher/blogs/{id}/image ← Blog resmi (signed route, auth gerekmez)
+```
 
 ### Referans Verileri
 ```

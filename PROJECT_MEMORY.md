@@ -1681,23 +1681,69 @@ Route::prefix('meals')->group(...)             // TenantMealController
 `subscription.active` middleware altına eklendi:
 
 ```php
+// PUBLIC (throttle)
+Route::prefix('teacher/auth')->group(function () {
+    Route::post('/register', [TeacherAuthController::class, 'register']);  // Öğretmen kendi kaydını açar
+    Route::post('/login', [TeacherAuthController::class, 'login']);
+    Route::post('/forgot-password', ...); Route::post('/reset-password', ...);
+});
+Route::get('/teacher/blogs/{id}/image', ...)->name('teacher.blog.image')->middleware('signed');
+
+// AUTH:SANCTUM (auth gerekli)
+Route::prefix('teacher/auth')->group(function () {
+    Route::get('/me', ...); Route::post('/logout', ...);
+});
+Route::prefix('teacher/memberships')->group(function () {
+    Route::get('/my-tenants', ...); Route::get('/invitations', ...); Route::get('/my-join-requests', ...);
+    Route::post('/join', ...);           // invite_code ile katılma talebi
+    Route::patch('/invitations/{id}/accept', ...); Route::patch('/invitations/{id}/reject', ...);
+    Route::delete('/join-requests/{id}', ...);
+});
+Route::prefix('teacher/blogs')->group(function () {
+    Route::get('/'); Route::post('/'); Route::put('/{id}'); Route::delete('/{id}');
+});
+// PARENT — öğretmen profil & blog
+Route::prefix('parent')->group(function () {
+    Route::get('/teachers/{id}', ...); Route::post('/teachers/{id}/follow', ...); Route::delete('/teachers/{id}/follow', ...);
+    Route::get('/teachers/{id}/posts', ...);
+    Route::get('/teacher-feed', ...);
+    Route::prefix('teacher-blogs/{id}')->group(function () {
+        Route::post('/like'); Route::delete('/like');
+        Route::get('/comments'); Route::post('/comments'); Route::delete('/comments/{commentId}');
+    });
+});
+
+// SUBSCRIPTION.ACTIVE
 Route::prefix('teachers')->group(function () {
-    Route::get('/', [TenantTeacherController::class, 'index']);           // ?search, ?school_id, ?per_page
-    Route::post('/', [TenantTeacherController::class, 'store']);          // User + TeacherProfile oluştur, teacher rolü ata
-    Route::get('/{id}', [TenantTeacherController::class, 'show']);
-    Route::put('/{id}', [TenantTeacherController::class, 'update']);
-    Route::delete('/{id}', [TenantTeacherController::class, 'destroy']);  // soft delete
-    Route::get('/{id}/schools', [TenantTeacherController::class, 'schoolAssignments']);
-    Route::post('/{id}/schools', [TenantTeacherController::class, 'assignToSchool']);
-    Route::delete('/{id}/schools/{schoolId}', [TenantTeacherController::class, 'removeFromSchool']);
+    Route::get('/', [TenantTeacherController::class, 'index']);
+    Route::post('/', [TenantTeacherController::class, 'store']);   // ← 405 döner, EKLENEMEZ
+    Route::get('/{id}', ...); Route::put('/{id}', ...); Route::delete('/{id}', ...);
+    Route::get('/{id}/schools', ...); Route::post('/{id}/schools', ...); Route::delete('/{id}/schools/{schoolId}', ...);
+    // Üyelik yönetimi:
+    Route::post('/invite', ...);           // e-posta ile davet gönder
+    Route::get('/join-requests', ...);     // öğretmen katılma talepleri
+    Route::patch('/join-requests/{id}/approve', ...); Route::patch('/join-requests/{id}/reject', ...);
+    Route::patch('/{id}/activate', ...); Route::patch('/{id}/deactivate', ...);
+    Route::delete('/{id}/membership', ...); Route::patch('/{id}/reset-password', ...);
 });
 ```
 
-**Öğretmen Mimarisi:**
-- `teacher_profiles.tenant_id` → öğretmen tenant'a aittir (okula değil)
-- `teacher_profiles.school_id` → nullable (geriye uyumluluk)
-- `school_teacher_assignments` pivot → öğretmen birden fazla okula atanabilir
+**Öğretmen Mimarisi (2026-04-01 güncellendi — Çok-Tenant):**
+- Öğretmenler kendi hesaplarını açar (`POST /teacher/auth/register`), tenant'lardan bağımsız
+- `teacher_tenant_memberships` tablosu authoritative — bir öğretmen birden fazla tenant'ta üye olabilir
+- `teacher_profiles.tenant_id` nullable (geriye uyumluluk); `users.is_active` deaktif kontrolü
+- `tenants.invite_code` UUID → öğretmen bu kodla katılma talebi gönderir
+- **Tenant öğretmen ekleyemez** — `TenantTeacherController::store()` → 405 döner
+- Ekleme yolları: (1) Tenant davet gönderir (`invite()`), (2) Öğretmen katılma talebi → tenant onaylar (`approveJoinRequest()`)
+- `school_teacher_assignments` pivot → öğretmen okullara atanır (üyelikten bağımsız)
 - `ClassManagementController::schoolTeachers()` → hem `school_id` hem pivot'tan öğretmen getirir
+- Deaktif/çıkarma: membership.status=inactive/removed + diğer aktif üyelik yoksa `users.is_active=false` → login engeli
+
+**Öğretmen Blog & Sosyal:**
+- `teacher_blog_posts`, `teacher_blog_likes`, `teacher_blog_comments` (reply/quote self-FK), `teacher_follows`
+- Blog görseli: `Storage::disk('local')` → signed route `teacher.blog.image`
+- Veli endpoint: `GET /parent/teacher-feed` (takip edilen öğretmenlerin blogları)
+- `ParentTeacherController`, `ParentTeacherBlogController`
 
 ### 16.6 Pint Düzeltmeleri
 

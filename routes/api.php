@@ -97,6 +97,11 @@ Route::get('/parent/activity-gallery/{galleryItem}/serve', [\App\Http\Controller
     ->name('parent.activity-gallery.serve')
     ->middleware('signed');
 
+// ÖĞRETMEN BLOG GÖRSELI — İmzalı URL (auth header gerektirmez)
+Route::get('/teacher/blogs/{id}/image', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'serveImage'])
+    ->name('teacher.blog.image')
+    ->middleware('signed');
+
 // ═══════════════════════════════════════════════════════════
 // VELİ AUTH (Public — Mobil uygulama)
 // ═══════════════════════════════════════════════════════════
@@ -108,6 +113,16 @@ Route::prefix('parent/auth')->group(function () {
     Route::get('/verify-email/{id}/{hash}', [\App\Http\Controllers\Parents\ParentAuthController::class, 'verifyEmail'])->name('parent.verification.verify');
     Route::get('/countries', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'countries']);
     Route::get('/blood-types', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'bloodTypes']);
+});
+
+// ═══════════════════════════════════════════════════════════
+// ÖĞRETMEN AUTH (Public — Mobil uygulama)
+// ═══════════════════════════════════════════════════════════
+Route::prefix('teacher/auth')->group(function () {
+    Route::middleware('throttle:10,1')->post('/register', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'register']);
+    Route::middleware('throttle:5,1')->post('/login', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'login']);
+    Route::post('/forgot-password', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'resetPassword']);
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -206,6 +221,29 @@ Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
     Route::prefix('meal-menus')->group(function () {
         Route::get('/children', [\App\Http\Controllers\Parents\ParentMealMenuController::class, 'children']);
         Route::get('/', [\App\Http\Controllers\Parents\ParentMealMenuController::class, 'index']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN PROFİLLERİ & TAKİP (Veli)
+    // ───────────────────────────────────────────────────
+    Route::prefix('teachers')->group(function () {
+        Route::get('/{teacherProfileId}', [\App\Http\Controllers\Parents\ParentTeacherController::class, 'show']);
+        Route::post('/{teacherProfileId}/follow', [\App\Http\Controllers\Parents\ParentTeacherController::class, 'follow']);
+        Route::delete('/{teacherProfileId}/follow', [\App\Http\Controllers\Parents\ParentTeacherController::class, 'unfollow']);
+        Route::get('/{teacherProfileId}/posts', [\App\Http\Controllers\Parents\ParentTeacherController::class, 'teacherPosts']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN BLOG AKIŞI & ETKİLEŞİM (Veli)
+    // ───────────────────────────────────────────────────
+    Route::get('/teacher-feed', [\App\Http\Controllers\Parents\ParentTeacherController::class, 'teacherFeed']);
+
+    Route::prefix('teacher-blogs')->group(function () {
+        Route::post('/{blogPostId}/like', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'like']);
+        Route::delete('/{blogPostId}/like', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'unlike']);
+        Route::get('/{blogPostId}/comments', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'comments']);
+        Route::post('/{blogPostId}/comments', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'addComment']);
+        Route::delete('/{blogPostId}/comments/{commentId}', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'deleteComment']);
     });
 });
 
@@ -306,6 +344,29 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('teacher/auth')->group(function () {
         Route::get('/me', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'me']);
         Route::post('/logout', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'logout']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN — TENANT ÜYELİK YÖNETİMİ
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/memberships')->group(function () {
+        Route::get('/my-tenants', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'myTenants']);
+        Route::get('/invitations', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'invitations']);
+        Route::get('/my-join-requests', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'myJoinRequests']);
+        Route::post('/join', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'sendJoinRequest']);
+        Route::patch('/invitations/{id}/accept', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'acceptInvitation']);
+        Route::patch('/invitations/{id}/reject', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'rejectInvitation']);
+        Route::delete('/join-requests/{id}', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'cancelJoinRequest']);
+    });
+
+    // ───────────────────────────────────────────────────
+    // ÖĞRETMEN — BLOG YÖNETİMİ
+    // ───────────────────────────────────────────────────
+    Route::prefix('teacher/blogs')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'store']);
+        Route::put('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'destroy']);
     });
 
     // ───────────────────────────────────────────────────
@@ -652,6 +713,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/{id}/schools', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'schoolAssignments']);
             Route::post('/{id}/schools', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'assignToSchool']);
             Route::delete('/{id}/schools/{schoolId}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'removeFromSchool']);
+
+            // Davet & Üyelik yönetimi
+            Route::post('/invite', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'invite']);
+            Route::get('/join-requests', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'joinRequests']);
+            Route::patch('/join-requests/{id}/approve', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'approveJoinRequest']);
+            Route::patch('/join-requests/{id}/reject', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'rejectJoinRequest']);
+
+            // Üyelik durum yönetimi
+            Route::patch('/{id}/activate', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'activate']);
+            Route::patch('/{id}/deactivate', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'deactivate']);
+            Route::delete('/{id}/membership', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'removeMembership']);
+            Route::patch('/{id}/reset-password', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'resetPassword']);
         });
 
         // ───────────────────────────────────────────────────

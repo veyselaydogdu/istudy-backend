@@ -93,6 +93,7 @@ export default function AppLayout() {
       <Tabs.Screen name="activity-classes" options={{ href: null }} />
       <Tabs.Screen name="family" options={{ href: null }} />
       <Tabs.Screen name="invoices" options={{ href: null }} />
+      <Tabs.Screen name="teachers" options={{ href: null }} />
     </Tabs>
   );
 }

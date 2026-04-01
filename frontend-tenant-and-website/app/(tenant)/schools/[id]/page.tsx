@@ -133,7 +133,7 @@ export default function SchoolDetailPage() {
     const [schoolTeachers, setSchoolTeachers] = useState<Teacher[]>([]);
     const [assigningTeacher, setAssigningTeacher] = useState(false);
     const [selectedTeacherId, setSelectedTeacherId] = useState('');
-    const [teacherRole, setTeacherRole] = useState('assistant_teacher');
+    const [classTeacherRoleTypeId, setClassTeacherRoleTypeId] = useState('');
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -290,7 +290,6 @@ export default function SchoolDetailPage() {
         try {
             await apiClient.post(`/schools/${id}/teachers`, {
                 teacher_profile_id: Number(assignTeacherProfileId),
-                teacher_role_type_id: assignRoleTypeId ? Number(assignRoleTypeId) : undefined,
                 employment_type: assignEmploymentType,
             });
             toast.success('Öğretmen okula atandı.');
@@ -693,14 +692,16 @@ export default function SchoolDetailPage() {
     const openTeacherModal = async (cls: SchoolClass) => {
         setSelectedClass(cls);
         setSelectedTeacherId('');
-        setTeacherRole('assistant_teacher');
+        setClassTeacherRoleTypeId('');
         try {
-            const [teachersRes, schoolTeachersRes] = await Promise.all([
+            const [teachersRes, schoolTeachersRes, roleTypesRes] = await Promise.all([
                 apiClient.get(`/schools/${id}/classes/${cls.id}/teachers`).catch(() => ({ data: { data: [] } })),
                 apiClient.get(`/schools/${id}/teachers`).catch(() => ({ data: { data: [] } })),
+                roleTypes.length === 0 ? apiClient.get('/teacher-role-types').catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: roleTypes } }),
             ]);
             setClassTeachers(teachersRes.data?.data ?? []);
             setSchoolTeachers(schoolTeachersRes.data?.data ?? []);
+            if (roleTypes.length === 0) { setRoleTypes(roleTypesRes.data?.data ?? []); }
         } catch {
             toast.error('Öğretmenler yüklenemedi.');
         }
@@ -708,12 +709,12 @@ export default function SchoolDetailPage() {
     };
 
     const handleAssignTeacher = async () => {
-        if (!selectedTeacherId || !selectedClass) return;
+        if (!selectedTeacherId || !selectedClass || !classTeacherRoleTypeId) return;
         setAssigningTeacher(true);
         try {
             await apiClient.post(`/schools/${id}/classes/${selectedClass.id}/teachers`, {
                 teacher_profile_id: Number(selectedTeacherId),
-                role: teacherRole,
+                teacher_role_type_id: classTeacherRoleTypeId ? Number(classTeacherRoleTypeId) : undefined,
             });
             toast.success('Öğretmen atandı.');
             const res = await apiClient.get(`/schools/${id}/classes/${selectedClass.id}/teachers`);
@@ -1129,7 +1130,6 @@ export default function SchoolDetailPage() {
                                         <tr>
                                             <th>Ad</th>
                                             <th>Unvan</th>
-                                            <th>Görev Türü</th>
                                             <th>İstihdam</th>
                                             <th>Durum</th>
                                             <th>İşlemler</th>
@@ -1140,11 +1140,6 @@ export default function SchoolDetailPage() {
                                             <tr key={teacher.id}>
                                                 <td className="font-medium text-dark dark:text-white">{teacher.name}</td>
                                                 <td>{teacher.title ?? '—'}</td>
-                                                <td>
-                                                    {teacher.role_type ? (
-                                                        <span className="badge badge-outline-info">{teacher.role_type.name}</span>
-                                                    ) : '—'}
-                                                </td>
                                                 <td>{employmentLabel(teacher.employment_type)}</td>
                                                 <td>
                                                     {teacher.is_active ? (
@@ -2174,19 +2169,6 @@ export default function SchoolDetailPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Görev Türü</label>
-                                <select
-                                    className="form-select mt-1"
-                                    value={assignRoleTypeId}
-                                    onChange={e => setAssignRoleTypeId(e.target.value)}
-                                >
-                                    <option value="">— Seçin (İsteğe Bağlı) —</option>
-                                    {roleTypes.filter(r => r.is_active !== false).map(r => (
-                                        <option key={r.id} value={r.id}>{r.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">İstihdam Türü</label>
                                 <select
                                     className="form-select mt-1"
@@ -2277,7 +2259,7 @@ export default function SchoolDetailPage() {
                                         <div key={t.id} className="flex items-center justify-between rounded border border-[#ebedf2] p-2 dark:border-[#1b2e4b]">
                                             <div>
                                                 <span className="font-medium text-dark dark:text-white">{t.name}</span>
-                                                <span className="ml-2 text-xs text-[#888ea8]">{roleLabel(t.role ?? '')}</span>
+                                                {t.role_type && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{t.role_type.name}</span>}
                                             </div>
                                             <button type="button" className="text-danger hover:opacity-70" onClick={() => handleRemoveTeacher(t.id)}>
                                                 <Trash2 className="h-4 w-4" />
@@ -2299,12 +2281,16 @@ export default function SchoolDetailPage() {
                                         <option key={t.id} value={t.id}>{t.name}</option>
                                     ))}
                             </select>
-                            <select className="form-select" value={teacherRole} onChange={e => setTeacherRole(e.target.value)}>
-                                <option value="head_teacher">Baş Öğretmen</option>
-                                <option value="assistant_teacher">Yardımcı Öğretmen</option>
-                                <option value="substitute_teacher">Vekil Öğretmen</option>
-                            </select>
-                            <button type="button" className="btn btn-primary w-full" onClick={handleAssignTeacher} disabled={!selectedTeacherId || assigningTeacher}>
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">Görev Türü <span className="text-danger">*</span></label>
+                                <select className="form-select mt-1" value={classTeacherRoleTypeId} onChange={e => setClassTeacherRoleTypeId(e.target.value)}>
+                                    <option value="">— Görev Türü Seçin —</option>
+                                    {roleTypes.filter(r => r.is_active !== false).map(r => (
+                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button type="button" className="btn btn-primary w-full" onClick={handleAssignTeacher} disabled={!selectedTeacherId || !classTeacherRoleTypeId || assigningTeacher}>
                                 {assigningTeacher ? 'Atanıyor...' : 'Öğretmeni Ata'}
                             </button>
                         </div>

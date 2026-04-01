@@ -94,6 +94,27 @@ class TeacherProfile extends BaseModel
             ->withTimestamps();
     }
 
+    public function memberships(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TeacherTenantMembership::class, 'teacher_profile_id');
+    }
+
+    public function activeTenants(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\Tenant\Tenant::class, 'teacher_tenant_memberships', 'teacher_profile_id', 'tenant_id')
+            ->wherePivot('status', 'active');
+    }
+
+    public function blogPosts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TeacherBlogPost::class, 'teacher_profile_id');
+    }
+
+    public function followers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TeacherFollow::class, 'teacher_profile_id');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Relations — Yeni Profil Bileşenleri
