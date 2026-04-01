@@ -5,9 +5,13 @@ import { ActivityIndicator, View } from 'react-native';
 import { authEvent } from '../lib/authEvent';
 import {
   clearAuth,
+  clearTeacherAuth,
+  getStoredTeacherToken,
+  getStoredTeacherUser,
   getStoredToken,
   getStoredUser,
   saveAuth,
+  saveTeacherAuth,
   type User,
 } from '../lib/auth';
 
@@ -15,18 +19,26 @@ interface AuthContextValue {
   token: string | null;
   user: User | null;
   isLoading: boolean;
+  teacherToken: string | null;
+  teacherUser: User | null;
   signIn: (token: string, user: User) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: (user: User) => void;
+  signInAsTeacher: (token: string, user: User) => Promise<void>;
+  signOutTeacher: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue>({
   token: null,
   user: null,
   isLoading: true,
+  teacherToken: null,
+  teacherUser: null,
   signIn: async () => {},
   signOut: async () => {},
   refreshUser: () => {},
+  signInAsTeacher: async () => {},
+  signOutTeacher: async () => {},
 });
 
 export function useAuth(): AuthContextValue {
@@ -37,7 +49,15 @@ export function useAuth(): AuthContextValue {
  * Auth guard — token durumuna göre kullanıcıyı doğru gruba yönlendirir.
  * isLoading true iken bekler (splash gösterilir).
  */
-function AuthGuard({ token, isLoading }: { token: string | null; isLoading: boolean }) {
+function AuthGuard({
+  token,
+  teacherToken,
+  isLoading,
+}: {
+  token: string | null;
+  teacherToken: string | null;
+  isLoading: boolean;
+}) {
   const segments = useSegments();
 
   useEffect(() => {
@@ -45,15 +65,18 @@ function AuthGuard({ token, isLoading }: { token: string | null; isLoading: bool
 
     const inAuthGroup = segments[0] === '(auth)';
     const inAppGroup = segments[0] === '(app)';
+    const inTeacherAppGroup = segments[0] === '(teacher-app)';
 
-    if (!token && !inAuthGroup) {
-      // Oturum yok, auth ekranı dışında → login'e yönlendir
+    if (!token && !teacherToken && !inAuthGroup) {
       router.replace('/(auth)/login');
+    } else if (teacherToken && !token && !inTeacherAppGroup) {
+      router.replace('/(teacher-app)');
+    } else if (token && !teacherToken && (inAuthGroup || inTeacherAppGroup)) {
+      router.replace('/(app)');
     } else if (token && inAuthGroup) {
-      // Oturum var ama hâlâ auth ekranında → uygulamaya yönlendir
       router.replace('/(app)');
     }
-  }, [token, segments, isLoading]);
+  }, [token, teacherToken, segments, isLoading]);
 
   return null;
 }
@@ -61,6 +84,8 @@ function AuthGuard({ token, isLoading }: { token: string | null; isLoading: bool
 export default function RootLayout() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [teacherToken, setTeacherToken] = useState<string | null>(null);
+  const [teacherUser, setTeacherUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // AsyncStorage'dan oturum yükle
@@ -68,9 +93,16 @@ export default function RootLayout() {
     void (async () => {
       const storedToken = await getStoredToken();
       const storedUser = await getStoredUser();
+      const storedTeacherToken = await getStoredTeacherToken();
+      const storedTeacherUser = await getStoredTeacherUser();
+
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(storedUser);
+      }
+      if (storedTeacherToken && storedTeacherUser) {
+        setTeacherToken(storedTeacherToken);
+        setTeacherUser(storedTeacherUser);
       }
       setIsLoading(false);
     })();
@@ -81,6 +113,8 @@ export default function RootLayout() {
     authEvent.register(() => {
       setToken(null);
       setUser(null);
+      setTeacherToken(null);
+      setTeacherUser(null);
     });
     return () => {
       authEvent.unregister();
@@ -103,6 +137,18 @@ export default function RootLayout() {
     setUser(newUser);
   };
 
+  const signInAsTeacher = async (newToken: string, newUser: User): Promise<void> => {
+    await saveTeacherAuth(newToken, newUser);
+    setTeacherToken(newToken);
+    setTeacherUser(newUser);
+  };
+
+  const signOutTeacher = async (): Promise<void> => {
+    await clearTeacherAuth();
+    setTeacherToken(null);
+    setTeacherUser(null);
+  };
+
   // Oturum yüklenirken splash göster
   if (isLoading) {
     return (
@@ -120,12 +166,26 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthContext.Provider value={{ token, user, isLoading, signIn, signOut, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        isLoading,
+        teacherToken,
+        teacherUser,
+        signIn,
+        signOut,
+        refreshUser,
+        signInAsTeacher,
+        signOutTeacher,
+      }}
+    >
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="(teacher-app)" />
       </Stack>
-      <AuthGuard token={token} isLoading={isLoading} />
+      <AuthGuard token={token} teacherToken={teacherToken} isLoading={isLoading} />
     </AuthContext.Provider>
   );
 }

@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -27,7 +29,19 @@ interface Post {
   comments_count: number;
 }
 
-type FeedTab = 'global' | 'schools';
+interface BlogPost {
+  id: number;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  teacher: { id: number; name: string; title: string | null } | null;
+  likes_count: number;
+  comments_count: number;
+  is_liked: boolean;
+  published_at: string | null;
+}
+
+type FeedTab = 'global' | 'schools' | 'teachers';
 
 const AVATAR_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
 
@@ -91,6 +105,79 @@ function PostCard({ post }: { post: Post }) {
     </View>
   );
 }
+
+function BlogPostCard({ post, onLike }: { post: BlogPost; onLike: (id: number) => void }) {
+  const teacherName = post.teacher?.name ?? 'Öğretmen';
+  const initial = teacherName.charAt(0).toUpperCase();
+  const color = avatarColor(teacherName);
+
+  return (
+    <TouchableOpacity
+      style={cardStyles.card}
+      activeOpacity={0.85}
+      onPress={() => router.push(`/(app)/teachers/${post.teacher?.id}/blog/${post.id}` as never)}
+    >
+      <View style={cardStyles.authorRow}>
+        <TouchableOpacity
+          onPress={() => router.push(`/(app)/teachers/${post.teacher?.id}` as never)}
+        >
+          <View style={[cardStyles.avatar, { backgroundColor: color }]}>
+            <Text style={cardStyles.avatarText}>{initial}</Text>
+          </View>
+        </TouchableOpacity>
+        <View style={cardStyles.authorInfo}>
+          <Text style={cardStyles.authorName}>{teacherName}</Text>
+          {post.teacher?.title ? (
+            <Text style={cardStyles.publishedAt}>{post.teacher.title}</Text>
+          ) : null}
+        </View>
+        <Text style={cardStyles.publishedAt}>{timeAgo(post.published_at)}</Text>
+      </View>
+      <Text style={blogCardStyles.blogTitle}>{post.title}</Text>
+      {post.description ? (
+        <Text style={cardStyles.content} numberOfLines={3}>
+          {post.description}
+        </Text>
+      ) : null}
+      {post.image_url ? (
+        <Image
+          source={{ uri: post.image_url }}
+          style={blogCardStyles.blogImage}
+          resizeMode="cover"
+        />
+      ) : null}
+      <View style={cardStyles.footer}>
+        <TouchableOpacity style={cardStyles.stat} onPress={() => onLike(post.id)}>
+          <Ionicons
+            name={post.is_liked ? 'heart' : 'heart-outline'}
+            size={15}
+            color={post.is_liked ? '#EF4444' : '#6B7280'}
+          />
+          <Text style={cardStyles.statText}>{post.likes_count}</Text>
+        </TouchableOpacity>
+        <View style={cardStyles.stat}>
+          <Ionicons name="chatbubble-outline" size={15} color="#6B7280" />
+          <Text style={cardStyles.statText}>{post.comments_count}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const blogCardStyles = StyleSheet.create({
+  blogTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  blogImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+});
 
 const cardStyles = StyleSheet.create({
   card: {
@@ -185,6 +272,7 @@ const cardStyles = StyleSheet.create({
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<FeedTab>('schools');
   const [posts, setPosts] = useState<Post[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -197,26 +285,39 @@ export default function FeedScreen() {
       setLoading(true);
       setError(null);
       try {
-        const endpoint =
-          activeTab === 'global'
-            ? `/parent/feed/global?page=${currentPage}`
-            : `/parent/feed/schools?page=${currentPage}`;
-
-        const response = await api.get<{
-          data: Post[];
-          meta: { current_page: number; last_page: number };
-        }>(endpoint);
-
-        const newPosts = response.data.data;
-        const meta = response.data.meta;
-
-        if (isRefresh || currentPage === 1) {
-          setPosts(newPosts);
+        if (activeTab === 'teachers') {
+          const response = await api.get<{
+            data: BlogPost[];
+            meta: { current_page: number; last_page: number };
+          }>(`/parent/teacher-feed?page=${currentPage}`);
+          const newPosts = response.data.data;
+          const meta = response.data.meta;
+          if (isRefresh || currentPage === 1) {
+            setBlogPosts(newPosts);
+          } else {
+            setBlogPosts((prev) => [...prev, ...newPosts]);
+          }
+          setPage(meta.current_page);
+          setLastPage(meta.last_page);
         } else {
-          setPosts((prev) => [...prev, ...newPosts]);
+          const endpoint =
+            activeTab === 'global'
+              ? `/parent/feed/global?page=${currentPage}`
+              : `/parent/feed/schools?page=${currentPage}`;
+          const response = await api.get<{
+            data: Post[];
+            meta: { current_page: number; last_page: number };
+          }>(endpoint);
+          const newPosts = response.data.data;
+          const meta = response.data.meta;
+          if (isRefresh || currentPage === 1) {
+            setPosts(newPosts);
+          } else {
+            setPosts((prev) => [...prev, ...newPosts]);
+          }
+          setPage(meta.current_page);
+          setLastPage(meta.last_page);
         }
-        setPage(meta.current_page);
-        setLastPage(meta.last_page);
       } catch (err: unknown) {
         setError(getApiError(err));
       } finally {
@@ -244,6 +345,40 @@ export default function FeedScreen() {
     }
   };
 
+  const handleLike = async (blogPostId: number) => {
+    const post = blogPosts.find((p) => p.id === blogPostId);
+    if (!post) { return; }
+    try {
+      if (post.is_liked) {
+        await api.delete(`/parent/teacher-blogs/${blogPostId}/like`);
+        setBlogPosts((prev) =>
+          prev.map((p) =>
+            p.id === blogPostId
+              ? { ...p, is_liked: false, likes_count: p.likes_count - 1 }
+              : p
+          )
+        );
+      } else {
+        await api.post(`/parent/teacher-blogs/${blogPostId}/like`);
+        setBlogPosts((prev) =>
+          prev.map((p) =>
+            p.id === blogPostId
+              ? { ...p, is_liked: true, likes_count: p.likes_count + 1 }
+              : p
+          )
+        );
+      }
+    } catch {
+      // sessizce geç
+    }
+  };
+
+  const TABS: Array<{ key: FeedTab; label: string; icon: string }> = [
+    { key: 'global', label: 'Genel', icon: 'globe-outline' },
+    { key: 'schools', label: 'Okullarım', icon: 'school-outline' },
+    { key: 'teachers', label: 'Öğretmenler', icon: 'person-circle-outline' },
+  ];
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -257,34 +392,23 @@ export default function FeedScreen() {
       </View>
 
       <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'global' && styles.tabActive]}
-          onPress={() => setActiveTab('global')}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name="globe-outline"
-            size={15}
-            color={activeTab === 'global' ? '#FFFFFF' : '#6B7280'}
-          />
-          <Text style={[styles.tabText, activeTab === 'global' && styles.tabTextActive]}>
-            Genel
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'schools' && styles.tabActive]}
-          onPress={() => setActiveTab('schools')}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name="school-outline"
-            size={15}
-            color={activeTab === 'schools' ? '#FFFFFF' : '#6B7280'}
-          />
-          <Text style={[styles.tabText, activeTab === 'schools' && styles.tabTextActive]}>
-            Okullarım
-          </Text>
-        </TouchableOpacity>
+        {TABS.map((tab) => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            onPress={() => setActiveTab(tab.key)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={tab.icon as never}
+              size={14}
+              color={activeTab === tab.key ? '#FFFFFF' : '#6B7280'}
+            />
+            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {error && (
@@ -294,37 +418,73 @@ export default function FeedScreen() {
         </View>
       )}
 
-      <FlatList
-        data={posts}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <PostCard post={item} />}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#208AEF"
-          />
-        }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.3}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.empty}>
-              <View style={styles.emptyIconWrap}>
-                <Ionicons name="newspaper-outline" size={40} color="#D1D5DB" />
+      {activeTab === 'teachers' ? (
+        <FlatList
+          data={blogPosts}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item }) => <BlogPostCard post={item} onLike={handleLike} />}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#208AEF"
+            />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.empty}>
+                <View style={styles.emptyIconWrap}>
+                  <Ionicons name="person-circle-outline" size={40} color="#D1D5DB" />
+                </View>
+                <Text style={styles.emptyTitle}>Henüz blog yazısı yok</Text>
+                <Text style={styles.emptyText}>
+                  Takip ettiğiniz öğretmenlerin yazıları burada görünecek.
+                </Text>
               </View>
-              <Text style={styles.emptyTitle}>Henüz paylaşım yok</Text>
-              <Text style={styles.emptyText}>Yeni paylaşımlar burada görünecek.</Text>
-            </View>
-          ) : null
-        }
-        ListFooterComponent={
-          loading && posts.length > 0 ? (
-            <ActivityIndicator color="#208AEF" style={styles.loader} />
-          ) : null
-        }
-      />
+            ) : null
+          }
+          ListFooterComponent={
+            loading && blogPosts.length > 0 ? (
+              <ActivityIndicator color="#208AEF" style={styles.loader} />
+            ) : null
+          }
+        />
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item }) => <PostCard post={item} />}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#208AEF"
+            />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.empty}>
+                <View style={styles.emptyIconWrap}>
+                  <Ionicons name="newspaper-outline" size={40} color="#D1D5DB" />
+                </View>
+                <Text style={styles.emptyTitle}>Henüz paylaşım yok</Text>
+                <Text style={styles.emptyText}>Yeni paylaşımlar burada görünecek.</Text>
+              </View>
+            ) : null
+          }
+          ListFooterComponent={
+            loading && posts.length > 0 ? (
+              <ActivityIndicator color="#208AEF" style={styles.loader} />
+            ) : null
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }

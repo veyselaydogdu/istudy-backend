@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { router, Tabs } from 'expo-router';
+import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
+
+import { useAuth } from '../_layout';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -15,7 +17,15 @@ function tabIcon(focused: boolean, active: IoniconsName, inactive: IoniconsName)
   );
 }
 
-export default function AppLayout() {
+export default function TeacherAppLayout() {
+  const { teacherToken } = useAuth();
+
+  useEffect(() => {
+    if (!teacherToken) {
+      router.replace('/(auth)/teacher-login');
+    }
+  }, [teacherToken]);
+
   return (
     <Tabs
       screenOptions={{
@@ -42,40 +52,32 @@ export default function AppLayout() {
         },
       }}
     >
-      {/* 5 Ana Tab */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Akış',
+          title: 'Anasayfa',
           tabBarIcon: ({ focused }) => tabIcon(focused, 'home', 'home-outline'),
+        }}
+      />
+      <Tabs.Screen
+        name="classes"
+        options={{
+          title: 'Sınıflarım',
+          tabBarIcon: ({ focused }) => tabIcon(focused, 'book', 'book-outline'),
+        }}
+      />
+      <Tabs.Screen
+        name="daily"
+        options={{
+          title: 'Günlük',
+          tabBarIcon: ({ focused }) => tabIcon(focused, 'clipboard', 'clipboard-outline'),
         }}
       />
       <Tabs.Screen
         name="meal-menu"
         options={{
-          title: 'Yemek Listesi',
+          title: 'Yemek',
           tabBarIcon: ({ focused }) => tabIcon(focused, 'restaurant', 'restaurant-outline'),
-          tabBarLabelStyle: {
-            fontSize: 8,
-            fontWeight: '600',
-            marginTop: 2,
-            flexWrap: 'wrap',
-            textAlign: 'center',
-          },
-        }}
-      />
-      <Tabs.Screen
-        name="activities"
-        options={{
-          title: 'Etkinlikler',
-          tabBarIcon: ({ focused }) => tabIcon(focused, 'flame', 'flame-outline'),
-        }}
-      />
-      <Tabs.Screen
-        name="stats"
-        options={{
-          title: 'İstatistikler',
-          tabBarIcon: ({ focused }) => tabIcon(focused, 'bar-chart', 'bar-chart-outline'),
         }}
       />
       <Tabs.Screen
@@ -87,13 +89,7 @@ export default function AppLayout() {
       />
 
       {/* Tab bar'da gizlenecek ekranlar */}
-      <Tabs.Screen name="explore" options={{ href: null }} />
       <Tabs.Screen name="children" options={{ href: null }} />
-      <Tabs.Screen name="schools" options={{ href: null }} />
-      <Tabs.Screen name="activity-classes" options={{ href: null }} />
-      <Tabs.Screen name="family" options={{ href: null }} />
-      <Tabs.Screen name="invoices" options={{ href: null }} />
-      <Tabs.Screen name="teachers" options={{ href: null }} />
     </Tabs>
   );
 }

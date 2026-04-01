@@ -32,13 +32,21 @@ class ClassManagementController extends BaseController
                 ->where('school_id', $schoolId)
                 ->firstOrFail();
 
-            $teachers = $class->teachers()->with('user')->get()->map(fn ($t) => [
+            $teacherList = $class->teachers()->with('user')->get();
+            $roleTypeIds = $teacherList->pluck('pivot.teacher_role_type_id')->filter()->unique();
+            $roleTypeMap = $roleTypeIds->isNotEmpty()
+                ? TeacherRoleType::whereIn('id', $roleTypeIds)->get()->keyBy('id')
+                : collect();
+
+            $teachers = $teacherList->map(fn ($t) => [
                 'id' => $t->id,
                 'user_id' => $t->user_id,
-                'name' => $t->user?->name.' '.($t->user?->surname ?? ''),
+                'name' => trim(($t->user?->name ?? '').' '.($t->user?->surname ?? '')),
                 'title' => $t->title,
-                'role' => $t->pivot->role ?? 'assistant_teacher',
-                'school_id' => $t->school_id,
+                'teacher_role_type_id' => $t->pivot->teacher_role_type_id,
+                'role_type' => $t->pivot->teacher_role_type_id && $roleTypeMap->has($t->pivot->teacher_role_type_id)
+                    ? ['id' => $roleTypeMap->get($t->pivot->teacher_role_type_id)->id, 'name' => $roleTypeMap->get($t->pivot->teacher_role_type_id)->name]
+                    : null,
             ]);
 
             return $this->successResponse($teachers);
@@ -58,7 +66,7 @@ class ClassManagementController extends BaseController
     {
         $request->validate([
             'teacher_profile_id' => ['required', 'exists:teacher_profiles,id'],
-            'role' => ['nullable', 'string', 'in:head_teacher,assistant_teacher,substitute_teacher'],
+            'teacher_role_type_id' => ['required', 'exists:teacher_role_types,id'],
         ]);
 
         try {
@@ -76,7 +84,7 @@ class ClassManagementController extends BaseController
                 ->firstOrFail();
 
             $class->teachers()->syncWithoutDetaching([
-                $teacher->id => ['role' => $request->role ?? 'assistant_teacher'],
+                $teacher->id => ['teacher_role_type_id' => $request->teacher_role_type_id ?? null],
             ]);
 
             DB::commit();

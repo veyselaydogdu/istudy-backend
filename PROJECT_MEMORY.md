@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-04-30 (Kontenjan + adres: activities.capacity/address + activity_classes.address; kapasite dolunca kayıt engeli; frontend+mobil güncellendi)
+> **Son Güncelleme:** 2026-07-10 (Öğretmen Mobil API: 7 yeni controller, 15 endpoint, 2 migration tablosu)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -1681,23 +1681,69 @@ Route::prefix('meals')->group(...)             // TenantMealController
 `subscription.active` middleware altına eklendi:
 
 ```php
+// PUBLIC (throttle)
+Route::prefix('teacher/auth')->group(function () {
+    Route::post('/register', [TeacherAuthController::class, 'register']);  // Öğretmen kendi kaydını açar
+    Route::post('/login', [TeacherAuthController::class, 'login']);
+    Route::post('/forgot-password', ...); Route::post('/reset-password', ...);
+});
+Route::get('/teacher/blogs/{id}/image', ...)->name('teacher.blog.image')->middleware('signed');
+
+// AUTH:SANCTUM (auth gerekli)
+Route::prefix('teacher/auth')->group(function () {
+    Route::get('/me', ...); Route::post('/logout', ...);
+});
+Route::prefix('teacher/memberships')->group(function () {
+    Route::get('/my-tenants', ...); Route::get('/invitations', ...); Route::get('/my-join-requests', ...);
+    Route::post('/join', ...);           // invite_code ile katılma talebi
+    Route::patch('/invitations/{id}/accept', ...); Route::patch('/invitations/{id}/reject', ...);
+    Route::delete('/join-requests/{id}', ...);
+});
+Route::prefix('teacher/blogs')->group(function () {
+    Route::get('/'); Route::post('/'); Route::put('/{id}'); Route::delete('/{id}');
+});
+// PARENT — öğretmen profil & blog
+Route::prefix('parent')->group(function () {
+    Route::get('/teachers/{id}', ...); Route::post('/teachers/{id}/follow', ...); Route::delete('/teachers/{id}/follow', ...);
+    Route::get('/teachers/{id}/posts', ...);
+    Route::get('/teacher-feed', ...);
+    Route::prefix('teacher-blogs/{id}')->group(function () {
+        Route::post('/like'); Route::delete('/like');
+        Route::get('/comments'); Route::post('/comments'); Route::delete('/comments/{commentId}');
+    });
+});
+
+// SUBSCRIPTION.ACTIVE
 Route::prefix('teachers')->group(function () {
-    Route::get('/', [TenantTeacherController::class, 'index']);           // ?search, ?school_id, ?per_page
-    Route::post('/', [TenantTeacherController::class, 'store']);          // User + TeacherProfile oluştur, teacher rolü ata
-    Route::get('/{id}', [TenantTeacherController::class, 'show']);
-    Route::put('/{id}', [TenantTeacherController::class, 'update']);
-    Route::delete('/{id}', [TenantTeacherController::class, 'destroy']);  // soft delete
-    Route::get('/{id}/schools', [TenantTeacherController::class, 'schoolAssignments']);
-    Route::post('/{id}/schools', [TenantTeacherController::class, 'assignToSchool']);
-    Route::delete('/{id}/schools/{schoolId}', [TenantTeacherController::class, 'removeFromSchool']);
+    Route::get('/', [TenantTeacherController::class, 'index']);
+    Route::post('/', [TenantTeacherController::class, 'store']);   // ← 405 döner, EKLENEMEZ
+    Route::get('/{id}', ...); Route::put('/{id}', ...); Route::delete('/{id}', ...);
+    Route::get('/{id}/schools', ...); Route::post('/{id}/schools', ...); Route::delete('/{id}/schools/{schoolId}', ...);
+    // Üyelik yönetimi:
+    Route::post('/invite', ...);           // e-posta ile davet gönder
+    Route::get('/join-requests', ...);     // öğretmen katılma talepleri
+    Route::patch('/join-requests/{id}/approve', ...); Route::patch('/join-requests/{id}/reject', ...);
+    Route::patch('/{id}/activate', ...); Route::patch('/{id}/deactivate', ...);
+    Route::delete('/{id}/membership', ...); Route::patch('/{id}/reset-password', ...);
 });
 ```
 
-**Öğretmen Mimarisi:**
-- `teacher_profiles.tenant_id` → öğretmen tenant'a aittir (okula değil)
-- `teacher_profiles.school_id` → nullable (geriye uyumluluk)
-- `school_teacher_assignments` pivot → öğretmen birden fazla okula atanabilir
+**Öğretmen Mimarisi (2026-04-01 güncellendi — Çok-Tenant):**
+- Öğretmenler kendi hesaplarını açar (`POST /teacher/auth/register`), tenant'lardan bağımsız
+- `teacher_tenant_memberships` tablosu authoritative — bir öğretmen birden fazla tenant'ta üye olabilir
+- `teacher_profiles.tenant_id` nullable (geriye uyumluluk); `users.is_active` deaktif kontrolü
+- `tenants.invite_code` UUID → öğretmen bu kodla katılma talebi gönderir
+- **Tenant öğretmen ekleyemez** — `TenantTeacherController::store()` → 405 döner
+- Ekleme yolları: (1) Tenant davet gönderir (`invite()`), (2) Öğretmen katılma talebi → tenant onaylar (`approveJoinRequest()`)
+- `school_teacher_assignments` pivot → öğretmen okullara atanır (üyelikten bağımsız)
 - `ClassManagementController::schoolTeachers()` → hem `school_id` hem pivot'tan öğretmen getirir
+- Deaktif/çıkarma: membership.status=inactive/removed + diğer aktif üyelik yoksa `users.is_active=false` → login engeli
+
+**Öğretmen Blog & Sosyal:**
+- `teacher_blog_posts`, `teacher_blog_likes`, `teacher_blog_comments` (reply/quote self-FK), `teacher_follows`
+- Blog görseli: `Storage::disk('local')` → signed route `teacher.blog.image`
+- Veli endpoint: `GET /parent/teacher-feed` (takip edilen öğretmenlerin blogları)
+- `ParentTeacherController`, `ParentTeacherBlogController`
 
 ### 16.6 Pint Düzeltmeleri
 
@@ -2126,6 +2172,68 @@ docker compose -f dockerfiles/docker-compose.yml restart app
 ```
 
 **Kural:** API 404 dönüyorsa ve route doğruysa → önce `route:clear` + `container restart` dene.
+
+---
+
+---
+
+## 🧑‍🏫 19. Öğretmen Mobil API Modülü (2026-07-10)
+
+### 19.1 Yeni Tablolar
+
+| Tablo | Açıklama |
+|-------|----------|
+| `child_medication_logs` | Öğretmenin çocuğa ilaç verme kayıtları (`given_by_user_id`, `given_at`, `note`) |
+| `child_pickup_logs` | Çocuğun teslim kayıtları (`picked_by_name`, `picked_by_photo`, `authorized_pickup_id` nullable) |
+
+Migration: `2026_03_31_070123_create_teacher_pickup_medication_log_tables.php`
+
+### 19.2 Yeni Modeller
+
+- `App\Models\Child\ChildMedicationLog` — plain Model (BaseModel değil)
+- `App\Models\Child\ChildPickupLog` — plain Model
+- `Child.php`'e `medicationLogs()` ve `pickupLogs()` relation'ları eklendi
+
+### 19.3 Yeni Controller'lar (`app/Http/Controllers/Teachers/`)
+
+| Controller | Metodlar |
+|-----------|----------|
+| `TeacherAuthController` | `me()`, `logout()` |
+| `TeacherClassController` | `index()`, `show(classId)`, `children(classId)` |
+| `TeacherChildController` | `show(childId)`, `todayMedications(childId)` |
+| `TeacherMedicationController` | `markGiven()`, `givenLogs(childId)` |
+| `TeacherPickupController` | `authorizedPickups(childId)`, `recordPickup(childId)`, `pickupLogs(childId)` |
+| `TeacherAttendanceController` | `index()`, `store()` |
+| `TeacherMealMenuController` | `index()` |
+
+### 19.4 Endpoint Listesi (prefix: `/api/teacher/`)
+
+```
+GET  /api/teacher/auth/me
+POST /api/teacher/auth/logout
+GET  /api/teacher/classes
+GET  /api/teacher/classes/{classId}
+GET  /api/teacher/classes/{classId}/children
+GET  /api/teacher/children/{childId}
+GET  /api/teacher/children/{childId}/today-medications
+GET  /api/teacher/children/{childId}/authorized-pickups
+POST /api/teacher/children/{childId}/record-pickup    ← multipart/form-data (fotoğraf)
+GET  /api/teacher/children/{childId}/pickup-logs
+POST /api/teacher/medications/mark-given              ← {child_id, medication_id?, custom_name?, dose?, note?}
+GET  /api/teacher/medications/given-logs/{childId}
+GET  /api/teacher/attendance                          ← ?class_id=X&date=Y
+POST /api/teacher/attendance                          ← {class_id, date, attendances:[{child_id,status}]}
+GET  /api/teacher/meal-menus                          ← ?class_id=X&date=Y → alerjen uyarıları dahil
+```
+
+Tüm endpoint'ler `auth:sanctum` middleware altında. Teacher login: `POST /api/auth/login` (ana auth, NOT /parent/auth/login).
+
+### 19.5 Kritik Kurallar
+
+- `child_medication_logs` ve `child_pickup_logs` → plain `Model` (BaseModel DEĞİL — öğretmen tenant_id ile aynı tenant'ta ama log tabloları tenant scope gerektirmiyor)
+- `withoutGlobalScope('tenant')` → `children` → allergens/medications/conditions/familyProfile için zorunlu (veli tenant_id=NULL)
+- Fotoğraf: `Storage::disk('local')` — `storage/app/private/pickups/{childId}/`
+- Sınıf erişim kontrolü: `whereHas('teachers', fn($q) => $q->where('teacher_profile_id', $profile->id))` — öğretmen sadece atandığı sınıfları görebilir
 
 ---
 
