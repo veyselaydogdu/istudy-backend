@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
 
@@ -107,7 +108,7 @@ export default function ForgotPasswordScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={AppColors.white} />
               ) : (
                 <Text style={styles.buttonText}>Bağlantı Gönder</Text>
               )}
@@ -122,7 +123,7 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   flex: {
     flex: 1,
@@ -136,9 +137,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   backText: {
-    color: '#208AEF',
+    color: AppColors.secondary,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   header: {
     marginBottom: 32,
@@ -146,12 +147,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     lineHeight: 20,
   },
   form: {
@@ -161,34 +162,42 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: 11,
+    fontWeight: '700',
+    color: AppColors.onSurfaceVariant,
+    letterSpacing: 0.6,
   },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   button: {
-    backgroundColor: '#208AEF',
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: AppColors.secondary,
+    borderRadius: 14,
+    paddingVertical: 17,
     alignItems: 'center',
     marginTop: 8,
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.secondaryDim,
+    shadowColor: AppColors.secondaryDim,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   successContainer: {
     flex: 1,
@@ -203,11 +212,11 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   successText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     textAlign: 'center',
     lineHeight: 22,
   },

@@ -3,6 +3,8 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 
+import { AppColors } from '@/constants/theme';
+
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 function tabIcon(focused: boolean, active: IoniconsName, inactive: IoniconsName) {
@@ -10,7 +12,7 @@ function tabIcon(focused: boolean, active: IoniconsName, inactive: IoniconsName)
     <Ionicons
       name={focused ? active : inactive}
       size={24}
-      color={focused ? '#208AEF' : '#9CA3AF'}
+      color={focused ? AppColors.primary : AppColors.onSurfaceVariant}
     />
   );
 }
@@ -21,23 +23,25 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#F3F4F6',
+          backgroundColor: AppColors.white,
+          borderTopColor: AppColors.surfaceContainer,
           borderTopWidth: 1,
           height: Platform.OS === 'ios' ? 96 : 72,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
-          elevation: 8,
+          elevation: 12,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
         },
-        tabBarActiveTintColor: '#208AEF',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: AppColors.primary,
+        tabBarInactiveTintColor: AppColors.onSurfaceVariant,
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '600',
+          fontWeight: '700',
           marginTop: 2,
         },
       }}

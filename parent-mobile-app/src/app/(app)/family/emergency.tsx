@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -280,7 +281,7 @@ export default function EmergencyContactsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -328,7 +329,7 @@ export default function EmergencyContactsScreen() {
         )}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#208AEF" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -660,7 +661,7 @@ export default function EmergencyContactsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topBar: {
     flexDirection: 'row',
@@ -672,9 +673,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  backText: { color: '#208AEF', fontSize: 15, fontWeight: '500', width: 60 },
+  backText: { color: AppColors.primary, fontSize: 15, fontWeight: '500', width: 60 },
   topBarTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
-  addBtn: { backgroundColor: '#208AEF', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
+  addBtn: { backgroundColor: AppColors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
   addBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   list: { paddingHorizontal: 20, paddingVertical: 16, paddingBottom: 32 },
   card: {
@@ -697,7 +698,7 @@ const styles = StyleSheet.create({
   cardIcon: { fontSize: 20 },
   info: { flex: 1 },
   contactName: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
-  contactRelation: { fontSize: 12, color: '#208AEF', fontWeight: '500', marginTop: 2 },
+  contactRelation: { fontSize: 12, color: AppColors.primary, fontWeight: '500', marginTop: 2 },
   contactPhone: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   contactNationality: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
   rowActions: { flexDirection: 'row', gap: 6 },
@@ -707,7 +708,7 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 52 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
   emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
-  emptyButton: { backgroundColor: '#208AEF', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
+  emptyButton: { backgroundColor: AppColors.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
   emptyButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -817,7 +818,7 @@ const styles = StyleSheet.create({
   dropdownItemClearText: { fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' },
   dropdownFlag: { fontSize: 18, width: 26 },
   dropdownItemText: { flex: 1, fontSize: 14, color: '#1F2937', fontWeight: '500' },
-  dropdownItemCode: { fontSize: 13, color: '#208AEF', fontWeight: '700' },
+  dropdownItemCode: { fontSize: 13, color: AppColors.primary, fontWeight: '700' },
   // Kimlik bölümü
   idSection: {
     backgroundColor: '#F8FAFF',
@@ -842,7 +843,7 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: '#6B7280', fontSize: 14, fontWeight: '600' },
   confirmBtn: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',

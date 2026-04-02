@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -247,7 +248,7 @@ export default function ChildDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -279,7 +280,7 @@ export default function ChildDetailScreen() {
               setRefreshing(true);
               void fetchChild(true);
             }}
-            tintColor="#208AEF"
+            tintColor={AppColors.primary}
           />
         }
       >
@@ -635,7 +636,7 @@ const classStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -653,7 +654,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   backText: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '500',
     width: 60,
@@ -664,7 +665,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   editText: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '600',
     width: 60,
@@ -687,7 +688,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -860,7 +861,7 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   healthButtonText: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '600',
   },

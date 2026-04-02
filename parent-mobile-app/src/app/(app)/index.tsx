@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
 
@@ -43,7 +44,7 @@ interface BlogPost {
 
 type FeedTab = 'global' | 'schools' | 'teachers';
 
-const AVATAR_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
+const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.tertiary, AppColors.success];
 
 function avatarColor(name: string): string {
   const idx = name.charCodeAt(0) % AVATAR_COLORS.length;
@@ -73,7 +74,7 @@ function PostCard({ post }: { post: Post }) {
     <View style={cardStyles.card}>
       {post.is_pinned && (
         <View style={cardStyles.pinnedRow}>
-          <Ionicons name="pin" size={12} color="#208AEF" />
+          <Ionicons name="pin" size={12} color={AppColors.primary} />
           <Text style={cardStyles.pinnedText}>Sabitlenmiş</Text>
         </View>
       )}
@@ -90,6 +91,7 @@ function PostCard({ post }: { post: Post }) {
             <Text style={cardStyles.globalBadgeText}>Genel</Text>
           </View>
         )}
+
       </View>
       <Text style={cardStyles.content}>{post.content}</Text>
       <View style={cardStyles.footer}>
@@ -151,7 +153,7 @@ function BlogPostCard({ post, onLike }: { post: BlogPost; onLike: (id: number) =
           <Ionicons
             name={post.is_liked ? 'heart' : 'heart-outline'}
             size={15}
-            color={post.is_liked ? '#EF4444' : '#6B7280'}
+            color={post.is_liked ? AppColors.errorContainer : AppColors.onSurfaceVariant}
           />
           <Text style={cardStyles.statText}>{post.likes_count}</Text>
         </TouchableOpacity>
@@ -181,15 +183,17 @@ const blogCardStyles = StyleSheet.create({
 
 const cardStyles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 6,
     elevation: 3,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.surfaceContainer,
   },
   pinnedRow: {
     flexDirection: 'row',
@@ -199,7 +203,7 @@ const cardStyles = StyleSheet.create({
   },
   pinnedText: {
     fontSize: 11,
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '600',
   },
   authorRow: {
@@ -216,7 +220,7 @@ const cardStyles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -226,27 +230,27 @@ const cardStyles = StyleSheet.create({
   authorName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   publishedAt: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     marginTop: 1,
   },
   globalBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   globalBadgeText: {
     fontSize: 11,
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '600',
   },
   content: {
     fontSize: 14,
-    color: '#374151',
+    color: AppColors.onSurface,
     lineHeight: 22,
     marginBottom: 14,
   },
@@ -254,7 +258,7 @@ const cardStyles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainer,
     paddingTop: 10,
   },
   stat: {
@@ -264,7 +268,7 @@ const cardStyles = StyleSheet.create({
   },
   statText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
   },
 });
@@ -387,7 +391,7 @@ export default function FeedScreen() {
           <Text style={styles.headerTitle}>Akış</Text>
         </View>
         <View style={styles.headerIcon}>
-          <Ionicons name="notifications-outline" size={22} color="#1F2937" />
+          <Ionicons name="notifications-outline" size={22} color={AppColors.primary} />
         </View>
       </View>
 
@@ -402,7 +406,7 @@ export default function FeedScreen() {
             <Ionicons
               name={tab.icon as never}
               size={14}
-              color={activeTab === tab.key ? '#FFFFFF' : '#6B7280'}
+              color={activeTab === tab.key ? AppColors.white : AppColors.onSurfaceVariant}
             />
             <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
               {tab.label}
@@ -428,7 +432,7 @@ export default function FeedScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#208AEF"
+              tintColor={AppColors.primary}
             />
           }
           onEndReached={handleLoadMore}
@@ -437,7 +441,7 @@ export default function FeedScreen() {
             !loading ? (
               <View style={styles.empty}>
                 <View style={styles.emptyIconWrap}>
-                  <Ionicons name="person-circle-outline" size={40} color="#D1D5DB" />
+                  <Ionicons name="person-circle-outline" size={40} color={AppColors.surfaceContainer} />
                 </View>
                 <Text style={styles.emptyTitle}>Henüz blog yazısı yok</Text>
                 <Text style={styles.emptyText}>
@@ -448,7 +452,7 @@ export default function FeedScreen() {
           }
           ListFooterComponent={
             loading && blogPosts.length > 0 ? (
-              <ActivityIndicator color="#208AEF" style={styles.loader} />
+              <ActivityIndicator color={AppColors.primary} style={styles.loader} />
             ) : null
           }
         />
@@ -462,7 +466,7 @@ export default function FeedScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#208AEF"
+              tintColor={AppColors.primary}
             />
           }
           onEndReached={handleLoadMore}
@@ -471,7 +475,7 @@ export default function FeedScreen() {
             !loading ? (
               <View style={styles.empty}>
                 <View style={styles.emptyIconWrap}>
-                  <Ionicons name="newspaper-outline" size={40} color="#D1D5DB" />
+                  <Ionicons name="newspaper-outline" size={40} color={AppColors.surfaceContainer} />
                 </View>
                 <Text style={styles.emptyTitle}>Henüz paylaşım yok</Text>
                 <Text style={styles.emptyText}>Yeni paylaşımlar burada görünecek.</Text>
@@ -480,7 +484,7 @@ export default function FeedScreen() {
           }
           ListFooterComponent={
             loading && posts.length > 0 ? (
-              <ActivityIndicator color="#208AEF" style={styles.loader} />
+              <ActivityIndicator color={AppColors.primary} style={styles.loader} />
             ) : null
           }
         />
@@ -492,7 +496,7 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   header: {
     flexDirection: 'row',
@@ -501,44 +505,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
+    backgroundColor: AppColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.surfaceContainer,
   },
   headerGreeting: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     marginBottom: 2,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.primary,
   },
   headerIcon: {
     width: 42,
     height: 42,
     borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: AppColors.primaryDim,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 2,
   },
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: '#FFFFFF',
+    marginVertical: 12,
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 14,
     padding: 4,
     gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: AppColors.surfaceContainer,
   },
   tab: {
     flex: 1,
@@ -550,18 +554,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tabActive: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '700',
+    color: AppColors.onSurfaceVariant,
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: AppColors.white,
   },
   list: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 20,
   },
   errorBox: {
@@ -569,13 +574,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginHorizontal: 20,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#fee2e2',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
   },
   errorText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 13,
     flex: 1,
   },
@@ -588,7 +593,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -596,11 +601,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#374151',
+    color: AppColors.onSurface,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     textAlign: 'center',
   },
   loader: {

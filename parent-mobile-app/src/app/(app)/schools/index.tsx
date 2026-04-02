@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -207,7 +208,7 @@ export default function SchoolsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -271,7 +272,7 @@ export default function SchoolsScreen() {
         )}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void fetchData(true); }} tintColor="#208AEF" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void fetchData(true); }} tintColor={AppColors.primary} />
         }
         ListEmptyComponent={
           !hasRequests ? (
@@ -305,7 +306,7 @@ export default function SchoolsScreen() {
 // ─── Styles ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
@@ -321,11 +322,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    shadowColor: '#208AEF',
+    shadowColor: AppColors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -367,7 +368,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DBEAFE',
   },
-  schoolAvatarText: { fontWeight: '800', color: '#208AEF' },
+  schoolAvatarText: { fontWeight: '800', color: AppColors.primary },
   cardInfo: { flex: 1 },
   schoolName: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 5 },
   typeChip: {
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     marginBottom: 4,
   },
-  typeChipText: { fontSize: 11, color: '#208AEF', fontWeight: '600' },
+  typeChipText: { fontSize: 11, color: AppColors.primary, fontWeight: '600' },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
   schoolAddress: { fontSize: 12, color: '#9CA3AF', flex: 1 },
   joinedAt: { fontSize: 11, color: '#C4C9D4' },
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   tabActiveRed: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   tabText: { fontSize: 13, fontWeight: '600', color: '#9CA3AF' },
-  tabTextActive: { color: '#208AEF' },
+  tabTextActive: { color: AppColors.primary },
   tabTextRed: { color: '#EF4444' },
   tabCount: { backgroundColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
   tabCountActive: { backgroundColor: '#DBEAFE' },

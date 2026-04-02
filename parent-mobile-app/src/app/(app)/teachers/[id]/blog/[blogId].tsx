@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../../lib/api';
 import { getApiError } from '../../../../../lib/auth';
 
@@ -101,7 +102,7 @@ const commentStyles = StyleSheet.create({
   quoteBox: {
     backgroundColor: '#EFF6FF',
     borderLeftWidth: 3,
-    borderLeftColor: '#208AEF',
+    borderLeftColor: AppColors.primary,
     padding: 8,
     borderRadius: 8,
     marginBottom: 6,
@@ -129,7 +130,7 @@ const commentStyles = StyleSheet.create({
     marginTop: 8,
   },
   time: { fontSize: 11, color: '#9CA3AF', flex: 1 },
-  replyBtn: { fontSize: 12, color: '#208AEF', fontWeight: '600' },
+  replyBtn: { fontSize: 12, color: AppColors.primary, fontWeight: '600' },
 });
 
 export default function BlogDetailScreen() {
@@ -263,7 +264,7 @@ export default function BlogDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ActivityIndicator color="#208AEF" style={{ flex: 1 }} />
+        <ActivityIndicator color={AppColors.primary} style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
@@ -344,7 +345,7 @@ export default function BlogDetailScreen() {
         {replyTo ? (
           <View style={styles.replyIndicator}>
             <View style={styles.replyIndicatorContent}>
-              <Ionicons name="return-down-forward-outline" size={14} color="#208AEF" />
+              <Ionicons name="return-down-forward-outline" size={14} color={AppColors.primary} />
               <Text style={styles.replyIndicatorText} numberOfLines={1}>
                 {replyTo.user?.name ?? 'Kullanıcı'}: {replyTo.content}
               </Text>
@@ -389,7 +390,7 @@ export default function BlogDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -415,7 +416,7 @@ const styles = StyleSheet.create({
   },
   postImage: { width: '100%', height: 200, borderRadius: 12, marginBottom: 14 },
   postTitle: { fontSize: 20, fontWeight: '800', color: '#1F2937', marginBottom: 6 },
-  postTeacher: { fontSize: 13, color: '#208AEF', fontWeight: '600', marginBottom: 12 },
+  postTeacher: { fontSize: 13, color: AppColors.primary, fontWeight: '600', marginBottom: 12 },
   postDesc: { fontSize: 15, color: '#374151', lineHeight: 24, marginBottom: 16 },
   postActions: {
     flexDirection: 'row',
@@ -489,7 +490,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },

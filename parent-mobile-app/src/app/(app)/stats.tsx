@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
 
@@ -107,7 +108,7 @@ export default function StatsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -122,7 +123,7 @@ export default function StatsScreen() {
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#208AEF" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
         }
         showsVerticalScrollIndicator={false}
       >
@@ -186,7 +187,7 @@ export default function StatsScreen() {
 
             {loadingStats ? (
               <View style={styles.statsLoader}>
-                <ActivityIndicator size="large" color="#208AEF" />
+                <ActivityIndicator size="large" color={AppColors.primary} />
               </View>
             ) : stats ? (
               <>
@@ -200,7 +201,7 @@ export default function StatsScreen() {
                       activeOpacity={0.7}
                     >
                       <Text style={styles.infoLabel}>Okul</Text>
-                      <Text style={[styles.infoValue, { color: '#208AEF' }]}>
+                      <Text style={[styles.infoValue, { color: AppColors.primary }]}>
                         🏫 {stats.school.name}
                       </Text>
                     </TouchableOpacity>
@@ -312,16 +313,16 @@ export default function StatsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainer,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#1F2937' },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: AppColors.primary },
   container: { paddingVertical: 16, paddingHorizontal: 20, gap: 16 },
   // Çocuk seçici
   childTabs: { marginHorizontal: -20 },
@@ -336,26 +337,33 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainer,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
   },
   childTabAvatarActive: {
-    backgroundColor: '#208AEF',
-    borderColor: '#208AEF',
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primaryDim,
   },
-  childTabAvatarText: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-  childTabName: { fontSize: 11, color: '#6B7280', fontWeight: '500', maxWidth: 56, textAlign: 'center' },
-  childTabNameActive: { color: '#208AEF', fontWeight: '700' },
+  childTabAvatarText: { fontSize: 18, fontWeight: '700', color: AppColors.white },
+  childTabName: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500', maxWidth: 56, textAlign: 'center' },
+  childTabNameActive: { color: AppColors.primary, fontWeight: '700' },
   statsLoader: { paddingVertical: 60, alignItems: 'center' },
   // Kartlar
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 16,
     gap: 4,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -363,25 +371,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 8 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface, marginBottom: 8 },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
-  infoLabel: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  infoValue: { fontSize: 13, color: '#1F2937', fontWeight: '600', textAlign: 'right', flex: 1, paddingLeft: 12 },
-  infoValueMuted: { fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', textAlign: 'right', flex: 1, paddingLeft: 12 },
+  infoLabel: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500' },
+  infoValue: { fontSize: 13, color: AppColors.onSurface, fontWeight: '600', textAlign: 'right', flex: 1, paddingLeft: 12 },
+  infoValueMuted: { fontSize: 13, color: AppColors.onSurfaceVariant, fontStyle: 'italic', textAlign: 'right', flex: 1, paddingLeft: 12 },
   rateBadge: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: AppColors.successContainer,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 20,
   },
-  rateBadgeText: { color: '#059669', fontSize: 12, fontWeight: '700' },
+  rateBadgeText: { color: AppColors.success, fontSize: 12, fontWeight: '700' },
   statGrid: {
     flexDirection: 'row',
     gap: 8,
@@ -389,7 +397,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
@@ -397,7 +405,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statValue: { fontSize: 22, fontWeight: '800' },
-  statLabel: { fontSize: 10, color: '#6B7280', fontWeight: '600', textAlign: 'center' },
+  statLabel: { fontSize: 10, color: AppColors.onSurfaceVariant, fontWeight: '600', textAlign: 'center' },
   barContainer: {
     flexDirection: 'row',
     height: 8,
@@ -406,20 +414,22 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   barSegment: { height: 8 },
-  totalLabel: { fontSize: 12, color: '#9CA3AF', marginTop: 8, textAlign: 'right' },
+  totalLabel: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 8, textAlign: 'right' },
   noData: { paddingVertical: 20, alignItems: 'center' },
-  noDataText: { fontSize: 14, color: '#9CA3AF' },
+  noDataText: { fontSize: 14, color: AppColors.onSurfaceVariant },
   // Empty state
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 12 },
   emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
-  emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
   addButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 24,
     marginTop: 8,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.primaryDim,
   },
-  addButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  addButtonText: { color: AppColors.white, fontWeight: '700', fontSize: 15 },
 });

@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
+import { AppColors } from '@/constants/theme';
 import { getApiError, loginRequest } from '../../lib/auth';
 
 export default function LoginScreen() {
@@ -49,13 +50,13 @@ export default function LoginScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Blue header banner */}
+        {/* Green header banner */}
         <View style={styles.heroBanner}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="school" size={32} color="#FFFFFF" />
+          <View style={styles.logoBox}>
+            <Ionicons name="school" size={36} color={AppColors.primary} />
           </View>
           <Text style={styles.heroTitle}>iStudy</Text>
-          <Text style={styles.heroSubtitle}>Veli Portalı</Text>
+          <Text style={styles.heroSubtitle}>Eğitimin En Eğlenceli Hali!</Text>
         </View>
 
         {/* White card form */}
@@ -69,15 +70,15 @@ export default function LoginScreen() {
             <Text style={styles.formSubtitle}>Hesabınıza erişin</Text>
 
             <View style={styles.field}>
-              <Text style={styles.label}>E-posta</Text>
+              <Text style={styles.label}>E-POSTA</Text>
               <View style={styles.inputRow}>
-                <Ionicons name="mail-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={18} color={AppColors.onSurfaceVariant} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="ornek@mail.com"
-                  placeholderTextColor="#C4C9D4"
+                  placeholderTextColor={AppColors.surfaceContainer}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -86,22 +87,22 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Şifre</Text>
+              <Text style={styles.label}>ŞİFRE</Text>
               <View style={styles.inputRow}>
-                <Ionicons name="lock-closed-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={18} color={AppColors.onSurfaceVariant} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Şifrenizi girin"
-                  placeholderTextColor="#C4C9D4"
+                  placeholderTextColor={AppColors.surfaceContainer}
                   secureTextEntry={!showPassword}
                 />
                 <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={18}
-                    color="#9CA3AF"
+                    color={AppColors.onSurfaceVariant}
                   />
                 </TouchableOpacity>
               </View>
@@ -118,18 +119,23 @@ export default function LoginScreen() {
               activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={AppColors.white} />
               ) : (
                 <Text style={styles.buttonText}>Giriş Yap</Text>
               )}
             </TouchableOpacity>
 
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Hesabınız yok mu?</Text>
-              <Link href="/(auth)/register" style={styles.footerLink}>
-                {' '}Kayıt Ol
-              </Link>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>veya</Text>
+              <View style={styles.dividerLine} />
             </View>
+
+            <Link href="/(auth)/register" asChild>
+              <TouchableOpacity style={styles.outlineButton} activeOpacity={0.85}>
+                <Text style={styles.outlineButtonText}>Hesap Oluştur</Text>
+              </TouchableOpacity>
+            </Link>
 
             <TouchableOpacity
               onPress={() => router.push('/(auth)/teacher-login')}
@@ -148,7 +154,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primaryContainer,
   },
   flex: {
     flex: 1,
@@ -156,35 +162,42 @@ const styles = StyleSheet.create({
   heroBanner: {
     alignItems: 'center',
     paddingTop: 32,
-    paddingBottom: 40,
-    backgroundColor: '#208AEF',
+    paddingBottom: 44,
+    backgroundColor: AppColors.primaryContainer,
     gap: 8,
   },
-  logoCircle: {
-    width: 64,
-    height: 64,
+  logoBox: {
+    width: 72,
+    height: 72,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
+    shadowColor: AppColors.primaryDim,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.primaryDim,
   },
   heroTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: AppColors.primary,
     letterSpacing: 0.5,
   },
   heroSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    color: AppColors.primaryDim,
+    fontWeight: '600',
   },
   cardOuter: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: AppColors.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     overflow: 'hidden',
   },
   cardScroll: {
@@ -193,31 +206,32 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   formTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 4,
   },
   formSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     marginBottom: 28,
   },
   field: {
     marginBottom: 16,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: 11,
+    fontWeight: '700',
+    color: AppColors.onSurfaceVariant,
     marginBottom: 8,
+    letterSpacing: 0.6,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 13,
@@ -229,57 +243,80 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: '#1F2937',
+    color: AppColors.onSurface,
     padding: 0,
   },
   forgotLink: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 13,
     textAlign: 'right',
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: 24,
   },
   button: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
-    paddingVertical: 16,
+    paddingVertical: 17,
     alignItems: 'center',
-    shadowColor: '#208AEF',
+    shadowColor: AppColors.primaryDim,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 4,
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.primaryDim,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.3,
   },
-  footer: {
+  divider: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 28,
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 20,
   },
-  footerText: {
-    color: '#6B7280',
-    fontSize: 14,
+  dividerLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: AppColors.surfaceContainer,
   },
-  footerLink: {
-    color: '#208AEF',
-    fontSize: 14,
-    fontWeight: '700',
+  dividerText: {
+    color: AppColors.onSurfaceVariant,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  outlineButton: {
+    backgroundColor: AppColors.white,
+    borderRadius: 14,
+    paddingVertical: 17,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.surfaceContainer,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 2,
+    borderBottomWidth: 4,
+  },
+  outlineButtonText: {
+    color: AppColors.secondary,
+    fontSize: 16,
+    fontWeight: '800',
   },
   teacherLink: {
-    marginTop: 16,
+    marginTop: 20,
     alignItems: 'center',
     paddingVertical: 8,
   },
   teacherLinkText: {
-    color: '#208AEF',
+    color: AppColors.onSurfaceVariant,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',

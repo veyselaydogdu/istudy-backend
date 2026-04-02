@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -322,7 +323,7 @@ export default function HealthScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -764,7 +765,7 @@ export default function HealthScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topBar: {
     flexDirection: 'row',
@@ -776,7 +777,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  backText: { color: '#208AEF', fontSize: 15, fontWeight: '500', width: 60 },
+  backText: { color: AppColors.primary, fontSize: 15, fontWeight: '500', width: 60 },
   topBarTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
   container: { paddingHorizontal: 20, paddingVertical: 16, gap: 16, paddingBottom: 32 },
   card: {
@@ -810,7 +811,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  addMedBtnText: { color: '#208AEF', fontSize: 12, fontWeight: '600' },
+  addMedBtnText: { color: AppColors.primary, fontSize: 12, fontWeight: '600' },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
@@ -858,7 +859,7 @@ const styles = StyleSheet.create({
   },
   pendingBadgeText: { fontSize: 11, color: '#D97706', fontWeight: '700' },
   saveBtn: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: 'center',
@@ -921,7 +922,7 @@ const styles = StyleSheet.create({
   },
   medOptionActive: { backgroundColor: '#EFF6FF' },
   medOptionText: { fontSize: 14, color: '#374151' },
-  medOptionTextActive: { color: '#208AEF', fontWeight: '600' },
+  medOptionTextActive: { color: AppColors.primary, fontWeight: '600' },
   daysRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   dayChip: {
     paddingHorizontal: 10,
@@ -931,7 +932,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#F9FAFB',
   },
-  dayChipActive: { backgroundColor: '#208AEF', borderColor: '#208AEF' },
+  dayChipActive: { backgroundColor: AppColors.primary, borderColor: AppColors.primary },
   dayChipText: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   dayChipTextActive: { color: '#FFFFFF', fontWeight: '700' },
   modalActions: { flexDirection: 'row', gap: 12, paddingTop: 4 },
@@ -946,7 +947,7 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: '#6B7280', fontSize: 15, fontWeight: '600' },
   confirmBtn: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',

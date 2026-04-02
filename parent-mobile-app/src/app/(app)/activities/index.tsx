@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -85,7 +86,7 @@ function ActivityCard({ item }: { item: Activity }) {
     >
       <View style={styles.cardHeader}>
         <View style={[styles.cardIconWrap, isLocked && { backgroundColor: '#F3F4F6' }]}>
-          <Ionicons name="flag-outline" size={20} color={isLocked ? '#9CA3AF' : '#208AEF'} />
+          <Ionicons name="flag-outline" size={20} color={isLocked ? '#9CA3AF' : AppColors.primary} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardTitle, isLocked && { color: '#9CA3AF' }]}>{item.name}</Text>
@@ -358,7 +359,7 @@ export default function ActivitiesScreen() {
 
   const renderActivities = () => {
     if (actLoading) {
-      return <View style={styles.centered}><ActivityIndicator size="large" color="#208AEF" /></View>;
+      return <View style={styles.centered}><ActivityIndicator size="large" color={AppColors.primary} /></View>;
     }
     return (
       <FlatList
@@ -376,7 +377,7 @@ export default function ActivitiesScreen() {
           if (!actLoadingMore && actPage < actLastPage) { void loadActivities(actPage + 1, true); }
         }}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={actLoadingMore ? <ActivityIndicator color="#208AEF" style={styles.moreLoader} /> : null}
+        ListFooterComponent={actLoadingMore ? <ActivityIndicator color={AppColors.primary} style={styles.moreLoader} /> : null}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="flag-outline" size={48} color="#D1D5DB" />
@@ -392,7 +393,7 @@ export default function ActivitiesScreen() {
 
   const renderActivityClasses = () => {
     if (acLoading) {
-      return <View style={styles.centered}><ActivityIndicator size="large" color="#208AEF" /></View>;
+      return <View style={styles.centered}><ActivityIndicator size="large" color={AppColors.primary} /></View>;
     }
     return (
       <FlatList
@@ -410,7 +411,7 @@ export default function ActivitiesScreen() {
           if (!acLoadingMore && acPage < acLastPage) { void loadActivityClasses(acPage + 1, true); }
         }}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={acLoadingMore ? <ActivityIndicator color="#208AEF" style={styles.moreLoader} /> : null}
+        ListFooterComponent={acLoadingMore ? <ActivityIndicator color={AppColors.primary} style={styles.moreLoader} /> : null}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="star-outline" size={48} color="#D1D5DB" />
@@ -459,7 +460,7 @@ export default function ActivitiesScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
 
   header: {
     paddingHorizontal: 20,
@@ -487,14 +488,14 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   tabLabelActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
   },
   tabIndicator: {
     position: 'absolute',
     bottom: 0,
     width: '50%',
     height: 3,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderTopLeftRadius: 3,
     borderTopRightRadius: 3,
   },
@@ -559,7 +560,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,

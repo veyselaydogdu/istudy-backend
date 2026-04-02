@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -130,7 +131,7 @@ function DayCard({ day }: { day: DayMenu }) {
             }],
           }}
         >
-          <Ionicons name="chevron-down" size={20} color={mealCount > 0 ? '#208AEF' : '#D1D5DB'} />
+          <Ionicons name="chevron-down" size={20} color={mealCount > 0 ? AppColors.primary : '#D1D5DB'} />
         </Animated.View>
       </TouchableOpacity>
 
@@ -139,7 +140,7 @@ function DayCard({ day }: { day: DayMenu }) {
           {day.meals.map((entry, idx) => (
             <View key={entry.id} style={[styles.mealBlock, idx > 0 && styles.mealBlockBorder]}>
               <View style={styles.mealHeader}>
-                <Ionicons name="restaurant-outline" size={15} color="#208AEF" />
+                <Ionicons name="restaurant-outline" size={15} color={AppColors.primary} />
                 <Text style={styles.mealName}>{entry.meal.name}</Text>
                 {entry.meal.meal_type ? (
                   <View style={styles.mealTypeBadge}>
@@ -203,7 +204,7 @@ function ChildSelector({
   return (
     <View style={styles.selectorWrap}>
       <TouchableOpacity style={styles.selectorBtn} onPress={() => setOpen(!open)} activeOpacity={0.8}>
-        <Ionicons name="people-outline" size={17} color="#208AEF" />
+        <Ionicons name="people-outline" size={17} color={AppColors.primary} />
         <Text style={styles.selectorText} numberOfLines={1}>
           {selected?.full_name ?? 'Çocuk seçin'}
         </Text>
@@ -259,7 +260,7 @@ function MonthNav({
   return (
     <View style={styles.monthNav}>
       <TouchableOpacity onPress={prev} style={styles.monthNavBtn} activeOpacity={0.7}>
-        <Ionicons name="chevron-back" size={20} color="#208AEF" />
+        <Ionicons name="chevron-back" size={20} color={AppColors.primary} />
       </TouchableOpacity>
       <Text style={styles.monthNavLabel}>{TR_MONTHS[month - 1]} {year}</Text>
       <TouchableOpacity
@@ -268,7 +269,7 @@ function MonthNav({
         activeOpacity={0.7}
         disabled={isCurrentOrFuture}
       >
-        <Ionicons name="chevron-forward" size={20} color={isCurrentOrFuture ? '#D1D5DB' : '#208AEF'} />
+        <Ionicons name="chevron-forward" size={20} color={isCurrentOrFuture ? '#D1D5DB' : AppColors.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -349,7 +350,7 @@ export default function MealMenuScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -403,7 +404,7 @@ export default function MealMenuScreen() {
         {/* Yemek listesi */}
         {loadingMenu ? (
           <View style={styles.menuLoading}>
-            <ActivityIndicator size="small" color="#208AEF" />
+            <ActivityIndicator size="small" color={AppColors.primary} />
             <Text style={styles.menuLoadingText}>Menü yükleniyor...</Text>
           </View>
         ) : menuData.length === 0 ? (
@@ -429,14 +430,14 @@ export default function MealMenuScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
 
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A2E' },
   headerSub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
   },
   selectorItemActive: { backgroundColor: '#EFF6FF' },
   selectorItemText: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
-  selectorItemTextActive: { color: '#208AEF' },
+  selectorItemTextActive: { color: AppColors.primary },
   selectorItemSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
 
   // Month nav
@@ -536,7 +537,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dayNameText: { fontSize: 11, fontWeight: '800', color: '#208AEF' },
+  dayNameText: { fontSize: 11, fontWeight: '800', color: AppColors.primary },
   dayDateText: { fontSize: 14, fontWeight: '700', color: '#1F2937' },
   daySubText: { fontSize: 12, color: '#9CA3AF', marginTop: 1 },
 
@@ -564,7 +565,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     marginTop: 8,
     position: 'absolute',
     left: 0,

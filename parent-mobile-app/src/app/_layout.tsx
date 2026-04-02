@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { authEvent } from '../lib/authEvent';
+import { AppColors } from '@/constants/theme';
 import {
   clearAuth,
   clearTeacherAuth,
@@ -157,10 +158,10 @@ export default function RootLayout() {
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: '#208AEF',
+          backgroundColor: AppColors.primaryContainer,
         }}
       >
-        <ActivityIndicator size="large" color="#FFFFFF" />
+        <ActivityIndicator size="large" color={AppColors.primary} />
       </View>
     );
   }

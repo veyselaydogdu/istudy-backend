@@ -24,6 +24,33 @@ export const Colors = {
   },
 } as const;
 
+/** Material Design 3 inspired design tokens for the parent mobile app */
+export const AppColors = {
+  primary: '#2a6900',
+  primaryContainer: '#84fb42',
+  primaryDim: '#235b00',
+  secondary: '#00628c',
+  secondaryContainer: '#a3d8ff',
+  secondaryDim: '#00557a',
+  tertiary: '#725800',
+  tertiaryContainer: '#fec700',
+  surface: '#f6f6f6',
+  surfaceContainer: '#e8e8e8',
+  surfaceContainerLow: '#f2f2f2',
+  onSurface: '#2d2f2f',
+  onSurfaceVariant: '#5a5c5c',
+  error: '#b02500',
+  errorContainer: '#f95630',
+  white: '#ffffff',
+  // Semantic aliases
+  success: '#16a34a',
+  successContainer: '#dcfce7',
+  warning: '#d97706',
+  warningContainer: '#fef3c7',
+  info: '#2563eb',
+  infoContainer: '#dbeafe',
+} as const;
+
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({

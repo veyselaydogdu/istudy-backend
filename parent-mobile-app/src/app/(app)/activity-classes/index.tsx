@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -171,7 +172,7 @@ export default function ActivityClassesScreen() {
           <Text style={styles.headerTitle}>Etkinlik Sınıfları</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -196,7 +197,7 @@ export default function ActivityClassesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color="#208AEF" style={{ marginVertical: 16 }} /> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={AppColors.primary} style={{ marginVertical: 16 }} /> : null}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="star-outline" size={48} color="#D1D5DB" />
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
   freeText: { fontSize: 12, color: '#065F46', fontWeight: '600' },
   enrolledBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#208AEF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+    backgroundColor: AppColors.primary, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
   },
   enrolledText: { fontSize: 11, color: '#fff', fontWeight: '600' },
   emptyContainer: { alignItems: 'center', paddingTop: 60, gap: 8 },

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -169,7 +170,7 @@ export default function TeacherProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ActivityIndicator color="#208AEF" style={styles.loader} />
+        <ActivityIndicator color={AppColors.primary} style={styles.loader} />
       </SafeAreaView>
     );
   }
@@ -241,13 +242,13 @@ export default function TeacherProfileScreen() {
             disabled={followLoading}
           >
             {followLoading ? (
-              <ActivityIndicator color={profile.is_following ? '#208AEF' : '#FFFFFF'} size="small" />
+              <ActivityIndicator color={profile.is_following ? AppColors.primary : '#FFFFFF'} size="small" />
             ) : (
               <>
                 <Ionicons
                   name={profile.is_following ? 'person-remove-outline' : 'person-add-outline'}
                   size={16}
-                  color={profile.is_following ? '#208AEF' : '#FFFFFF'}
+                  color={profile.is_following ? AppColors.primary : '#FFFFFF'}
                 />
                 <Text
                   style={[styles.followBtnText, profile.is_following && styles.followBtnTextActive]}
@@ -347,7 +348,7 @@ export default function TeacherProfileScreen() {
                 </TouchableOpacity>
               ))
             )}
-            {postsLoading ? <ActivityIndicator color="#208AEF" style={styles.loader} /> : null}
+            {postsLoading ? <ActivityIndicator color={AppColors.primary} style={styles.loader} /> : null}
             {postsPage < postsLastPage && !postsLoading ? (
               <TouchableOpacity
                 style={styles.loadMoreBtn}
@@ -441,7 +442,7 @@ export default function TeacherProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   loader: { flex: 1, justifyContent: 'center' as never },
   backBtn: { padding: 16 },
   errorCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
@@ -471,13 +472,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: { fontSize: 32, fontWeight: '700', color: '#FFFFFF' },
   name: { fontSize: 20, fontWeight: '800', color: '#1F2937', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#208AEF', fontWeight: '600', marginBottom: 2 },
+  subtitle: { fontSize: 14, color: AppColors.primary, fontWeight: '600', marginBottom: 2 },
   specialization: { fontSize: 13, color: '#6B7280', marginBottom: 12 },
   statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   statItem: { alignItems: 'center', paddingHorizontal: 20 },
@@ -488,7 +489,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingHorizontal: 24,
     paddingVertical: 10,
@@ -496,10 +497,10 @@ const styles = StyleSheet.create({
   followBtnActive: {
     backgroundColor: '#EFF6FF',
     borderWidth: 1.5,
-    borderColor: '#208AEF',
+    borderColor: AppColors.primary,
   },
   followBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
-  followBtnTextActive: { color: '#208AEF' },
+  followBtnTextActive: { color: AppColors.primary },
   section: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
@@ -524,7 +525,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
   },
-  sectionTabActive: { backgroundColor: '#208AEF' },
+  sectionTabActive: { backgroundColor: AppColors.primary },
   sectionTabText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
   sectionTabTextActive: { color: '#FFFFFF' },
   postList: { paddingHorizontal: 16, paddingBottom: 24 },
@@ -560,7 +561,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     marginTop: 4,
   },
-  loadMoreText: { fontSize: 13, fontWeight: '600', color: '#208AEF' },
+  loadMoreText: { fontSize: 13, fontWeight: '600', color: AppColors.primary },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 10 },
   emptyText: { fontSize: 14, color: '#9CA3AF' },
   cvSection: { paddingHorizontal: 16, paddingBottom: 24 },
@@ -573,7 +574,7 @@ const styles = StyleSheet.create({
   cvGroupTitle: { fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 12 },
   cvItem: {
     borderLeftWidth: 3,
-    borderLeftColor: '#208AEF',
+    borderLeftColor: AppColors.primary,
     paddingLeft: 12,
     marginBottom: 14,
   },
@@ -587,5 +588,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  skillChipText: { fontSize: 13, color: '#208AEF', fontWeight: '600' },
+  skillChipText: { fontSize: 13, color: AppColors.primary, fontWeight: '600' },
 });

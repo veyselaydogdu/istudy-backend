@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -104,7 +105,7 @@ export default function EditChildScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -264,7 +265,7 @@ export default function EditChildScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   flex: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topBar: {
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  backText: { color: '#208AEF', fontSize: 15, fontWeight: '500', width: 60 },
+  backText: { color: AppColors.primary, fontSize: 15, fontWeight: '500', width: 60 },
   topBarTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
   container: { paddingHorizontal: 20, paddingVertical: 16, gap: 20 },
   section: {
@@ -311,11 +312,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
   },
-  genderOptionActive: { backgroundColor: '#EFF6FF', borderColor: '#208AEF' },
+  genderOptionActive: { backgroundColor: '#EFF6FF', borderColor: AppColors.primary },
   genderText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  genderTextActive: { color: '#208AEF', fontWeight: '700' },
+  genderTextActive: { color: AppColors.primary, fontWeight: '700' },
   saveButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',

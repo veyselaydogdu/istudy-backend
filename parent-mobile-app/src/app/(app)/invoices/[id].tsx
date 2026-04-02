@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -123,13 +124,13 @@ export default function InvoiceDetailScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color="#208AEF" />
+            <Ionicons name="arrow-back" size={22} color={AppColors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Fatura Detayı</Text>
           <View style={{ width: 22 }} />
         </View>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -147,7 +148,7 @@ export default function InvoiceDetailScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color="#208AEF" />
+          <Ionicons name="arrow-back" size={22} color={AppColors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Fatura Detayı</Text>
         <View style={{ width: 22 }} />
@@ -342,7 +343,7 @@ export default function InvoiceDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',

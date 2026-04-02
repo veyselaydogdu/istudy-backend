@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -178,7 +179,7 @@ export default function ActivityClassDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -239,42 +240,42 @@ export default function ActivityClassDetailScreen() {
         <View style={styles.infoGrid}>
           {(activityClass.age_min != null || activityClass.age_max != null) && (
             <View style={styles.infoCard}>
-              <Ionicons name="people-outline" size={20} color="#208AEF" />
+              <Ionicons name="people-outline" size={20} color={AppColors.primary} />
               <Text style={styles.infoLabel}>Yaş Aralığı</Text>
               <Text style={styles.infoValue}>{activityClass.age_min ?? '?'} - {activityClass.age_max ?? '?'}</Text>
             </View>
           )}
           {activityClass.capacity ? (
             <View style={styles.infoCard}>
-              <Ionicons name="grid-outline" size={20} color="#208AEF" />
+              <Ionicons name="grid-outline" size={20} color={AppColors.primary} />
               <Text style={styles.infoLabel}>Kapasite</Text>
               <Text style={styles.infoValue}>{activityClass.active_enrollments_count}/{activityClass.capacity}</Text>
             </View>
           ) : null}
           {activityClass.schedule ? (
             <View style={styles.infoCard}>
-              <Ionicons name="time-outline" size={20} color="#208AEF" />
+              <Ionicons name="time-outline" size={20} color={AppColors.primary} />
               <Text style={styles.infoLabel}>Program</Text>
               <Text style={styles.infoValue}>{activityClass.schedule}</Text>
             </View>
           ) : null}
           {activityClass.location ? (
             <View style={styles.infoCard}>
-              <Ionicons name="business-outline" size={20} color="#208AEF" />
+              <Ionicons name="business-outline" size={20} color={AppColors.primary} />
               <Text style={styles.infoLabel}>Konum</Text>
               <Text style={styles.infoValue}>{activityClass.location}</Text>
             </View>
           ) : null}
           {activityClass.address ? (
             <View style={[styles.infoCard, { flex: 2 }]}>
-              <Ionicons name="location-outline" size={20} color="#208AEF" />
+              <Ionicons name="location-outline" size={20} color={AppColors.primary} />
               <Text style={styles.infoLabel}>Adres</Text>
               <Text style={styles.infoValue}>{activityClass.address}</Text>
             </View>
           ) : null}
           {(activityClass.start_date || activityClass.end_date) && (
             <View style={[styles.infoCard, { flex: 2 }]}>
-              <Ionicons name="calendar-outline" size={20} color="#208AEF" />
+              <Ionicons name="calendar-outline" size={20} color={AppColors.primary} />
               <Text style={styles.infoLabel}>Tarih</Text>
               <Text style={styles.infoValue}>
                 {activityClass.start_date ? new Date(activityClass.start_date).toLocaleDateString('tr-TR') : '—'}
@@ -358,9 +359,9 @@ export default function ActivityClassDetailScreen() {
               setShowGallery(true);
             }}
           >
-            <Ionicons name="images-outline" size={20} color="#208AEF" />
+            <Ionicons name="images-outline" size={20} color={AppColors.primary} />
             <Text style={styles.galleryBtnText}>Galeriyi Görüntüle</Text>
-            <Ionicons name="chevron-forward" size={16} color="#208AEF" />
+            <Ionicons name="chevron-forward" size={16} color={AppColors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -384,7 +385,7 @@ export default function ActivityClassDetailScreen() {
                   <Ionicons
                     name={selectedChildId === child.id ? 'checkmark-circle' : 'radio-button-off'}
                     size={20}
-                    color={selectedChildId === child.id ? '#208AEF' : '#9CA3AF'}
+                    color={selectedChildId === child.id ? AppColors.primary : '#9CA3AF'}
                   />
                   <Text style={styles.childName}>{child.full_name}</Text>
                 </TouchableOpacity>
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
   enrolledName: { fontSize: 14, color: '#111827', fontWeight: '500' },
   unenrollText: { fontSize: 13, color: '#EF4444', fontWeight: '500' },
   noEnrollText: { fontSize: 14, color: '#9CA3AF', marginBottom: 12 },
-  enrollBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#208AEF', borderRadius: 10, paddingVertical: 12, marginTop: 12 },
+  enrollBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: AppColors.primary, borderRadius: 10, paddingVertical: 12, marginTop: 12 },
   enrollBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   teacherRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   teacherName: { fontSize: 14, color: '#111827', fontWeight: '500' },
@@ -486,7 +487,7 @@ const styles = StyleSheet.create({
   materialDesc: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
   requiredBadge: { fontSize: 10, color: '#EF4444', backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, backgroundColor: '#EFF6FF', borderRadius: 10 },
-  galleryBtnText: { flex: 1, color: '#208AEF', fontWeight: '600', fontSize: 14 },
+  galleryBtnText: { flex: 1, color: AppColors.primary, fontWeight: '600', fontSize: 14 },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modal: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
@@ -494,14 +495,14 @@ const styles = StyleSheet.create({
   modalSubtitle: { fontSize: 14, color: '#6B7280', marginBottom: 20 },
   childList: { gap: 10, marginBottom: 16 },
   childItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB' },
-  childItemSelected: { borderColor: '#208AEF', backgroundColor: '#EFF6FF' },
+  childItemSelected: { borderColor: AppColors.primary, backgroundColor: '#EFF6FF' },
   childName: { fontSize: 15, color: '#111827', fontWeight: '500' },
   invoiceNotice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: '#FEF3C7', borderRadius: 8, padding: 12, marginBottom: 16 },
   invoiceNoticeText: { flex: 1, fontSize: 13, color: '#92400E' },
   modalActions: { flexDirection: 'row', gap: 12 },
   modalCancel: { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center' },
   modalCancelText: { color: '#6B7280', fontWeight: '600', fontSize: 15 },
-  modalConfirm: { flex: 1, padding: 14, borderRadius: 10, backgroundColor: '#208AEF', alignItems: 'center' },
+  modalConfirm: { flex: 1, padding: 14, borderRadius: 10, backgroundColor: AppColors.primary, alignItems: 'center' },
   modalConfirmDisabled: { backgroundColor: '#93C5FD' },
   modalConfirmText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   // Gallery Modal

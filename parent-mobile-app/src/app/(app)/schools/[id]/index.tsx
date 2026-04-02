@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -203,7 +204,7 @@ export default function SchoolDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -353,9 +354,9 @@ export default function SchoolDetailScreen() {
                 style={styles.activityClassesBtn}
                 onPress={() => router.push('/(app)/activity-classes')}
               >
-                <Ionicons name="star-outline" size={18} color="#208AEF" />
+                <Ionicons name="star-outline" size={18} color={AppColors.primary} />
                 <Text style={styles.activityClassesBtnText}>Etkinlik Sınıfları</Text>
-                <Ionicons name="chevron-forward" size={16} color="#208AEF" />
+                <Ionicons name="chevron-forward" size={16} color={AppColors.primary} />
               </TouchableOpacity>
 
               <Text style={styles.feedTitle}>Okul Akışı</Text>
@@ -366,7 +367,7 @@ export default function SchoolDetailScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#208AEF"
+            tintColor={AppColors.primary}
           />
         }
         onEndReached={handleLoadMore}
@@ -380,7 +381,7 @@ export default function SchoolDetailScreen() {
         }
         ListFooterComponent={
           postsLoading ? (
-            <ActivityIndicator color="#208AEF" style={styles.loader} />
+            <ActivityIndicator color={AppColors.primary} style={styles.loader} />
           ) : null
         }
       />
@@ -405,7 +406,7 @@ export default function SchoolDetailScreen() {
             </Text>
 
             {loadingChildren ? (
-              <ActivityIndicator color="#208AEF" style={{ marginVertical: 32 }} />
+              <ActivityIndicator color={AppColors.primary} style={{ marginVertical: 32 }} />
             ) : modalChildren.length === 0 ? (
               <View style={styles.emptyModal}>
                 <Text style={styles.emptyModalText}>
@@ -445,7 +446,7 @@ export default function SchoolDetailScreen() {
                       )}
                     </View>
                     {enrolling ? (
-                      <ActivityIndicator color="#208AEF" size="small" />
+                      <ActivityIndicator color={AppColors.primary} size="small" />
                     ) : (
                       <Text style={styles.selectArrow}>→</Text>
                     )}
@@ -461,7 +462,7 @@ export default function SchoolDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topBar: {
     flexDirection: 'row',
@@ -473,7 +474,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  backText: { color: '#208AEF', fontSize: 15, fontWeight: '500', width: 60 },
+  backText: { color: AppColors.primary, fontSize: 15, fontWeight: '500', width: 60 },
   topBarTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937', flex: 1, textAlign: 'center' },
   list: { paddingHorizontal: 20, paddingBottom: 20 },
   schoolCard: {
@@ -496,7 +497,7 @@ const styles = StyleSheet.create({
   },
   schoolIconText: { fontSize: 28 },
   schoolName: { fontSize: 20, fontWeight: '800', color: '#1F2937' },
-  schoolType: { fontSize: 12, color: '#208AEF', fontWeight: '600' },
+  schoolType: { fontSize: 12, color: AppColors.primary, fontWeight: '600' },
   schoolInfo: { fontSize: 13, color: '#6B7280' },
   yearBadge: {
     backgroundColor: '#D1FAE5',
@@ -538,7 +539,7 @@ const styles = StyleSheet.create({
   enrolledBirth: { fontSize: 11, color: '#6B7280', marginTop: 1 },
   enrolledArrow: { fontSize: 20, color: '#16A34A', fontWeight: '700' },
   enrollButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -582,7 +583,7 @@ const styles = StyleSheet.create({
   },
   activityClassesBtnText: {
     flex: 1,
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -599,13 +600,13 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  pinned: { fontSize: 11, color: '#208AEF', fontWeight: '600', marginBottom: 8 },
+  pinned: { fontSize: 11, color: AppColors.primary, fontWeight: '600', marginBottom: 8 },
   postAuthor: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   postAvatar: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -649,7 +650,7 @@ const styles = StyleSheet.create({
   emptyModal: { alignItems: 'center', paddingVertical: 24, gap: 16 },
   emptyModalText: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
   addChildBtn: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 10,
@@ -667,7 +668,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -675,5 +676,5 @@ const styles = StyleSheet.create({
   childInfo: { flex: 1 },
   childName: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
   childBirth: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  selectArrow: { fontSize: 18, color: '#208AEF', fontWeight: '700' },
+  selectArrow: { fontSize: 18, color: AppColors.primary, fontWeight: '700' },
 });

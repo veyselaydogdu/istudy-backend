@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -593,7 +594,7 @@ export default function AddChildScreen() {
                 activeOpacity={0.7}
               >
                 {bloodTypesLoading ? (
-                  <ActivityIndicator size="small" color="#208AEF" />
+                  <ActivityIndicator size="small" color={AppColors.primary} />
                 ) : (
                   <Text
                     style={[
@@ -749,7 +750,7 @@ export default function AddChildScreen() {
             </Text>
 
             {healthLoading ? (
-              <ActivityIndicator color="#208AEF" />
+              <ActivityIndicator color={AppColors.primary} />
             ) : (
               <>
                 {/* ALERJENLER */}
@@ -1054,7 +1055,7 @@ export default function AddChildScreen() {
             <Text style={styles.dateModalTitle}>Kan Grubu Seç</Text>
 
             {bloodTypesLoading ? (
-              <ActivityIndicator size="large" color="#208AEF" style={{ marginVertical: 24 }} />
+              <ActivityIndicator size="large" color={AppColors.primary} style={{ marginVertical: 24 }} />
             ) : bloodTypes.length === 0 ? (
               <Text style={styles.emptyHint}>Kan grupları yüklenemedi.</Text>
             ) : (
@@ -1157,7 +1158,7 @@ export default function AddChildScreen() {
                       }))}
                       activeOpacity={0.7}
                     >
-                      <Text style={[{ fontSize: 14, color: '#374151' }, medAddForm.medication_id === m.id && { color: '#208AEF', fontWeight: '600' }]}>
+                      <Text style={[{ fontSize: 14, color: '#374151' }, medAddForm.medication_id === m.id && { color: AppColors.primary, fontWeight: '600' }]}>
                         {m.name}
                       </Text>
                     </TouchableOpacity>
@@ -1198,7 +1199,7 @@ export default function AddChildScreen() {
                       key={d}
                       style={[
                         { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
-                        medAddForm.usage_days.includes(d) && { backgroundColor: '#208AEF', borderColor: '#208AEF' },
+                        medAddForm.usage_days.includes(d) && { backgroundColor: AppColors.primary, borderColor: AppColors.primary },
                       ]}
                       onPress={() => setMedAddForm((prev) => ({
                         ...prev,
@@ -1246,7 +1247,7 @@ export default function AddChildScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   flex: {
     flex: 1,
@@ -1262,7 +1263,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   backText: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '500',
     width: 60,
@@ -1333,7 +1334,7 @@ const styles = StyleSheet.create({
   },
   genderOptionActive: {
     backgroundColor: '#EFF6FF',
-    borderColor: '#208AEF',
+    borderColor: AppColors.primary,
   },
   genderText: {
     fontSize: 13,
@@ -1341,7 +1342,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   genderTextActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '700',
   },
   pickerButton: {
@@ -1413,8 +1414,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   langChipActive: {
-    backgroundColor: '#208AEF',
-    borderColor: '#208AEF',
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
   },
   langChipText: {
     fontSize: 13,
@@ -1426,7 +1427,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -1496,7 +1497,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   dateScrollItemTextActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '700',
   },
   datePreview: {
@@ -1508,7 +1509,7 @@ const styles = StyleSheet.create({
   datePreviewText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#208AEF',
+    color: AppColors.primary,
   },
   modalActions: {
     flexDirection: 'row',
@@ -1536,7 +1537,7 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -1571,7 +1572,7 @@ const styles = StyleSheet.create({
   },
   bloodTypeOptionActive: {
     backgroundColor: '#EFF6FF',
-    borderColor: '#208AEF',
+    borderColor: AppColors.primary,
   },
   bloodTypeOptionText: {
     fontSize: 15,
@@ -1579,7 +1580,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   bloodTypeOptionTextActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
   },
   emptyHint: {
     fontSize: 14,
@@ -1602,7 +1603,7 @@ const styles = StyleSheet.create({
   healthChipTextRed: { color: '#DC2626', fontWeight: '700' },
   healthChipTextOrange: { color: '#D97706', fontWeight: '700' },
   addMedBtn: { backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  addMedBtnText: { color: '#208AEF', fontSize: 13, fontWeight: '600' },
+  addMedBtnText: { color: AppColors.primary, fontSize: 13, fontWeight: '600' },
   healthSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   addSuggestBtn: { backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   addSuggestBtnText: { color: '#D97706', fontSize: 12, fontWeight: '700' },

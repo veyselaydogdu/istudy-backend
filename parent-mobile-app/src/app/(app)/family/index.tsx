@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -27,7 +28,7 @@ interface Member {
   is_active: boolean;
 }
 
-const AVATAR_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B'];
+const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', '#10B981', '#F59E0B'];
 
 function memberColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
@@ -118,7 +119,7 @@ export default function FamilyScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -202,7 +203,7 @@ export default function FamilyScreen() {
         }}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#208AEF" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -285,7 +286,7 @@ export default function FamilyScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
@@ -301,11 +302,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingHorizontal: 13,
     paddingVertical: 9,
-    shadowColor: '#208AEF',
+    shadowColor: AppColors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
   rolePrimary: { backgroundColor: '#EFF6FF' },
   roleSecondary: { backgroundColor: '#F3F4F6' },
   roleBadgeText: { fontSize: 10, fontWeight: '700' },
-  roleTextPrimary: { color: '#208AEF' },
+  roleTextPrimary: { color: AppColors.primary },
   roleTextSecondary: { color: '#6B7280' },
   memberEmail: { fontSize: 12, color: '#9CA3AF' },
   relationText: { fontSize: 11, color: '#C4C9D4', marginTop: 2 },
@@ -433,11 +434,11 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: '#6B7280', fontSize: 14, fontWeight: '600' },
   confirmBtn: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: '#208AEF',
+    shadowColor: AppColors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,

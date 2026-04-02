@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -262,7 +263,7 @@ export default function ActivityEventDetailScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -298,7 +299,7 @@ export default function ActivityEventDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
-            <Ionicons name="flag" size={36} color="#208AEF" />
+            <Ionicons name="flag" size={36} color={AppColors.primary} />
           </View>
           <Text style={styles.heroName}>{activity.name}</Text>
           {activity.school && (
@@ -321,7 +322,7 @@ export default function ActivityEventDetailScreen() {
             ) : null}
             {activity.is_paid ? (
               <View style={[styles.badge, styles.badgeBlue]}>
-                <Ionicons name="card-outline" size={13} color="#208AEF" />
+                <Ionicons name="card-outline" size={13} color={AppColors.primary} />
                 <Text style={styles.badgeTextBlue}>{activity.price} ₺</Text>
               </View>
             ) : (
@@ -442,7 +443,7 @@ export default function ActivityEventDetailScreen() {
             <View style={styles.materialsList}>
               {activity.materials.map((m, i) => (
                 <View key={i} style={styles.materialItem}>
-                  <Ionicons name="checkmark-circle-outline" size={16} color="#208AEF" />
+                  <Ionicons name="checkmark-circle-outline" size={16} color={AppColors.primary} />
                   <Text style={styles.materialText}>{m}</Text>
                 </View>
               ))}
@@ -649,7 +650,7 @@ const enrollStyles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#FAFAFA',
   },
-  pickerRowSelected: { borderColor: '#208AEF', backgroundColor: '#EFF6FF' },
+  pickerRowSelected: { borderColor: AppColors.primary, backgroundColor: '#EFF6FF' },
   pickerRowDisabled: { opacity: 0.6, backgroundColor: '#F9FAFB' },
   pickerRadio: {
     width: 20,
@@ -660,12 +661,12 @@ const enrollStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pickerRadioSelected: { borderColor: '#208AEF' },
+  pickerRadioSelected: { borderColor: AppColors.primary },
   pickerRadioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
   },
   pickerChildName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1F2937' },
   enrolledMiniTag: {
@@ -688,7 +689,7 @@ const enrollStyles = StyleSheet.create({
     flex: 2,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     alignItems: 'center',
   },
   pickerConfirmText: { fontSize: 15, fontWeight: '700', color: '#fff' },
@@ -699,7 +700,7 @@ const enrollStyles = StyleSheet.create({
 const TILE_SIZE = (SCREEN_W - 32 - 12) / 3;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F8FF' },
+  safe: { flex: 1, backgroundColor: AppColors.surface },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   navBar: {
@@ -740,13 +741,13 @@ const styles = StyleSheet.create({
   heroBadges: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 },
 
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  badgeGreen: { backgroundColor: '#208AEF' },
+  badgeGreen: { backgroundColor: AppColors.primary },
   badgeAmber: { backgroundColor: '#FEF3C7' },
   badgeBlue: { backgroundColor: '#EFF6FF' },
   badgeGray: { backgroundColor: '#F3F4F6' },
   badgeTextWhite: { fontSize: 12, fontWeight: '700', color: '#fff' },
   badgeTextAmber: { fontSize: 12, fontWeight: '700', color: '#D97706' },
-  badgeTextBlue: { fontSize: 12, fontWeight: '700', color: '#208AEF' },
+  badgeTextBlue: { fontSize: 12, fontWeight: '700', color: AppColors.primary },
   badgeTextGray: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
 
   // Section
@@ -779,7 +780,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
   },
-  ctaBtnPrimary: { backgroundColor: '#208AEF' },
+  ctaBtnPrimary: { backgroundColor: AppColors.primary },
   ctaBtnDanger: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5' },
   ctaBtnPrimaryText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   ctaBtnDangerText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },
@@ -820,7 +821,7 @@ const styles = StyleSheet.create({
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center',
   },
-  participantInitial: { fontSize: 14, fontWeight: '700', color: '#208AEF' },
+  participantInitial: { fontSize: 14, fontWeight: '700', color: AppColors.primary },
   participantName: { fontSize: 14, color: '#1F2937', fontWeight: '500' },
 
   // Locked gallery / materials
@@ -835,7 +836,7 @@ const styles = StyleSheet.create({
   lightboxDoc: { alignItems: 'center', gap: 12, padding: 32 },
   lightboxDocName: { fontSize: 15, color: '#fff', fontWeight: '600', textAlign: 'center' },
   lightboxDocSize: { fontSize: 12, color: '#9CA3AF' },
-  lightboxOpenBtn: { backgroundColor: '#208AEF', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 },
+  lightboxOpenBtn: { backgroundColor: AppColors.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 },
   lightboxOpenText: { fontSize: 14, color: '#fff', fontWeight: '700' },
   lightboxCaption: { position: 'absolute', bottom: 40, left: 16, right: 16 },
   lightboxCaptionText: { color: '#fff', fontSize: 14, textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 8 },

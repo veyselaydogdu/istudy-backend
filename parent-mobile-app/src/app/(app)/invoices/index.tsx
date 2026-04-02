@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -148,7 +149,7 @@ export default function InvoicesScreen() {
               <Ionicons
                 name={isRefund ? 'return-down-back' : isOverdue ? 'alert-circle' : 'receipt-outline'}
                 size={20}
-                color={isRefund ? '#7C3AED' : isOverdue ? '#EF4444' : '#208AEF'}
+                color={isRefund ? '#7C3AED' : isOverdue ? '#EF4444' : AppColors.primary}
               />
             </View>
             <View style={styles.cardInfo}>
@@ -197,13 +198,13 @@ export default function InvoicesScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color="#208AEF" />
+            <Ionicons name="arrow-back" size={22} color={AppColors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Faturalarım</Text>
           <View style={{ width: 22 }} />
         </View>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -213,7 +214,7 @@ export default function InvoicesScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color="#208AEF" />
+          <Ionicons name="arrow-back" size={22} color={AppColors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Faturalarım</Text>
         <View style={{ width: 22 }} />
@@ -225,7 +226,7 @@ export default function InvoicesScreen() {
         renderItem={renderInvoice}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#208AEF" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
@@ -257,7 +258,7 @@ export default function InvoicesScreen() {
           </View>
         }
         ListFooterComponent={
-          loadingMore ? <ActivityIndicator color="#208AEF" style={{ paddingVertical: 16 }} /> : null
+          loadingMore ? <ActivityIndicator color={AppColors.primary} style={{ paddingVertical: 16 }} /> : null
         }
       />
     </SafeAreaView>
@@ -265,7 +266,7 @@ export default function InvoicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
   iconBoxOverdue: { backgroundColor: '#FEF2F2' },
   cardInfo: { flex: 1 },
   invoiceNo: { fontSize: 13, fontWeight: '700', color: '#1F2937' },
-  moduleLabel: { fontSize: 10, color: '#208AEF', marginTop: 1, fontWeight: '600', textTransform: 'uppercase' },
+  moduleLabel: { fontSize: 10, color: AppColors.primary, marginTop: 1, fontWeight: '600', textTransform: 'uppercase' },
   activityName: { fontSize: 12, color: '#6B7280', marginTop: 2, fontWeight: '500' },
   childName: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
   cardRight: { alignItems: 'flex-end', gap: 6 },
