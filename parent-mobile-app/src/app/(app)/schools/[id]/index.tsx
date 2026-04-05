@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -203,7 +204,7 @@ export default function SchoolDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -353,9 +354,9 @@ export default function SchoolDetailScreen() {
                 style={styles.activityClassesBtn}
                 onPress={() => router.push('/(app)/activity-classes')}
               >
-                <Ionicons name="star-outline" size={18} color="#208AEF" />
+                <Ionicons name="star-outline" size={18} color={AppColors.primary} />
                 <Text style={styles.activityClassesBtnText}>Etkinlik Sınıfları</Text>
-                <Ionicons name="chevron-forward" size={16} color="#208AEF" />
+                <Ionicons name="chevron-forward" size={16} color={AppColors.primary} />
               </TouchableOpacity>
 
               <Text style={styles.feedTitle}>Okul Akışı</Text>
@@ -366,7 +367,7 @@ export default function SchoolDetailScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#208AEF"
+            tintColor={AppColors.primary}
           />
         }
         onEndReached={handleLoadMore}
@@ -380,7 +381,7 @@ export default function SchoolDetailScreen() {
         }
         ListFooterComponent={
           postsLoading ? (
-            <ActivityIndicator color="#208AEF" style={styles.loader} />
+            <ActivityIndicator color={AppColors.primary} style={styles.loader} />
           ) : null
         }
       />
@@ -405,7 +406,7 @@ export default function SchoolDetailScreen() {
             </Text>
 
             {loadingChildren ? (
-              <ActivityIndicator color="#208AEF" style={{ marginVertical: 32 }} />
+              <ActivityIndicator color={AppColors.primary} style={{ marginVertical: 32 }} />
             ) : modalChildren.length === 0 ? (
               <View style={styles.emptyModal}>
                 <Text style={styles.emptyModalText}>
@@ -445,7 +446,7 @@ export default function SchoolDetailScreen() {
                       )}
                     </View>
                     {enrolling ? (
-                      <ActivityIndicator color="#208AEF" size="small" />
+                      <ActivityIndicator color={AppColors.primary} size="small" />
                     ) : (
                       <Text style={styles.selectArrow}>→</Text>
                     )}
@@ -461,7 +462,7 @@ export default function SchoolDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topBar: {
     flexDirection: 'row',
@@ -469,15 +470,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
-  backText: { color: '#208AEF', fontSize: 15, fontWeight: '500', width: 60 },
-  topBarTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937', flex: 1, textAlign: 'center' },
+  backText: { color: AppColors.primary, fontSize: 15, fontWeight: '500', width: 60 },
+  topBarTitle: { fontSize: 17, fontWeight: '700', color: AppColors.onSurface, flex: 1, textAlign: 'center' },
   list: { paddingHorizontal: 20, paddingBottom: 20 },
   schoolCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 20,
     marginBottom: 12,
@@ -489,35 +490,35 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 16,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
   },
   schoolIconText: { fontSize: 28 },
-  schoolName: { fontSize: 20, fontWeight: '800', color: '#1F2937' },
-  schoolType: { fontSize: 12, color: '#208AEF', fontWeight: '600' },
-  schoolInfo: { fontSize: 13, color: '#6B7280' },
+  schoolName: { fontSize: 20, fontWeight: '800', color: AppColors.onSurface },
+  schoolType: { fontSize: 12, color: AppColors.primary, fontWeight: '600' },
+  schoolInfo: { fontSize: 13, color: AppColors.onSurfaceVariant },
   yearBadge: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: AppColors.successContainer,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 20,
     marginTop: 4,
   },
-  yearBadgeText: { color: '#059669', fontSize: 12, fontWeight: '600' },
+  yearBadgeText: { color: AppColors.success, fontSize: 12, fontWeight: '600' },
   // Kayıtlı çocuklar bölümü
   enrolledSection: {
     alignSelf: 'stretch',
     marginTop: 8,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: AppColors.successContainer,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: AppColors.successContainer,
     gap: 8,
   },
-  enrolledTitle: { fontSize: 13, fontWeight: '700', color: '#166534', marginBottom: 4 },
+  enrolledTitle: { fontSize: 13, fontWeight: '700', color: AppColors.success, marginBottom: 4 },
   enrolledItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -528,17 +529,17 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#16A34A',
+    backgroundColor: AppColors.success,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  enrolledAvatarText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  enrolledAvatarText: { color: AppColors.white, fontSize: 13, fontWeight: '700' },
   enrolledInfo: { flex: 1 },
-  enrolledName: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
-  enrolledBirth: { fontSize: 11, color: '#6B7280', marginTop: 1 },
-  enrolledArrow: { fontSize: 20, color: '#16A34A', fontWeight: '700' },
+  enrolledName: { fontSize: 14, fontWeight: '600', color: AppColors.onSurface },
+  enrolledBirth: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 1 },
+  enrolledArrow: { fontSize: 20, color: AppColors.success, fontWeight: '700' },
   enrollButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -546,9 +547,9 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
   },
-  enrollButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  enrollButtonText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
   pendingCard: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
@@ -563,9 +564,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 4,
   },
-  pendingChildName: { fontSize: 13, color: '#374151', fontWeight: '600' },
+  pendingChildName: { fontSize: 13, color: AppColors.onSurface, fontWeight: '600' },
   pendingBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -575,54 +576,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 10,
     padding: 14,
     marginBottom: 16,
   },
   activityClassesBtnText: {
     flex: 1,
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '600',
     fontSize: 14,
   },
   feedTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 12,
     marginTop: 4,
   },
   postCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
   },
-  pinned: { fontSize: 11, color: '#208AEF', fontWeight: '600', marginBottom: 8 },
+  pinned: { fontSize: 11, color: AppColors.primary, fontWeight: '600', marginBottom: 8 },
   postAuthor: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   postAvatar: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  postAvatarText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  postAuthorName: { fontSize: 13, fontWeight: '600', color: '#1F2937' },
-  postDate: { fontSize: 11, color: '#9CA3AF' },
-  postContent: { fontSize: 14, color: '#374151', lineHeight: 21, marginBottom: 10 },
+  postAvatarText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
+  postAuthorName: { fontSize: 13, fontWeight: '600', color: AppColors.onSurface },
+  postDate: { fontSize: 11, color: AppColors.onSurfaceVariant },
+  postContent: { fontSize: 14, color: AppColors.onSurface, lineHeight: 21, marginBottom: 10 },
   postFooter: {
     flexDirection: 'row',
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainerLow,
     paddingTop: 8,
   },
-  postStat: { fontSize: 12, color: '#6B7280' },
+  postStat: { fontSize: 12, color: AppColors.onSurfaceVariant },
   empty: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { fontSize: 14, color: '#9CA3AF' },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant },
   loader: { paddingVertical: 20 },
   // Modal
   modalOverlay: {
@@ -631,7 +632,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -643,37 +644,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#1F2937' },
-  modalClose: { fontSize: 18, color: '#6B7280', padding: 4 },
-  modalSubtitle: { fontSize: 13, color: '#6B7280', marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: AppColors.onSurface },
+  modalClose: { fontSize: 18, color: AppColors.onSurfaceVariant, padding: 4 },
+  modalSubtitle: { fontSize: 13, color: AppColors.onSurfaceVariant, marginBottom: 20 },
   emptyModal: { alignItems: 'center', paddingVertical: 24, gap: 16 },
-  emptyModalText: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
+  emptyModalText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
   addChildBtn: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 10,
   },
-  addChildBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  addChildBtnText: { color: AppColors.white, fontWeight: '700', fontSize: 14 },
   childItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   childAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  childAvatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  childAvatarText: { color: AppColors.white, fontSize: 16, fontWeight: '700' },
   childInfo: { flex: 1 },
-  childName: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
-  childBirth: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  selectArrow: { fontSize: 18, color: '#208AEF', fontWeight: '700' },
+  childName: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
+  childBirth: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  selectArrow: { fontSize: 18, color: AppColors.primary, fontWeight: '700' },
 });

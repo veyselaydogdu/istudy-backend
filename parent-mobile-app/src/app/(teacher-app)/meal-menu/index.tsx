@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -240,7 +241,7 @@ export default function TeacherMealMenuScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -256,14 +257,14 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     marginBottom: 2,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   section: {
     paddingHorizontal: 20,
@@ -274,10 +275,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -285,13 +286,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   classDropdown: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     marginTop: 4,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -304,32 +305,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   classOptionActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
   },
   classOptionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   classOptionTextActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
   },
   classOptionSchool: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   datePicker: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 4,
     shadowColor: '#000',
@@ -369,7 +370,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 13,
     flex: 1,
   },
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
     marginHorizontal: 20,
-    backgroundColor: '#EF4444',
+    backgroundColor: AppColors.error,
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
@@ -389,7 +390,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 13,
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontWeight: '600',
   },
   list: {
@@ -398,11 +399,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   mealCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 14,
     gap: 8,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 5,
@@ -416,23 +417,23 @@ const styles = StyleSheet.create({
   mealName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     flex: 1,
   },
   mealTypeBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   mealTypeText: {
     fontSize: 11,
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '600',
   },
   mealIngredients: {
     fontSize: 13,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     lineHeight: 20,
   },
   mealWarningRow: {
@@ -442,12 +443,12 @@ const styles = StyleSheet.create({
   },
   mealWarningText: {
     fontSize: 12,
-    color: '#D97706',
+    color: AppColors.warning,
     fontWeight: '600',
   },
   placeholderText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     textAlign: 'center',
     paddingHorizontal: 40,
   },
@@ -459,6 +460,6 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
 });

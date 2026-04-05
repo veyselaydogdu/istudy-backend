@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -36,7 +37,7 @@ interface ClassChild {
 
 type TabType = 'students' | 'attendance' | 'reports';
 
-const AVATAR_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
+const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.warning, AppColors.success, AppColors.error];
 
 function avatarColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
@@ -208,7 +209,7 @@ export default function ClassDetailScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -242,11 +243,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   headerSub: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     marginTop: 1,
   },
   errorBox: {
@@ -260,7 +261,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 13,
     flex: 1,
   },
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 20,
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 4,
     gap: 4,
@@ -285,29 +286,29 @@ const styles = StyleSheet.create({
     borderRadius: 11,
   },
   tabActive: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
   },
   tabText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: AppColors.white,
   },
   list: {
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
   childRow: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 5,
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   childAvatarText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   childName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   badgeRow: {
     flexDirection: 'row',
@@ -342,14 +343,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 6,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
   allergenBadgeText: {
     fontSize: 11,
-    color: '#D97706',
+    color: AppColors.warning,
     fontWeight: '600',
   },
   medicationBadge: {
@@ -374,6 +375,6 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
 });

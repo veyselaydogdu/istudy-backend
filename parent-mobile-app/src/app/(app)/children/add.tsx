@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -169,7 +170,7 @@ function MultiSelectPickerModal({
                     </View>
                     <Text style={[msStyles.itemText, { color: accentColor, fontWeight: '600', flex: 1 }]}>
                       {name}
-                      <Text style={{ fontSize: 10, color: '#9CA3AF' }}> (onay bekleniyor)</Text>
+                      <Text style={{ fontSize: 10, color: AppColors.onSurfaceVariant }}> (onay bekleniyor)</Text>
                     </Text>
                     <TouchableOpacity onPress={() => onCustomRemove(idx)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                       <Ionicons name="close-circle" size={18} color="#EF4444" />
@@ -236,54 +237,54 @@ function MultiSelectPickerModal({
 const msStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 36 : 20,
     maxHeight: '80%',
   },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB', alignSelf: 'center', marginBottom: 12 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: AppColors.surfaceContainer, alignSelf: 'center', marginBottom: 12 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 10 },
-  title: { fontSize: 17, fontWeight: '800', color: '#1F2937' },
+  title: { fontSize: 17, fontWeight: '800', color: AppColors.onSurface },
   countBadge: { fontSize: 12, fontWeight: '700', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3 },
   searchRow: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 12, marginHorizontal: 20, paddingHorizontal: 12, paddingVertical: 10,
     gap: 8, marginBottom: 8,
   },
-  searchInput: { flex: 1, fontSize: 14, color: '#1F2937', padding: 0 },
+  searchInput: { flex: 1, fontSize: 14, color: AppColors.onSurface, padding: 0 },
   list: { flexGrow: 0 },
   item: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 13, gap: 12 },
-  customItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 11, gap: 12, backgroundColor: '#FFFBEB' },
+  customItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 11, gap: 12, backgroundColor: AppColors.warningContainer },
   checkbox: {
-    width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#D1D5DB',
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: AppColors.surfaceContainer,
     justifyContent: 'center', alignItems: 'center',
   },
-  itemText: { flex: 1, fontSize: 14, color: '#374151' },
-  emptyText: { textAlign: 'center', color: '#9CA3AF', fontSize: 13, paddingVertical: 24 },
+  itemText: { flex: 1, fontSize: 14, color: AppColors.onSurface },
+  emptyText: { textAlign: 'center', color: AppColors.onSurfaceVariant, fontSize: 13, paddingVertical: 24 },
   addCustomBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 20, paddingVertical: 14,
-    borderTopWidth: 1, borderTopColor: '#F3F4F6',
+    borderTopWidth: 1, borderTopColor: AppColors.surfaceContainerLow,
   },
-  addCustomBtnText: { fontSize: 13, color: '#D97706', fontWeight: '600' },
+  addCustomBtnText: { fontSize: 13, color: AppColors.warning, fontWeight: '600' },
   addInputRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 20, paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: '#F3F4F6',
+    borderTopWidth: 1, borderTopColor: AppColors.surfaceContainerLow,
   },
   addInput: {
-    flex: 1, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB',
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#1F2937',
+    flex: 1, backgroundColor: AppColors.surfaceContainerLow, borderWidth: 1, borderColor: AppColors.surfaceContainer,
+    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: AppColors.onSurface,
   },
   addConfirmBtn: { borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9 },
-  addConfirmBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  footer: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  cancelBtn: { flex: 1, backgroundColor: '#F3F4F6', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  addConfirmBtnText: { color: AppColors.white, fontSize: 13, fontWeight: '700' },
+  footer: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: AppColors.surfaceContainerLow },
+  cancelBtn: { flex: 1, backgroundColor: AppColors.surfaceContainerLow, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: AppColors.onSurface },
   confirmBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  confirmBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  confirmBtnText: { fontSize: 14, fontWeight: '700', color: AppColors.white },
 });
 
 export default function AddChildScreen() {
@@ -593,7 +594,7 @@ export default function AddChildScreen() {
                 activeOpacity={0.7}
               >
                 {bloodTypesLoading ? (
-                  <ActivityIndicator size="small" color="#208AEF" />
+                  <ActivityIndicator size="small" color={AppColors.primary} />
                 ) : (
                   <Text
                     style={[
@@ -685,7 +686,7 @@ export default function AddChildScreen() {
               <View style={{ gap: 10 }}>
                 <Text style={styles.label}>Kimlik Bilgileri (en az biri zorunlu)</Text>
                 <View style={styles.field}>
-                  <Text style={[styles.label, { fontSize: 12, color: '#6B7280' }]}>TC Kimlik No</Text>
+                  <Text style={[styles.label, { fontSize: 12, color: AppColors.onSurfaceVariant }]}>TC Kimlik No</Text>
                   <TextInput
                     style={styles.input}
                     value={form.identity_number}
@@ -697,7 +698,7 @@ export default function AddChildScreen() {
                   />
                 </View>
                 <View style={styles.field}>
-                  <Text style={[styles.label, { fontSize: 12, color: '#6B7280' }]}>Pasaport No</Text>
+                  <Text style={[styles.label, { fontSize: 12, color: AppColors.onSurfaceVariant }]}>Pasaport No</Text>
                   <TextInput
                     style={styles.input}
                     value={form.passport_number}
@@ -708,7 +709,7 @@ export default function AddChildScreen() {
                     autoCorrect={false}
                   />
                 </View>
-                <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: -4 }}>
+                <Text style={{ fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: -4 }}>
                   * TC kimlik numarası veya pasaport numarasından en az birini girin
                 </Text>
               </View>
@@ -744,12 +745,12 @@ export default function AddChildScreen() {
           {/* SAĞLIK BİLGİLERİ */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Sağlık Bilgileri</Text>
-            <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: -8 }}>
+            <Text style={{ fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: -8 }}>
               İsteğe bağlı — kayıt sonrası Sağlık Bilgileri ekranından da düzenleyebilirsiniz
             </Text>
 
             {healthLoading ? (
-              <ActivityIndicator color="#208AEF" />
+              <ActivityIndicator color={AppColors.primary} />
             ) : (
               <>
                 {/* ALERJENLER */}
@@ -836,7 +837,7 @@ export default function AddChildScreen() {
                     </TouchableOpacity>
                   </View>
                   {selectedMedications.length === 0 ? (
-                    <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>Henüz ilaç eklenmedi.</Text>
+                    <Text style={{ fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 4 }}>Henüz ilaç eklenmedi.</Text>
                   ) : (
                     selectedMedications.map((med, idx) => (
                       <View key={idx} style={styles.medItem}>
@@ -852,7 +853,7 @@ export default function AddChildScreen() {
                           onPress={() => setSelectedMedications((prev) => prev.filter((_, i) => i !== idx))}
                           activeOpacity={0.7}
                         >
-                          <Text style={{ fontSize: 16, color: '#EF4444', paddingLeft: 12 }}>✕</Text>
+                          <Text style={{ fontSize: 16, color: AppColors.error, paddingLeft: 12 }}>✕</Text>
                         </TouchableOpacity>
                       </View>
                     ))
@@ -1054,7 +1055,7 @@ export default function AddChildScreen() {
             <Text style={styles.dateModalTitle}>Kan Grubu Seç</Text>
 
             {bloodTypesLoading ? (
-              <ActivityIndicator size="large" color="#208AEF" style={{ marginVertical: 24 }} />
+              <ActivityIndicator size="large" color={AppColors.primary} style={{ marginVertical: 24 }} />
             ) : bloodTypes.length === 0 ? (
               <Text style={styles.emptyHint}>Kan grupları yüklenemedi.</Text>
             ) : (
@@ -1142,13 +1143,13 @@ export default function AddChildScreen() {
               {/* Listeden Seç */}
               <View style={styles.field}>
                 <Text style={[styles.label, { fontSize: 12 }]}>Listeden Seç</Text>
-                <ScrollView style={{ maxHeight: 120, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10 }} nestedScrollEnabled>
+                <ScrollView style={{ maxHeight: 120, borderWidth: 1, borderColor: AppColors.surfaceContainer, borderRadius: 10 }} nestedScrollEnabled>
                   {medications.map((m) => (
                     <TouchableOpacity
                       key={m.id}
                       style={[
-                        { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-                        medAddForm.medication_id === m.id && { backgroundColor: '#EFF6FF' },
+                        { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow },
+                        medAddForm.medication_id === m.id && { backgroundColor: AppColors.primaryContainer },
                       ]}
                       onPress={() => setMedAddForm((prev) => ({
                         ...prev,
@@ -1157,7 +1158,7 @@ export default function AddChildScreen() {
                       }))}
                       activeOpacity={0.7}
                     >
-                      <Text style={[{ fontSize: 14, color: '#374151' }, medAddForm.medication_id === m.id && { color: '#208AEF', fontWeight: '600' }]}>
+                      <Text style={[{ fontSize: 14, color: AppColors.onSurface }, medAddForm.medication_id === m.id && { color: AppColors.primary, fontWeight: '600' }]}>
                         {m.name}
                       </Text>
                     </TouchableOpacity>
@@ -1197,8 +1198,8 @@ export default function AddChildScreen() {
                     <TouchableOpacity
                       key={d}
                       style={[
-                        { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
-                        medAddForm.usage_days.includes(d) && { backgroundColor: '#208AEF', borderColor: '#208AEF' },
+                        { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: AppColors.surfaceContainer, backgroundColor: AppColors.surfaceContainerLow },
+                        medAddForm.usage_days.includes(d) && { backgroundColor: AppColors.primary, borderColor: AppColors.primary },
                       ]}
                       onPress={() => setMedAddForm((prev) => ({
                         ...prev,
@@ -1208,7 +1209,7 @@ export default function AddChildScreen() {
                       }))}
                       activeOpacity={0.7}
                     >
-                      <Text style={[{ fontSize: 12, color: '#6B7280', fontWeight: '500' }, medAddForm.usage_days.includes(d) && { color: '#FFFFFF', fontWeight: '700' }]}>
+                      <Text style={[{ fontSize: 12, color: AppColors.onSurfaceVariant, fontWeight: '500' }, medAddForm.usage_days.includes(d) && { color: AppColors.white, fontWeight: '700' }]}>
                         {DAY_TR[d]}
                       </Text>
                     </TouchableOpacity>
@@ -1246,7 +1247,7 @@ export default function AddChildScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   flex: {
     flex: 1,
@@ -1257,12 +1258,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   backText: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '500',
     width: 60,
@@ -1270,7 +1271,7 @@ const styles = StyleSheet.create({
   topBarTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   container: {
     paddingHorizontal: 20,
@@ -1278,7 +1279,7 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 16,
     gap: 14,
@@ -1286,7 +1287,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 2,
   },
   row: {
@@ -1302,17 +1303,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: AppColors.onSurface,
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   textarea: {
     height: 80,
@@ -1327,61 +1328,61 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
   },
   genderOptionActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#208AEF',
+    backgroundColor: AppColors.primaryContainer,
+    borderColor: AppColors.primary,
   },
   genderText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
   },
   genderTextActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '700',
   },
   pickerButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   pickerButtonText: {
     fontSize: 14,
-    color: '#1F2937',
+    color: AppColors.onSurface,
     flex: 1,
   },
   placeholderText: {
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   pickerArrow: {
     fontSize: 12,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   dropdown: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     maxHeight: 220,
     overflow: 'hidden',
   },
   searchInput: {
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: AppColors.surfaceContainer,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   dropdownList: {
     maxHeight: 170,
@@ -1390,14 +1391,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   dropdownItemActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
   },
   dropdownItemText: {
     fontSize: 14,
-    color: '#374151',
+    color: AppColors.onSurface,
   },
   languageRow: {
     flexDirection: 'row',
@@ -1409,24 +1410,24 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    borderColor: AppColors.surfaceContainer,
+    backgroundColor: AppColors.surfaceContainerLow,
   },
   langChipActive: {
-    backgroundColor: '#208AEF',
-    borderColor: '#208AEF',
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
   },
   langChipText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
   },
   langChipTextActive: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -1436,7 +1437,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1447,7 +1448,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   dateModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -1456,7 +1457,7 @@ const styles = StyleSheet.create({
   dateModalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   datePickerRow: {
     flexDirection: 'row',
@@ -1470,7 +1471,7 @@ const styles = StyleSheet.create({
   dateColumnLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1478,7 +1479,7 @@ const styles = StyleSheet.create({
     height: 180,
     width: '100%',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 10,
   },
   dateScrollItem: {
@@ -1486,29 +1487,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   dateScrollItemActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
   },
   dateScrollItemText: {
     fontSize: 14,
-    color: '#374151',
+    color: AppColors.onSurface,
   },
   dateScrollItemTextActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '700',
   },
   datePreview: {
     alignItems: 'center',
     paddingVertical: 8,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: AppColors.infoContainer,
     borderRadius: 10,
   },
   datePreviewText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#208AEF',
+    color: AppColors.primary,
   },
   modalActions: {
     flexDirection: 'row',
@@ -1517,38 +1518,38 @@ const styles = StyleSheet.create({
   cancelBtn: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   cancelBtnFull: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   cancelBtnText: {
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontSize: 15,
     fontWeight: '600',
   },
   confirmBtn: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   confirmBtnText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 15,
     fontWeight: '700',
   },
   // Blood type modal
   bloodTypeModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -1564,26 +1565,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    borderColor: AppColors.surfaceContainer,
+    backgroundColor: AppColors.surfaceContainerLow,
     minWidth: 70,
     alignItems: 'center',
   },
   bloodTypeOptionActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#208AEF',
+    backgroundColor: AppColors.primaryContainer,
+    borderColor: AppColors.primary,
   },
   bloodTypeOptionText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: AppColors.onSurface,
   },
   bloodTypeOptionTextActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
   },
   emptyHint: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     textAlign: 'center',
     paddingVertical: 16,
   },
@@ -1593,28 +1594,28 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    borderColor: AppColors.surfaceContainer,
+    backgroundColor: AppColors.surfaceContainerLow,
   },
   healthChipActiveRed: { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' },
-  healthChipActiveOrange: { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' },
-  healthChipText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  healthChipTextRed: { color: '#DC2626', fontWeight: '700' },
-  healthChipTextOrange: { color: '#D97706', fontWeight: '700' },
-  addMedBtn: { backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  addMedBtnText: { color: '#208AEF', fontSize: 13, fontWeight: '600' },
+  healthChipActiveOrange: { backgroundColor: AppColors.warningContainer, borderColor: AppColors.tertiaryContainer },
+  healthChipText: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500' },
+  healthChipTextRed: { color: AppColors.error, fontWeight: '700' },
+  healthChipTextOrange: { color: AppColors.warning, fontWeight: '700' },
+  addMedBtn: { backgroundColor: AppColors.primaryContainer, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  addMedBtnText: { color: AppColors.primary, fontSize: 13, fontWeight: '600' },
   healthSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  addSuggestBtn: { backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  addSuggestBtnText: { color: '#D97706', fontSize: 12, fontWeight: '700' },
-  healthEmptyHint: { fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', marginTop: 2 },
+  addSuggestBtn: { backgroundColor: AppColors.warningContainer, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  addSuggestBtnText: { color: AppColors.warning, fontSize: 12, fontWeight: '700' },
+  healthEmptyHint: { fontSize: 12, color: AppColors.onSurfaceVariant, fontStyle: 'italic', marginTop: 2 },
   customModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     padding: 24,
     marginHorizontal: 24,
     gap: 4,
   },
-  medItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  medName: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
-  medDetail: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  medItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow },
+  medName: { fontSize: 14, fontWeight: '600', color: AppColors.onSurface },
+  medDetail: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
 });

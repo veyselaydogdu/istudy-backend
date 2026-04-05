@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -104,7 +105,7 @@ export default function EditChildScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -264,7 +265,7 @@ export default function EditChildScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   flex: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topBar: {
@@ -273,15 +274,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
-  backText: { color: '#208AEF', fontSize: 15, fontWeight: '500', width: 60 },
-  topBarTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
+  backText: { color: AppColors.primary, fontSize: 15, fontWeight: '500', width: 60 },
+  topBarTitle: { fontSize: 17, fontWeight: '700', color: AppColors.onSurface },
   container: { paddingHorizontal: 20, paddingVertical: 16, gap: 20 },
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 16,
     gap: 14,
@@ -289,16 +290,16 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
   field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  label: { fontSize: 13, fontWeight: '600', color: AppColors.onSurface },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   textarea: { height: 80, paddingTop: 12 },
   genderRow: { flexDirection: 'row', gap: 8 },
@@ -307,20 +308,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
   },
-  genderOptionActive: { backgroundColor: '#EFF6FF', borderColor: '#208AEF' },
-  genderText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  genderTextActive: { color: '#208AEF', fontWeight: '700' },
+  genderOptionActive: { backgroundColor: AppColors.primaryContainer, borderColor: AppColors.primary },
+  genderText: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500' },
+  genderTextActive: { color: AppColors.primary, fontWeight: '700' },
   saveButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 16,
   },
   saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  saveButtonText: { color: AppColors.white, fontSize: 16, fontWeight: '700' },
 });

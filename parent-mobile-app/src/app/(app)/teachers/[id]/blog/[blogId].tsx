@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../../lib/api';
 import { getApiError } from '../../../../../lib/auth';
 
@@ -99,15 +100,15 @@ const commentStyles = StyleSheet.create({
   wrap: { marginBottom: 12 },
   replyWrap: { marginLeft: 40 },
   quoteBox: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderLeftWidth: 3,
-    borderLeftColor: '#208AEF',
+    borderLeftColor: AppColors.primary,
     padding: 8,
     borderRadius: 8,
     marginBottom: 6,
     marginLeft: 48,
   },
-  quoteText: { fontSize: 12, color: '#4B5563', fontStyle: 'italic' },
+  quoteText: { fontSize: 12, color: AppColors.onSurfaceVariant, fontStyle: 'italic' },
   row: { flexDirection: 'row', gap: 10 },
   avatar: {
     width: 36,
@@ -118,18 +119,18 @@ const commentStyles = StyleSheet.create({
     alignItems: 'center',
     flexShrink: 0,
   },
-  avatarText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
-  bubble: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12 },
-  userName: { fontSize: 13, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
-  content: { fontSize: 14, color: '#374151', lineHeight: 20 },
+  avatarText: { color: AppColors.white, fontWeight: '700', fontSize: 14 },
+  bubble: { flex: 1, backgroundColor: AppColors.white, borderRadius: 14, padding: 12 },
+  userName: { fontSize: 13, fontWeight: '700', color: AppColors.onSurface, marginBottom: 4 },
+  content: { fontSize: 14, color: AppColors.onSurface, lineHeight: 20 },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     marginTop: 8,
   },
-  time: { fontSize: 11, color: '#9CA3AF', flex: 1 },
-  replyBtn: { fontSize: 12, color: '#208AEF', fontWeight: '600' },
+  time: { fontSize: 11, color: AppColors.onSurfaceVariant, flex: 1 },
+  replyBtn: { fontSize: 12, color: AppColors.primary, fontWeight: '600' },
 });
 
 export default function BlogDetailScreen() {
@@ -263,7 +264,7 @@ export default function BlogDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ActivityIndicator color="#208AEF" style={{ flex: 1 }} />
+        <ActivityIndicator color={AppColors.primary} style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
@@ -319,7 +320,7 @@ export default function BlogDetailScreen() {
                     <Ionicons
                       name={post.is_liked ? 'heart' : 'heart-outline'}
                       size={20}
-                      color={post.is_liked ? '#EF4444' : '#6B7280'}
+                      color={post.is_liked ? AppColors.error : AppColors.onSurfaceVariant}
                     />
                     <Text style={styles.actionText}>{post.likes_count}</Text>
                   </TouchableOpacity>
@@ -344,7 +345,7 @@ export default function BlogDetailScreen() {
         {replyTo ? (
           <View style={styles.replyIndicator}>
             <View style={styles.replyIndicatorContent}>
-              <Ionicons name="return-down-forward-outline" size={14} color="#208AEF" />
+              <Ionicons name="return-down-forward-outline" size={14} color={AppColors.primary} />
               <Text style={styles.replyIndicatorText} numberOfLines={1}>
                 {replyTo.user?.name ?? 'Kullanıcı'}: {replyTo.content}
               </Text>
@@ -389,21 +390,21 @@ export default function BlogDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
   list: { padding: 16, paddingBottom: 8 },
   postCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     padding: 16,
     marginBottom: 20,
@@ -414,33 +415,33 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   postImage: { width: '100%', height: 200, borderRadius: 12, marginBottom: 14 },
-  postTitle: { fontSize: 20, fontWeight: '800', color: '#1F2937', marginBottom: 6 },
-  postTeacher: { fontSize: 13, color: '#208AEF', fontWeight: '600', marginBottom: 12 },
-  postDesc: { fontSize: 15, color: '#374151', lineHeight: 24, marginBottom: 16 },
+  postTitle: { fontSize: 20, fontWeight: '800', color: AppColors.onSurface, marginBottom: 6 },
+  postTeacher: { fontSize: 13, color: AppColors.primary, fontWeight: '600', marginBottom: 12 },
+  postDesc: { fontSize: 15, color: AppColors.onSurface, lineHeight: 24, marginBottom: 16 },
   postActions: {
     flexDirection: 'row',
     gap: 20,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainerLow,
     paddingTop: 12,
     marginBottom: 16,
   },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  actionText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
+  actionText: { fontSize: 15, color: AppColors.onSurfaceVariant, fontWeight: '500' },
   commentsHeading: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainerLow,
     paddingTop: 12,
   },
   empty: { alignItems: 'center', paddingVertical: 32, gap: 8 },
-  emptyText: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center' },
   replyIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     paddingHorizontal: 16,
     paddingVertical: 8,
     gap: 8,
@@ -453,12 +454,12 @@ const styles = StyleSheet.create({
   },
   replyIndicatorText: {
     fontSize: 13,
-    color: '#374151',
+    color: AppColors.onSurface,
     flex: 1,
   },
   errorText: {
     fontSize: 12,
-    color: '#DC2626',
+    color: AppColors.error,
     paddingHorizontal: 16,
     paddingVertical: 4,
     backgroundColor: '#FEE2E2',
@@ -469,27 +470,27 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainerLow,
   },
   input: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#1F2937',
+    color: AppColors.onSurface,
     maxHeight: 100,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
   },
   sendBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },

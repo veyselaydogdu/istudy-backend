@@ -13,6 +13,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
+import { AppColors } from '@/constants/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { NavMenuItem } from '@/components/ui/NavMenuItem';
+import { SectionLabel } from '@/components/ui/SectionLabel';
 import api from '../../lib/api';
 import { getApiError, logoutRequest } from '../../lib/auth';
 
@@ -20,26 +26,6 @@ interface InvoiceStats {
   pending_count: number;
   overdue_count: number;
   pending_amount: number;
-}
-
-interface InfoRowProps {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  value: string;
-}
-
-function InfoRow({ icon, label, value }: InfoRowProps) {
-  return (
-    <View style={styles.infoRow}>
-      <View style={styles.infoIconWrap}>
-        <Ionicons name={icon} size={17} color="#208AEF" />
-      </View>
-      <View style={styles.infoText}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
-      </View>
-    </View>
-  );
 }
 
 export default function ProfileScreen() {
@@ -86,38 +72,32 @@ export default function ProfileScreen() {
     );
   };
 
-  const initials = user
-    ? `${(user.name ?? '?').charAt(0)}${(user.surname ?? '?').charAt(0)}`.toUpperCase()
-    : '??';
-
   const fullName = user ? `${user.name ?? ''} ${user.surname ?? ''}`.trim() : '';
-
   const pendingCount = (invoiceStats?.pending_count ?? 0) + (invoiceStats?.overdue_count ?? 0);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Profile hero card */}
-        <View style={styles.heroCard}>
+
+        {/* Hero card */}
+        <Card style={styles.heroCard}>
           <View style={styles.avatarRing}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </View>
+            <Avatar name={fullName || '?'} size={76} shape="circle" />
           </View>
           <Text style={styles.name}>{fullName}</Text>
           <Text style={styles.email}>{user?.email ?? ''}</Text>
           {user?.email_verified_at ? (
             <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={13} color="#059669" />
+              <Ionicons name="checkmark-circle" size={13} color={AppColors.success} />
               <Text style={styles.verifiedText}>E-posta Doğrulandı</Text>
             </View>
           ) : (
             <View style={styles.unverifiedBadge}>
-              <Ionicons name="warning-outline" size={13} color="#D97706" />
+              <Ionicons name="warning-outline" size={13} color={AppColors.warning} />
               <Text style={styles.unverifiedText}>E-posta Doğrulanmamış</Text>
             </View>
           )}
-        </View>
+        </Card>
 
         {/* Bekleyen fatura uyarısı */}
         {pendingCount > 0 && (
@@ -126,285 +106,173 @@ export default function ProfileScreen() {
             onPress={() => router.push('/(app)/invoices')}
             activeOpacity={0.8}
           >
-            <Ionicons name="alert-circle" size={20} color="#D97706" />
+            <Ionicons name="alert-circle" size={20} color={AppColors.warning} />
             <Text style={styles.invoiceAlertText}>
               {pendingCount} adet ödeme bekleyen faturanız var
             </Text>
-            <Ionicons name="chevron-forward" size={16} color="#D97706" />
+            <Ionicons name="chevron-forward" size={16} color={AppColors.warning} />
           </TouchableOpacity>
         )}
 
-        {/* Contact info */}
+        {/* Hesap */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hesap Bilgileri</Text>
-          <InfoRow icon="person-outline" label="Ad Soyad" value={fullName} />
-          <InfoRow icon="mail-outline" label="E-posta" value={user?.email ?? ''} />
-          {user?.phone && (
-            <InfoRow icon="call-outline" label="Telefon" value={user.phone} />
-          )}
+          <SectionLabel style={styles.sectionLabelPad}>Hesap</SectionLabel>
+          <Card style={styles.menuCard}>
+            <NavMenuItem icon="person-outline" label={fullName || 'İsim Yok'} sublabel={user?.email ?? ''} rightElement={<View />} showDivider />
+            {user?.phone ? (
+              <NavMenuItem icon="call-outline" label={user.phone} sublabel="Telefon" rightElement={<View />} />
+            ) : null}
+          </Card>
         </View>
 
-        {/* Çocuklarım & Okullarım */}
+        {/* Çocuklar & Okullar */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bilgilerim</Text>
-          <TouchableOpacity
-            style={styles.navRow}
-            onPress={() => router.push('/(app)/children')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.infoIconWrap}>
-              <Ionicons name="people-outline" size={17} color="#208AEF" />
-            </View>
-            <View style={styles.infoText}>
-              <Text style={styles.infoValue}>Çocuklarım</Text>
-              <Text style={styles.infoLabel}>Çocuk bilgileri ve sağlık kayıtları</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-          <View style={styles.navDivider} />
-          <TouchableOpacity
-            style={styles.navRow}
-            onPress={() => router.push('/(app)/schools')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.infoIconWrap}>
-              <Ionicons name="school-outline" size={17} color="#208AEF" />
-            </View>
-            <View style={styles.infoText}>
-              <Text style={styles.infoValue}>Okullarım</Text>
-              <Text style={styles.infoLabel}>Kayıtlı okullar ve detaylar</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
+          <SectionLabel style={styles.sectionLabelPad}>Çocuklar &amp; Okullar</SectionLabel>
+          <Card style={styles.menuCard}>
+            <NavMenuItem
+              icon="people-outline"
+              label="Çocuklarım"
+              sublabel="Çocuk bilgileri ve sağlık kayıtları"
+              onPress={() => router.push('/(app)/children')}
+              showDivider
+            />
+            <NavMenuItem
+              icon="school-outline"
+              label="Okullarım"
+              sublabel="Kayıtlı okullar ve detaylar"
+              onPress={() => router.push('/(app)/schools')}
+              showDivider
+            />
+            <NavMenuItem
+              icon="heart-outline"
+              label="Aile Yönetimi"
+              sublabel="Üyeler ve acil durum kişileri"
+              onPress={() => router.push('/(app)/family')}
+            />
+          </Card>
         </View>
 
-        {/* Family */}
-        <TouchableOpacity
-          style={styles.section}
-          onPress={() => router.push('/(app)/family')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.sectionTitle}>Aile</Text>
-          <View style={styles.navRow}>
-            <View style={styles.infoIconWrap}>
-              <Ionicons name="heart-outline" size={17} color="#208AEF" />
-            </View>
-            <View style={styles.infoText}>
-              <Text style={styles.infoValue}>Aile Yönetimi</Text>
-              <Text style={styles.infoLabel}>Üyeler ve acil durum kişileri</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-
-        {/* Faturalarım */}
-        <TouchableOpacity
-          style={styles.section}
-          onPress={() => router.push('/(app)/invoices')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.sectionTitle}>Ödeme</Text>
-          <View style={styles.navRow}>
-            <View style={styles.infoIconWrap}>
-              <Ionicons name="receipt-outline" size={17} color="#208AEF" />
-            </View>
-            <View style={styles.infoText}>
-              <Text style={styles.infoValue}>Faturalarım</Text>
-              <Text style={styles.infoLabel}>Tüm ödemeleriniz</Text>
-            </View>
-            {pendingCount > 0 ? (
-              <View style={styles.pendingBadge}>
-                <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
-              </View>
-            ) : (
-              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-            )}
-          </View>
-        </TouchableOpacity>
-
-        {/* App info */}
+        {/* Mali İşlemler */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Uygulama</Text>
-          <InfoRow icon="phone-portrait-outline" label="Uygulama Sürümü" value="1.0.0" />
+          <SectionLabel style={styles.sectionLabelPad}>Mali İşlemler</SectionLabel>
+          <Card style={styles.menuCard}>
+            <NavMenuItem
+              icon="receipt-outline"
+              label="Faturalarım"
+              sublabel="Tüm ödemeleriniz"
+              badge={pendingCount > 0 ? pendingCount : undefined}
+              onPress={() => router.push('/(app)/invoices')}
+            />
+          </Card>
         </View>
 
-        {/* Logout */}
-        <TouchableOpacity
-          style={[styles.logoutButton, loading && styles.logoutButtonDisabled]}
-          onPress={handleLogout}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color="#EF4444" />
-          ) : (
-            <>
-              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-              <Text style={styles.logoutButtonText}>Çıkış Yap</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {/* Uygulama */}
+        <View style={styles.section}>
+          <SectionLabel style={styles.sectionLabelPad}>Uygulama</SectionLabel>
+          <Card style={styles.menuCard}>
+            <NavMenuItem
+              icon="phone-portrait-outline"
+              label="Uygulama Sürümü"
+              sublabel="1.0.0"
+              rightElement={<Text style={styles.versionText}>v1.0.0</Text>}
+            />
+          </Card>
+        </View>
+
+        {/* Çıkış */}
+        {loading ? (
+          <ActivityIndicator color={AppColors.error} style={styles.loader} />
+        ) : (
+          <Button
+            label="Çıkış Yap"
+            variant="danger"
+            size="lg"
+            fullWidth
+            icon={<Ionicons name="log-out-outline" size={20} color={AppColors.white} />}
+            onPress={handleLogout}
+          />
+        )}
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
-  container: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40, gap: 16 },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  container: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40, gap: 4 },
 
   heroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    alignItems: 'center',
     paddingVertical: 28,
     paddingHorizontal: 20,
-    alignItems: 'center',
     gap: 8,
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    marginBottom: 12,
   },
   avatarRing: {
     width: 90,
     height: 90,
-    borderRadius: 28,
+    borderRadius: 45,
     borderWidth: 3,
-    borderColor: '#DBEAFE',
+    borderColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: '#208AEF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { color: '#FFFFFF', fontSize: 30, fontWeight: '800' },
-  name: { fontSize: 22, fontWeight: '800', color: '#1F2937' },
-  email: { fontSize: 14, color: '#9CA3AF' },
+  name: { fontSize: 22, fontWeight: '800', color: AppColors.onSurface },
+  email: { fontSize: 14, color: AppColors.onSurfaceVariant, fontWeight: '500' },
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: AppColors.successContainer,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
     marginTop: 4,
   },
-  verifiedText: { color: '#059669', fontSize: 12, fontWeight: '600' },
+  verifiedText: { color: AppColors.success, fontSize: 12, fontWeight: '600' },
   unverifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: AppColors.warningContainer,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
     marginTop: 4,
   },
-  unverifiedText: { color: '#D97706', fontSize: 12, fontWeight: '600' },
+  unverifiedText: { color: AppColors.warning, fontSize: 12, fontWeight: '600' },
 
   invoiceAlert: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: AppColors.tertiaryContainer,
+    marginBottom: 12,
   },
   invoiceAlertText: {
     flex: 1,
     fontSize: 13,
-    color: '#D97706',
+    color: AppColors.warning,
     fontWeight: '600',
   },
 
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#9CA3AF',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFB',
-  },
-  infoIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  infoText: { flex: 1 },
-  infoLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500', marginBottom: 2 },
-  infoValue: { fontSize: 14, color: '#1F2937', fontWeight: '600' },
+  section: { marginBottom: 12 },
+  sectionLabelPad: { paddingHorizontal: 4, marginBottom: 8 },
+  menuCard: { padding: 0, overflow: 'hidden' },
 
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-  },
-  navDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginVertical: 4,
+  versionText: {
+    fontSize: 13,
+    color: AppColors.onSurfaceVariant,
+    fontWeight: '600',
   },
 
-  pendingBadge: {
-    backgroundColor: '#D97706',
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  pendingBadgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
-
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    borderWidth: 1.5,
-    borderColor: '#FECACA',
-    marginTop: 4,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  logoutButtonDisabled: { opacity: 0.6 },
-  logoutButtonText: { color: '#EF4444', fontSize: 16, fontWeight: '700' },
+  loader: { paddingVertical: 16 },
+  bottomSpacer: { height: 8 },
 });

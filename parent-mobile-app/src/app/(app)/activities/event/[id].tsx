@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -97,11 +98,11 @@ function GalleryTile({ item, onPress }: { item: GalleryItem; onPress: () => void
       {isImage ? (
         <Image source={{ uri: item.url }} style={styles.galleryImage} resizeMode="cover" />
       ) : (
-        <View style={[styles.galleryThumb, { backgroundColor: isVideo ? '#EDE9FE' : '#FEF3C7' }]}>
+        <View style={[styles.galleryThumb, { backgroundColor: isVideo ? '#EDE9FE' : AppColors.warningContainer }]}>
           <Ionicons
             name={isVideo ? 'play-circle-outline' : 'document-outline'}
             size={32}
-            color={isVideo ? '#7C3AED' : '#D97706'}
+            color={isVideo ? '#7C3AED' : AppColors.warning}
           />
         </View>
       )}
@@ -262,7 +263,7 @@ export default function ActivityEventDetailScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -298,7 +299,7 @@ export default function ActivityEventDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
-            <Ionicons name="flag" size={36} color="#208AEF" />
+            <Ionicons name="flag" size={36} color={AppColors.primary} />
           </View>
           <Text style={styles.heroName}>{activity.name}</Text>
           {activity.school && (
@@ -321,7 +322,7 @@ export default function ActivityEventDetailScreen() {
             ) : null}
             {activity.is_paid ? (
               <View style={[styles.badge, styles.badgeBlue]}>
-                <Ionicons name="card-outline" size={13} color="#208AEF" />
+                <Ionicons name="card-outline" size={13} color={AppColors.primary} />
                 <Text style={styles.badgeTextBlue}>{activity.price} ₺</Text>
               </View>
             ) : (
@@ -420,7 +421,7 @@ export default function ActivityEventDetailScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Açık Olduğu Sınıflar</Text>
                 {(activity.classes ?? []).length === 0 ? (
-                  <Text style={[styles.infoValue, { color: '#059669' }]}>Her sınıfa açık etkinlik</Text>
+                  <Text style={[styles.infoValue, { color: AppColors.success }]}>Her sınıfa açık etkinlik</Text>
                 ) : (
                   <View style={styles.classTagsRow}>
                     {(activity.classes ?? []).map((c) => (
@@ -442,7 +443,7 @@ export default function ActivityEventDetailScreen() {
             <View style={styles.materialsList}>
               {activity.materials.map((m, i) => (
                 <View key={i} style={styles.materialItem}>
-                  <Ionicons name="checkmark-circle-outline" size={16} color="#208AEF" />
+                  <Ionicons name="checkmark-circle-outline" size={16} color={AppColors.primary} />
                   <Text style={styles.materialText}>{m}</Text>
                 </View>
               ))}
@@ -540,7 +541,7 @@ export default function ActivityEventDetailScreen() {
                     <View style={[enrollStyles.pickerRadio, isSelected && !alreadyEnrolled && enrollStyles.pickerRadioSelected]}>
                       {isSelected && !alreadyEnrolled && <View style={enrollStyles.pickerRadioDot} />}
                     </View>
-                    <Text style={[enrollStyles.pickerChildName, alreadyEnrolled && { color: '#9CA3AF' }]}>
+                    <Text style={[enrollStyles.pickerChildName, alreadyEnrolled && { color: AppColors.onSurfaceVariant }]}>
                       {child.full_name}
                     </Text>
                     {alreadyEnrolled && (
@@ -588,19 +589,19 @@ const enrollStyles = StyleSheet.create({
     gap: 10,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   enrolledAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#D1FAE5',
+    backgroundColor: AppColors.successContainer,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  enrolledAvatarText: { fontSize: 15, fontWeight: '700', color: '#059669' },
-  enrolledChildName: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
-  enrolledLabel: { fontSize: 12, color: '#059669', fontWeight: '500' },
+  enrolledAvatarText: { fontSize: 15, fontWeight: '700', color: AppColors.success },
+  enrolledChildName: { fontSize: 14, fontWeight: '600', color: AppColors.onSurface },
+  enrolledLabel: { fontSize: 12, color: AppColors.success, fontWeight: '500' },
   unenrollBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -612,7 +613,7 @@ const enrollStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FCA5A5',
   },
-  unenrollBtnText: { fontSize: 12, color: '#EF4444', fontWeight: '600' },
+  unenrollBtnText: { fontSize: 12, color: AppColors.error, fontWeight: '600' },
 
   // Picker modal
   pickerOverlay: {
@@ -621,7 +622,7 @@ const enrollStyles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -632,12 +633,12 @@ const enrollStyles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainer,
     alignSelf: 'center',
     marginBottom: 4,
   },
-  pickerTitle: { fontSize: 18, fontWeight: '800', color: '#1F2937', textAlign: 'center' },
-  pickerSubtitle: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', marginTop: -8 },
+  pickerTitle: { fontSize: 18, fontWeight: '800', color: AppColors.onSurface, textAlign: 'center' },
+  pickerSubtitle: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', marginTop: -8 },
   pickerList: { gap: 8 },
   pickerRow: {
     flexDirection: 'row',
@@ -646,49 +647,49 @@ const enrollStyles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     backgroundColor: '#FAFAFA',
   },
-  pickerRowSelected: { borderColor: '#208AEF', backgroundColor: '#EFF6FF' },
-  pickerRowDisabled: { opacity: 0.6, backgroundColor: '#F9FAFB' },
+  pickerRowSelected: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryContainer },
+  pickerRowDisabled: { opacity: 0.6, backgroundColor: AppColors.surfaceContainerLow },
   pickerRadio: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: AppColors.surfaceContainer,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pickerRadioSelected: { borderColor: '#208AEF' },
+  pickerRadioSelected: { borderColor: AppColors.primary },
   pickerRadioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
   },
-  pickerChildName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1F2937' },
+  pickerChildName: { flex: 1, fontSize: 15, fontWeight: '600', color: AppColors.onSurface },
   enrolledMiniTag: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: AppColors.successContainer,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
-  enrolledMiniTagText: { fontSize: 11, color: '#059669', fontWeight: '600' },
+  enrolledMiniTagText: { fontSize: 11, color: AppColors.success, fontWeight: '600' },
   pickerActions: { flexDirection: 'row', gap: 10 },
   pickerCancel: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     alignItems: 'center',
   },
-  pickerCancelText: { fontSize: 15, fontWeight: '600', color: '#6B7280' },
+  pickerCancelText: { fontSize: 15, fontWeight: '600', color: AppColors.onSurfaceVariant },
   pickerConfirm: {
     flex: 2,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     alignItems: 'center',
   },
   pickerConfirmText: { fontSize: 15, fontWeight: '700', color: '#fff' },
@@ -699,7 +700,7 @@ const enrollStyles = StyleSheet.create({
 const TILE_SIZE = (SCREEN_W - 32 - 12) / 3;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F8FF' },
+  safe: { flex: 1, backgroundColor: AppColors.surface },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   navBar: {
@@ -715,12 +716,12 @@ const styles = StyleSheet.create({
 
   // Hero
   hero: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     gap: 8,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -730,45 +731,45 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
   },
   heroName: { fontSize: 20, fontWeight: '800', color: '#1A1A2E', textAlign: 'center' },
-  heroSchool: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+  heroSchool: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center' },
   heroBadges: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 },
 
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  badgeGreen: { backgroundColor: '#208AEF' },
-  badgeAmber: { backgroundColor: '#FEF3C7' },
-  badgeBlue: { backgroundColor: '#EFF6FF' },
-  badgeGray: { backgroundColor: '#F3F4F6' },
+  badgeGreen: { backgroundColor: AppColors.primary },
+  badgeAmber: { backgroundColor: AppColors.warningContainer },
+  badgeBlue: { backgroundColor: AppColors.primaryContainer },
+  badgeGray: { backgroundColor: AppColors.surfaceContainerLow },
   badgeTextWhite: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  badgeTextAmber: { fontSize: 12, fontWeight: '700', color: '#D97706' },
-  badgeTextBlue: { fontSize: 12, fontWeight: '700', color: '#208AEF' },
-  badgeTextGray: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  badgeTextAmber: { fontSize: 12, fontWeight: '700', color: AppColors.warning },
+  badgeTextBlue: { fontSize: 12, fontWeight: '700', color: AppColors.primary },
+  badgeTextGray: { fontSize: 12, fontWeight: '600', color: AppColors.onSurfaceVariant },
 
   // Section
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 16,
     gap: 12,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
-  description: { fontSize: 14, color: '#6B7280', lineHeight: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface },
+  description: { fontSize: 14, color: AppColors.onSurfaceVariant, lineHeight: 20 },
 
   // Info grid
   infoGrid: { gap: 10 },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  infoLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
-  infoValue: { fontSize: 14, color: '#1F2937', fontWeight: '600', marginTop: 1 },
+  infoLabel: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500' },
+  infoValue: { fontSize: 14, color: AppColors.onSurface, fontWeight: '600', marginTop: 1 },
 
   // Enroll CTA
   ctaBtn: {
@@ -779,32 +780,32 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
   },
-  ctaBtnPrimary: { backgroundColor: '#208AEF' },
+  ctaBtnPrimary: { backgroundColor: AppColors.primary },
   ctaBtnDanger: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5' },
   ctaBtnPrimaryText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  ctaBtnDangerText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },
-  enrollCount: { textAlign: 'center', fontSize: 13, color: '#9CA3AF' },
+  ctaBtnDangerText: { fontSize: 15, fontWeight: '700', color: AppColors.error },
+  enrollCount: { textAlign: 'center', fontSize: 13, color: AppColors.onSurfaceVariant },
 
   // Gallery
   galleryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   galleryTile: { width: TILE_SIZE, borderRadius: 10, overflow: 'hidden' },
   galleryImage: { width: TILE_SIZE, height: TILE_SIZE },
   galleryThumb: { width: TILE_SIZE, height: TILE_SIZE, justifyContent: 'center', alignItems: 'center', borderRadius: 10 },
-  galleryCaption: { fontSize: 10, color: '#9CA3AF', paddingHorizontal: 2, paddingTop: 2 },
+  galleryCaption: { fontSize: 10, color: AppColors.onSurfaceVariant, paddingHorizontal: 2, paddingTop: 2 },
   emptyGallery: { alignItems: 'center', gap: 8, paddingVertical: 16 },
-  emptyGalleryText: { fontSize: 13, color: '#9CA3AF' },
+  emptyGalleryText: { fontSize: 13, color: AppColors.onSurfaceVariant },
 
   // Materials
   materialsList: { gap: 8 },
   materialItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  materialText: { fontSize: 14, color: '#1F2937', flex: 1 },
+  materialText: { fontSize: 14, color: AppColors.onSurface, flex: 1 },
 
-  cancellationNote: { fontSize: 12, color: '#9CA3AF', textAlign: 'center', marginTop: 6 },
+  cancellationNote: { fontSize: 12, color: AppColors.onSurfaceVariant, textAlign: 'center', marginTop: 6 },
 
   // Class tags
   classTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   classTag: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -818,15 +819,15 @@ const styles = StyleSheet.create({
   participantRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   participantAvatar: {
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: AppColors.primaryContainer, justifyContent: 'center', alignItems: 'center',
   },
-  participantInitial: { fontSize: 14, fontWeight: '700', color: '#208AEF' },
-  participantName: { fontSize: 14, color: '#1F2937', fontWeight: '500' },
+  participantInitial: { fontSize: 14, fontWeight: '700', color: AppColors.primary },
+  participantName: { fontSize: 14, color: AppColors.onSurface, fontWeight: '500' },
 
   // Locked gallery / materials
   lockedGallery: { alignItems: 'center', gap: 8, paddingVertical: 16 },
-  lockedGalleryTitle: { fontSize: 15, fontWeight: '700', color: '#374151' },
-  lockedGalleryText: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', lineHeight: 20 },
+  lockedGalleryTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
+  lockedGalleryText: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
 
   // Lightbox
   lightboxBg: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
@@ -834,8 +835,8 @@ const styles = StyleSheet.create({
   lightboxImage: { width: SCREEN_W, height: SCREEN_W * 1.2 },
   lightboxDoc: { alignItems: 'center', gap: 12, padding: 32 },
   lightboxDocName: { fontSize: 15, color: '#fff', fontWeight: '600', textAlign: 'center' },
-  lightboxDocSize: { fontSize: 12, color: '#9CA3AF' },
-  lightboxOpenBtn: { backgroundColor: '#208AEF', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 },
+  lightboxDocSize: { fontSize: 12, color: AppColors.onSurfaceVariant },
+  lightboxOpenBtn: { backgroundColor: AppColors.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 },
   lightboxOpenText: { fontSize: 14, color: '#fff', fontWeight: '700' },
   lightboxCaption: { position: 'absolute', bottom: 40, left: 16, right: 16 },
   lightboxCaptionText: { color: '#fff', fontSize: 14, textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 8 },

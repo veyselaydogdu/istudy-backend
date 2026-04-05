@@ -13,6 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { Card } from '@/components/ui/Card';
+import { TabSelector } from '@/components/ui/TabSelector';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
 
@@ -43,13 +47,6 @@ interface BlogPost {
 
 type FeedTab = 'global' | 'schools' | 'teachers';
 
-const AVATAR_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
-
-function avatarColor(name: string): string {
-  const idx = name.charCodeAt(0) % AVATAR_COLORS.length;
-  return AVATAR_COLORS[idx];
-}
-
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) { return ''; }
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -66,208 +63,109 @@ function PostCard({ post }: { post: Post }) {
   const authorName = post.author
     ? `${post.author.name} ${post.author.surname}`
     : 'Bilinmiyor';
-  const initial = authorName.charAt(0).toUpperCase();
-  const color = avatarColor(authorName);
 
   return (
-    <View style={cardStyles.card}>
+    <Card style={styles.postCard}>
       {post.is_pinned && (
-        <View style={cardStyles.pinnedRow}>
-          <Ionicons name="pin" size={12} color="#208AEF" />
-          <Text style={cardStyles.pinnedText}>Sabitlenmiş</Text>
+        <View style={styles.pinnedRow}>
+          <Ionicons name="pin" size={12} color={AppColors.secondary} />
+          <Text style={styles.pinnedText}>Sabitlenmiş</Text>
         </View>
       )}
-      <View style={cardStyles.authorRow}>
-        <View style={[cardStyles.avatar, { backgroundColor: color }]}>
-          <Text style={cardStyles.avatarText}>{initial}</Text>
-        </View>
-        <View style={cardStyles.authorInfo}>
-          <Text style={cardStyles.authorName}>{authorName}</Text>
-          <Text style={cardStyles.publishedAt}>{timeAgo(post.published_at)}</Text>
+      <View style={styles.authorRow}>
+        <Avatar name={authorName} size={48} shape="rounded" />
+        <View style={styles.authorInfo}>
+          <Text style={styles.authorName}>{authorName}</Text>
+          <Text style={styles.publishedAt}>{timeAgo(post.published_at)}</Text>
         </View>
         {post.is_global && (
-          <View style={cardStyles.globalBadge}>
-            <Text style={cardStyles.globalBadgeText}>Genel</Text>
+          <View style={styles.globalBadge}>
+            <Text style={styles.globalBadgeText}>Genel</Text>
           </View>
         )}
       </View>
-      <Text style={cardStyles.content}>{post.content}</Text>
-      <View style={cardStyles.footer}>
-        <View style={cardStyles.stat}>
-          <Ionicons name="heart-outline" size={15} color="#6B7280" />
-          <Text style={cardStyles.statText}>{post.reactions_count}</Text>
+      <Text style={styles.content}>{post.content}</Text>
+      {post.media.length > 0 && (
+        <Image
+          source={{ uri: post.media[0].url }}
+          style={styles.postImage}
+          resizeMode="cover"
+        />
+      )}
+      <View style={styles.footer}>
+        <View style={styles.stat}>
+          <Ionicons name="heart-outline" size={18} color={AppColors.onSurfaceVariant} />
+          <Text style={styles.statText}>{post.reactions_count}</Text>
         </View>
-        <View style={cardStyles.stat}>
-          <Ionicons name="chatbubble-outline" size={15} color="#6B7280" />
-          <Text style={cardStyles.statText}>{post.comments_count}</Text>
+        <View style={styles.stat}>
+          <Ionicons name="chatbubble-outline" size={18} color={AppColors.onSurfaceVariant} />
+          <Text style={styles.statText}>{post.comments_count}</Text>
         </View>
       </View>
-    </View>
+    </Card>
   );
 }
 
 function BlogPostCard({ post, onLike }: { post: BlogPost; onLike: (id: number) => void }) {
   const teacherName = post.teacher?.name ?? 'Öğretmen';
-  const initial = teacherName.charAt(0).toUpperCase();
-  const color = avatarColor(teacherName);
 
   return (
     <TouchableOpacity
-      style={cardStyles.card}
-      activeOpacity={0.85}
+      activeOpacity={0.88}
       onPress={() => router.push(`/(app)/teachers/${post.teacher?.id}/blog/${post.id}` as never)}
     >
-      <View style={cardStyles.authorRow}>
-        <TouchableOpacity
-          onPress={() => router.push(`/(app)/teachers/${post.teacher?.id}` as never)}
-        >
-          <View style={[cardStyles.avatar, { backgroundColor: color }]}>
-            <Text style={cardStyles.avatarText}>{initial}</Text>
+      <Card style={styles.postCard}>
+        <View style={styles.authorRow}>
+          <TouchableOpacity
+            onPress={() => router.push(`/(app)/teachers/${post.teacher?.id}` as never)}
+          >
+            <Avatar name={teacherName} size={48} shape="rounded" color={AppColors.secondary} />
+          </TouchableOpacity>
+          <View style={styles.authorInfo}>
+            <Text style={styles.authorName}>{teacherName}</Text>
+            {post.teacher?.title ? (
+              <Text style={styles.publishedAt}>{post.teacher.title}</Text>
+            ) : null}
           </View>
-        </TouchableOpacity>
-        <View style={cardStyles.authorInfo}>
-          <Text style={cardStyles.authorName}>{teacherName}</Text>
-          {post.teacher?.title ? (
-            <Text style={cardStyles.publishedAt}>{post.teacher.title}</Text>
-          ) : null}
+          <Text style={styles.publishedAt}>{timeAgo(post.published_at)}</Text>
         </View>
-        <Text style={cardStyles.publishedAt}>{timeAgo(post.published_at)}</Text>
-      </View>
-      <Text style={blogCardStyles.blogTitle}>{post.title}</Text>
-      {post.description ? (
-        <Text style={cardStyles.content} numberOfLines={3}>
-          {post.description}
-        </Text>
-      ) : null}
-      {post.image_url ? (
-        <Image
-          source={{ uri: post.image_url }}
-          style={blogCardStyles.blogImage}
-          resizeMode="cover"
-        />
-      ) : null}
-      <View style={cardStyles.footer}>
-        <TouchableOpacity style={cardStyles.stat} onPress={() => onLike(post.id)}>
-          <Ionicons
-            name={post.is_liked ? 'heart' : 'heart-outline'}
-            size={15}
-            color={post.is_liked ? '#EF4444' : '#6B7280'}
+        <Text style={styles.blogTitle}>{post.title}</Text>
+        {post.description ? (
+          <Text style={styles.content} numberOfLines={3}>
+            {post.description}
+          </Text>
+        ) : null}
+        {post.image_url ? (
+          <Image
+            source={{ uri: post.image_url }}
+            style={styles.postImage}
+            resizeMode="cover"
           />
-          <Text style={cardStyles.statText}>{post.likes_count}</Text>
-        </TouchableOpacity>
-        <View style={cardStyles.stat}>
-          <Ionicons name="chatbubble-outline" size={15} color="#6B7280" />
-          <Text style={cardStyles.statText}>{post.comments_count}</Text>
+        ) : null}
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.stat} onPress={() => onLike(post.id)}>
+            <Ionicons
+              name={post.is_liked ? 'heart' : 'heart-outline'}
+              size={18}
+              color={post.is_liked ? AppColors.errorContainer : AppColors.onSurfaceVariant}
+            />
+            <Text style={styles.statText}>{post.likes_count}</Text>
+          </TouchableOpacity>
+          <View style={styles.stat}>
+            <Ionicons name="chatbubble-outline" size={18} color={AppColors.onSurfaceVariant} />
+            <Text style={styles.statText}>{post.comments_count}</Text>
+          </View>
         </View>
-      </View>
+      </Card>
     </TouchableOpacity>
   );
 }
 
-const blogCardStyles = StyleSheet.create({
-  blogTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 6,
-  },
-  blogImage: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-});
-
-const cardStyles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  pinnedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 10,
-  },
-  pinnedText: {
-    fontSize: 11,
-    color: '#208AEF',
-    fontWeight: '600',
-  },
-  authorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  authorInfo: {
-    flex: 1,
-  },
-  authorName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  publishedAt: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 1,
-  },
-  globalBadge: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  globalBadgeText: {
-    fontSize: 11,
-    color: '#208AEF',
-    fontWeight: '600',
-  },
-  content: {
-    fontSize: 14,
-    color: '#374151',
-    lineHeight: 22,
-    marginBottom: 14,
-  },
-  footer: {
-    flexDirection: 'row',
-    gap: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    paddingTop: 10,
-  },
-  stat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  statText: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-});
+const FEED_TABS = [
+  { key: 'global' as FeedTab, label: 'Genel' },
+  { key: 'schools' as FeedTab, label: 'Okullarım' },
+  { key: 'teachers' as FeedTab, label: 'Öğretmenler' },
+];
 
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<FeedTab>('schools');
@@ -373,47 +271,28 @@ export default function FeedScreen() {
     }
   };
 
-  const TABS: Array<{ key: FeedTab; label: string; icon: string }> = [
-    { key: 'global', label: 'Genel', icon: 'globe-outline' },
-    { key: 'schools', label: 'Okullarım', icon: 'school-outline' },
-    { key: 'teachers', label: 'Öğretmenler', icon: 'person-circle-outline' },
-  ];
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerGreeting}>Merhaba</Text>
-          <Text style={styles.headerTitle}>Akış</Text>
+          <Text style={styles.headerGreeting}>Merhaba 👋</Text>
+          <Text style={styles.headerTitle}>Okul Günlüğü</Text>
         </View>
-        <View style={styles.headerIcon}>
-          <Ionicons name="notifications-outline" size={22} color="#1F2937" />
-        </View>
+        <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
+          <Ionicons name="notifications-outline" size={22} color={AppColors.onSurfaceVariant} />
+          <View style={styles.bellDot} />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.tabBar}>
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => setActiveTab(tab.key)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={tab.icon as never}
-              size={14}
-              color={activeTab === tab.key ? '#FFFFFF' : '#6B7280'}
-            />
-            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Tab Selector */}
+      <View style={styles.tabWrap}>
+        <TabSelector tabs={FEED_TABS} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
 
       {error && (
         <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
+          <Ionicons name="alert-circle-outline" size={16} color={AppColors.error} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -425,11 +304,7 @@ export default function FeedScreen() {
           renderItem={({ item }) => <BlogPostCard post={item} onLike={handleLike} />}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor="#208AEF"
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
@@ -437,19 +312,15 @@ export default function FeedScreen() {
             !loading ? (
               <View style={styles.empty}>
                 <View style={styles.emptyIconWrap}>
-                  <Ionicons name="person-circle-outline" size={40} color="#D1D5DB" />
+                  <Ionicons name="person-circle-outline" size={44} color={AppColors.surfaceContainer} />
                 </View>
                 <Text style={styles.emptyTitle}>Henüz blog yazısı yok</Text>
-                <Text style={styles.emptyText}>
-                  Takip ettiğiniz öğretmenlerin yazıları burada görünecek.
-                </Text>
+                <Text style={styles.emptyText}>Takip ettiğiniz öğretmenlerin yazıları burada görünecek.</Text>
               </View>
             ) : null
           }
           ListFooterComponent={
-            loading && blogPosts.length > 0 ? (
-              <ActivityIndicator color="#208AEF" style={styles.loader} />
-            ) : null
+            loading && blogPosts.length > 0 ? <ActivityIndicator color={AppColors.primary} style={styles.loader} /> : null
           }
         />
       ) : (
@@ -459,11 +330,7 @@ export default function FeedScreen() {
           renderItem={({ item }) => <PostCard post={item} />}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor="#208AEF"
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
@@ -471,7 +338,7 @@ export default function FeedScreen() {
             !loading ? (
               <View style={styles.empty}>
                 <View style={styles.emptyIconWrap}>
-                  <Ionicons name="newspaper-outline" size={40} color="#D1D5DB" />
+                  <Ionicons name="newspaper-outline" size={44} color={AppColors.surfaceContainer} />
                 </View>
                 <Text style={styles.emptyTitle}>Henüz paylaşım yok</Text>
                 <Text style={styles.emptyText}>Yeni paylaşımlar burada görünecek.</Text>
@@ -479,9 +346,7 @@ export default function FeedScreen() {
             ) : null
           }
           ListFooterComponent={
-            loading && posts.length > 0 ? (
-              <ActivityIndicator color="#208AEF" style={styles.loader} />
-            ) : null
+            loading && posts.length > 0 ? <ActivityIndicator color={AppColors.primary} style={styles.loader} /> : null
           }
         />
       )}
@@ -490,120 +355,87 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F8FF',
-  },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: AppColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.surfaceContainer,
   },
   headerGreeting: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    fontWeight: '500',
+    fontSize: 12,
+    color: AppColors.onSurfaceVariant,
+    fontWeight: '600',
     marginBottom: 2,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#1F2937',
+    fontSize: 24,
+    fontWeight: '900',
+    color: AppColors.primary,
+    letterSpacing: -0.3,
   },
-  headerIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+  bellBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  tabBar: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 4,
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+  bellDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: AppColors.error,
+    borderWidth: 1.5,
+    borderColor: AppColors.primaryContainer,
   },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    borderRadius: 11,
-    gap: 6,
+  tabWrap: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: AppColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.surfaceContainer,
   },
-  tabActive: {
-    backgroundColor: '#208AEF',
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-  },
+
   list: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
+    gap: 12,
   },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 20,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 13,
-    flex: 1,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    gap: 10,
-  },
-  emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-  loader: {
-    paddingVertical: 20,
-  },
+
+  postCard: { borderRadius: 16, padding: 16 },
+  pinnedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
+  pinnedText: { fontSize: 11, color: AppColors.secondary, fontWeight: '700' },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  authorInfo: { flex: 1 },
+  authorName: { fontSize: 14, fontWeight: '800', color: AppColors.onSurface },
+  publishedAt: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500', marginTop: 1 },
+  globalBadge: { backgroundColor: AppColors.primaryContainer, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  globalBadgeText: { fontSize: 10, color: AppColors.primary, fontWeight: '700' },
+  blogTitle: { fontSize: 16, fontWeight: '800', color: AppColors.onSurface, marginBottom: 6 },
+  content: { fontSize: 14, color: AppColors.onSurface, lineHeight: 22, marginBottom: 12, fontWeight: '500' },
+  postImage: { width: '100%', height: 190, borderRadius: 12, marginBottom: 12 },
+  footer: { flexDirection: 'row', gap: 18, borderTopWidth: 1, borderTopColor: AppColors.surfaceContainer, paddingTop: 10, marginTop: 4 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statText: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '600' },
+
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 8, backgroundColor: '#fee2e2', borderRadius: 12, padding: 12 },
+  errorText: { color: AppColors.error, fontSize: 13, flex: 1, fontWeight: '500' },
+
+  empty: { alignItems: 'center', paddingVertical: 60, gap: 10 },
+  emptyIconWrap: { width: 88, height: 88, borderRadius: 28, backgroundColor: AppColors.surfaceContainerLow, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  emptyTitle: { fontSize: 17, fontWeight: '800', color: AppColors.onSurface },
+  emptyText: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
+  loader: { paddingVertical: 20 },
 });

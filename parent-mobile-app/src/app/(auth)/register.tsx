@@ -18,6 +18,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
+import { AppColors } from '@/constants/theme';
+import { Button } from '@/components/ui/Button';
 import api from '../../lib/api';
 import { getApiError, registerRequest } from '../../lib/auth';
 
@@ -61,7 +63,7 @@ function calcStrength(pwd: string): PasswordStrength {
   return { score, hasLength, hasUpper, hasSpecial, hasNumber };
 }
 
-const BAR_COLORS = ['#EF4444', '#F59E0B', '#10B981', '#208AEF'];
+const BAR_COLORS = ['#EF4444', '#F59E0B', '#10B981', AppColors.primary];
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const { score, hasLength, hasUpper, hasSpecial, hasNumber } = calcStrength(password);
@@ -145,7 +147,7 @@ function CountryPickerModal({
           <View style={modalStyles.handle} />
           <Text style={modalStyles.title}>Ülke Kodu Seç</Text>
           <View style={modalStyles.searchRow}>
-            <Ionicons name="search-outline" size={16} color="#9CA3AF" />
+            <Ionicons name="search-outline" size={16} color={AppColors.onSurfaceVariant} />
             <TextInput
               style={modalStyles.searchInput}
               value={search}
@@ -184,19 +186,19 @@ function CountryPickerModal({
 const modalStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: AppColors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 36 : 20,
     maxHeight: '80%',
   },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB', alignSelf: 'center', marginBottom: 16 },
-  title: { fontSize: 17, fontWeight: '800', color: '#1F2937', paddingHorizontal: 20, marginBottom: 12 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: AppColors.surfaceContainer, alignSelf: 'center', marginBottom: 16 },
+  title: { fontSize: 17, fontWeight: '800', color: AppColors.onSurface, paddingHorizontal: 20, marginBottom: 12 },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 12,
     marginHorizontal: 20,
     paddingHorizontal: 12,
@@ -204,21 +206,21 @@ const modalStyles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  searchInput: { flex: 1, fontSize: 14, color: '#1F2937', padding: 0 },
+  searchInput: { flex: 1, fontSize: 14, color: AppColors.onSurface, padding: 0 },
   item: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 13, gap: 12 },
   flag: { fontSize: 22, width: 30 },
-  itemName: { flex: 1, fontSize: 14, color: '#1F2937', fontWeight: '500' },
-  itemCode: { fontSize: 14, color: '#208AEF', fontWeight: '700' },
-  separator: { height: 1, backgroundColor: '#F9FAFB', marginLeft: 62 },
+  itemName: { flex: 1, fontSize: 14, color: AppColors.onSurface, fontWeight: '500' },
+  itemCode: { fontSize: 14, color: AppColors.primary, fontWeight: '700' },
+  separator: { height: 1, backgroundColor: AppColors.surfaceContainerLow, marginLeft: 62 },
   closeBtn: {
     marginHorizontal: 20,
     marginTop: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  closeBtnText: { fontSize: 15, fontWeight: '700', color: '#374151' },
+  closeBtnText: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
 });
 
 // ─── Main screen ──────────────────────────────────────────
@@ -342,7 +344,7 @@ export default function RegisterScreen() {
         {/* Blue header */}
         <View style={styles.heroBanner}>
           <View style={styles.logoCircle}>
-            <Ionicons name="person-add" size={28} color="#FFFFFF" />
+            <Ionicons name="person-add" size={28} color={AppColors.primary} />
           </View>
           <Text style={styles.heroTitle}>Hesap Oluştur</Text>
           <Text style={styles.heroSubtitle}>Veli hesabınızı kaydedin</Text>
@@ -389,7 +391,7 @@ export default function RegisterScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>E-posta</Text>
               <View style={styles.inputRow}>
-                <Ionicons name="mail-outline" size={17} color="#9CA3AF" style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={17} color={AppColors.onSurfaceVariant} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   value={form.email}
@@ -414,12 +416,12 @@ export default function RegisterScreen() {
                   disabled={countriesLoading}
                 >
                   {countriesLoading ? (
-                    <ActivityIndicator size="small" color="#208AEF" />
+                    <ActivityIndicator size="small" color={AppColors.primary} />
                   ) : (
                     <>
                       <Text style={styles.flagText}>{selectedCountry.flag_emoji}</Text>
                       <Text style={styles.codeText}>+{selectedCountry.phone_code}</Text>
-                      <Ionicons name="chevron-down" size={13} color="#9CA3AF" />
+                      <Ionicons name="chevron-down" size={13} color={AppColors.onSurfaceVariant} />
                     </>
                   )}
                 </TouchableOpacity>
@@ -444,7 +446,7 @@ export default function RegisterScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>Şifre</Text>
               <View style={styles.inputRow}>
-                <Ionicons name="lock-closed-outline" size={17} color="#9CA3AF" style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={17} color={AppColors.onSurfaceVariant} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   value={form.password}
@@ -461,7 +463,7 @@ export default function RegisterScreen() {
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={17}
-                    color="#9CA3AF"
+                    color={AppColors.onSurfaceVariant}
                   />
                 </TouchableOpacity>
               </View>
@@ -477,7 +479,7 @@ export default function RegisterScreen() {
                   borderColor: form.password === form.password_confirmation ? '#10B981' : '#EF4444',
                 },
               ]}>
-                <Ionicons name="lock-closed-outline" size={17} color="#9CA3AF" style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={17} color={AppColors.onSurfaceVariant} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   value={form.password_confirmation}
@@ -498,18 +500,14 @@ export default function RegisterScreen() {
             </View>
 
             {/* Kayıt ol butonu */}
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+            <Button
+              label="Kayıt Ol"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
               onPress={handleRegister}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>Kayıt Ol</Text>
-              )}
-            </TouchableOpacity>
+            />
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Zaten hesabınız var mı?</Text>
@@ -531,31 +529,33 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#208AEF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.primaryContainer },
   flex: { flex: 1 },
   heroBanner: {
     alignItems: 'center',
     paddingTop: 24,
     paddingBottom: 32,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primaryContainer,
     gap: 6,
   },
   logoCircle: {
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.primaryDim,
   },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.3 },
-  heroSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: AppColors.primary, letterSpacing: 0.3 },
+  heroSubtitle: { fontSize: 13, color: AppColors.primaryDim, fontWeight: '600' },
   cardOuter: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: AppColors.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     overflow: 'hidden',
   },
   cardScroll: {
@@ -566,29 +566,29 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
   field: { marginBottom: 14 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 7 },
+  label: { fontSize: 11, fontWeight: '700', color: AppColors.onSurfaceVariant, marginBottom: 7, letterSpacing: 0.5 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 13,
     paddingHorizontal: 13,
     paddingVertical: 12,
     gap: 9,
   },
   inputIcon: { flexShrink: 0 },
-  input: { flex: 1, fontSize: 14, color: '#1F2937', padding: 0 },
+  input: { flex: 1, fontSize: 14, color: AppColors.onSurface, padding: 0 },
 
   // Phone
   phoneRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   countryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 13,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -596,28 +596,12 @@ const styles = StyleSheet.create({
     minWidth: 88,
   },
   flagText: { fontSize: 18 },
-  codeText: { fontSize: 14, fontWeight: '700', color: '#1F2937' },
+  codeText: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
   phoneInput: { flex: 1 },
-  phoneCount: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
-
-  // Submit
-  button: {
-    backgroundColor: '#208AEF',
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#208AEF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
+  phoneCount: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500' },
 
   // Footer
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
-  footerText: { color: '#6B7280', fontSize: 14 },
-  footerLink: { color: '#208AEF', fontSize: 14, fontWeight: '700' },
+  footerText: { color: AppColors.onSurfaceVariant, fontSize: 14 },
+  footerLink: { color: AppColors.primary, fontSize: 14, fontWeight: '700' },
 });

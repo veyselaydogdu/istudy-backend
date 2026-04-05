@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -77,16 +78,16 @@ const detailStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   infoLabel: {
     fontSize: 13,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 13,
-    color: '#1F2937',
+    color: AppColors.onSurface,
     fontWeight: '600',
     textAlign: 'right',
     flex: 1,
@@ -247,7 +248,7 @@ export default function ChildDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -279,7 +280,7 @@ export default function ChildDetailScreen() {
               setRefreshing(true);
               void fetchChild(true);
             }}
-            tintColor="#208AEF"
+            tintColor={AppColors.primary}
           />
         }
       >
@@ -528,20 +529,20 @@ export default function ChildDetailScreen() {
 
 const classStyles = StyleSheet.create({
   pendingCard: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: AppColors.tertiaryContainer,
   },
   pendingIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -555,12 +556,12 @@ const classStyles = StyleSheet.create({
   pendingSchool: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#B45309',
+    color: AppColors.warning,
     marginBottom: 2,
   },
   pendingDate: {
     fontSize: 12,
-    color: '#D97706',
+    color: AppColors.warning,
   },
   classHeader: {
     flexDirection: 'row',
@@ -575,7 +576,7 @@ const classStyles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
@@ -589,16 +590,16 @@ const classStyles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 32,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainer,
   },
   statNumber: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   statLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
   },
   teachersSection: {
@@ -607,7 +608,7 @@ const classStyles = StyleSheet.create({
   },
   teachersLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -618,7 +619,7 @@ const classStyles = StyleSheet.create({
     gap: 6,
   },
   teacherChip: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
@@ -635,7 +636,7 @@ const classStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -648,12 +649,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   backText: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '500',
     width: 60,
@@ -661,10 +662,10 @@ const styles = StyleSheet.create({
   topBarTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   editText: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '600',
     width: 60,
@@ -687,7 +688,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -714,36 +715,36 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
   },
   photoEditIcon: { fontSize: 14 },
   avatarText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 28,
     fontWeight: '700',
   },
   childName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   activeBadge: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: AppColors.successContainer,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 20,
   },
   activeBadgeText: {
-    color: '#059669',
+    color: AppColors.success,
     fontSize: 12,
     fontWeight: '600',
   },
   schoolBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
@@ -756,7 +757,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 16,
     gap: 4,
@@ -764,18 +765,18 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 8,
   },
   tagSection: {
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
     gap: 8,
   },
   tagSectionLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -802,49 +803,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
   },
   tagTextRed: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 12,
     fontWeight: '600',
   },
   tagOrange: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
   },
   tagTextOrange: {
-    color: '#D97706',
+    color: AppColors.warning,
     fontSize: 12,
     fontWeight: '600',
   },
   medItem: {
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
     gap: 2,
   },
   medName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   medDetail: {
     fontSize: 12,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   noteSection: {
     paddingVertical: 8,
     gap: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   noteLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   noteText: {
     fontSize: 14,
-    color: '#374151',
+    color: AppColors.onSurface,
     lineHeight: 20,
   },
   actions: {
@@ -852,7 +853,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   healthButton: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -860,7 +861,7 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   healthButtonText: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -870,10 +871,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#FEE2E2',
   },
   deleteButtonText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 15,
     fontWeight: '600',
   },

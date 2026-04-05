@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -23,7 +24,7 @@ interface TeacherClass {
   color: string | null;
 }
 
-const CLASS_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
+const CLASS_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.warning, AppColors.success, AppColors.error];
 
 function classColor(cls: TeacherClass): string {
   if (cls.color) { return cls.color; }
@@ -138,7 +139,7 @@ export default function ClassesScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -152,14 +153,14 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     marginBottom: 2,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   errorBox: {
     flexDirection: 'row',
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 13,
     flex: 1,
   },
@@ -181,13 +182,13 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden',
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 6,
@@ -210,20 +211,20 @@ const styles = StyleSheet.create({
   className: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   countBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   countText: {
     fontSize: 13,
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '700',
   },
   schoolRow: {
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   },
   schoolName: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   empty: {
     alignItems: 'center',
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 28,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
@@ -252,11 +253,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     textAlign: 'center',
   },
 });

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -207,7 +208,7 @@ export default function SchoolsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -271,7 +272,7 @@ export default function SchoolsScreen() {
         )}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void fetchData(true); }} tintColor="#208AEF" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void fetchData(true); }} tintColor={AppColors.primary} />
         }
         ListEmptyComponent={
           !hasRequests ? (
@@ -305,7 +306,7 @@ export default function SchoolsScreen() {
 // ─── Styles ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
@@ -315,23 +316,23 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 14,
   },
-  headerSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '500', marginBottom: 2 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: '#1F2937' },
+  headerSub: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500', marginBottom: 2 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: AppColors.onSurface },
   joinButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    shadowColor: '#208AEF',
+    shadowColor: AppColors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 3,
   },
-  joinButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  joinButtonText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -342,46 +343,46 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-  errorText: { color: '#DC2626', fontSize: 13, flex: 1 },
+  errorText: { color: AppColors.error, fontSize: 13, flex: 1 },
   list: { paddingHorizontal: 20, paddingBottom: 20 },
 
   // Approved school card
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     padding: 16,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 6,
     elevation: 3,
   },
   schoolAvatar: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: AppColors.infoContainer,
   },
-  schoolAvatarText: { fontWeight: '800', color: '#208AEF' },
+  schoolAvatarText: { fontWeight: '800', color: AppColors.primary },
   cardInfo: { flex: 1 },
-  schoolName: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 5 },
+  schoolName: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface, marginBottom: 5 },
   typeChip: {
     alignSelf: 'flex-start',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 6,
     paddingHorizontal: 7,
     paddingVertical: 2,
     marginBottom: 4,
   },
-  typeChipText: { fontSize: 11, color: '#208AEF', fontWeight: '600' },
+  typeChipText: { fontSize: 11, color: AppColors.primary, fontWeight: '600' },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
-  schoolAddress: { fontSize: 12, color: '#9CA3AF', flex: 1 },
-  joinedAt: { fontSize: 11, color: '#C4C9D4' },
+  schoolAddress: { fontSize: 12, color: AppColors.onSurfaceVariant, flex: 1 },
+  joinedAt: { fontSize: 11, color: AppColors.surfaceContainer },
 
   // Empty state
   empty: { alignItems: 'center', paddingVertical: 60, gap: 10 },
@@ -389,32 +390,32 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 28,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
   },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
-  emptyText: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center' },
   emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingHorizontal: 24,
     paddingVertical: 12,
     marginTop: 8,
   },
-  emptyButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  emptyButtonText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
 
   // Requests collapsible section
   requestsSection: {
     marginTop: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -427,17 +428,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   requestsHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  requestsHeaderTitle: { fontSize: 15, fontWeight: '700', color: '#374151' },
+  requestsHeaderTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
   pendingBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 10,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
-  pendingBadgeText: { fontSize: 11, fontWeight: '700', color: '#D97706' },
+  pendingBadgeText: { fontSize: 11, fontWeight: '700', color: AppColors.warning },
   requestsBody: { paddingBottom: 8 },
 
   // Tabs
@@ -446,7 +447,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 10,
     padding: 3,
   },
@@ -459,18 +460,18 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 8,
   },
-  tabActive: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  tabActiveRed: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  tabText: { fontSize: 13, fontWeight: '600', color: '#9CA3AF' },
-  tabTextActive: { color: '#208AEF' },
-  tabTextRed: { color: '#EF4444' },
-  tabCount: { backgroundColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
-  tabCountActive: { backgroundColor: '#DBEAFE' },
+  tabActive: { backgroundColor: AppColors.white, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  tabActiveRed: { backgroundColor: AppColors.white, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  tabText: { fontSize: 13, fontWeight: '600', color: AppColors.onSurfaceVariant },
+  tabTextActive: { color: AppColors.primary },
+  tabTextRed: { color: AppColors.error },
+  tabCount: { backgroundColor: AppColors.surfaceContainer, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
+  tabCountActive: { backgroundColor: AppColors.infoContainer },
   tabCountRed: { backgroundColor: '#FEE2E2' },
-  tabCountText: { fontSize: 10, fontWeight: '700', color: '#6B7280' },
-  tabCountTextActive: { color: '#1F2937' },
+  tabCountText: { fontSize: 10, fontWeight: '700', color: AppColors.onSurfaceVariant },
+  tabCountTextActive: { color: AppColors.onSurface },
   tabEmpty: { paddingVertical: 20, alignItems: 'center' },
-  tabEmptyText: { fontSize: 13, color: '#9CA3AF' },
+  tabEmptyText: { fontSize: 13, color: AppColors.onSurfaceVariant },
 
   // Request card
   reqCard: {
@@ -480,13 +481,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 11,
     borderTopWidth: 1,
-    borderTopColor: '#F9FAFB',
+    borderTopColor: AppColors.surfaceContainerLow,
   },
   reqInfo: { flex: 1 },
-  reqSchoolName: { fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 3 },
-  reqAddress: { fontSize: 11, color: '#9CA3AF', flex: 1 },
-  rejectionReason: { fontSize: 12, color: '#6B7280', fontStyle: 'italic', marginTop: 2, marginBottom: 2 },
-  reqDate: { fontSize: 11, color: '#C4C9D4', marginTop: 2 },
-  dotPending: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B', flexShrink: 0 },
-  dotRejected: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', flexShrink: 0 },
+  reqSchoolName: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface, marginBottom: 3 },
+  reqAddress: { fontSize: 11, color: AppColors.onSurfaceVariant, flex: 1 },
+  rejectionReason: { fontSize: 12, color: AppColors.onSurfaceVariant, fontStyle: 'italic', marginTop: 2, marginBottom: 2 },
+  reqDate: { fontSize: 11, color: AppColors.surfaceContainer, marginTop: 2 },
+  dotPending: { width: 8, height: 8, borderRadius: 4, backgroundColor: AppColors.warning, flexShrink: 0 },
+  dotRejected: { width: 8, height: 8, borderRadius: 4, backgroundColor: AppColors.error, flexShrink: 0 },
 });

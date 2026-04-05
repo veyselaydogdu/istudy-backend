@@ -9,20 +9,21 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
+import { AppColors } from '@/constants/theme';
+import { Button } from '@/components/ui/Button';
+import { InputField } from '@/components/ui/InputField';
 import { getApiError, loginRequest } from '../../lib/auth';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -49,16 +50,20 @@ export default function LoginScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Blue header banner */}
+        {/* Hero banner — primary-container background */}
         <View style={styles.heroBanner}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="school" size={32} color="#FFFFFF" />
+          <View style={styles.logoBox}>
+            <Ionicons name="school" size={40} color={AppColors.primary} />
           </View>
           <Text style={styles.heroTitle}>iStudy</Text>
-          <Text style={styles.heroSubtitle}>Veli Portalı</Text>
+          <Text style={styles.heroSubtitle}>Eğitimin En Eğlenceli Hali!</Text>
+          {/* Badge pill */}
+          <View style={styles.newBadge}>
+            <Text style={styles.newBadgeText}>YENİ!</Text>
+          </View>
         </View>
 
-        {/* White card form */}
+        {/* White card form area */}
         <View style={styles.cardOuter}>
           <ScrollView
             contentContainerStyle={styles.cardScroll}
@@ -68,68 +73,52 @@ export default function LoginScreen() {
             <Text style={styles.formTitle}>Giriş Yap</Text>
             <Text style={styles.formSubtitle}>Hesabınıza erişin</Text>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>E-posta</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="mail-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="ornek@mail.com"
-                  placeholderTextColor="#C4C9D4"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
+            <View style={styles.fields}>
+              <InputField
+                label="E-posta"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="ornek@mail.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                icon={<Ionicons name="mail-outline" size={18} color={AppColors.onSurfaceVariant} />}
+              />
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Şifre</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="lock-closed-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Şifrenizi girin"
-                  placeholderTextColor="#C4C9D4"
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color="#9CA3AF"
-                  />
-                </TouchableOpacity>
-              </View>
+              <InputField
+                label="Şifre"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Şifrenizi girin"
+                passwordToggle
+                icon={<Ionicons name="lock-closed-outline" size={18} color={AppColors.onSurfaceVariant} />}
+              />
             </View>
 
             <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
               Şifremi Unuttum
             </Link>
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+            <Button
+              label="Giriş Yap"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
               onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>Giriş Yap</Text>
-              )}
-            </TouchableOpacity>
+            />
 
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Hesabınız yok mu?</Text>
-              <Link href="/(auth)/register" style={styles.footerLink}>
-                {' '}Kayıt Ol
-              </Link>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>veya</Text>
+              <View style={styles.dividerLine} />
             </View>
+
+            <Link href="/(auth)/register" asChild>
+              <TouchableOpacity activeOpacity={0.85} style={styles.outlineButton}>
+                <Text style={styles.outlineButtonText}>Hesap Oluştur</Text>
+              </TouchableOpacity>
+            </Link>
 
             <TouchableOpacity
               onPress={() => router.push('/(auth)/teacher-login')}
@@ -148,43 +137,67 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primaryContainer,
   },
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
+
   heroBanner: {
     alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 40,
-    backgroundColor: '#208AEF',
-    gap: 8,
+    paddingTop: 28,
+    paddingBottom: 44,
+    backgroundColor: AppColors.primaryContainer,
+    gap: 6,
+    position: 'relative',
   },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  logoBox: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.primaryDim,
+    shadowColor: AppColors.primaryDim,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   heroTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    fontSize: 34,
+    fontWeight: '900',
+    color: AppColors.primary,
+    letterSpacing: -0.5,
   },
   heroSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    color: AppColors.primaryDim,
+    fontWeight: '700',
   },
+  newBadge: {
+    position: 'absolute',
+    top: 24,
+    right: 80,
+    backgroundColor: AppColors.tertiaryContainer,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+    transform: [{ rotate: '-12deg' }],
+  },
+  newBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: AppColors.tertiary,
+    letterSpacing: 0.5,
+  },
+
   cardOuter: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: AppColors.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     overflow: 'hidden',
   },
   cardScroll: {
@@ -193,95 +206,73 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   formTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1F2937',
+    fontSize: 26,
+    fontWeight: '900',
+    color: AppColors.onSurface,
     marginBottom: 4,
   },
   formSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     marginBottom: 28,
+    fontWeight: '500',
   },
-  field: {
+  fields: {
+    gap: 14,
     marginBottom: 16,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 10,
-  },
-  inputIcon: {
-    flexShrink: 0,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1F2937',
-    padding: 0,
-  },
   forgotLink: {
-    color: '#208AEF',
+    color: AppColors.primary,
     fontSize: 13,
     textAlign: 'right',
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: 24,
   },
-  button: {
-    backgroundColor: '#208AEF',
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#208AEF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  footer: {
+  divider: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 28,
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 20,
   },
-  footerText: {
-    color: '#6B7280',
-    fontSize: 14,
+  dividerLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: AppColors.surfaceContainer,
+    borderRadius: 1,
   },
-  footerLink: {
-    color: '#208AEF',
-    fontSize: 14,
+  dividerText: {
+    color: AppColors.onSurfaceVariant,
+    fontSize: 13,
     fontWeight: '700',
+  },
+  outlineButton: {
+    backgroundColor: AppColors.white,
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  outlineButtonText: {
+    color: AppColors.secondary,
+    fontSize: 16,
+    fontWeight: '800',
   },
   teacherLink: {
-    marginTop: 16,
+    marginTop: 20,
     alignItems: 'center',
     paddingVertical: 8,
   },
   teacherLinkText: {
-    color: '#208AEF',
+    color: AppColors.onSurfaceVariant,
     fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '700',
   },
 });

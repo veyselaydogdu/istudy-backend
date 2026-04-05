@@ -15,6 +15,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { SectionLabel } from '@/components/ui/SectionLabel';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -27,7 +32,7 @@ interface Member {
   is_active: boolean;
 }
 
-const AVATAR_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B'];
+const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.success, AppColors.warning];
 
 function memberColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
@@ -118,7 +123,7 @@ export default function FamilyScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -131,14 +136,13 @@ export default function FamilyScreen() {
           <Text style={styles.headerSub}>Yönet</Text>
           <Text style={styles.headerTitle}>Ailem</Text>
         </View>
-        <TouchableOpacity
-          style={styles.addBtn}
+        <Button
+          label="Üye Ekle"
+          variant="primary"
+          size="sm"
+          icon={<Ionicons name="person-add-outline" size={16} color={AppColors.white} />}
           onPress={() => setShowAddModal(true)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.addBtnText}>Üye Ekle</Text>
-        </TouchableOpacity>
+        />
       </View>
 
       {/* Quick Actions */}
@@ -148,31 +152,27 @@ export default function FamilyScreen() {
         activeOpacity={0.75}
       >
         <View style={styles.quickActionIcon}>
-          <Ionicons name="medkit-outline" size={22} color="#EF4444" />
+          <Ionicons name="medkit-outline" size={22} color={AppColors.error} />
         </View>
         <View style={styles.quickActionInfo}>
           <Text style={styles.quickActionTitle}>Acil Durum Kişileri</Text>
           <Text style={styles.quickActionSub}>Acil iletişim listesini yönetin</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+        <Ionicons name="chevron-forward" size={18} color={AppColors.surfaceContainer} />
       </TouchableOpacity>
 
-      <Text style={styles.sectionLabel}>AİLE ÜYELERİ</Text>
+      <SectionLabel style={styles.sectionLabelPad}>Aile Üyeleri</SectionLabel>
 
       <FlatList
         data={members}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => {
           const name = item.user ? `${item.user.name} ${item.user.surname}` : 'Bilinmiyor';
-          const color = memberColor(item.user?.name ?? 'A');
-          const initial = (item.user?.name ?? '?').charAt(0).toUpperCase();
           const isSuperParent = item.role === 'super_parent';
 
           return (
-            <View style={styles.card}>
-              <View style={[styles.avatar, { backgroundColor: color }]}>
-                <Text style={styles.avatarText}>{initial}</Text>
-              </View>
+            <Card style={styles.memberCard}>
+              <Avatar name={name} size={46} shape="rounded" />
               <View style={styles.info}>
                 <View style={styles.nameRow}>
                   <Text style={styles.memberName}>{name}</Text>
@@ -194,15 +194,15 @@ export default function FamilyScreen() {
                   style={styles.removeBtn}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close-circle-outline" size={22} color="#EF4444" />
+                  <Ionicons name="close-circle-outline" size={22} color={AppColors.error} />
                 </TouchableOpacity>
               )}
-            </View>
+            </Card>
           );
         }}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#208AEF" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -228,13 +228,13 @@ export default function FamilyScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>E-posta Adresi</Text>
               <View style={styles.inputRow}>
-                <Ionicons name="mail-outline" size={17} color="#9CA3AF" />
+                <Ionicons name="mail-outline" size={17} color={AppColors.onSurfaceVariant} />
                 <TextInput
                   style={styles.input}
                   value={addEmail}
                   onChangeText={setAddEmail}
                   placeholder="ornek@mail.com"
-                  placeholderTextColor="#C4C9D4"
+                  placeholderTextColor={AppColors.surfaceContainer}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -245,37 +245,31 @@ export default function FamilyScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>İlişki Türü (İsteğe bağlı)</Text>
               <View style={styles.inputRow}>
-                <Ionicons name="people-outline" size={17} color="#9CA3AF" />
+                <Ionicons name="people-outline" size={17} color={AppColors.onSurfaceVariant} />
                 <TextInput
                   style={styles.input}
                   value={addRelation}
                   onChangeText={setAddRelation}
                   placeholder="Anne, Baba, Vasi..."
-                  placeholderTextColor="#C4C9D4"
+                  placeholderTextColor={AppColors.surfaceContainer}
                 />
               </View>
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
+              <Button
+                label="İptal"
+                variant="outline"
+                size="lg"
                 onPress={() => setShowAddModal(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelBtnText}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmBtn, addLoading && styles.btnDisabled]}
+              />
+              <Button
+                label="Ekle"
+                variant="primary"
+                size="lg"
+                loading={addLoading}
                 onPress={handleAddMember}
-                disabled={addLoading}
-                activeOpacity={0.85}
-              >
-                {addLoading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.confirmBtnText}>Ekle</Text>
-                )}
-              </TouchableOpacity>
+              />
             </View>
           </View>
         </View>
@@ -285,104 +279,73 @@ export default function FamilyScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 14,
-  },
-  headerSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '500', marginBottom: 2 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: '#1F2937' },
-  addBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#208AEF',
-    borderRadius: 12,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    shadowColor: '#208AEF',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: AppColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.surfaceContainer,
   },
-  addBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  headerSub: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
   quickAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginBottom: 20,
+    backgroundColor: AppColors.white,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
     borderRadius: 16,
     padding: 14,
     gap: 12,
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
   quickActionIcon: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FEE2E2',
     justifyContent: 'center',
     alignItems: 'center',
   },
   quickActionInfo: { flex: 1 },
-  quickActionTitle: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
-  quickActionSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#9CA3AF',
-    letterSpacing: 0.8,
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-  list: { paddingHorizontal: 20, paddingBottom: 20 },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+  quickActionTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
+  quickActionSub: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  sectionLabelPad: { paddingHorizontal: 20, marginTop: 16, marginBottom: 8 },
+  list: { paddingHorizontal: 16, paddingBottom: 20 },
+  memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 5,
-    elevation: 2,
+    padding: 14,
+    marginBottom: 10,
   },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
   info: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-  memberName: { fontSize: 15, fontWeight: '700', color: '#1F2937', flexShrink: 1 },
+  memberName: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface, flexShrink: 1 },
   roleBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
-  rolePrimary: { backgroundColor: '#EFF6FF' },
-  roleSecondary: { backgroundColor: '#F3F4F6' },
+  rolePrimary: { backgroundColor: AppColors.primaryContainer },
+  roleSecondary: { backgroundColor: AppColors.surfaceContainerLow },
   roleBadgeText: { fontSize: 10, fontWeight: '700' },
-  roleTextPrimary: { color: '#208AEF' },
-  roleTextSecondary: { color: '#6B7280' },
-  memberEmail: { fontSize: 12, color: '#9CA3AF' },
-  relationText: { fontSize: 11, color: '#C4C9D4', marginTop: 2 },
+  roleTextPrimary: { color: AppColors.primary },
+  roleTextSecondary: { color: AppColors.onSurfaceVariant },
+  memberEmail: { fontSize: 12, color: AppColors.onSurfaceVariant },
+  relationText: { fontSize: 11, color: AppColors.surfaceContainer, marginTop: 2 },
   removeBtn: { padding: 2 },
   empty: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { fontSize: 14, color: '#9CA3AF' },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant },
   // Modal
   modalOverlay: {
     flex: 1,
@@ -390,7 +353,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
@@ -401,48 +364,25 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainer,
     alignSelf: 'center',
     marginBottom: 8,
   },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1F2937' },
-  modalSubtitle: { fontSize: 13, color: '#6B7280', lineHeight: 20, marginTop: -6 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: AppColors.onSurface },
+  modalSubtitle: { fontSize: 13, color: AppColors.onSurfaceVariant, lineHeight: 20, marginTop: -6 },
   field: { gap: 7 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  label: { fontSize: 13, fontWeight: '600', color: AppColors.onSurface },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 12,
     paddingHorizontal: 13,
     paddingVertical: 13,
   },
-  input: { flex: 1, fontSize: 14, color: '#1F2937', padding: 0 },
+  input: { flex: 1, fontSize: 14, color: AppColors.onSurface, padding: 0 },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  cancelBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  cancelBtnText: { color: '#6B7280', fontSize: 14, fontWeight: '600' },
-  confirmBtn: {
-    flex: 1,
-    backgroundColor: '#208AEF',
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    shadowColor: '#208AEF',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  btnDisabled: { opacity: 0.6 },
-  confirmBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 });

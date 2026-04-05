@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -171,7 +172,7 @@ export default function ActivityClassesScreen() {
           <Text style={styles.headerTitle}>Etkinlik Sınıfları</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -196,7 +197,7 @@ export default function ActivityClassesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color="#208AEF" style={{ marginVertical: 16 }} /> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={AppColors.primary} style={{ marginVertical: 16 }} /> : null}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="star-outline" size={48} color="#D1D5DB" />
@@ -212,42 +213,42 @@ export default function ActivityClassesScreen() {
 // ─── Styles ───────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   header: {
     paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16,
-    backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    backgroundColor: AppColors.white, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow,
   },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#111827' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: AppColors.onSurface },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list: { padding: 16, gap: 12 },
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16,
+    backgroundColor: AppColors.white, borderRadius: 12, padding: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
-  cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  cardLanguage: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  cardDesc: { fontSize: 13, color: '#6B7280', marginBottom: 8, lineHeight: 18 },
+  cardTitle: { fontSize: 16, fontWeight: '600', color: AppColors.onSurface },
+  cardLanguage: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  cardDesc: { fontSize: 13, color: AppColors.onSurfaceVariant, marginBottom: 8, lineHeight: 18 },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText: { fontSize: 12, color: '#9CA3AF' },
-  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 8 },
+  metaText: { fontSize: 12, color: AppColors.onSurfaceVariant },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: AppColors.surfaceContainerLow, paddingTop: 8 },
   paidBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+    backgroundColor: AppColors.warningContainer, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
   },
-  paidText: { fontSize: 12, color: '#D97706', fontWeight: '600' },
+  paidText: { fontSize: 12, color: AppColors.warning, fontWeight: '600' },
   freeBadge: {
-    backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+    backgroundColor: AppColors.successContainer, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
   },
   freeText: { fontSize: 12, color: '#065F46', fontWeight: '600' },
   enrolledBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#208AEF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+    backgroundColor: AppColors.primary, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
   },
   enrolledText: { fontSize: 11, color: '#fff', fontWeight: '600' },
   emptyContainer: { alignItems: 'center', paddingTop: 60, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: '#374151' },
-  emptyText: { fontSize: 14, color: '#9CA3AF', textAlign: 'center', paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: AppColors.onSurface },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', paddingHorizontal: 32 },
 });

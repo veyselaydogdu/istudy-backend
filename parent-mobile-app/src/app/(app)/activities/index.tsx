@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -84,11 +85,11 @@ function ActivityCard({ item }: { item: Activity }) {
       activeOpacity={0.75}
     >
       <View style={styles.cardHeader}>
-        <View style={[styles.cardIconWrap, isLocked && { backgroundColor: '#F3F4F6' }]}>
-          <Ionicons name="flag-outline" size={20} color={isLocked ? '#9CA3AF' : '#208AEF'} />
+        <View style={[styles.cardIconWrap, isLocked && { backgroundColor: AppColors.surfaceContainerLow }]}>
+          <Ionicons name="flag-outline" size={20} color={isLocked ? AppColors.onSurfaceVariant : AppColors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.cardTitle, isLocked && { color: '#9CA3AF' }]}>{item.name}</Text>
+          <Text style={[styles.cardTitle, isLocked && { color: AppColors.onSurfaceVariant }]}>{item.name}</Text>
           {item.school && (
             <Text style={styles.cardSchool}>{item.school.name}</Text>
           )}
@@ -119,7 +120,7 @@ function ActivityCard({ item }: { item: Activity }) {
       </View>
 
       {item.description ? (
-        <Text style={[styles.cardDesc, isLocked && { color: '#D1D5DB' }]} numberOfLines={2}>{item.description}</Text>
+        <Text style={[styles.cardDesc, isLocked && { color: AppColors.surfaceContainer }]} numberOfLines={2}>{item.description}</Text>
       ) : null}
 
       <View style={styles.cardMeta}>
@@ -139,8 +140,8 @@ function ActivityCard({ item }: { item: Activity }) {
         </View>
         {item.capacity != null && (
           <View style={styles.metaItem}>
-            <Ionicons name="people-outline" size={13} color={item.enrollments_count != null && item.enrollments_count >= item.capacity ? '#EF4444' : '#9CA3AF'} />
-            <Text style={[styles.metaText, item.enrollments_count != null && item.enrollments_count >= item.capacity ? { color: '#EF4444' } : null]}>
+            <Ionicons name="people-outline" size={13} color={item.enrollments_count != null && item.enrollments_count >= item.capacity ? AppColors.error : AppColors.onSurfaceVariant} />
+            <Text style={[styles.metaText, item.enrollments_count != null && item.enrollments_count >= item.capacity ? { color: AppColors.error } : null]}>
               {item.enrollments_count ?? 0}/{item.capacity}
               {item.enrollments_count != null && item.enrollments_count >= item.capacity ? ' (Dolu)' : ' kontenjan'}
             </Text>
@@ -183,8 +184,8 @@ function ActivityClassCard({ item }: { item: ActivityClass }) {
       activeOpacity={0.75}
     >
       <View style={styles.cardHeader}>
-        <View style={[styles.cardIconWrap, { backgroundColor: '#F0FDF4' }]}>
-          <Ionicons name="star-outline" size={20} color="#16A34A" />
+        <View style={[styles.cardIconWrap, { backgroundColor: AppColors.successContainer }]}>
+          <Ionicons name="star-outline" size={20} color={AppColors.success} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>{item.name}</Text>
@@ -358,7 +359,7 @@ export default function ActivitiesScreen() {
 
   const renderActivities = () => {
     if (actLoading) {
-      return <View style={styles.centered}><ActivityIndicator size="large" color="#208AEF" /></View>;
+      return <View style={styles.centered}><ActivityIndicator size="large" color={AppColors.primary} /></View>;
     }
     return (
       <FlatList
@@ -376,7 +377,7 @@ export default function ActivitiesScreen() {
           if (!actLoadingMore && actPage < actLastPage) { void loadActivities(actPage + 1, true); }
         }}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={actLoadingMore ? <ActivityIndicator color="#208AEF" style={styles.moreLoader} /> : null}
+        ListFooterComponent={actLoadingMore ? <ActivityIndicator color={AppColors.primary} style={styles.moreLoader} /> : null}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="flag-outline" size={48} color="#D1D5DB" />
@@ -392,7 +393,7 @@ export default function ActivitiesScreen() {
 
   const renderActivityClasses = () => {
     if (acLoading) {
-      return <View style={styles.centered}><ActivityIndicator size="large" color="#208AEF" /></View>;
+      return <View style={styles.centered}><ActivityIndicator size="large" color={AppColors.primary} /></View>;
     }
     return (
       <FlatList
@@ -410,7 +411,7 @@ export default function ActivitiesScreen() {
           if (!acLoadingMore && acPage < acLastPage) { void loadActivityClasses(acPage + 1, true); }
         }}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={acLoadingMore ? <ActivityIndicator color="#208AEF" style={styles.moreLoader} /> : null}
+        ListFooterComponent={acLoadingMore ? <ActivityIndicator color={AppColors.primary} style={styles.moreLoader} /> : null}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="star-outline" size={48} color="#D1D5DB" />
@@ -459,21 +460,24 @@ export default function ActivitiesScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
 
   header: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: AppColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.surfaceContainer,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A2E' },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
 
   // Tab bar
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: AppColors.surfaceContainer,
     position: 'relative',
   },
   tabItem: {
@@ -484,17 +488,18 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   tabLabelActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
+    fontWeight: '800',
   },
   tabIndicator: {
     position: 'absolute',
     bottom: 0,
     width: '50%',
     height: 3,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderTopLeftRadius: 3,
     borderTopRightRadius: 3,
   },
@@ -506,13 +511,15 @@ const styles = StyleSheet.create({
 
   // Cards
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: AppColors.white,
+    borderRadius: 16,
     padding: 14,
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
     gap: 8,
   },
@@ -521,24 +528,24 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
-  cardSchool: { fontSize: 12, color: '#9CA3AF', marginTop: 1 },
-  cardDesc: { fontSize: 13, color: '#6B7280', lineHeight: 18 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
+  cardSchool: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 1 },
+  cardDesc: { fontSize: 13, color: AppColors.onSurfaceVariant, lineHeight: 18 },
 
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 12, color: '#9CA3AF' },
+  metaText: { fontSize: 12, color: AppColors.onSurfaceVariant },
 
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainerLow,
     paddingTop: 8,
     marginTop: 2,
   },
@@ -547,45 +554,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
-  paidText: { fontSize: 12, color: '#D97706', fontWeight: '600' },
-  freeBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  freeText: { fontSize: 12, color: '#065F46', fontWeight: '600' },
+  paidText: { fontSize: 12, color: AppColors.warning, fontWeight: '600' },
+  freeBadge: { backgroundColor: AppColors.successContainer, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  freeText: { fontSize: 12, color: AppColors.success, fontWeight: '600' },
   enrolledBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
-  enrolledText: { fontSize: 11, color: '#fff', fontWeight: '600' },
+  enrolledText: { fontSize: 11, color: AppColors.white, fontWeight: '600' },
   enrollBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
-  enrollBadgeText: { fontSize: 11, color: '#D97706', fontWeight: '600' },
-  cardLocked: { opacity: 0.85, backgroundColor: '#FAFAFA' },
+  enrollBadgeText: { fontSize: 11, color: AppColors.warning, fontWeight: '600' },
+  cardLocked: { opacity: 0.85, backgroundColor: AppColors.surfaceContainerLow },
   lockedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainerLow,
     paddingTop: 8,
     marginTop: 2,
   },
-  lockedText: { fontSize: 12, color: '#9CA3AF' },
+  lockedText: { fontSize: 12, color: AppColors.onSurfaceVariant },
 
   // Empty
   emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: '#374151' },
-  emptyText: { fontSize: 14, color: '#9CA3AF', textAlign: 'center', paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: AppColors.onSurface },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', paddingHorizontal: 32 },
 });

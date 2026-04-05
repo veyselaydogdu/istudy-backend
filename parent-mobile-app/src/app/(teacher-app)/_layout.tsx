@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
@@ -12,7 +13,7 @@ function tabIcon(focused: boolean, active: IoniconsName, inactive: IoniconsName)
     <Ionicons
       name={focused ? active : inactive}
       size={24}
-      color={focused ? '#208AEF' : '#9CA3AF'}
+      color={focused ? AppColors.primary : AppColors.onSurfaceVariant}
     />
   );
 }
@@ -31,8 +32,8 @@ export default function TeacherAppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#F3F4F6',
+          backgroundColor: AppColors.white,
+          borderTopColor: AppColors.surfaceContainerLow,
           borderTopWidth: 1,
           height: Platform.OS === 'ios' ? 96 : 72,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
@@ -43,8 +44,8 @@ export default function TeacherAppLayout() {
           shadowOpacity: 0.06,
           shadowRadius: 8,
         },
-        tabBarActiveTintColor: '#208AEF',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: AppColors.primary,
+        tabBarInactiveTintColor: AppColors.onSurfaceVariant,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',

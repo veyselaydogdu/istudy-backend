@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -280,7 +281,7 @@ export default function EmergencyContactsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#208AEF" />
+          <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -328,7 +329,7 @@ export default function EmergencyContactsScreen() {
         )}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#208AEF" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -660,7 +661,7 @@ export default function EmergencyContactsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topBar: {
     flexDirection: 'row',
@@ -668,17 +669,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
-  backText: { color: '#208AEF', fontSize: 15, fontWeight: '500', width: 60 },
-  topBarTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
-  addBtn: { backgroundColor: '#208AEF', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
-  addBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  backText: { color: AppColors.primary, fontSize: 15, fontWeight: '500', width: 60 },
+  topBarTitle: { fontSize: 17, fontWeight: '700', color: AppColors.onSurface },
+  addBtn: { backgroundColor: AppColors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
+  addBtnText: { color: AppColors.white, fontSize: 12, fontWeight: '700' },
   list: { paddingHorizontal: 20, paddingVertical: 16, paddingBottom: 32 },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
@@ -696,23 +697,23 @@ const styles = StyleSheet.create({
   },
   cardIcon: { fontSize: 20 },
   info: { flex: 1 },
-  contactName: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
-  contactRelation: { fontSize: 12, color: '#208AEF', fontWeight: '500', marginTop: 2 },
-  contactPhone: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  contactNationality: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  contactName: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
+  contactRelation: { fontSize: 12, color: AppColors.primary, fontWeight: '500', marginTop: 2 },
+  contactPhone: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  contactNationality: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 2 },
   rowActions: { flexDirection: 'row', gap: 6 },
   iconBtn: { padding: 6 },
   iconBtnText: { fontSize: 16 },
   empty: { alignItems: 'center', paddingVertical: 60, gap: 12 },
   emptyIcon: { fontSize: 52 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
-  emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
-  emptyButton: { backgroundColor: '#208AEF', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  emptyButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center' },
+  emptyButton: { backgroundColor: AppColors.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
+  emptyButtonText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalScroll: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '92%',
@@ -723,20 +724,20 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
   field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  label: { fontSize: 13, fontWeight: '600', color: AppColors.onSurface },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 11,
     fontSize: 14,
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   // Telefon
   phoneRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
@@ -744,37 +745,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 11,
   },
   phoneFlag: { fontSize: 18 },
-  phoneCode: { fontSize: 13, color: '#1F2937', fontWeight: '600' },
+  phoneCode: { fontSize: 13, color: AppColors.onSurface, fontWeight: '600' },
   phoneInput: { flex: 1 },
   // Uyruk seçici butonu
   pickerBtn: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
-  pickerBtnText: { fontSize: 14, color: '#9CA3AF', flex: 1 },
-  pickerBtnTextSelected: { color: '#1F2937' },
+  pickerBtnText: { fontSize: 14, color: AppColors.onSurfaceVariant, flex: 1 },
+  pickerBtnTextSelected: { color: AppColors.onSurface },
   // Dropdown
   dropdown: {
     marginTop: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     overflow: 'hidden',
     elevation: 4,
     shadowColor: '#000',
@@ -785,14 +786,14 @@ const styles = StyleSheet.create({
   dropdownSearchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 8,
     margin: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 6,
   },
-  dropdownSearchInput: { flex: 1, fontSize: 14, color: '#1F2937', padding: 0 },
+  dropdownSearchInput: { flex: 1, fontSize: 14, color: AppColors.onSurface, padding: 0 },
   dropdownList: { maxHeight: 200 },
   dropdownItem: {
     flexDirection: 'row',
@@ -801,9 +802,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F9FAFB',
+    borderTopColor: AppColors.surfaceContainerLow,
   },
-  dropdownItemActive: { backgroundColor: '#EFF6FF' },
+  dropdownItemActive: { backgroundColor: AppColors.primaryContainer },
   dropdownItemClear: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -811,13 +812,13 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F9FAFB',
+    borderTopColor: AppColors.surfaceContainerLow,
     backgroundColor: '#FFF5F5',
   },
-  dropdownItemClearText: { fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' },
+  dropdownItemClearText: { fontSize: 13, color: AppColors.onSurfaceVariant, fontStyle: 'italic' },
   dropdownFlag: { fontSize: 18, width: 26 },
-  dropdownItemText: { flex: 1, fontSize: 14, color: '#1F2937', fontWeight: '500' },
-  dropdownItemCode: { fontSize: 13, color: '#208AEF', fontWeight: '700' },
+  dropdownItemText: { flex: 1, fontSize: 14, color: AppColors.onSurface, fontWeight: '500' },
+  dropdownItemCode: { fontSize: 13, color: AppColors.primary, fontWeight: '700' },
   // Kimlik bölümü
   idSection: {
     backgroundColor: '#F8FAFF',
@@ -828,25 +829,25 @@ const styles = StyleSheet.create({
     borderColor: '#DBEAFE',
   },
   idSectionTitle: { fontSize: 13, fontWeight: '700', color: '#1D4ED8' },
-  idHint: { fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' },
+  idHint: { fontSize: 11, color: AppColors.onSurfaceVariant, fontStyle: 'italic' },
   // Butonlar
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
   cancelBtn: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
   },
-  cancelBtnText: { color: '#6B7280', fontSize: 14, fontWeight: '600' },
+  cancelBtnText: { color: AppColors.onSurfaceVariant, fontSize: 14, fontWeight: '600' },
   confirmBtn: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
   },
   btnDisabled: { opacity: 0.6 },
-  confirmBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  confirmBtnText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
 });

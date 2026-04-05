@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -33,9 +34,9 @@ const STATUS_CONFIG: Record<
   AttendanceStatus,
   { label: string; color: string; bgColor: string; icon: string }
 > = {
-  present: { label: 'Geldi', color: '#059669', bgColor: '#D1FAE5', icon: 'checkmark-circle' },
-  absent: { label: 'Gelmedi', color: '#DC2626', bgColor: '#FEE2E2', icon: 'close-circle' },
-  late: { label: 'Geç', color: '#D97706', bgColor: '#FEF3C7', icon: 'time' },
+  present: { label: 'Geldi', color: AppColors.success, bgColor: AppColors.successContainer, icon: 'checkmark-circle' },
+  absent: { label: 'Gelmedi', color: AppColors.error, bgColor: '#FEE2E2', icon: 'close-circle' },
+  late: { label: 'Geç', color: AppColors.warning, bgColor: AppColors.warningContainer, icon: 'time' },
   excused: { label: 'Mazeretli', color: '#7C3AED', bgColor: '#EDE9FE', icon: 'shield-checkmark' },
 };
 
@@ -52,7 +53,7 @@ function formatDisplayDate(date: Date): string {
   });
 }
 
-const AVATAR_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
+const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.warning, AppColors.success, AppColors.error];
 
 function avatarColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
@@ -240,7 +241,7 @@ export default function AttendanceScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -271,14 +272,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   datePicker: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 4,
     shadowColor: '#000',
@@ -318,7 +319,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 13,
     flex: 1,
   },
@@ -328,11 +329,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   childCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 14,
     gap: 12,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 5,
@@ -351,14 +352,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 14,
     fontWeight: '800',
   },
   childName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   statusButtons: {
     flexDirection: 'row',
@@ -370,24 +371,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    borderColor: AppColors.surfaceContainer,
+    backgroundColor: AppColors.surfaceContainerLow,
   },
   statusBtnText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     marginTop: 8,
-    shadowColor: '#208AEF',
+    shadowColor: AppColors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -397,7 +398,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 16,
     fontWeight: '700',
   },
