@@ -242,13 +242,13 @@ export default function TeacherProfileScreen() {
             disabled={followLoading}
           >
             {followLoading ? (
-              <ActivityIndicator color={profile.is_following ? AppColors.primary : '#FFFFFF'} size="small" />
+              <ActivityIndicator color={profile.is_following ? AppColors.primary : AppColors.white} size="small" />
             ) : (
               <>
                 <Ionicons
                   name={profile.is_following ? 'person-remove-outline' : 'person-add-outline'}
                   size={16}
-                  color={profile.is_following ? AppColors.primary : '#FFFFFF'}
+                  color={profile.is_following ? AppColors.primary : AppColors.white}
                 />
                 <Text
                   style={[styles.followBtnText, profile.is_following && styles.followBtnTextActive]}
@@ -336,7 +336,7 @@ export default function TeacherProfileScreen() {
                       <Ionicons
                         name={post.is_liked ? 'heart' : 'heart-outline'}
                         size={15}
-                        color={post.is_liked ? '#EF4444' : '#9CA3AF'}
+                        color={post.is_liked ? AppColors.error : AppColors.onSurfaceVariant}
                       />
                       <Text style={styles.postStatText}>{post.likes_count}</Text>
                     </TouchableOpacity>
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
   loader: { flex: 1, justifyContent: 'center' as never },
   backBtn: { padding: 16 },
   errorCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  errorText: { color: '#DC2626', fontSize: 14, textAlign: 'center' },
+  errorText: { color: AppColors.error, fontSize: 14, textAlign: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -454,9 +454,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
   profileCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     margin: 16,
     borderRadius: 20,
     padding: 24,
@@ -476,15 +476,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: { fontSize: 32, fontWeight: '700', color: '#FFFFFF' },
-  name: { fontSize: 20, fontWeight: '800', color: '#1F2937', marginBottom: 4 },
+  avatarText: { fontSize: 32, fontWeight: '700', color: AppColors.white },
+  name: { fontSize: 20, fontWeight: '800', color: AppColors.onSurface, marginBottom: 4 },
   subtitle: { fontSize: 14, color: AppColors.primary, fontWeight: '600', marginBottom: 2 },
-  specialization: { fontSize: 13, color: '#6B7280', marginBottom: 12 },
+  specialization: { fontSize: 13, color: AppColors.onSurfaceVariant, marginBottom: 12 },
   statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   statItem: { alignItems: 'center', paddingHorizontal: 20 },
-  statValue: { fontSize: 20, fontWeight: '800', color: '#1F2937' },
-  statLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500', marginTop: 2 },
-  statDivider: { width: 1, height: 32, backgroundColor: '#F3F4F6' },
+  statValue: { fontSize: 20, fontWeight: '800', color: AppColors.onSurface },
+  statLabel: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500', marginTop: 2 },
+  statDivider: { width: 1, height: 32, backgroundColor: AppColors.surfaceContainerLow },
   followBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -495,26 +495,26 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   followBtnActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderWidth: 1.5,
     borderColor: AppColors.primary,
   },
-  followBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  followBtnText: { fontSize: 14, fontWeight: '700', color: AppColors.white },
   followBtnTextActive: { color: AppColors.primary },
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 16,
     padding: 16,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1F2937', marginBottom: 8 },
-  bioText: { fontSize: 14, color: '#374151', lineHeight: 22 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface, marginBottom: 8 },
+  bioText: { fontSize: 14, color: AppColors.onSurface, lineHeight: 22 },
   sectionTabBar: {
     flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 4,
     gap: 4,
@@ -526,11 +526,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTabActive: { backgroundColor: AppColors.primary },
-  sectionTabText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  sectionTabTextActive: { color: '#FFFFFF' },
+  sectionTabText: { fontSize: 13, fontWeight: '600', color: AppColors.onSurfaceVariant },
+  sectionTabTextActive: { color: AppColors.white },
   postList: { paddingHorizontal: 16, paddingBottom: 24 },
   postCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -541,49 +541,49 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   postImage: { width: '100%', height: 160, borderRadius: 10, marginBottom: 10 },
-  postTitle: { fontSize: 15, fontWeight: '700', color: '#1F2937', marginBottom: 6 },
-  postDesc: { fontSize: 13, color: '#6B7280', lineHeight: 20, marginBottom: 10 },
+  postTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface, marginBottom: 6 },
+  postDesc: { fontSize: 13, color: AppColors.onSurfaceVariant, lineHeight: 20, marginBottom: 10 },
   postFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainerLow,
     paddingTop: 10,
   },
-  postDate: { flex: 1, fontSize: 12, color: '#9CA3AF' },
+  postDate: { flex: 1, fontSize: 12, color: AppColors.onSurfaceVariant },
   postStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  postStatText: { fontSize: 13, color: '#6B7280' },
+  postStatText: { fontSize: 13, color: AppColors.onSurfaceVariant },
   loadMoreBtn: {
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     marginTop: 4,
   },
   loadMoreText: { fontSize: 13, fontWeight: '600', color: AppColors.primary },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 10 },
-  emptyText: { fontSize: 14, color: '#9CA3AF' },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant },
   cvSection: { paddingHorizontal: 16, paddingBottom: 24 },
   cvGroup: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
   },
-  cvGroupTitle: { fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 12 },
+  cvGroupTitle: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface, marginBottom: 12 },
   cvItem: {
     borderLeftWidth: 3,
     borderLeftColor: AppColors.primary,
     paddingLeft: 12,
     marginBottom: 14,
   },
-  cvItemTitle: { fontSize: 14, fontWeight: '700', color: '#1F2937' },
-  cvItemSub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  cvItemMeta: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  cvItemTitle: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
+  cvItemSub: { fontSize: 13, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  cvItemMeta: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
   skillsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   skillChip: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 6,

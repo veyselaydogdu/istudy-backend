@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -248,7 +249,7 @@ export default function TeacherChildDetailScreen() {
                   <Ionicons
                     name={med.given ? 'checkmark-circle' : 'ellipse-outline'}
                     size={20}
-                    color={med.given ? '#10B981' : '#9CA3AF'}
+                    color={med.given ? AppColors.success : AppColors.onSurfaceVariant}
                   />
                   <Text style={[styles.givenBtnText, med.given && styles.givenBtnTextDone]}>
                     {med.given ? 'Verildi' : 'Ver'}
@@ -266,7 +267,7 @@ export default function TeacherChildDetailScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   scroll: {
     paddingHorizontal: 20,
@@ -305,17 +306,17 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: '#DC2626',
+    color: AppColors.error,
     textAlign: 'center',
   },
   profileCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 8,
@@ -325,24 +326,24 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 22,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 28,
     fontWeight: '800',
   },
   childName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   childMeta: {
     fontSize: 14,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   profileMeta: {
     flexDirection: 'row',
@@ -351,14 +352,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   metaBadge: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   metaBadgeText: {
     fontSize: 12,
-    color: '#374151',
+    color: AppColors.onSurface,
     fontWeight: '600',
   },
   actionRow: {
@@ -372,10 +373,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     paddingVertical: 14,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 5,
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   section: {
     marginBottom: 16,
@@ -392,16 +393,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 8,
   },
   infoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 14,
     gap: 8,
     marginBottom: 8,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -414,29 +415,29 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#374151',
+    color: AppColors.onSurface,
     flex: 1,
   },
   relationBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 6,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
   relationBadgeText: {
     fontSize: 11,
-    color: '#208AEF',
+    color: AppColors.primary,
     fontWeight: '600',
   },
   medCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     marginBottom: 8,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -449,34 +450,34 @@ const styles = StyleSheet.create({
   medName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   medDose: {
     fontSize: 13,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   medTimes: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   givenBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   givenBtnDone: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: AppColors.successContainer,
   },
   givenBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   givenBtnTextDone: {
-    color: '#059669',
+    color: AppColors.success,
   },
 });

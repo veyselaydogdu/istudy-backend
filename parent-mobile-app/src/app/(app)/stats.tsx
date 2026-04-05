@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -13,6 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { SectionLabel } from '@/components/ui/SectionLabel';
+import { StatCard } from '@/components/ui/StatCard';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
 
@@ -34,15 +40,6 @@ interface ChildStats {
     late: number;
     excused: number;
   };
-}
-
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <View style={[styles.statCard, { borderTopColor: color }]}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
 }
 
 export default function StatsScreen() {
@@ -106,7 +103,7 @@ export default function StatsScreen() {
 
   if (loadingChildren) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -115,7 +112,8 @@ export default function StatsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>İstatistikler</Text>
       </View>
@@ -127,62 +125,49 @@ export default function StatsScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Çocuk Seçici */}
         {children.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>👶</Text>
+            <View style={styles.emptyIconWrap}>
+              <Ionicons name="people-outline" size={44} color={AppColors.surfaceContainer} />
+            </View>
             <Text style={styles.emptyTitle}>Henüz Çocuk Eklenmemiş</Text>
-            <Text style={styles.emptyText}>
-              İstatistik görmek için önce bir çocuk ekleyin.
-            </Text>
-            <TouchableOpacity
-              style={styles.addButton}
+            <Text style={styles.emptyText}>İstatistik görmek için önce bir çocuk ekleyin.</Text>
+            <Button
+              label="Çocuk Ekle"
+              variant="primary"
               onPress={() => router.push('/(app)/children/add')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.addButtonText}>+ Çocuk Ekle</Text>
-            </TouchableOpacity>
+              icon={<Ionicons name="add" size={18} color={AppColors.white} />}
+            />
           </View>
         ) : (
           <>
-            {/* Çocuk sekmeleri */}
+            {/* Çocuk seçici — yatay scroll pill row */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.childTabs}
-              contentContainerStyle={styles.childTabsContent}
+              contentContainerStyle={styles.childPills}
             >
-              {children.map((c) => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[
-                    styles.childTab,
-                    selectedChild?.id === c.id && styles.childTabActive,
-                  ]}
-                  onPress={() => setSelectedChild(c)}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.childTabAvatar,
-                      selectedChild?.id === c.id && styles.childTabAvatarActive,
-                    ]}
+              {children.map((c) => {
+                const active = selectedChild?.id === c.id;
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[styles.childPill, active && styles.childPillActive]}
+                    onPress={() => setSelectedChild(c)}
+                    activeOpacity={0.7}
                   >
-                    <Text style={styles.childTabAvatarText}>
-                      {c.full_name.charAt(0)}
+                    <Avatar
+                      name={c.full_name}
+                      size={32}
+                      shape="circle"
+                      color={active ? AppColors.white : AppColors.primary}
+                    />
+                    <Text style={[styles.childPillText, active && styles.childPillTextActive]} numberOfLines={1}>
+                      {c.full_name.split(' ')[0]}
                     </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.childTabName,
-                      selectedChild?.id === c.id && styles.childTabNameActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {c.full_name.split(' ')[0]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
 
             {loadingStats ? (
@@ -191,45 +176,49 @@ export default function StatsScreen() {
               </View>
             ) : stats ? (
               <>
-                {/* Okul & Sınıf Bilgisi */}
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Kayıt Bilgisi</Text>
-                  {stats.school ? (
-                    <TouchableOpacity
-                      style={styles.infoRow}
-                      onPress={() => stats.school && router.push(`/(app)/schools/${stats.school.id}`)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.infoLabel}>Okul</Text>
-                      <Text style={[styles.infoValue, { color: AppColors.primary }]}>
-                        🏫 {stats.school.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
+                {/* Kayıt Bilgisi */}
+                <View>
+                  <SectionLabel>Kayıt Bilgisi</SectionLabel>
+                  <Card style={styles.infoCard}>
                     <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Okul</Text>
-                      <Text style={styles.infoValueMuted}>Okula kayıtlı değil</Text>
+                      <View style={styles.infoIconBox}>
+                        <Ionicons name="school-outline" size={18} color={AppColors.primary} />
+                      </View>
+                      <View style={styles.infoBody}>
+                        <Text style={styles.infoRowLabel}>Okul</Text>
+                        {stats.school ? (
+                          <TouchableOpacity
+                            onPress={() => stats.school && router.push(`/(app)/schools/${stats.school.id}`)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.infoRowValueLink}>{stats.school.name}</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <Text style={styles.infoRowValueMuted}>Okula kayıtlı değil</Text>
+                        )}
+                      </View>
                     </View>
-                  )}
-                  {stats.classes.length > 0 ? (
+                    <View style={styles.divider} />
                     <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Sınıf</Text>
-                      <Text style={styles.infoValue}>
-                        {stats.classes.map((c) => c.name).join(', ')}
-                      </Text>
+                      <View style={styles.infoIconBox}>
+                        <Ionicons name="book-outline" size={18} color={AppColors.secondary} />
+                      </View>
+                      <View style={styles.infoBody}>
+                        <Text style={styles.infoRowLabel}>Sınıf</Text>
+                        {stats.classes.length > 0 ? (
+                          <Text style={styles.infoRowValue}>{stats.classes.map((c) => c.name).join(', ')}</Text>
+                        ) : (
+                          <Text style={styles.infoRowValueMuted}>Sınıfa atanmadı</Text>
+                        )}
+                      </View>
                     </View>
-                  ) : (
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Sınıf</Text>
-                      <Text style={styles.infoValueMuted}>Sınıfa atanmadı</Text>
-                    </View>
-                  )}
+                  </Card>
                 </View>
 
-                {/* Devam İstatistikleri */}
-                <View style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>Devam Durumu</Text>
+                {/* Devam Durumu */}
+                <View>
+                  <View style={styles.sectionHeaderRow}>
+                    <SectionLabel style={styles.sectionLabelFlex}>Devam Durumu</SectionLabel>
                     {attendanceRate !== null && (
                       <View style={styles.rateBadge}>
                         <Text style={styles.rateBadgeText}>%{attendanceRate} Devam</Text>
@@ -238,68 +227,56 @@ export default function StatsScreen() {
                   </View>
 
                   {stats.attendance.total === 0 ? (
-                    <View style={styles.noData}>
+                    <Card style={styles.noDataCard}>
                       <Text style={styles.noDataText}>Henüz yoklama kaydı yok.</Text>
-                    </View>
+                    </Card>
                   ) : (
                     <>
                       <View style={styles.statGrid}>
-                        <StatCard label="Geldi" value={stats.attendance.present} color="#16A34A" />
-                        <StatCard label="Gelmedi" value={stats.attendance.absent} color="#DC2626" />
-                        <StatCard label="Geç Geldi" value={stats.attendance.late} color="#D97706" />
-                        <StatCard label="İzinli" value={stats.attendance.excused} color="#2563EB" />
+                        <StatCard
+                          value={stats.attendance.present}
+                          label="Geldi"
+                          accentColor={AppColors.success}
+                          icon={<Ionicons name="checkmark-circle" size={24} color={AppColors.success} />}
+                        />
+                        <StatCard
+                          value={stats.attendance.absent}
+                          label="Gelmedi"
+                          accentColor={AppColors.error}
+                          icon={<Ionicons name="close-circle" size={24} color={AppColors.error} />}
+                        />
+                        <StatCard
+                          value={stats.attendance.late}
+                          label="Geç Geldi"
+                          accentColor={AppColors.warning}
+                          icon={<Ionicons name="time" size={24} color={AppColors.warning} />}
+                        />
+                        <StatCard
+                          value={stats.attendance.excused}
+                          label="İzinli"
+                          accentColor={AppColors.info}
+                          icon={<Ionicons name="document-text" size={24} color={AppColors.info} />}
+                        />
                       </View>
 
                       {/* Görsel bar */}
-                      {stats.attendance.total > 0 && (
+                      <Card style={styles.barCard}>
                         <View style={styles.barContainer}>
                           {stats.attendance.present > 0 && (
-                            <View
-                              style={[
-                                styles.barSegment,
-                                {
-                                  flex: stats.attendance.present,
-                                  backgroundColor: '#16A34A',
-                                },
-                              ]}
-                            />
+                            <View style={[styles.barSegment, { flex: stats.attendance.present, backgroundColor: AppColors.success }]} />
                           )}
                           {stats.attendance.late > 0 && (
-                            <View
-                              style={[
-                                styles.barSegment,
-                                {
-                                  flex: stats.attendance.late,
-                                  backgroundColor: '#D97706',
-                                },
-                              ]}
-                            />
+                            <View style={[styles.barSegment, { flex: stats.attendance.late, backgroundColor: AppColors.warning }]} />
                           )}
                           {stats.attendance.excused > 0 && (
-                            <View
-                              style={[
-                                styles.barSegment,
-                                {
-                                  flex: stats.attendance.excused,
-                                  backgroundColor: '#2563EB',
-                                },
-                              ]}
-                            />
+                            <View style={[styles.barSegment, { flex: stats.attendance.excused, backgroundColor: AppColors.info }]} />
                           )}
                           {stats.attendance.absent > 0 && (
-                            <View
-                              style={[
-                                styles.barSegment,
-                                {
-                                  flex: stats.attendance.absent,
-                                  backgroundColor: '#DC2626',
-                                },
-                              ]}
-                            />
+                            <View style={[styles.barSegment, { flex: stats.attendance.absent, backgroundColor: AppColors.error }]} />
                           )}
                         </View>
-                      )}
-                      <Text style={styles.totalLabel}>Toplam: {stats.attendance.total} kayıt</Text>
+                        <Text style={styles.totalLabel}>Toplam {stats.attendance.total} kayıt</Text>
+                      </Card>
                     </>
                   )}
                 </View>
@@ -315,121 +292,115 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: AppColors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
     backgroundColor: AppColors.white,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.surfaceContainer,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: AppColors.primary },
-  container: { paddingVertical: 16, paddingHorizontal: 20, gap: 16 },
-  // Çocuk seçici
-  childTabs: { marginHorizontal: -20 },
-  childTabsContent: { paddingHorizontal: 20, gap: 12 },
-  childTab: {
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 4,
-  },
-  childTabActive: {},
-  childTabAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: AppColors.surfaceContainer,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  childTabAvatarActive: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primaryDim,
-  },
-  childTabAvatarText: { fontSize: 18, fontWeight: '700', color: AppColors.white },
-  childTabName: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500', maxWidth: 56, textAlign: 'center' },
-  childTabNameActive: { color: AppColors.primary, fontWeight: '700' },
-  statsLoader: { paddingVertical: 60, alignItems: 'center' },
-  // Kartlar
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: 16,
-    padding: 16,
-    gap: 4,
-    borderBottomWidth: 3,
-    borderBottomColor: AppColors.surfaceContainer,
-    shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: {
+  headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
+
+  container: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16 },
+
+  // Child pills
+  childPills: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
+  childPill: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: AppColors.surfaceContainer,
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface, marginBottom: 8 },
+  childPillActive: {
+    backgroundColor: AppColors.primary,
+  },
+  childPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: AppColors.onSurfaceVariant,
+    maxWidth: 80,
+  },
+  childPillTextActive: {
+    color: AppColors.white,
+  },
+
+  statsLoader: { paddingVertical: 60, alignItems: 'center' },
+
+  // Info card
+  infoCard: { padding: 0, overflow: 'hidden' },
   infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainerLow,
+    gap: 12,
+    padding: 14,
   },
-  infoLabel: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500' },
-  infoValue: { fontSize: 13, color: AppColors.onSurface, fontWeight: '600', textAlign: 'right', flex: 1, paddingLeft: 12 },
-  infoValueMuted: { fontSize: 13, color: AppColors.onSurfaceVariant, fontStyle: 'italic', textAlign: 'right', flex: 1, paddingLeft: 12 },
+  infoIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: AppColors.primaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  infoBody: { flex: 1 },
+  infoRowLabel: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
+  infoRowValue: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
+  infoRowValueLink: { fontSize: 14, fontWeight: '700', color: AppColors.primary },
+  infoRowValueMuted: { fontSize: 13, color: AppColors.onSurfaceVariant, fontStyle: 'italic' },
+  divider: { height: 1, backgroundColor: AppColors.surfaceContainerLow, marginHorizontal: 14 },
+
+  // Section header
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  sectionLabelFlex: { marginBottom: 0 },
   rateBadge: {
     backgroundColor: AppColors.successContainer,
     paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 20,
   },
   rateBadgeText: { color: AppColors.success, fontSize: 12, fontWeight: '700' },
-  statGrid: {
-    flexDirection: 'row',
-    gap: 8,
-    marginVertical: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: AppColors.surfaceContainerLow,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    borderTopWidth: 3,
-    gap: 4,
-  },
-  statValue: { fontSize: 22, fontWeight: '800' },
-  statLabel: { fontSize: 10, color: AppColors.onSurfaceVariant, fontWeight: '600', textAlign: 'center' },
+
+  // Stat grid
+  statGrid: { flexDirection: 'row', gap: 8 },
+
+  // Bar card
+  barCard: { padding: 16, gap: 10 },
   barContainer: {
     flexDirection: 'row',
-    height: 8,
-    borderRadius: 4,
+    height: 10,
+    borderRadius: 5,
     overflow: 'hidden',
-    marginTop: 4,
+    backgroundColor: AppColors.surfaceContainer,
   },
-  barSegment: { height: 8 },
-  totalLabel: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 8, textAlign: 'right' },
-  noData: { paddingVertical: 20, alignItems: 'center' },
+  barSegment: { height: 10 },
+  totalLabel: { fontSize: 12, color: AppColors.onSurfaceVariant, textAlign: 'right', fontWeight: '600' },
+
+  noDataCard: { alignItems: 'center', padding: 24 },
   noDataText: { fontSize: 14, color: AppColors.onSurfaceVariant },
+
   // Empty state
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
-  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
-  addButton: {
-    backgroundColor: AppColors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    marginTop: 8,
-    borderBottomWidth: 3,
-    borderBottomColor: AppColors.primaryDim,
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    backgroundColor: AppColors.surfaceContainerLow,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  addButtonText: { color: AppColors.white, fontWeight: '700', fontSize: 15 },
+  emptyTitle: { fontSize: 17, fontWeight: '800', color: AppColors.onSurface },
+  emptyText: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20, marginBottom: 8 },
 });

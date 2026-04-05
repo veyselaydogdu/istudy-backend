@@ -28,7 +28,7 @@ interface Child {
   status: string;
 }
 
-const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
+const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.warning, AppColors.success, AppColors.error];
 
 function avatarColor(name: string): string {
   const idx = name.charCodeAt(0) % AVATAR_COLORS.length;
@@ -197,14 +197,14 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     marginBottom: 2,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   addButton: {
     flexDirection: 'row',
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   addButtonText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 13,
     flex: 1,
   },
@@ -245,14 +245,14 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     padding: 16,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 6,
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 18,
     fontWeight: '800',
   },
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   childName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 5,
   },
   cardMeta: {
@@ -285,23 +285,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metaChip: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 6,
     padding: 4,
   },
   metaText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   bloodTag: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 6,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
   bloodTagText: {
     fontSize: 11,
-    color: '#D97706',
+    color: AppColors.warning,
     fontWeight: '700',
   },
   empty: {
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 28,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
@@ -321,11 +321,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     textAlign: 'center',
   },
   emptyButton: {
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyButtonText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 14,
     fontWeight: '700',
   },

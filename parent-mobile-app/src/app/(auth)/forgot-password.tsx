@@ -1,19 +1,21 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { InputField } from '@/components/ui/InputField';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
 
@@ -43,76 +45,76 @@ export default function ForgotPasswordScreen() {
 
   if (sent) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.successContainer}>
-          <Text style={styles.successIcon}>✉️</Text>
+          <View style={styles.successIconWrap}>
+            <Ionicons name="mail" size={44} color={AppColors.primary} />
+          </View>
           <Text style={styles.successTitle}>E-posta Gönderildi</Text>
           <Text style={styles.successText}>
-            {email} adresine şifre sıfırlama bağlantısı gönderildi. Lütfen
-            e-postanızı kontrol edin.
+            {email} adresine şifre sıfırlama bağlantısı gönderildi. Lütfen e-postanızı kontrol edin.
           </Text>
-          <TouchableOpacity
-            style={styles.button}
+          <Button
+            label="Giriş Ekranına Dön"
+            variant="primary"
+            size="lg"
+            fullWidth
             onPress={() => router.replace('/(auth)/login')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>Giriş Ekranına Dön</Text>
-          </TouchableOpacity>
+          />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.container}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backText}>← Geri</Text>
-          </TouchableOpacity>
-
-          <View style={styles.header}>
-            <Text style={styles.title}>Şifremi Unuttum</Text>
-            <Text style={styles.subtitle}>
-              Kayıtlı e-posta adresinizi girin. Şifre sıfırlama bağlantısı
-              göndereceğiz.
-            </Text>
+        {/* Hero banner */}
+        <View style={styles.heroBanner}>
+          <View style={styles.logoBox}>
+            <Ionicons name="lock-open" size={32} color={AppColors.primary} />
           </View>
+          <Text style={styles.heroTitle}>Şifremi Unuttum</Text>
+          <Text style={styles.heroSubtitle}>Şifre sıfırlama bağlantısı gönderelim</Text>
+        </View>
 
-          <View style={styles.form}>
-            <View style={styles.field}>
-              <Text style={styles.label}>E-posta</Text>
-              <TextInput
-                style={styles.input}
+        {/* Form card */}
+        <View style={styles.cardOuter}>
+          <View style={styles.cardScroll}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={18} color={AppColors.secondary} />
+              <Text style={styles.backText}>Geri</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.formTitle}>E-posta Adresiniz</Text>
+            <Text style={styles.formSubtitle}>
+              Kayıtlı e-posta adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.
+            </Text>
+
+            <View style={styles.fields}>
+              <InputField
+                label="E-posta"
                 value={email}
                 onChangeText={setEmail}
                 placeholder="ornek@mail.com"
-                placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                icon={<Ionicons name="mail-outline" size={18} color={AppColors.onSurfaceVariant} />}
               />
             </View>
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+            <Button
+              label="Bağlantı Gönder"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
               onPress={handleSend}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              {loading ? (
-                <ActivityIndicator color={AppColors.white} />
-              ) : (
-                <Text style={styles.buttonText}>Bağlantı Gönder</Text>
-              )}
-            </TouchableOpacity>
+            />
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -121,103 +123,77 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: AppColors.surface,
-  },
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-  },
-  backButton: {
-    marginBottom: 24,
-  },
-  backText: {
-    color: AppColors.secondary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  header: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: AppColors.onSurface,
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: AppColors.onSurfaceVariant,
-    lineHeight: 20,
-  },
-  form: {
-    gap: 16,
-  },
-  field: {
+  safeArea: { flex: 1, backgroundColor: AppColors.primaryContainer },
+  flex: { flex: 1 },
+
+  heroBanner: {
+    alignItems: 'center',
+    paddingTop: 28,
+    paddingBottom: 44,
+    backgroundColor: AppColors.primaryContainer,
     gap: 6,
   },
-  label: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: AppColors.onSurfaceVariant,
-    letterSpacing: 0.6,
-  },
-  input: {
-    backgroundColor: AppColors.surfaceContainerLow,
-    borderWidth: 2,
-    borderColor: AppColors.surfaceContainer,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: AppColors.onSurface,
-  },
-  button: {
-    backgroundColor: AppColors.secondary,
-    borderRadius: 14,
-    paddingVertical: 17,
+  logoBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    backgroundColor: AppColors.white,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 4,
     borderBottomWidth: 4,
-    borderBottomColor: AppColors.secondaryDim,
-    shadowColor: AppColors.secondaryDim,
+    borderBottomColor: AppColors.primaryDim,
+    shadowColor: AppColors.primaryDim,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  heroTitle: { fontSize: 26, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
+  heroSubtitle: { fontSize: 13, color: AppColors.primaryDim, fontWeight: '600' },
+
+  cardOuter: {
+    flex: 1,
+    backgroundColor: AppColors.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
   },
-  buttonText: {
-    color: AppColors.white,
-    fontSize: 16,
-    fontWeight: '800',
+  cardScroll: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 40,
   },
+
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 24,
+  },
+  backText: { color: AppColors.secondary, fontSize: 15, fontWeight: '700' },
+
+  formTitle: { fontSize: 22, fontWeight: '900', color: AppColors.onSurface, marginBottom: 6 },
+  formSubtitle: { fontSize: 14, color: AppColors.onSurfaceVariant, lineHeight: 20, marginBottom: 24, fontWeight: '500' },
+  fields: { marginBottom: 24 },
+
+  // Success
   successContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
   },
-  successIcon: {
-    fontSize: 56,
+  successIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 32,
+    backgroundColor: AppColors.primaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  successTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: AppColors.onSurface,
-  },
-  successText: {
-    fontSize: 14,
-    color: AppColors.onSurfaceVariant,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  successTitle: { fontSize: 24, fontWeight: '900', color: AppColors.onSurface },
+  successText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 22, marginBottom: 8 },
 });

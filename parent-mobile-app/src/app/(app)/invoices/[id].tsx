@@ -67,11 +67,11 @@ interface InvoiceDetail {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
-  draft: { label: 'Taslak', color: '#9CA3AF', bg: '#F9FAFB', icon: 'document-outline' },
-  pending: { label: 'Ödeme Bekleniyor', color: '#D97706', bg: '#FFFBEB', icon: 'time-outline' },
-  paid: { label: 'Ödendi', color: '#059669', bg: '#ECFDF5', icon: 'checkmark-circle-outline' },
-  overdue: { label: 'Gecikmiş', color: '#EF4444', bg: '#FEF2F2', icon: 'alert-circle-outline' },
-  cancelled: { label: 'İptal Edildi', color: '#9CA3AF', bg: '#F9FAFB', icon: 'close-circle-outline' },
+  draft: { label: 'Taslak', color: AppColors.onSurfaceVariant, bg: AppColors.surfaceContainerLow, icon: 'document-outline' },
+  pending: { label: 'Ödeme Bekleniyor', color: AppColors.warning, bg: AppColors.warningContainer, icon: 'time-outline' },
+  paid: { label: 'Ödendi', color: AppColors.success, bg: AppColors.successContainer, icon: 'checkmark-circle-outline' },
+  overdue: { label: 'Gecikmiş', color: AppColors.error, bg: '#FEF2F2', icon: 'alert-circle-outline' },
+  cancelled: { label: 'İptal Edildi', color: AppColors.onSurfaceVariant, bg: AppColors.surfaceContainerLow, icon: 'close-circle-outline' },
   refunded: { label: 'İade Edildi', color: '#7C3AED', bg: '#F5F3FF', icon: 'return-down-back-outline' },
 };
 
@@ -84,9 +84,9 @@ const MODULE_LABELS: Record<string, string> = {
 };
 
 const TX_STATUS: Record<number, { label: string; color: string }> = {
-  0: { label: 'Bekliyor', color: '#D97706' },
-  1: { label: 'Başarılı', color: '#059669' },
-  2: { label: 'Başarısız', color: '#EF4444' },
+  0: { label: 'Bekliyor', color: AppColors.warning },
+  1: { label: 'Başarılı', color: AppColors.success },
+  2: { label: 'Başarısız', color: AppColors.error },
 };
 
 function DetailRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
@@ -160,7 +160,7 @@ export default function InvoiceDetailScreen() {
           <View style={[styles.statusIcon, { backgroundColor: cfg.bg }]}>
             <Ionicons name={cfg.icon} size={32} color={cfg.color} />
           </View>
-          <Text style={[styles.heroAmount, isRefund && { color: '#7C3AED' }, isOverdue && { color: '#EF4444' }]}>
+          <Text style={[styles.heroAmount, isRefund && { color: '#7C3AED' }, isOverdue && { color: AppColors.error }]}>
             {isRefund ? '−' : ''}{formatCurrency(invoice.total_amount, invoice.currency)}
           </Text>
           <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
@@ -188,7 +188,7 @@ export default function InvoiceDetailScreen() {
             <DetailRow
               label="Son Ödeme Tarihi"
               value={new Date(invoice.due_date).toLocaleDateString('tr-TR')}
-              valueColor={isOverdue ? '#EF4444' : undefined}
+              valueColor={isOverdue ? AppColors.error : undefined}
             />
           )}
           {invoice.paid_at && (
@@ -328,9 +328,9 @@ export default function InvoiceDetailScreen() {
             <Ionicons
               name={isOverdue ? 'alert-circle' : 'information-circle'}
               size={20}
-              color={isOverdue ? '#EF4444' : '#D97706'}
+              color={isOverdue ? AppColors.error : AppColors.warning}
             />
-            <Text style={[styles.paymentNoticeText, isOverdue && { color: '#EF4444' }]}>
+            <Text style={[styles.paymentNoticeText, isOverdue && { color: AppColors.error }]}>
               {isOverdue
                 ? 'Bu faturanın ödeme süresi geçmiş. Lütfen okul ile iletişime geçin.'
                 : 'Bu fatura ödeme bekliyor. Ödeme için okul ile iletişime geçin.'}
@@ -351,15 +351,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: AppColors.onSurface },
   content: { padding: 16, gap: 12, paddingBottom: 40 },
 
   heroCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
@@ -379,14 +379,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  heroAmount: { fontSize: 32, fontWeight: '900', color: '#1F2937' },
+  heroAmount: { fontSize: 32, fontWeight: '900', color: AppColors.onSurface },
   statusBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
   statusBadgeText: { fontSize: 13, fontWeight: '700' },
   moduleBadge: { flexDirection: 'row', alignItems: 'center' },
-  moduleBadgeText: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
+  moduleBadgeText: { fontSize: 12, color: AppColors.onSurfaceVariant, fontWeight: '500' },
 
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 12,
@@ -410,10 +410,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFB',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
-  detailLabel: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  detailValue: { fontSize: 13, color: '#1F2937', fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
+  detailLabel: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500' },
+  detailValue: { fontSize: 13, color: AppColors.onSurface, fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
 
   itemRow: {
     flexDirection: 'row',
@@ -421,20 +421,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFB',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   itemInfo: { flex: 1 },
-  itemDesc: { fontSize: 13, color: '#1F2937', fontWeight: '600' },
-  itemQty: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  itemTotal: { fontSize: 13, fontWeight: '700', color: '#1F2937' },
+  itemDesc: { fontSize: 13, color: AppColors.onSurface, fontWeight: '600' },
+  itemQty: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  itemTotal: { fontSize: 13, fontWeight: '700', color: AppColors.onSurface },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingTop: 12,
     marginTop: 4,
   },
-  totalLabel: { fontSize: 14, fontWeight: '700', color: '#1F2937' },
-  totalValue: { fontSize: 16, fontWeight: '900', color: '#1F2937' },
+  totalLabel: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
+  totalValue: { fontSize: 16, fontWeight: '900', color: AppColors.onSurface },
 
   txRow: {
     flexDirection: 'row',
@@ -442,16 +442,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFB',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   txLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  txAmount: { fontSize: 14, fontWeight: '700', color: '#1F2937' },
-  txMeta: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
+  txAmount: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
+  txMeta: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 1 },
   txRight: { alignItems: 'flex-end' },
   txStatus: { fontSize: 12, fontWeight: '600' },
-  txDate: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  txDate: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 2 },
 
-  refundReason: { fontSize: 14, color: '#374151', lineHeight: 20 },
+  refundReason: { fontSize: 14, color: AppColors.onSurface, lineHeight: 20 },
   refundLink: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -462,12 +462,12 @@ const styles = StyleSheet.create({
   },
   refundLinkText: { flex: 1, fontSize: 14, color: '#7C3AED', fontWeight: '600' },
 
-  notes: { fontSize: 13, color: '#6B7280', lineHeight: 20 },
+  notes: { fontSize: 13, color: AppColors.onSurfaceVariant, lineHeight: 20 },
 
   paymentNotice: {
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   paymentNoticeText: {
     flex: 1,
     fontSize: 13,
-    color: '#D97706',
+    color: AppColors.warning,
     lineHeight: 20,
     fontWeight: '500',
   },

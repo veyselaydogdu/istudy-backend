@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -38,7 +39,7 @@ function getTodayString(): string {
   });
 }
 
-const CLASS_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
+const CLASS_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.warning, AppColors.success, AppColors.error];
 
 function classColor(cls: ClassSummary): string {
   if (cls.color) { return cls.color; }
@@ -124,16 +125,16 @@ export default function DailyScreen() {
                 </View>
                 {summary ? (
                   <View style={styles.statsRow}>
-                    <View style={[styles.statBadge, { backgroundColor: '#D1FAE5' }]}>
-                      <Text style={[styles.statValue, { color: '#059669' }]}>{summary.present}</Text>
+                    <View style={[styles.statBadge, { backgroundColor: AppColors.successContainer }]}>
+                      <Text style={[styles.statValue, { color: AppColors.success }]}>{summary.present}</Text>
                       <Text style={styles.statLabel}>Geldi</Text>
                     </View>
                     <View style={[styles.statBadge, { backgroundColor: '#FEE2E2' }]}>
-                      <Text style={[styles.statValue, { color: '#DC2626' }]}>{summary.absent}</Text>
+                      <Text style={[styles.statValue, { color: AppColors.error }]}>{summary.absent}</Text>
                       <Text style={styles.statLabel}>Gelmedi</Text>
                     </View>
-                    <View style={[styles.statBadge, { backgroundColor: '#FEF3C7' }]}>
-                      <Text style={[styles.statValue, { color: '#D97706' }]}>{summary.late}</Text>
+                    <View style={[styles.statBadge, { backgroundColor: AppColors.warningContainer }]}>
+                      <Text style={[styles.statValue, { color: AppColors.warning }]}>{summary.late}</Text>
                       <Text style={styles.statLabel}>Geç</Text>
                     </View>
                     <View style={[styles.statBadge, { backgroundColor: '#EDE9FE' }]}>
@@ -168,7 +169,7 @@ export default function DailyScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -182,14 +183,14 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     marginBottom: 2,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   errorBox: {
     flexDirection: 'row',
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 13,
     flex: 1,
   },
@@ -212,12 +213,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden',
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 6,
@@ -238,11 +239,11 @@ const styles = StyleSheet.create({
   className: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   schoolName: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   statsRow: {
     flexDirection: 'row',
@@ -261,7 +262,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 10,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
   },
   noAttendanceRow: {
@@ -271,7 +272,7 @@ const styles = StyleSheet.create({
   },
   noAttendanceText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   empty: {
     alignItems: 'center',
@@ -281,6 +282,6 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
 });

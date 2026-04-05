@@ -75,9 +75,9 @@ function getDayName(dateStr: string): string {
 // ─── Risk badge ───────────────────────────────────────────────────────────────
 
 const RISK_CONFIG = {
-  high:   { bg: '#FEE2E2', text: '#DC2626', label: 'Yüksek' },
-  medium: { bg: '#FEF3C7', text: '#D97706', label: 'Orta' },
-  low:    { bg: '#DCFCE7', text: '#16A34A', label: 'Düşük' },
+  high:   { bg: '#FEE2E2', text: AppColors.error, label: 'Yüksek' },
+  medium: { bg: AppColors.warningContainer, text: AppColors.warning, label: 'Orta' },
+  low:    { bg: '#DCFCE7', text: AppColors.success, label: 'Düşük' },
 };
 
 function RiskBadge({ level }: { level: Allergen['risk_level'] }) {
@@ -131,7 +131,7 @@ function DayCard({ day }: { day: DayMenu }) {
             }],
           }}
         >
-          <Ionicons name="chevron-down" size={20} color={mealCount > 0 ? AppColors.primary : '#D1D5DB'} />
+          <Ionicons name="chevron-down" size={20} color={mealCount > 0 ? AppColors.primary : AppColors.surfaceContainer} />
         </Animated.View>
       </TouchableOpacity>
 
@@ -269,7 +269,7 @@ function MonthNav({
         activeOpacity={0.7}
         disabled={isCurrentOrFuture}
       >
-        <Ionicons name="chevron-forward" size={20} color={isCurrentOrFuture ? '#D1D5DB' : AppColors.primary} />
+        <Ionicons name="chevron-forward" size={20} color={isCurrentOrFuture ? AppColors.surfaceContainer : AppColors.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -435,12 +435,14 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: AppColors.surface,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: AppColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.surfaceContainer,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A2E' },
-  headerSub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
+  headerSub: { fontSize: 13, color: AppColors.onSurfaceVariant, marginTop: 2, fontWeight: '500' },
 
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
@@ -451,26 +453,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: AppColors.white,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
-  selectorText: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1F2937' },
+  selectorText: { flex: 1, fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
   selectorDropdown: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     marginTop: 4,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -481,44 +485,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
-  selectorItemActive: { backgroundColor: '#EFF6FF' },
-  selectorItemText: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
+  selectorItemActive: { backgroundColor: AppColors.primaryContainer },
+  selectorItemText: { fontSize: 14, fontWeight: '600', color: AppColors.onSurface },
   selectorItemTextActive: { color: AppColors.primary },
-  selectorItemSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  selectorItemSub: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
 
   // Month nav
   monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: AppColors.white,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
   monthNavBtn: { padding: 4 },
   monthNavBtnDisabled: { opacity: 0.35 },
-  monthNavLabel: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
+  monthNavLabel: { fontSize: 16, fontWeight: '800', color: AppColors.onSurface },
 
   // Day list
   dayList: { gap: 8 },
 
   // Day card
   dayCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#1E3A5F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
   dayHeader: {
@@ -533,30 +541,30 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dayNameText: { fontSize: 11, fontWeight: '800', color: AppColors.primary },
-  dayDateText: { fontSize: 14, fontWeight: '700', color: '#1F2937' },
-  daySubText: { fontSize: 12, color: '#9CA3AF', marginTop: 1 },
+  dayDateText: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
+  daySubText: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 1 },
 
   dayBody: { paddingHorizontal: 16, paddingBottom: 14 },
   emptyDay: { paddingHorizontal: 16, paddingBottom: 14 },
-  emptyDayText: { fontSize: 13, color: '#9CA3AF' },
+  emptyDayText: { fontSize: 13, color: AppColors.onSurfaceVariant },
 
   // Meal block
   mealBlock: { paddingVertical: 10 },
-  mealBlockBorder: { borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  mealBlockBorder: { borderTopWidth: 1, borderTopColor: AppColors.surfaceContainerLow },
   mealHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  mealName: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1F2937' },
+  mealName: { flex: 1, fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
   mealTypeBadge: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: AppColors.successContainer,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  mealTypeText: { fontSize: 11, fontWeight: '600', color: '#16A34A' },
+  mealTypeText: { fontSize: 11, fontWeight: '600', color: AppColors.success },
 
   // Ingredients
   ingredientList: { gap: 6 },
@@ -571,31 +579,31 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
   },
-  ingredientName: { fontSize: 13, color: '#4B5563', paddingLeft: 12 },
+  ingredientName: { fontSize: 13, color: AppColors.onSurfaceVariant, paddingLeft: 12 },
   allergenChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingLeft: 12, marginTop: 4 },
   allergenChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: AppColors.tertiaryContainer,
   },
-  allergenChipText: { fontSize: 11, color: '#D97706', fontWeight: '600' },
+  allergenChipText: { fontSize: 11, color: AppColors.warning, fontWeight: '600' },
   riskBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
   riskBadgeText: { fontSize: 9, fontWeight: '700' },
 
-  noIngredient: { fontSize: 12, color: '#9CA3AF', paddingLeft: 12 },
+  noIngredient: { fontSize: 12, color: AppColors.onSurfaceVariant, paddingLeft: 12 },
 
   // Empty states
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: '#374151', textAlign: 'center' },
-  emptySubtitle: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: AppColors.onSurface, textAlign: 'center' },
+  emptySubtitle: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
   menuLoading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 40 },
-  menuLoadingText: { fontSize: 14, color: '#9CA3AF' },
+  menuLoadingText: { fontSize: 14, color: AppColors.onSurfaceVariant },
   emptyMenu: { alignItems: 'center', paddingVertical: 40, gap: 10 },
-  emptyMenuTitle: { fontSize: 16, fontWeight: '700', color: '#374151' },
-  emptyMenuSub: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', lineHeight: 20 },
+  emptyMenuTitle: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface },
+  emptyMenuSub: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
 });

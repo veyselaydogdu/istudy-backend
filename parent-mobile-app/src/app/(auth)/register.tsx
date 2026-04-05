@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
 import { AppColors } from '@/constants/theme';
+import { Button } from '@/components/ui/Button';
 import api from '../../lib/api';
 import { getApiError, registerRequest } from '../../lib/auth';
 
@@ -499,18 +500,14 @@ export default function RegisterScreen() {
             </View>
 
             {/* Kayıt ol butonu */}
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+            <Button
+              label="Kayıt Ol"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
               onPress={handleRegister}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator color={AppColors.white} />
-              ) : (
-                <Text style={styles.buttonText}>Kayıt Ol</Text>
-              )}
-            </TouchableOpacity>
+            />
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Zaten hesabınız var mı?</Text>
@@ -602,24 +599,6 @@ const styles = StyleSheet.create({
   codeText: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
   phoneInput: { flex: 1 },
   phoneCount: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500' },
-
-  // Submit
-  button: {
-    backgroundColor: AppColors.primary,
-    borderRadius: 14,
-    paddingVertical: 17,
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: AppColors.primaryDim,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
-    borderBottomWidth: 4,
-    borderBottomColor: AppColors.primaryDim,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: AppColors.white, fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
 
   // Footer
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },

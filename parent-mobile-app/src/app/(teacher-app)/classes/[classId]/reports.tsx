@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -50,9 +51,9 @@ const MOOD_OPTIONS: { value: MoodType; emoji: string; label: string }[] = [
 ];
 
 const APPETITE_OPTIONS: { value: AppetiteType; label: string; color: string }[] = [
-  { value: 'good', label: 'İyi', color: '#10B981' },
-  { value: 'fair', label: 'Orta', color: '#F59E0B' },
-  { value: 'poor', label: 'Az', color: '#EF4444' },
+  { value: 'good', label: 'İyi', color: AppColors.success },
+  { value: 'fair', label: 'Orta', color: AppColors.warning },
+  { value: 'poor', label: 'Az', color: AppColors.error },
 ];
 
 function formatDate(date: Date): string {
@@ -68,7 +69,7 @@ function formatDisplayDate(date: Date): string {
   });
 }
 
-const AVATAR_COLORS = ['#208AEF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
+const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.warning, AppColors.success, AppColors.error];
 
 function avatarColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
@@ -365,7 +366,7 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -396,14 +397,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   datePicker: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 4,
     shadowColor: '#000',
@@ -443,7 +444,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {
-    color: '#DC2626',
+    color: AppColors.error,
     fontSize: 13,
     flex: 1,
   },
@@ -453,13 +454,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   childCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 16,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 5,
@@ -473,7 +474,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -484,11 +485,11 @@ const styles = StyleSheet.create({
   childName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   reportPreview: {
     fontSize: 12,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   reportBadge: {
     borderRadius: 8,
@@ -497,22 +498,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   reportBadgeExists: {
-    backgroundColor: '#D1FAE5',
-    borderColor: '#10B981',
+    backgroundColor: AppColors.successContainer,
+    borderColor: AppColors.success,
   },
   reportBadgeEmpty: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderColor: AppColors.surfaceContainer,
   },
   reportBadgeText: {
     fontSize: 11,
     fontWeight: '600',
   },
   reportBadgeTextExists: {
-    color: '#059669',
+    color: AppColors.success,
   },
   reportBadgeTextEmpty: {
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   empty: {
     alignItems: 'center',
@@ -521,12 +522,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
     padding: 20,
   },
   modalHeader: {
@@ -539,7 +540,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   modalSection: {
     marginBottom: 20,
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#374151',
+    color: AppColors.onSurface,
     marginBottom: 10,
   },
   moodRow: {
@@ -559,14 +560,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     gap: 4,
   },
   moodBtnActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#208AEF',
+    backgroundColor: AppColors.primaryContainer,
+    borderColor: AppColors.primary,
   },
   moodEmoji: {
     fontSize: 28,
@@ -574,10 +575,10 @@ const styles = StyleSheet.create({
   moodLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   moodLabelActive: {
-    color: '#208AEF',
+    color: AppColors.primary,
   },
   appetiteRow: {
     flexDirection: 'row',
@@ -588,32 +589,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
   },
   appetiteBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   notesInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: AppColors.surfaceContainer,
     borderRadius: 14,
     padding: 14,
     fontSize: 14,
-    color: '#1F2937',
+    color: AppColors.onSurface,
     minHeight: 100,
   },
   saveButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#208AEF',
+    shadowColor: AppColors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -623,7 +624,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 16,
     fontWeight: '700',
   },

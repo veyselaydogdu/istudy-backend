@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -81,11 +82,11 @@ export default function TeacherHomeScreen() {
         <Text style={styles.sectionTitle}>Hızlı Erişim</Text>
         <View style={styles.cardsRow}>
           <TouchableOpacity
-            style={[styles.quickCard, { backgroundColor: '#EFF6FF' }]}
+            style={[styles.quickCard, { backgroundColor: AppColors.primaryContainer }]}
             onPress={() => router.push('/(teacher-app)/classes')}
             activeOpacity={0.75}
           >
-            <View style={[styles.quickIconWrap, { backgroundColor: '#208AEF' }]}>
+            <View style={[styles.quickIconWrap, { backgroundColor: AppColors.primary }]}>
               <Ionicons name="book" size={22} color="#FFFFFF" />
             </View>
             <Text style={styles.quickCardTitle}>Sınıflarım</Text>
@@ -93,11 +94,11 @@ export default function TeacherHomeScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.quickCard, { backgroundColor: '#F0FDF4' }]}
+            style={[styles.quickCard, { backgroundColor: AppColors.successContainer }]}
             onPress={() => router.push('/(teacher-app)/daily')}
             activeOpacity={0.75}
           >
-            <View style={[styles.quickIconWrap, { backgroundColor: '#10B981' }]}>
+            <View style={[styles.quickIconWrap, { backgroundColor: AppColors.success }]}>
               <Ionicons name="clipboard" size={22} color="#FFFFFF" />
             </View>
             <Text style={styles.quickCardTitle}>Günlük Raporlar</Text>
@@ -111,7 +112,7 @@ export default function TeacherHomeScreen() {
             onPress={() => router.push('/(teacher-app)/meal-menu')}
             activeOpacity={0.75}
           >
-            <View style={[styles.quickIconWrap, { backgroundColor: '#F59E0B' }]}>
+            <View style={[styles.quickIconWrap, { backgroundColor: AppColors.warning }]}>
               <Ionicons name="restaurant" size={22} color="#FFFFFF" />
             </View>
             <Text style={styles.quickCardTitle}>Yemek Listesi</Text>
@@ -147,7 +148,7 @@ export default function TeacherHomeScreen() {
                 <View
                   style={[
                     styles.classColorDot,
-                    { backgroundColor: cls.color ?? '#208AEF' },
+                    { backgroundColor: cls.color ?? AppColors.primary },
                   ]}
                 />
                 <View style={styles.classInfo}>
@@ -170,7 +171,7 @@ export default function TeacherHomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   scroll: {
     paddingHorizontal: 20,
@@ -185,25 +186,25 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '500',
     marginBottom: 2,
   },
   userName: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   avatarCircle: {
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarInitial: {
-    color: '#FFFFFF',
+    color: AppColors.white,
     fontSize: 20,
     fontWeight: '800',
   },
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 12,
   },
   cardsRow: {
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     gap: 8,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -258,18 +259,18 @@ const styles = StyleSheet.create({
   quickCardTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   quickCardSub: {
     fontSize: 12,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   attendanceSummary: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 18,
     padding: 16,
     gap: 4,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 6,
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   errorRow: {
     flexDirection: 'row',
@@ -293,12 +294,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    color: '#DC2626',
+    color: AppColors.error,
     flex: 1,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     textAlign: 'center',
     paddingVertical: 12,
   },
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainerLow,
   },
   classColorDot: {
     width: 12,
@@ -321,22 +322,22 @@ const styles = StyleSheet.create({
   className: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   classSchool: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     marginTop: 1,
   },
   classCountBadge: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   classCountText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
     fontWeight: '600',
   },
 });

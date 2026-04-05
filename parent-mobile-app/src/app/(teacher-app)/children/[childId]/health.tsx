@@ -1,3 +1,4 @@
+import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -192,7 +193,7 @@ export default function ChildHealthScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: AppColors.surface,
   },
   center: {
     flex: 1,
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   scroll: {
     paddingHorizontal: 20,
@@ -232,12 +233,12 @@ const styles = StyleSheet.create({
   childName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 20,
   },
   errorText: {
     fontSize: 14,
-    color: '#DC2626',
+    color: AppColors.error,
   },
   section: {
     marginBottom: 20,
@@ -251,11 +252,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
   },
   chipWrap: {
     flexDirection: 'row',
@@ -272,31 +273,31 @@ const styles = StyleSheet.create({
   },
   allergenChipText: {
     fontSize: 13,
-    color: '#DC2626',
+    color: AppColors.error,
     fontWeight: '600',
   },
   conditionChip: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: AppColors.warningContainer,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: AppColors.tertiaryContainer,
   },
   conditionChipText: {
     fontSize: 13,
-    color: '#D97706',
+    color: AppColors.warning,
     fontWeight: '600',
   },
   medCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 14,
     gap: 4,
     marginBottom: 8,
     borderLeftWidth: 4,
     borderLeftColor: '#7C3AED',
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -305,24 +306,24 @@ const styles = StyleSheet.create({
   medName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: AppColors.onSurface,
     marginBottom: 2,
   },
   medDetail: {
     fontSize: 13,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
   },
   medNotes: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     fontStyle: 'italic',
     marginTop: 4,
   },
   notesCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderRadius: 14,
     padding: 14,
-    shadowColor: '#1E3A5F',
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
   },
   notesText: {
     fontSize: 14,
-    color: '#374151',
+    color: AppColors.onSurface,
     lineHeight: 22,
   },
 });

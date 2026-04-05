@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { Card } from '@/components/ui/Card';
+import { StatCard } from '@/components/ui/StatCard';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -41,11 +43,11 @@ interface Stats {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
-  draft: { label: 'Taslak', color: '#9CA3AF', bg: '#F9FAFB', icon: 'document-outline' },
-  pending: { label: 'Bekliyor', color: '#D97706', bg: '#FFFBEB', icon: 'time-outline' },
-  paid: { label: 'Ödendi', color: '#059669', bg: '#ECFDF5', icon: 'checkmark-circle-outline' },
-  overdue: { label: 'Gecikmiş', color: '#EF4444', bg: '#FEF2F2', icon: 'alert-circle-outline' },
-  cancelled: { label: 'İptal', color: '#9CA3AF', bg: '#F9FAFB', icon: 'close-circle-outline' },
+  draft: { label: 'Taslak', color: AppColors.onSurfaceVariant, bg: AppColors.surfaceContainerLow, icon: 'document-outline' },
+  pending: { label: 'Bekliyor', color: AppColors.warning, bg: AppColors.warningContainer, icon: 'time-outline' },
+  paid: { label: 'Ödendi', color: AppColors.success, bg: AppColors.successContainer, icon: 'checkmark-circle-outline' },
+  overdue: { label: 'Gecikmiş', color: AppColors.error, bg: '#FEF2F2', icon: 'alert-circle-outline' },
+  cancelled: { label: 'İptal', color: AppColors.onSurfaceVariant, bg: AppColors.surfaceContainerLow, icon: 'close-circle-outline' },
   refunded: { label: 'İade Edildi', color: '#7C3AED', bg: '#F5F3FF', icon: 'return-down-back-outline' },
 };
 
@@ -149,7 +151,7 @@ export default function InvoicesScreen() {
               <Ionicons
                 name={isRefund ? 'return-down-back' : isOverdue ? 'alert-circle' : 'receipt-outline'}
                 size={20}
-                color={isRefund ? '#7C3AED' : isOverdue ? '#EF4444' : AppColors.primary}
+                color={isRefund ? '#7C3AED' : isOverdue ? AppColors.error : AppColors.primary}
               />
             </View>
             <View style={styles.cardInfo}>
@@ -233,18 +235,24 @@ export default function InvoicesScreen() {
         ListHeaderComponent={
           stats ? (
             <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.pending_count}</Text>
-                <Text style={styles.statLabel}>Bekleyen</Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardDanger]}>
-                <Text style={[styles.statValue, { color: '#EF4444' }]}>{stats.overdue_count}</Text>
-                <Text style={styles.statLabel}>Gecikmiş</Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardSuccess]}>
-                <Text style={[styles.statValue, { color: '#059669' }]}>{stats.paid_count}</Text>
-                <Text style={styles.statLabel}>Ödendi</Text>
-              </View>
+              <StatCard
+                value={stats.pending_count}
+                label="Bekleyen"
+                accentColor={AppColors.warning}
+                icon={<Ionicons name="time" size={24} color={AppColors.warning} />}
+              />
+              <StatCard
+                value={stats.overdue_count}
+                label="Gecikmiş"
+                accentColor={AppColors.error}
+                icon={<Ionicons name="alert-circle" size={24} color={AppColors.error} />}
+              />
+              <StatCard
+                value={stats.paid_count}
+                label="Ödendi"
+                accentColor={AppColors.success}
+                icon={<Ionicons name="checkmark-circle" size={24} color={AppColors.success} />}
+              />
             </View>
           ) : null
         }
@@ -274,63 +282,49 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: AppColors.surfaceContainer,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: AppColors.primary },
   list: { padding: 16, gap: 10 },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
+
+  card: {
+    backgroundColor: AppColors.white,
+    borderRadius: 16,
     padding: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  statCardDanger: { borderWidth: 1, borderColor: '#FEE2E2' },
-  statCardSuccess: { borderWidth: 1, borderColor: '#D1FAE5' },
-  statValue: { fontSize: 22, fontWeight: '800', color: '#D97706' },
-  statLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 2, fontWeight: '500' },
-
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
   cardRefund: { borderLeftWidth: 3, borderLeftColor: '#7C3AED' },
-  cardOverdue: { borderLeftWidth: 3, borderLeftColor: '#EF4444' },
+  cardOverdue: { borderLeftWidth: 3, borderLeftColor: AppColors.error },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardLeft: { flexDirection: 'row', gap: 10, flex: 1 },
   iconBox: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: AppColors.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconBoxRefund: { backgroundColor: '#F5F3FF' },
-  iconBoxOverdue: { backgroundColor: '#FEF2F2' },
+  iconBoxOverdue: { backgroundColor: '#FEE2E2' },
   cardInfo: { flex: 1 },
-  invoiceNo: { fontSize: 13, fontWeight: '700', color: '#1F2937' },
+  invoiceNo: { fontSize: 13, fontWeight: '700', color: AppColors.onSurface },
   moduleLabel: { fontSize: 10, color: AppColors.primary, marginTop: 1, fontWeight: '600', textTransform: 'uppercase' },
-  activityName: { fontSize: 12, color: '#6B7280', marginTop: 2, fontWeight: '500' },
-  childName: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
+  activityName: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2, fontWeight: '500' },
+  childName: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 1 },
   cardRight: { alignItems: 'flex-end', gap: 6 },
-  amount: { fontSize: 15, fontWeight: '800', color: '#1F2937' },
+  amount: { fontSize: 15, fontWeight: '800', color: AppColors.onSurface },
   amountRefund: { color: '#7C3AED' },
-  amountOverdue: { color: '#EF4444' },
+  amountOverdue: { color: AppColors.error },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -346,18 +340,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: AppColors.surfaceContainerLow,
   },
-  dateText: { fontSize: 11, color: '#9CA3AF' },
-  dueText: { fontSize: 11, color: '#D97706', fontWeight: '500' },
-  dueDateOverdue: { color: '#EF4444' },
-  paidText: { fontSize: 11, color: '#059669', fontWeight: '500' },
+  dateText: { fontSize: 11, color: AppColors.onSurfaceVariant },
+  dueText: { fontSize: 11, color: AppColors.warning, fontWeight: '500' },
+  dueDateOverdue: { color: AppColors.error },
+  paidText: { fontSize: 11, color: AppColors.success, fontWeight: '500' },
 
   empty: { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#9CA3AF' },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: AppColors.onSurfaceVariant },
   emptyText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: AppColors.onSurfaceVariant,
     textAlign: 'center',
     paddingHorizontal: 32,
     lineHeight: 20,

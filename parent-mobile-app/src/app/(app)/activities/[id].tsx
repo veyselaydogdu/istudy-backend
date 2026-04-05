@@ -192,7 +192,7 @@ export default function ActivityClassDetailScreen() {
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <View style={styles.loadingContainer}>
-          <Text style={{ color: '#9CA3AF' }}>Etkinlik sınıfı bulunamadı.</Text>
+          <Text style={{ color: AppColors.onSurfaceVariant }}>Etkinlik sınıfı bulunamadı.</Text>
         </View>
       </SafeAreaView>
     );
@@ -336,7 +336,7 @@ export default function ActivityClassDetailScreen() {
             <Text style={styles.sectionTitle}>Getirilmesi Gerekenler</Text>
             {activityClass.materials.map(m => (
               <View key={m.id} style={styles.materialRow}>
-                <View style={[styles.materialDot, { backgroundColor: m.is_required ? '#EF4444' : '#10B981' }]} />
+                <View style={[styles.materialDot, { backgroundColor: m.is_required ? AppColors.error : AppColors.success }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.materialName}>
                     {m.name}
@@ -385,7 +385,7 @@ export default function ActivityClassDetailScreen() {
                   <Ionicons
                     name={selectedChildId === child.id ? 'checkmark-circle' : 'radio-button-off'}
                     size={20}
-                    color={selectedChildId === child.id ? AppColors.primary : '#9CA3AF'}
+                    color={selectedChildId === child.id ? AppColors.primary : AppColors.onSurfaceVariant}
                   />
                   <Text style={styles.childName}>{child.full_name}</Text>
                 </TouchableOpacity>
@@ -445,63 +445,63 @@ export default function ActivityClassDetailScreen() {
 // ─── Styles ───────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   backBtn: { padding: 16 },
-  topBar: { padding: 16, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  hero: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 8 },
-  heroTitle: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 8 },
+  topBar: { padding: 16, backgroundColor: AppColors.white, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow },
+  hero: { backgroundColor: AppColors.white, padding: 20, marginBottom: 8 },
+  heroTitle: { fontSize: 22, fontWeight: '700', color: AppColors.onSurface, marginBottom: 8 },
   heroTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  langTag: { backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  langTag: { backgroundColor: AppColors.primaryContainer, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   langTagText: { fontSize: 12, color: '#1D4ED8', fontWeight: '600' },
-  paidTag: { flexDirection: 'row', gap: 4, alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  paidTagText: { fontSize: 12, color: '#D97706', fontWeight: '600' },
-  freeTag: { backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  paidTag: { flexDirection: 'row', gap: 4, alignItems: 'center', backgroundColor: AppColors.warningContainer, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  paidTagText: { fontSize: 12, color: AppColors.warning, fontWeight: '600' },
+  freeTag: { backgroundColor: AppColors.successContainer, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   freeTagText: { fontSize: 12, color: '#065F46', fontWeight: '600' },
-  heroDesc: { fontSize: 14, color: '#6B7280', lineHeight: 20 },
+  heroDesc: { fontSize: 14, color: AppColors.onSurfaceVariant, lineHeight: 20 },
   infoGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
   infoCard: {
-    flex: 1, minWidth: 140, backgroundColor: '#FFFFFF', borderRadius: 10,
+    flex: 1, minWidth: 140, backgroundColor: AppColors.white, borderRadius: 10,
     padding: 12, alignItems: 'center', gap: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 3, elevation: 1,
   },
-  infoLabel: { fontSize: 11, color: '#9CA3AF' },
-  infoValue: { fontSize: 13, fontWeight: '600', color: '#111827', textAlign: 'center' },
-  section: { backgroundColor: '#FFFFFF', marginBottom: 8, padding: 16 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  enrolledRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  infoLabel: { fontSize: 11, color: AppColors.onSurfaceVariant },
+  infoValue: { fontSize: 13, fontWeight: '600', color: AppColors.onSurface, textAlign: 'center' },
+  section: { backgroundColor: AppColors.white, marginBottom: 8, padding: 16 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface, marginBottom: 12 },
+  enrolledRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow },
   enrolledInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  enrolledName: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  unenrollText: { fontSize: 13, color: '#EF4444', fontWeight: '500' },
-  noEnrollText: { fontSize: 14, color: '#9CA3AF', marginBottom: 12 },
+  enrolledName: { fontSize: 14, color: AppColors.onSurface, fontWeight: '500' },
+  unenrollText: { fontSize: 13, color: AppColors.error, fontWeight: '500' },
+  noEnrollText: { fontSize: 14, color: AppColors.onSurfaceVariant, marginBottom: 12 },
   enrollBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: AppColors.primary, borderRadius: 10, paddingVertical: 12, marginTop: 12 },
   enrollBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  teacherRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  teacherName: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  teacherRole: { fontSize: 12, color: '#9CA3AF' },
-  materialRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  teacherRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow },
+  teacherName: { fontSize: 14, color: AppColors.onSurface, fontWeight: '500' },
+  teacherRole: { fontSize: 12, color: AppColors.onSurfaceVariant },
+  materialRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow },
   materialDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  materialName: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  materialQty: { fontSize: 13, color: '#9CA3AF', fontWeight: '400' },
-  materialDesc: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  requiredBadge: { fontSize: 10, color: '#EF4444', backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, backgroundColor: '#EFF6FF', borderRadius: 10 },
+  materialName: { fontSize: 14, color: AppColors.onSurface, fontWeight: '500' },
+  materialQty: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '400' },
+  materialDesc: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  requiredBadge: { fontSize: 10, color: AppColors.error, backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, backgroundColor: AppColors.primaryContainer, borderRadius: 10 },
   galleryBtnText: { flex: 1, color: AppColors.primary, fontWeight: '600', fontSize: 14 },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modal: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 4 },
-  modalSubtitle: { fontSize: 14, color: '#6B7280', marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface, marginBottom: 4 },
+  modalSubtitle: { fontSize: 14, color: AppColors.onSurfaceVariant, marginBottom: 20 },
   childList: { gap: 10, marginBottom: 16 },
-  childItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB' },
-  childItemSelected: { borderColor: AppColors.primary, backgroundColor: '#EFF6FF' },
-  childName: { fontSize: 15, color: '#111827', fontWeight: '500' },
-  invoiceNotice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: '#FEF3C7', borderRadius: 8, padding: 12, marginBottom: 16 },
+  childItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: AppColors.surfaceContainer },
+  childItemSelected: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryContainer },
+  childName: { fontSize: 15, color: AppColors.onSurface, fontWeight: '500' },
+  invoiceNotice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: AppColors.warningContainer, borderRadius: 8, padding: 12, marginBottom: 16 },
   invoiceNoticeText: { flex: 1, fontSize: 13, color: '#92400E' },
   modalActions: { flexDirection: 'row', gap: 12 },
-  modalCancel: { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center' },
-  modalCancelText: { color: '#6B7280', fontWeight: '600', fontSize: 15 },
+  modalCancel: { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: AppColors.surfaceContainer, alignItems: 'center' },
+  modalCancelText: { color: AppColors.onSurfaceVariant, fontWeight: '600', fontSize: 15 },
   modalConfirm: { flex: 1, padding: 14, borderRadius: 10, backgroundColor: AppColors.primary, alignItems: 'center' },
   modalConfirmDisabled: { backgroundColor: '#93C5FD' },
   modalConfirmText: { color: '#fff', fontWeight: '700', fontSize: 15 },
@@ -511,6 +511,6 @@ const styles = StyleSheet.create({
   galleryGrid: { padding: 16, paddingTop: 90, gap: 12 },
   galleryItem: { borderRadius: 10, overflow: 'hidden' },
   galleryImage: { width: '100%', height: 200 },
-  galleryCaption: { color: '#E5E7EB', fontSize: 12, padding: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
-  galleryEmpty: { color: '#9CA3AF', textAlign: 'center', marginTop: 60, fontSize: 16 },
+  galleryCaption: { color: AppColors.surfaceContainer, fontSize: 12, padding: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
+  galleryEmpty: { color: AppColors.onSurfaceVariant, textAlign: 'center', marginTop: 60, fontSize: 16 },
 });
