@@ -12,7 +12,14 @@ use Illuminate\Support\Facades\Schema;
 
 abstract class BaseModel extends Model
 {
-    use HasFactory, SoftDeletes, Auditable;
+    use Auditable, HasFactory, SoftDeletes;
+
+    /**
+     * Tenant sütun varlığı önbelleği — runtime Schema::hasColumn N+1 önler (H-8).
+     *
+     * @var array<string, bool>
+     */
+    protected static array $tenantColumnCache = [];
 
     /**
      * The attributes that should be cast.
@@ -55,22 +62,17 @@ abstract class BaseModel extends Model
         // 2. Tenant Awareness
         static::addGlobalScope('tenant', function (Builder $builder) {
             if (auth()->check() && auth()->user()->tenant_id) {
-                // Model tenant_id sütununa sahip mi?
-                // Model instance üzerinden kontrol etmek için make() kullanmak gerekebilir ama
-                // static bağlamdayız. getTable() ile sütun kontrolü en güvenlisi.
-                // Performans için sütun listesi cachelenebilir.
-
-                // Basit bir kontrol: fillable içinde var mı veya model property olarak tanımlı mı?
-                // En garantisi Schema::hasColumn ama yavaş olabilir.
-                // Genelde TenantScope trait kullanılır. Burada dinamik yapıyoruz.
-
                 $model = new static;
-                if (in_array('tenant_id', $model->getFillable()) || Schema::hasColumn($model->getTable(), 'tenant_id')) {
-                    // Eğer kullanıcı tenant_owner veya altı ise kendi tenant verisini görür.
-                    // Super admin hariç tutulabilir.
-                    if (! auth()->user()->isSuperAdmin()) {
-                        $builder->where($model->getTable().'.tenant_id', auth()->user()->tenant_id);
-                    }
+                $table = $model->getTable();
+
+                // H-8: Schema::hasColumn her sorguda DB'ye gitmemesi için statik önbellekte tut.
+                if (! isset(static::$tenantColumnCache[$table])) {
+                    static::$tenantColumnCache[$table] = in_array('tenant_id', $model->getFillable())
+                        || Schema::hasColumn($table, 'tenant_id');
+                }
+
+                if (static::$tenantColumnCache[$table] && ! auth()->user()->isSuperAdmin()) {
+                    $builder->where($table.'.tenant_id', auth()->user()->tenant_id);
                 }
             }
         });

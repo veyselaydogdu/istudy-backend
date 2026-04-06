@@ -149,9 +149,21 @@ class InvoiceController extends BaseController
         try {
             DB::beginTransaction();
 
+            // H-1: school_id verilmişse bu okul auth user'ın tenant'ına ait mi doğrula
+            $tenantId = $this->user()->tenant_id;
+            if ($request->school_id && $tenantId) {
+                $schoolBelongsToTenant = \App\Models\School\School::where('id', $request->school_id)
+                    ->where('tenant_id', $tenantId)
+                    ->exists();
+
+                if (! $schoolBelongsToTenant) {
+                    return $this->errorResponse('Belirtilen okul bu kuruma ait değil.', 403);
+                }
+            }
+
             $data = [
                 'user_id' => $this->user()->id,
-                'tenant_id' => $this->user()->tenant_id,
+                'tenant_id' => $tenantId,
                 'school_id' => $request->school_id,
                 'type' => $request->type,
                 'tax_rate' => $request->tax_rate ?? 0,

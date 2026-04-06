@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Schools;
 
-use App\Http\Controllers\Base\BaseController;
 use App\Models\Child\Child;
 use App\Models\School\SchoolChildEnrollmentRequest;
 use Illuminate\Http\JsonResponse;
@@ -12,12 +11,16 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Tenant admin: çocuk okul kayıt taleplerini listele / onayla / reddet.
+ *
+ * C-6: BaseSchoolController'dan türetilerek school_id tenant sahipliği otomatik doğrulanır.
  */
-class ChildEnrollmentRequestController extends BaseController
+class ChildEnrollmentRequestController extends BaseSchoolController
 {
     /**
      * Okuldaki çocuk kayıt taleplerini listele.
      * GET /schools/{school_id}/child-enrollment-requests?status=pending
+     *
+     * C-6: BaseSchoolController middleware'i schoolId'nin auth user tenant'ına ait olduğunu doğrular.
      */
     public function index(Request $request, int $schoolId): JsonResponse
     {

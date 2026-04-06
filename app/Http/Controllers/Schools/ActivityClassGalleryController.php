@@ -44,7 +44,7 @@ class ActivityClassGalleryController extends BaseSchoolController
 
             $item = $activityClass->gallery()->create([
                 'file_path' => $path,
-                'original_name' => $file->getClientOriginalName(),
+                'original_name' => basename(str_replace(['..', '/', '\\'], '', $file->getClientOriginalName())), // L-3: sanitize
                 'mime_type' => $file->getMimeType(),
                 'file_size' => $file->getSize(),
                 'caption' => $request->caption,
@@ -81,7 +81,10 @@ class ActivityClassGalleryController extends BaseSchoolController
     {
         abort_unless(Storage::disk('local')->exists($galleryItem->file_path), 404);
 
-        return Storage::disk('local')->response($galleryItem->file_path);
+        return Storage::disk('local')->response($galleryItem->file_path, null, [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+        ]);
     }
 
     private function formatGalleryItem(ActivityClassGalleryItem $item): array
@@ -93,7 +96,7 @@ class ActivityClassGalleryController extends BaseSchoolController
             'original_name' => $item->original_name,
             'mime_type' => $item->mime_type,
             'file_size' => $item->file_size,
-            'url' => URL::signedRoute('activity-class-gallery.serve', ['galleryItem' => $item->id], now()->addHours(2)),
+            'url' => URL::signedRoute('activity-class-gallery.serve', ['galleryItem' => $item->id], now()->addHour()), // M-2: 2h -> 1h
             'created_at' => $item->created_at,
         ];
     }

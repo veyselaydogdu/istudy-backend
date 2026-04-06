@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Teachers;
 
+use App\Models\Academic\SchoolClass;
 use App\Models\Child\Child;
 use App\Models\Child\ChildMedicationLog;
 use Illuminate\Http\JsonResponse;
@@ -12,14 +13,40 @@ use Illuminate\Support\Facades\Log;
  * TeacherChildController — Öğrenci Detayları
  *
  * Öğretmenin öğrenci sağlık, aile ve ilaç bilgilerine erişimi.
+ * C-4: Yalnızca öğretmenin atandığı sınıflardaki çocuklar için erişim sağlanır.
  */
 class TeacherChildController extends BaseTeacherController
 {
+    /**
+     * Öğretmenin atandığı bir sınıfta kayıtlı çocuk olup olmadığını doğrular.
+     * C-4 güvenlik kontrolü.
+     */
+    private function isChildInTeacherClass(int $teacherProfileId, int $childId): bool
+    {
+        return SchoolClass::whereHas(
+            'teachers',
+            fn ($q) => $q->where('teacher_profile_id', $teacherProfileId)
+        )->whereHas(
+            'children',
+            fn ($q) => $q->where('children.id', $childId)
+        )->exists();
+    }
+
     /**
      * Öğrenci tam detayını döner
      */
     public function show(int $childId): JsonResponse
     {
+        $profile = $this->teacherProfile();
+        if ($profile instanceof JsonResponse) {
+            return $profile;
+        }
+
+        // C-4: Öğretmen yalnızca kendi sınıfındaki çocuğun detayına erişebilir
+        if (! $this->isChildInTeacherClass($profile->id, $childId)) {
+            return $this->errorResponse('Bu öğrenciye erişim yetkiniz yok.', 403);
+        }
+
         try {
             $child = Child::with([
                 'allergens' => fn ($q) => $q->withoutGlobalScope('tenant'),
@@ -86,6 +113,16 @@ class TeacherChildController extends BaseTeacherController
      */
     public function todayMedications(int $childId): JsonResponse
     {
+        $profile = $this->teacherProfile();
+        if ($profile instanceof JsonResponse) {
+            return $profile;
+        }
+
+        // C-4: Öğretmen yalnızca kendi sınıfındaki çocuğun ilaç bilgilerine erişebilir
+        if (! $this->isChildInTeacherClass($profile->id, $childId)) {
+            return $this->errorResponse('Bu öğrenciye erişim yetkiniz yok.', 403);
+        }
+
         try {
             $child = Child::with([
                 'medications' => fn ($q) => $q->withoutGlobalScope('tenant'),

@@ -65,7 +65,8 @@ class TeacherAuthController extends BaseController
                     'created_by' => $user->id,
                 ]);
 
-                $token = $user->createToken('teacher-mobile')->plainTextToken;
+                // L-2: Token scope — teacher yalnızca teacher endpoint'lerine erişebilir
+                $token = $user->createToken('teacher-mobile', ['role:teacher'])->plainTextToken;
 
                 return ['user' => $user->load('roles'), 'token' => $token, 'profile' => $profile];
             });
@@ -110,7 +111,8 @@ class TeacherAuthController extends BaseController
             $profile = TeacherProfile::where('user_id', $user->id)->first();
 
             $user->tokens()->delete();
-            $token = $user->createToken('teacher-mobile')->plainTextToken;
+            // L-2: Token scope — teacher yalnızca teacher endpoint'lerine erişebilir
+            $token = $user->createToken('teacher-mobile', ['role:teacher'])->plainTextToken;
             $user->update(['last_login_at' => now()]);
 
             $memberships = [];
@@ -213,29 +215,41 @@ class TeacherAuthController extends BaseController
 
     /**
      * Şifre sıfırlama isteği gönder
+     *
+     * H-7: E-posta enumeration saldırısını önlemek için hesap varlığından bağımsız
+     * olarak her zaman aynı başarı mesajı döndürülür.
      */
     public function forgotPassword(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email']);
 
-        $status = Password::sendResetLink(['email' => $request->email]);
+        // Hesap var mı yok mu fark etmeksizin aynı yanıt döner (enumeration önlemi)
+        Password::sendResetLink(['email' => $request->email]);
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return $this->successResponse(null, 'Şifre sıfırlama bağlantısı gönderildi.');
-        }
-
-        return $this->errorResponse('Bu e-posta adresi sistemde kayıtlı değil.', 404);
+        return $this->successResponse(null, 'Hesap kayıtlıysa şifre sıfırlama bağlantısı e-posta adresinize gönderildi.');
     }
 
     /**
      * Şifre sıfırla
+     *
+     * H-3: Güçlü şifre kuralları — AuthController ile aynı seviyede.
      */
     public function resetPassword(Request $request): JsonResponse
     {
         $request->validate([
             'token' => 'required',
             'email' => 'required|email',
-            'password' => 'required|min:8|confirmed',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/',
+            ],
+        ], [
+            'password.regex' => 'Şifre en az 1 büyük harf, 1 rakam ve 1 özel karakter içermelidir.',
         ]);
 
         $status = Password::reset(

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Teachers;
 
+use App\Models\Academic\SchoolClass;
 use App\Models\Child\AuthorizedPickup;
 use App\Models\Child\ChildPickupLog;
 use Illuminate\Http\JsonResponse;
@@ -12,14 +13,40 @@ use Illuminate\Support\Facades\Log;
  * TeacherPickupController — Teslim Takibi
  *
  * Öğretmenin çocuk teslim loglarını ve yetkili alıcı bilgilerini yönetir.
+ * C-3 / C-7: Yalnızca öğretmenin atandığı sınıflardaki çocuklar için işlem yapılabilir.
  */
 class TeacherPickupController extends BaseTeacherController
 {
+    /**
+     * Öğretmenin atandığı bir sınıfta kayıtlı çocuk olup olmadığını doğrular.
+     * C-3 / C-7 güvenlik kontrolü.
+     */
+    private function isChildInTeacherClass(int $teacherProfileId, int $childId): bool
+    {
+        return SchoolClass::whereHas(
+            'teachers',
+            fn ($q) => $q->where('teacher_profile_id', $teacherProfileId)
+        )->whereHas(
+            'children',
+            fn ($q) => $q->where('children.id', $childId)
+        )->exists();
+    }
+
     /**
      * Çocuğun yetkili alıcı listesini döner (velinin tanımladığı)
      */
     public function authorizedPickups(int $childId): JsonResponse
     {
+        $profile = $this->teacherProfile();
+        if ($profile instanceof JsonResponse) {
+            return $profile;
+        }
+
+        // C-7: Öğretmen yalnızca kendi sınıfındaki çocuğun yetkili alıcılarını görebilir
+        if (! $this->isChildInTeacherClass($profile->id, $childId)) {
+            return $this->errorResponse('Bu öğrenciye erişim yetkiniz yok.', 403);
+        }
+
         try {
             $pickups = AuthorizedPickup::where('child_id', $childId)
                 ->active()
@@ -54,6 +81,16 @@ class TeacherPickupController extends BaseTeacherController
             'authorized_pickup_id' => ['nullable', 'integer', 'exists:authorized_pickups,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        $profile = $this->teacherProfile();
+        if ($profile instanceof JsonResponse) {
+            return $profile;
+        }
+
+        // C-3: Öğretmen yalnızca kendi sınıfındaki çocuğu teslim edebilir
+        if (! $this->isChildInTeacherClass($profile->id, $childId)) {
+            return $this->errorResponse('Bu öğrenciye erişim yetkiniz yok.', 403);
+        }
 
         try {
             $photoPath = null;
@@ -91,6 +128,16 @@ class TeacherPickupController extends BaseTeacherController
      */
     public function pickupLogs(int $childId): JsonResponse
     {
+        $profile = $this->teacherProfile();
+        if ($profile instanceof JsonResponse) {
+            return $profile;
+        }
+
+        // C-3: Öğretmen yalnızca kendi sınıfındaki çocuğun teslim loglarını görebilir
+        if (! $this->isChildInTeacherClass($profile->id, $childId)) {
+            return $this->errorResponse('Bu öğrenciye erişim yetkiniz yok.', 403);
+        }
+
         try {
             $logs = ChildPickupLog::with(['authorizedPickup', 'createdBy:id,name,surname'])
                 ->where('child_id', $childId)

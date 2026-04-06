@@ -63,7 +63,8 @@ class ParentAuthController extends BaseController
                     'created_by' => $user->id,
                 ]);
 
-                $token = $user->createToken('parent-mobile')->plainTextToken;
+                // L-2: Token scope — parent yalnızca parent endpoint'lerine erişebilir
+                $token = $user->createToken('parent-mobile', ['role:parent'])->plainTextToken;
 
                 return ['user' => $user, 'token' => $token];
             });
@@ -99,7 +100,8 @@ class ParentAuthController extends BaseController
             $user = Auth::user();
             $user->update(['last_login_at' => now()]);
 
-            $token = $user->createToken('parent-mobile')->plainTextToken;
+            // L-2: Token scope — parent yalnızca parent endpoint'lerine erişebilir
+            $token = $user->createToken('parent-mobile', ['role:parent'])->plainTextToken;
 
             return $this->successResponse([
                 'user' => UserResource::make($user),
@@ -156,39 +158,51 @@ class ParentAuthController extends BaseController
 
     /**
      * Şifre sıfırlama linki gönder
+     *
+     * H-7: E-posta enumeration saldırısını önlemek için hesap varlığından bağımsız
+     * olarak her zaman aynı başarı mesajı döndürülür.
      */
     public function forgotPassword(Request $request): JsonResponse
     {
-        $data = $request->validate([
+        $request->validate([
             'email' => ['required', 'email'],
         ]);
 
         try {
-            $status = Password::sendResetLink(['email' => $data['email']]);
+            // Hesap var mı yok mu fark etmeksizin aynı yanıt döner (enumeration önlemi)
+            Password::sendResetLink(['email' => $request->email]);
 
-            if ($status === Password::RESET_LINK_SENT) {
-                return $this->successResponse(null, 'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.');
-            }
-
-            return $this->errorResponse('E-posta adresi bulunamadı.', 404);
+            return $this->successResponse(null, 'Hesap kayıtlıysa şifre sıfırlama bağlantısı e-posta adresinize gönderildi.');
         } catch (\Throwable $e) {
             Log::error('ParentAuthController::forgotPassword Error', [
                 'message' => $e->getMessage(),
             ]);
 
-            return $this->errorResponse($e->getMessage(), 500);
+            return $this->errorResponse('İşlem sırasında hata oluştu.', 500);
         }
     }
 
     /**
      * Şifre sıfırlama
+     *
+     * H-3: Güçlü şifre kuralları — AuthController ile aynı seviyede.
      */
     public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/',
+            ],
+        ], [
+            'password.regex' => 'Şifre en az 1 büyük harf, 1 rakam ve 1 özel karakter içermelidir.',
         ]);
 
         try {

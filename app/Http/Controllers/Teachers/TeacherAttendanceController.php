@@ -113,7 +113,16 @@ class TeacherAttendanceController extends BaseTeacherController
 
             DB::beginTransaction();
 
+            // M-5: Yalnızca bu sınıfa ait çocuk ID'lerini al — yabancı çocuk kaydını engelle
+            $validChildIds = Child::whereHas(
+                'classes', fn ($q) => $q->where('school_classes.id', $classId)
+            )->pluck('id')->toArray();
+
             foreach ($request->attendances as $item) {
+                if (! in_array($item['child_id'], $validChildIds, true)) {
+                    continue; // Bu sınıfa ait olmayan çocukları atla
+                }
+
                 Attendance::updateOrCreate(
                     [
                         'child_id' => $item['child_id'],

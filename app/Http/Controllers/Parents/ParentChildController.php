@@ -616,7 +616,8 @@ class ParentChildController extends BaseParentController
             $path = $request->file('photo')->store('children/photos', 'local');
             $childModel->update(['profile_photo' => $path]);
 
-            $signedUrl = URL::signedRoute('parent.child.photo', ['child' => $childModel->id], now()->addHours(1));
+            // M-2: İmzalı URL süresi 1h → 30 dakika
+            $signedUrl = URL::signedRoute('parent.child.photo', ['child' => $childModel->id], now()->addMinutes(30));
 
             return $this->successResponse(['profile_photo' => $signedUrl], 'Profil fotoğrafı güncellendi.');
         } catch (\Throwable $e) {
@@ -628,8 +629,10 @@ class ParentChildController extends BaseParentController
 
     /**
      * İmzalı URL ile çocuğun profil fotoğrafını private diskten sunar.
+     *
+     * H-6: Cache-Control: no-store eklendi — tarayıcı/proxy cache'lemesin.
      */
-    public function servePhoto(int $child): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function servePhoto(int $child): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
     {
         $childModel = Child::withoutGlobalScope('tenant')->find($child);
 
@@ -641,7 +644,10 @@ class ParentChildController extends BaseParentController
             abort(404);
         }
 
-        return Storage::disk('local')->response($childModel->profile_photo);
+        return Storage::disk('local')->response($childModel->profile_photo, null, [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+        ]);
     }
 
     /**

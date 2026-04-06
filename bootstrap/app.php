@@ -25,9 +25,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // Tüm /api/* rotalarında Accept: application/json zorla (JSON yanıtı garantiler)
         $middleware->prependToGroup('api', \App\Http\Middleware\ForceJsonResponse::class);
 
+        // M-4: Güvenlik HTTP başlıkları tüm API yanıtlarına eklenir
+        $middleware->appendToGroup('api', \App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
             'subscription.active' => \App\Http\Middleware\EnsureActiveSubscription::class,
             'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            // L-2: Sanctum token ability kontrolü
+            'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+            'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
