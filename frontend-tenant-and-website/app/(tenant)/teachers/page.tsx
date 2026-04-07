@@ -195,7 +195,7 @@ export default function TeachersPage() {
         setLoadingDetail(true);
         setViewingTeacher(null);
         // optimistic: show modal immediately, load data
-        setViewingTeacher({ ...t, bio: null, linkedin_url: null, website_url: null, educations: [], certificates: [], courses: [], skills: [], blog_posts: [] } as TeacherDetail);
+        setViewingTeacher({ ...t, bio: null, linkedin_url: null, website_url: null, educations: [], certificates: [], courses: [], skills: [], blog_posts: [] } as unknown as TeacherDetail);
         try {
             const res = await apiClient.get(`/teachers/${t.id}`);
             setViewingTeacher(res.data?.data as TeacherDetail);

@@ -32,10 +32,7 @@ class TeacherAuthController extends BaseController
             'surname' => 'required|string|max:100',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
-            'phone' => 'nullable|string|max:20',
-            'title' => 'nullable|string|max:100',
-            'specialization' => 'nullable|string|max:255',
-            'experience_years' => 'nullable|integer|min:0|max:50',
+            'phone' => 'required|string|max:20',
         ]);
 
         try {
@@ -43,7 +40,7 @@ class TeacherAuthController extends BaseController
                 $user = User::create([
                     'name' => $request->name,
                     'surname' => $request->surname,
-                    'email' => $request->email,
+                    'email' => mb_strtolower($request->email),
                     'password' => Hash::make($request->password),
                     'phone' => $request->phone,
                     'tenant_id' => null,

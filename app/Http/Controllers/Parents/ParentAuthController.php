@@ -32,7 +32,7 @@ class ParentAuthController extends BaseController
                 $user = User::create([
                     'name' => $data['name'],
                     'surname' => $data['surname'],
-                    'email' => $data['email'],
+                    'email' => mb_strtolower($data['email']),
                     'password' => Hash::make($data['password']),
                     'phone' => $data['phone'] ?? null,
                     'tenant_id' => null,

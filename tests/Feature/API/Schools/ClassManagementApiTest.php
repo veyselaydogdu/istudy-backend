@@ -107,15 +107,22 @@ class ClassManagementApiTest extends TestCase
         $class = $this->createClass($school, $year, $user);
 
         $teacher = TeacherProfile::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
             'user_id' => $user->id,
             'school_id' => $school->id,
             'title' => 'Sınıf Öğretmeni',
             'created_by' => $user->id,
         ]);
 
+        $roleType = \App\Models\School\TeacherRoleType::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Sınıf Öğretmeni',
+            'created_by' => $user->id,
+        ]);
+
         $response = $this->postJson("/api/schools/{$school->id}/classes/{$class->id}/teachers", [
             'teacher_profile_id' => $teacher->id,
-            'role' => 'head_teacher',
+            'teacher_role_type_id' => $roleType->id,
         ]);
 
         $response->assertStatus(201)

@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
 import { Package } from '@/types';
-import { Check, Loader2 } from 'lucide-react';
+import { AlertCircle, Check, Loader2, LogOut } from 'lucide-react';
 
-export default function PlansPage() {
+export default function SelectPlanPage() {
     const router = useRouter();
     const [packages, setPackages] = useState<Package[]>([]);
     const [loading, setLoading] = useState(true);
@@ -17,14 +17,27 @@ export default function PlansPage() {
 
     useEffect(() => {
         if (typeof window !== 'undefined' && !localStorage.getItem('tenant_token')) {
-            router.push('/register');
+            router.push('/login');
             return;
         }
-        apiClient.get('/packages').then((res) => {
-            if (res.data?.data) {
-                setPackages(res.data.data);
-            }
-        }).catch(() => {}).finally(() => setLoading(false));
+
+        // Zaten aktif aboneliği varsa panel'e yönlendir
+        apiClient
+            .get('/auth/me')
+            .then((res) => {
+                const user = res.data?.data;
+                if (user?.has_active_subscription) {
+                    window.location.href = '/dashboard';
+                    return;
+                }
+                // Abonelik yok — paketleri yükle
+                return apiClient.get('/packages');
+            })
+            .then((res) => {
+                if (res?.data?.data) setPackages(res.data.data);
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
     }, [router]);
 
     const handleSubscribe = async () => {
@@ -39,6 +52,7 @@ export default function PlansPage() {
                 billing_cycle: billingCycle,
             });
             toast.success('Abonelik başarıyla oluşturuldu!');
+            // window.location.href ile tam yenileme — layout'un abonelik durumunu temiz okuyabilmesi için
             setTimeout(() => { window.location.href = '/dashboard'; }, 500);
         } catch (error: unknown) {
             const axiosError = error as { response?: { data?: { message?: string } } };
@@ -49,14 +63,31 @@ export default function PlansPage() {
         }
     };
 
+    const handleLogout = () => {
+        localStorage.removeItem('tenant_token');
+        router.push('/login');
+    };
+
     const formatLimit = (val: number) => (val === 0 ? 'Sınırsız' : val.toString());
-    const getPrice = (pkg: Package) => billingCycle === 'monthly' ? pkg.monthly_price : pkg.yearly_price;
+    const getPrice = (pkg: Package) =>
+        billingCycle === 'monthly' ? pkg.monthly_price : pkg.yearly_price;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-primary/10 via-white to-secondary/10 px-4 py-16 dark:from-primary/20 dark:via-[#060818] dark:to-secondary/20">
             <div className="mx-auto max-w-5xl">
+                {/* Uyarı başlığı */}
+                <div className="mb-8 flex items-start gap-4 rounded-xl border border-warning/30 bg-warning/10 p-5 text-warning dark:border-warning/20 dark:bg-warning/5">
+                    <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold">Aktif aboneliğiniz bulunmuyor.</p>
+                        <p className="mt-1 text-sm opacity-80">
+                            Paneli kullanabilmek için bir paket seçmeniz gerekmektedir. Aşağıdan size uygun paketi seçin ve aboneliğinizi başlatın.
+                        </p>
+                    </div>
+                </div>
+
                 <div className="mb-10 text-center">
-                    <h1 className="text-3xl font-extrabold text-dark dark:text-white">Adım 2/2 — Paket Seç</h1>
+                    <h1 className="text-3xl font-extrabold text-dark dark:text-white">Paket Seç</h1>
                     <p className="mt-3 text-[#515365] dark:text-[#888ea8]">
                         Kurumunuza uygun paketi seçin. İstediğiniz zaman değiştirebilirsiniz.
                     </p>
@@ -84,7 +115,9 @@ export default function PlansPage() {
                             onClick={() => setBillingCycle('yearly')}
                         >
                             Yıllık
-                            <span className="ml-2 rounded-full bg-success px-2 py-0.5 text-xs text-white">İndirimli</span>
+                            <span className="ml-2 rounded-full bg-success px-2 py-0.5 text-xs text-white">
+                                İndirimli
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -106,8 +139,8 @@ export default function PlansPage() {
                                         selected
                                             ? 'border-2 border-primary ring-4 ring-primary/20'
                                             : idx === 1
-                                            ? 'border-2 border-dashed border-primary/30'
-                                            : ''
+                                              ? 'border-2 border-dashed border-primary/30'
+                                              : ''
                                     }`}
                                 >
                                     {idx === 1 && !selected && (
@@ -123,7 +156,9 @@ export default function PlansPage() {
 
                                     <h2 className="text-xl font-bold text-dark dark:text-white">{pkg.name}</h2>
                                     <div className="my-4">
-                                        <span className="text-3xl font-extrabold text-primary">₺{getPrice(pkg)}</span>
+                                        <span className="text-3xl font-extrabold text-primary">
+                                            ₺{getPrice(pkg)}
+                                        </span>
                                         <span className="text-sm text-[#515365] dark:text-[#888ea8]">
                                             /{billingCycle === 'monthly' ? 'ay' : 'yıl'}
                                         </span>
@@ -151,7 +186,9 @@ export default function PlansPage() {
                                         {pkg.package_features?.map((f) => (
                                             <li key={f.id} className="flex items-center gap-2">
                                                 <Check className="h-4 w-4 flex-shrink-0 text-success" />
-                                                <span className="text-[#515365] dark:text-[#888ea8]">{f.label}</span>
+                                                <span className="text-[#515365] dark:text-[#888ea8]">
+                                                    {f.label}
+                                                </span>
                                             </li>
                                         ))}
                                     </ul>
@@ -161,7 +198,7 @@ export default function PlansPage() {
                     </div>
                 )}
 
-                <div className="mt-8 flex justify-center">
+                <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
                     <button
                         type="button"
                         onClick={handleSubscribe}
@@ -174,8 +211,16 @@ export default function PlansPage() {
                                 İşleniyor...
                             </span>
                         ) : (
-                            'Paketi Seç ve Devam Et'
+                            'Paketi Seç ve Panele Gir'
                         )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="btn btn-outline-danger btn-lg w-full sm:w-auto"
+                    >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Çıkış Yap
                     </button>
                 </div>
             </div>

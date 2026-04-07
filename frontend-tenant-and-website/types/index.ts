@@ -148,6 +148,7 @@ export type Teacher = {
     name: string
     title?: string
     role?: string
+    role_type?: { id: number; name: string } | null
 }
 
 /** Tenant-level öğretmen yönetim sayfasında kullanılan tam profil tipi */

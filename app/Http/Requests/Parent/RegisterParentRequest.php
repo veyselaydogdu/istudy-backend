@@ -18,7 +18,7 @@ class RegisterParentRequest extends FormRequest
             'surname' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30'],
         ];
     }
 
@@ -32,6 +32,7 @@ class RegisterParentRequest extends FormRequest
             'password.required' => 'Şifre zorunludur.',
             'password.min' => 'Şifre en az 8 karakter olmalıdır.',
             'password.confirmed' => 'Şifre tekrarı eşleşmiyor.',
+            'phone.required' => 'Telefon numarası zorunludur.',
         ];
     }
 }

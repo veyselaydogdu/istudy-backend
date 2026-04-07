@@ -6,12 +6,16 @@ use App\Models\Base\BaseModel;
 use App\Models\Billing\FamilySubscription;
 use App\Models\Tenant\Tenant;
 use App\Models\User;
+use App\Traits\HasUlid;
 
 class FamilyProfile extends BaseModel
 {
+    use HasUlid;
+
     protected $table = 'family_profiles';
 
     protected $fillable = [
+        'ulid',
         'owner_user_id',
         'tenant_id',
         'family_name',

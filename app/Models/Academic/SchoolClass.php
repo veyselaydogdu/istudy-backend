@@ -6,13 +6,17 @@ use App\Models\Base\BaseModel;
 use App\Models\Child\Child;
 use App\Models\School\School;
 use App\Models\School\TeacherProfile;
+use App\Traits\HasUlid;
 
 // "CLASS" keyword issue -> naming it SchoolClass
 class SchoolClass extends BaseModel
 {
+    use HasUlid;
+
     protected $table = 'classes';
 
     protected $fillable = [
+        'ulid',
         'school_id',
         'academic_year_id',
         'name',
@@ -29,6 +33,7 @@ class SchoolClass extends BaseModel
 
     protected $casts = [
         'is_active' => 'boolean',
+        'ulid' => 'string',
     ];
 
     /*

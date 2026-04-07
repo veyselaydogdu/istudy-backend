@@ -312,9 +312,12 @@ export default function RegisterScreen() {
       return;
     }
 
-    const fullPhone = form.phone.trim()
-      ? `+${selectedCountry.phone_code}${form.phone.trim()}`
-      : undefined;
+    if (!form.phone.trim() || form.phone.length < 7) {
+      Alert.alert('Hata', 'Geçerli bir telefon numarası giriniz.');
+      return;
+    }
+
+    const fullPhone = `+${selectedCountry.phone_code}${form.phone.trim()}`;
 
     setLoading(true);
     try {
@@ -407,7 +410,7 @@ export default function RegisterScreen() {
 
             {/* Telefon + Ülke kodu */}
             <View style={styles.field}>
-              <Text style={styles.label}>Telefon (İsteğe bağlı)</Text>
+              <Text style={styles.label}>Telefon *</Text>
               <View style={styles.phoneRow}>
                 <TouchableOpacity
                   style={styles.countryBtn}

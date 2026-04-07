@@ -8,12 +8,16 @@ use App\Models\Child\Child;
 use App\Models\School\School;
 use App\Models\School\TeacherProfile;
 use App\Models\Tenant\Tenant;
+use App\Traits\HasUlid;
 
 class ActivityClass extends BaseModel
 {
+    use HasUlid;
+
     protected $table = 'activity_classes';
 
     protected $fillable = [
+        'ulid',
         'tenant_id',
         'school_id',
         'name',
@@ -41,6 +45,7 @@ class ActivityClass extends BaseModel
     protected function casts(): array
     {
         return [
+            'ulid' => 'string',
             'is_school_wide' => 'boolean',
             'is_active' => 'boolean',
             'is_paid' => 'boolean',

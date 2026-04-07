@@ -18,12 +18,12 @@ return [
         env('FRONTEND_TENANT_URL'),
         env('FRONTEND_ADMIN_URL'),
         env('FRONTEND_WEBSITE_URL'),
-        // Yerel geliştirme ortamında localhost'lara izin ver
-        app()->isLocal() ? 'http://localhost:3000' : null,
-        app()->isLocal() ? 'http://localhost:3001' : null,
-        app()->isLocal() ? 'http://localhost:3002' : null,
-        app()->isLocal() ? 'https://localhost' : null,
-        app()->isLocal() ? 'http://localhost' : null,
+        // Yerel geliştirme ortamında localhost'lara izin ver (env() ile kontrol — app() config'de kullanılamaz)
+        in_array(env('APP_ENV'), ['local', 'testing']) ? 'http://localhost:3000' : null,
+        in_array(env('APP_ENV'), ['local', 'testing']) ? 'http://localhost:3001' : null,
+        in_array(env('APP_ENV'), ['local', 'testing']) ? 'http://localhost:3002' : null,
+        in_array(env('APP_ENV'), ['local', 'testing']) ? 'https://localhost' : null,
+        in_array(env('APP_ENV'), ['local', 'testing']) ? 'http://localhost' : null,
     ])),
 
     'allowed_origins_patterns' => [],

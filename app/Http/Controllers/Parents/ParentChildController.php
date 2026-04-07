@@ -99,7 +99,7 @@ class ParentChildController extends BaseParentController
         }
     }
 
-    public function show(int $child): JsonResponse
+    public function show(string $child): JsonResponse
     {
         try {
             $childModel = $this->findOwnedChild($child);
@@ -131,7 +131,7 @@ class ParentChildController extends BaseParentController
         }
     }
 
-    public function update(UpdateParentChildRequest $request, int $child): JsonResponse
+    public function update(UpdateParentChildRequest $request, string $child): JsonResponse
     {
         try {
             $childModel = $this->findOwnedChild($child);
@@ -197,7 +197,7 @@ class ParentChildController extends BaseParentController
         }
     }
 
-    public function destroy(int $child): JsonResponse
+    public function destroy(string $child): JsonResponse
     {
         try {
             $childModel = $this->findOwnedChild($child);
@@ -227,7 +227,7 @@ class ParentChildController extends BaseParentController
     /**
      * Çocuğun okuldan çıkarılması ve silinmesi için talep oluştur.
      */
-    public function requestRemoval(Request $request, int $child): JsonResponse
+    public function requestRemoval(Request $request, string $child): JsonResponse
     {
         $data = $request->validate([
             'reason' => ['nullable', 'string', 'max:500'],
@@ -273,7 +273,7 @@ class ParentChildController extends BaseParentController
         }
     }
 
-    public function syncAllergens(Request $request, int $child): JsonResponse
+    public function syncAllergens(Request $request, string $child): JsonResponse
     {
         $data = $request->validate([
             'allergen_ids' => ['present', 'array'],
@@ -301,7 +301,7 @@ class ParentChildController extends BaseParentController
      * Çocuğun ilaçlarını günceller.
      * Hem kayıtlı (medication_id) hem custom (sadece custom_name) ilaçları destekler.
      */
-    public function syncMedications(Request $request, int $child): JsonResponse
+    public function syncMedications(Request $request, string $child): JsonResponse
     {
         $data = $request->validate([
             'medications' => ['present', 'array'],
@@ -329,7 +329,7 @@ class ParentChildController extends BaseParentController
         }
     }
 
-    public function syncConditions(Request $request, int $child): JsonResponse
+    public function syncConditions(Request $request, string $child): JsonResponse
     {
         $data = $request->validate([
             'condition_ids' => ['present', 'array'],
@@ -357,7 +357,7 @@ class ParentChildController extends BaseParentController
      * Veli özel alerjen önerisi ekle.
      * Pending olarak oluşturulur, çocuğa hemen bağlanır.
      */
-    public function suggestAllergen(Request $request, int $child): JsonResponse
+    public function suggestAllergen(Request $request, string $child): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -414,7 +414,7 @@ class ParentChildController extends BaseParentController
     /**
      * Veli özel hastalık önerisi ekle.
      */
-    public function suggestCondition(Request $request, int $child): JsonResponse
+    public function suggestCondition(Request $request, string $child): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -470,7 +470,7 @@ class ParentChildController extends BaseParentController
     /**
      * Veli özel ilaç önerisi ekle.
      */
-    public function suggestMedication(Request $request, int $child): JsonResponse
+    public function suggestMedication(Request $request, string $child): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -537,7 +537,7 @@ class ParentChildController extends BaseParentController
     /**
      * Çocuğun istatistiklerini döner.
      */
-    public function stats(int $child): JsonResponse
+    public function stats(string $child): JsonResponse
     {
         try {
             $childModel = $this->findOwnedChild($child);
@@ -595,7 +595,7 @@ class ParentChildController extends BaseParentController
     /**
      * Çocuğun profil fotoğrafını private diske yükler ve imzalı URL döner.
      */
-    public function uploadProfilePhoto(Request $request, int $child): JsonResponse
+    public function uploadProfilePhoto(Request $request, string $child): JsonResponse
     {
         $request->validate([
             'photo' => ['required', 'image', 'max:5120'],
@@ -632,9 +632,13 @@ class ParentChildController extends BaseParentController
      *
      * H-6: Cache-Control: no-store eklendi — tarayıcı/proxy cache'lemesin.
      */
-    public function servePhoto(int $child): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
+    public function servePhoto(string $child): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
     {
-        $childModel = Child::withoutGlobalScope('tenant')->find($child);
+        // Resolve by ULID or integer PK
+        $query = Child::withoutGlobalScope('tenant');
+        $childModel = is_numeric($child)
+            ? $query->find((int) $child)
+            : $query->where('ulid', $child)->first();
 
         if (! $childModel || ! $childModel->profile_photo) {
             abort(404);

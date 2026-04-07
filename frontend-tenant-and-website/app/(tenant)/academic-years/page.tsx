@@ -116,7 +116,7 @@ export default function AcademicYearsPage() {
 
         setSaving(true);
         const payload = {
-            school_id: Number(selectedSchoolId),
+            school_id: selectedSchoolId,
             name: form.global_year_name,
             start_date: form.start_date,
             end_date: form.end_date,

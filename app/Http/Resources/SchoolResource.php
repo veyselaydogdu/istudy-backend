@@ -10,7 +10,7 @@ class SchoolResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->ulid,
             'tenant_id' => $this->tenant_id,
             'country_id' => $this->country_id,
             'name' => $this->name,

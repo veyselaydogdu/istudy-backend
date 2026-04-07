@@ -33,7 +33,7 @@ class AcademicYearController extends BaseSchoolController
     public function index(Request $request): JsonResponse
     {
         try {
-            $schoolId = $request->input('school_id');
+            $schoolId = $this->resolvedSchoolId() ?? (int) $request->input('school_id');
 
             if (! $schoolId) {
                 return $this->errorResponse('Okul ID gereklidir.', 422);
@@ -79,7 +79,7 @@ class AcademicYearController extends BaseSchoolController
     public function current(Request $request): JsonResponse
     {
         try {
-            $schoolId = $request->input('school_id');
+            $schoolId = $this->resolvedSchoolId() ?? (int) $request->input('school_id');
 
             if (! $schoolId) {
                 return $this->errorResponse('Okul ID gereklidir.', 422);
@@ -127,7 +127,7 @@ class AcademicYearController extends BaseSchoolController
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'school_id' => 'required|exists:schools,id',
+            'school_id' => 'nullable',
             'name' => 'required|string|max:100',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
@@ -135,8 +135,14 @@ class AcademicYearController extends BaseSchoolController
             'is_current' => 'nullable|boolean',
         ]);
 
+        $resolvedSchoolId = $this->resolvedSchoolId();
+        if (! $resolvedSchoolId) {
+            return $this->errorResponse('Geçerli bir okul ID gereklidir.', 422);
+        }
+
         DB::beginTransaction();
         try {
+            $data['school_id'] = $resolvedSchoolId;
             $data['is_active'] = true;
             $data['created_by'] = $this->user()->id;
 
@@ -244,7 +250,7 @@ class AcademicYearController extends BaseSchoolController
     public function transition(Request $request): JsonResponse
     {
         $request->validate([
-            'school_id' => 'required|exists:schools,id',
+            'school_id' => 'nullable',
             'name' => 'required|string|max:100',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
@@ -256,9 +262,10 @@ class AcademicYearController extends BaseSchoolController
         try {
             $newYearData = $request->only(['name', 'start_date', 'end_date', 'description']);
             $newYearData['created_by'] = $this->user()->id;
+            $resolvedSchoolId = $this->resolvedSchoolId() ?? (int) $request->input('school_id');
 
             $newYear = $this->service->transition(
-                $request->school_id,
+                $resolvedSchoolId,
                 $newYearData,
                 $request->boolean('copy_classes', false)
             );

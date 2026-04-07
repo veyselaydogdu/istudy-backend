@@ -187,8 +187,13 @@ export default function RegisterPage() {
         try {
             let phone: string | undefined;
             if (data.phone && data.phone.trim()) {
-                const code = selectedCode?.phone_code.replace(/^\+/, '') || '';
-                phone = code ? `+${code}${data.phone.trim()}` : data.phone.trim();
+                if (!selectedCode) {
+                    toast.error('Telefon numarası girmek için ülke seçimi zorunludur.');
+                    setIsLoading(false);
+                    return;
+                }
+                const code = selectedCode.phone_code.replace(/^\+/, '');
+                phone = `+${code}${data.phone.trim()}`;
             }
 
             const response = await apiClient.post('/auth/register', {
@@ -197,7 +202,7 @@ export default function RegisterPage() {
                 password: data.password,
                 password_confirmation: data.password_confirmation,
                 institution_name: data.institution_name,
-                ...(phone ? { phone } : {}),
+                ...(phone && selectedCode ? { phone, country: selectedCode.iso2 } : {}),
             });
 
             const token = response.data?.data?.token;

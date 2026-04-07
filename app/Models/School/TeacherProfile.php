@@ -7,6 +7,7 @@ use App\Models\Base\BaseModel;
 use App\Models\Base\Country;
 use App\Models\Tenant\Tenant;
 use App\Models\User;
+use App\Traits\HasUlid;
 
 /**
  * TeacherProfile — Öğretmen Profili
@@ -16,9 +17,12 @@ use App\Models\User;
  */
 class TeacherProfile extends BaseModel
 {
+    use HasUlid;
+
     protected $table = 'teacher_profiles';
 
     protected $fillable = [
+        'ulid',
         'user_id',
         'tenant_id',
         'school_id',
@@ -49,6 +53,7 @@ class TeacherProfile extends BaseModel
     ];
 
     protected $casts = [
+        'ulid' => 'string',
         'languages' => 'array',
         'certifications' => 'array',
         'experience_years' => 'integer',

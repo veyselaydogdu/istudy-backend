@@ -1,6 +1,6 @@
 # 🧠 iStudy Backend — AI Hafıza Dosyası (Project Memory)
 
-> **Son Güncelleme:** 2026-07-10 (Öğretmen Mobil API: 7 yeni controller, 15 endpoint, 2 migration tablosu)
+> **Son Güncelleme:** 2026-04-06 (Hibrit ULID mimarisi: 8 model, migration backfill, BaseSchoolController ULID/int çift desteği, config/cors.php fix)
 > **Amaç:** Bu dosya, projede çalışan yapay zeka araçlarının (Claude, Gemini, GPT, Copilot vb.) projeyi hızlıca anlayıp doğru kararlar vermesini sağlamak için hazırlanmıştır.
 
 ---
@@ -2236,5 +2236,79 @@ Tüm endpoint'ler `auth:sanctum` middleware altında. Teacher login: `POST /api/
 - Sınıf erişim kontrolü: `whereHas('teachers', fn($q) => $q->where('teacher_profile_id', $profile->id))` — öğretmen sadece atandığı sınıfları görebilir
 
 ---
+
+## 🔐 20. Hibrit ULID Mimarisi (2026-04-06)
+
+### 20.1 Genel Bakış
+
+Harici ID sıralama saldırılarına (enumeration attack) karşı savunma için hibrit ULID pattern uygulandı:
+- **Dahili:** INT primary key (PK) — ORM ilişkileri, join'ler, pivotlar hep INT kullanır
+- **Harici:** ULID (26 karakter, sıralanabilir, benzersiz) — API yanıtlarında `id` alanı ULID döner
+
+### 20.2 Etkilenen Modeller ve Tablolar
+
+| Model | Tablo | Trait |
+|-------|-------|-------|
+| `User` | `users` | `HasUlid` |
+| `Child` | `children` | `HasUlid` |
+| `TeacherProfile` | `teacher_profiles` | `HasUlid` |
+| `FamilyProfile` | `family_profiles` | `HasUlid` |
+| `School` | `schools` | `HasUlid` |
+| `SchoolClass` | `classes` | `HasUlid` |
+| `ActivityClass` | `activity_classes` | `HasUlid` |
+| `AuthorizedPickup` | `authorized_pickups` | `HasUlid` |
+
+### 20.3 HasUlid Trait (`app/Traits/HasUlid.php`)
+
+```php
+// bootHasUlid: creating event'te otomatik ULID oluşturur
+// getRouteKeyName(): 'ulid' döner → model binding ULID ile çalışır
+// scopeByUlid(): $query->byUlid($ulid) helper
+```
+
+### 20.4 Route Model Binding
+
+`getRouteKeyName()` 'ulid' döndürdüğü için model-bound route parametreleri (`{child}`, `{school}`, `{activityClass}` vb.) artık otomatik olarak ULID ile çözümlenir.
+
+Örnek:
+- `GET /parent/children/{child}` → Child, `ulid` kolonu ile bulunur
+- Frontend `id` (ULID) gönderir → model bind eder
+
+### 20.5 Nested Route `{school_id}` Parametresi
+
+`BaseSchoolController::validateSchoolAccess()` hem ULID hem integer kabul eder:
+```php
+// ULID (26-char) ise: WHERE ulid = $param
+// Sayısal ise: WHERE id = $param (legacy)
+// Çözümlenen school.id, route param olarak set edilir → downstream controllers int alır
+request()->route()->setParameter('school_id', $school->id);
+```
+
+### 20.6 API Resources
+
+Tüm etkilenen Resource'larda `'id' => $this->ulid` — istemciler (frontend/mobil) ULID'i `id` alanı olarak alır.
+
+İç ilişkilerde (embedded `user`, `school` vb.) hâlâ integer `id` dönebilir — bu kasıtlıdır (iç kullanım).
+
+### 20.7 Migration
+
+`2026_04_06_094600_add_ulid_to_core_tables.php` — tüm tablolara `CHAR(26) ulid UNIQUE` ekler, mevcut kayıtları backfill eder.
+
+### 20.8 config/cors.php Düzeltmesi
+
+`app()->isLocal()` config dosyalarında kullanılamaz (uygulama henüz boot olmamış). Düzeltme:
+```php
+// YANLIŞ (crash eder):
+app()->isLocal() ? 'http://localhost:3002' : null,
+// DOĞRU:
+in_array(env('APP_ENV'), ['local', 'testing']) ? 'http://localhost:3002' : null,
+```
+
+### 20.9 Yeni Model Oluştururken
+
+- `HasUlid` trait'i ekle ve `fillable`'a `'ulid'` yaz
+- Test factory'lerinde: `'ulid' => (string) Str::ulid()`
+- Controller'larda direkt `$model->id` kullanımı hâlâ geçerli (INT PK)
+- `ActivityClassEnrollment` plain `Model`'dan türer — `HasUlid` eklenmedi (pivot niteliğinde)
 
 > 📝 **Not:** Bu dosya proje geliştikçe güncellenmelidir. Her yeni modül, migration veya mimari değişiklikte bu dosyanın güncellenmesi önerilir.

@@ -11,6 +11,7 @@ import ScrollToTop from '@/components/layouts/scroll-to-top';
 import Setting from '@/components/layouts/setting';
 import Sidebar from '@/components/layouts/sidebar';
 import { Loader2 } from 'lucide-react';
+import apiClient from '@/lib/apiClient';
 
 export default function TenantLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -20,9 +21,23 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         const token = localStorage.getItem('tenant_token');
         if (!token) {
             router.push('/login');
-        } else {
-            setIsAuthenticated(true);
+            return;
         }
+
+        apiClient
+            .get('/auth/me')
+            .then((res) => {
+                const user = res.data?.data;
+                if (!user?.has_active_subscription) {
+                    router.push('/subscription/select-plan');
+                } else {
+                    setIsAuthenticated(true);
+                }
+            })
+            .catch(() => {
+                localStorage.removeItem('tenant_token');
+                router.push('/login');
+            });
     }, [router]);
 
     if (!isAuthenticated) {

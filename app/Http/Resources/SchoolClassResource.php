@@ -10,7 +10,7 @@ class SchoolClassResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->ulid,
             'school_id' => $this->school_id,
             'academic_year_id' => $this->academic_year_id,
             'name' => $this->name,

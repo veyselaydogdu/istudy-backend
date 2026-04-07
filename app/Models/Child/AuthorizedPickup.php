@@ -3,6 +3,7 @@
 namespace App\Models\Child;
 
 use App\Models\Base\BaseModel;
+use App\Traits\HasUlid;
 
 /**
  * Yetkili Alıcı (Authorized Pickup)
@@ -12,9 +13,12 @@ use App\Models\Base\BaseModel;
  */
 class AuthorizedPickup extends BaseModel
 {
+    use HasUlid;
+
     protected $table = 'authorized_pickups';
 
     protected $fillable = [
+        'ulid',
         'child_id',
         'family_profile_id',
         'first_name',
@@ -31,6 +35,7 @@ class AuthorizedPickup extends BaseModel
 
     protected $casts = [
         'is_active' => 'boolean',
+        'ulid' => 'string',
     ];
 
     /*

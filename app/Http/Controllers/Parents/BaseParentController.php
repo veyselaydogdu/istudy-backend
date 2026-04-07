@@ -48,8 +48,10 @@ abstract class BaseParentController extends BaseController
 
     /**
      * Auth user'ın erişebildiği aile profiline ait çocuğu döndürür.
+     *
+     * @param  int|string  $childId  Integer PK veya ULID (hibrit ULID mimarisi)
      */
-    protected function findOwnedChild(int $childId): ?Child
+    protected function findOwnedChild(int|string $childId): ?Child
     {
         $familyProfile = $this->getFamilyProfile();
 
@@ -57,9 +59,16 @@ abstract class BaseParentController extends BaseController
             return null;
         }
 
-        return Child::withoutGlobalScope('tenant')
-            ->where('id', $childId)
-            ->where('family_profile_id', $familyProfile->id)
-            ->first();
+        $query = Child::withoutGlobalScope('tenant')
+            ->where('family_profile_id', $familyProfile->id);
+
+        // ULID (26-char alphanum) veya integer PK ile çözümle
+        if (is_numeric($childId)) {
+            $query->where('id', (int) $childId);
+        } else {
+            $query->where('ulid', $childId);
+        }
+
+        return $query->first();
     }
 }

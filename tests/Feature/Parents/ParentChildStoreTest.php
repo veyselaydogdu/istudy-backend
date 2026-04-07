@@ -48,7 +48,7 @@ class ParentChildStoreTest extends TestCase
             'created_by' => $this->parentUser->id,
         ]);
 
-        Sanctum::actingAs($this->parentUser);
+        Sanctum::actingAs($this->parentUser, ['role:parent']);
     }
 
     /** @test */
@@ -302,7 +302,7 @@ class ParentChildStoreTest extends TestCase
             'created_by' => $this->parentUser->id,
         ]);
 
-        $response = $this->postJson("/api/parent/children/{$child->id}/suggest-allergen", [
+        $response = $this->postJson("/api/parent/children/{$child->ulid}/suggest-allergen", [
             'name' => 'Çilek Alerjisi',
         ]);
 
@@ -334,7 +334,7 @@ class ParentChildStoreTest extends TestCase
             'created_by' => $this->parentUser->id,
         ]);
 
-        $response = $this->postJson("/api/parent/children/{$child->id}/suggest-condition", [
+        $response = $this->postJson("/api/parent/children/{$child->ulid}/suggest-condition", [
             'name' => 'Özel Hastalık',
         ]);
 

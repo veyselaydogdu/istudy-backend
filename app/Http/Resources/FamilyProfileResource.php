@@ -10,7 +10,7 @@ class FamilyProfileResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->ulid,
             'owner_user_id' => $this->owner_user_id,
             'tenant_id' => $this->tenant_id,
             'family_name' => $this->family_name,
