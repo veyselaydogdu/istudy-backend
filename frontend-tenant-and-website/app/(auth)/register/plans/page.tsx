@@ -39,7 +39,7 @@ export default function PlansPage() {
                 billing_cycle: billingCycle,
             });
             toast.success('Abonelik başarıyla oluşturuldu!');
-            router.push('/dashboard');
+            setTimeout(() => { window.location.href = '/dashboard'; }, 500);
         } catch (error: unknown) {
             const axiosError = error as { response?: { data?: { message?: string } } };
             const message = axiosError.response?.data?.message || 'Abonelik oluşturulurken hata oluştu.';
@@ -161,7 +161,7 @@ export default function PlansPage() {
                     </div>
                 )}
 
-                <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+                <div className="mt-8 flex justify-center">
                     <button
                         type="button"
                         onClick={handleSubscribe}
@@ -176,13 +176,6 @@ export default function PlansPage() {
                         ) : (
                             'Paketi Seç ve Devam Et'
                         )}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => router.push('/dashboard')}
-                        className="btn btn-outline-secondary btn-lg w-full sm:w-auto"
-                    >
-                        Şimdi Değil, Atla
                     </button>
                 </div>
             </div>

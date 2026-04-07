@@ -17,12 +17,16 @@ use App\Models\Health\Allergen;
 use App\Models\Health\MedicalCondition;
 use App\Models\Health\Medication;
 use App\Models\School\School;
+use App\Traits\HasUlid;
 
 class Child extends BaseModel
 {
+    use HasUlid;
+
     protected $table = 'children';
 
     protected $fillable = [
+        'ulid',
         'family_profile_id',
         'school_id',
         'academic_year_id',
@@ -48,6 +52,7 @@ class Child extends BaseModel
         'birth_date' => 'date',
         'enrollment_date' => 'date',
         'languages' => 'array',
+        'ulid' => 'string',
     ];
 
     // Helper to get full name

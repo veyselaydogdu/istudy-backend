@@ -29,7 +29,7 @@ class SchoolController extends BaseSchoolController
 
             $data = $this->service->getAll(request()->all());
 
-            return $this->paginatedResponse($data);
+            return $this->paginatedResponse(SchoolResource::collection($data));
 
         } catch (\Throwable $e) {
             Log::error('SchoolController::index Error', [

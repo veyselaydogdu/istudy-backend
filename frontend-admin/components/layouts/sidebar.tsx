@@ -4,15 +4,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { toggleSidebar } from '@/store/themeConfigSlice';
-import AnimateHeight from 'react-animate-height';
 import { IRootState } from '@/store';
-import { useState, useEffect } from 'react';
 import {
     LayoutDashboard,
     Building2,
     GraduationCap,
     Users,
-    HeartPulse,
     Package,
     CreditCard,
     ClipboardList,
@@ -21,18 +18,16 @@ import {
     Settings,
     LogOut,
     ChevronDown,
-    MousePointer,
-    AlertCircle,
-    FormInput,
-    Layers,
-    Maximize2,
-    ChevronsDown,
-    ChevronDownSquare,
-    Siren,
-    Tag,
-    FileText,
     MessageSquare,
+    Globe,
+    AlertTriangle,
+    Stethoscope,
+    Pill,
+    Apple,
+    Coins,
+    ChevronRight,
 } from 'lucide-react';
+import { useState } from 'react';
 
 type NavItem = {
     title: string;
@@ -43,11 +38,12 @@ type NavItem = {
 type NavGroup = {
     label: string;
     items: NavItem[];
+    collapsible?: boolean;
 };
 
 const navGroups: NavGroup[] = [
     {
-        label: 'ANA MENÜ',
+        label: 'GENEL BAKIŞ',
         items: [{ title: 'Dashboard', href: '/', icon: LayoutDashboard }],
     },
     {
@@ -56,35 +52,26 @@ const navGroups: NavGroup[] = [
             { title: 'Kurumlar', href: '/tenants', icon: Building2 },
             { title: 'Okullar & Şubeler', href: '/schools', icon: GraduationCap },
             { title: 'Kullanıcılar', href: '/users', icon: Users },
-            { title: 'Sağlık & Beslenme', href: '/health', icon: HeartPulse },
         ],
     },
     {
-        label: 'FİNANS',
+        label: 'PAKET & SATIŞ',
         items: [
             { title: 'Paket Yönetimi', href: '/packages', icon: Package },
-            { title: 'Finans & Ödemeler', href: '/finance', icon: CreditCard },
             { title: 'Abonelikler', href: '/subscriptions', icon: ClipboardList },
+            { title: 'Finans & Ödemeler', href: '/finance', icon: CreditCard },
         ],
     },
     {
-        label: 'UYGULAMALAR',
+        label: 'GLOBAL VERİLER',
+        collapsible: true,
         items: [
-            { title: 'Fatura Listesi', href: '/apps/invoice/list', icon: FileText },
-        ],
-    },
-    {
-        label: 'UI BİLEŞENLERİ',
-        items: [
-            { title: 'Butonlar', href: '/ui/buttons', icon: MousePointer },
-            { title: 'Uyarılar', href: '/ui/alerts', icon: AlertCircle },
-            { title: 'Formlar', href: '/ui/forms', icon: FormInput },
-            { title: 'Sekmeler', href: '/ui/tabs', icon: Layers },
-            { title: 'Modallar', href: '/ui/modals', icon: Maximize2 },
-            { title: 'Akordeonlar', href: '/ui/accordions', icon: ChevronsDown },
-            { title: 'Dropdown', href: '/ui/dropdowns', icon: ChevronDownSquare },
-            { title: 'SweetAlert', href: '/ui/sweetalerts', icon: Siren },
-            { title: 'Fiyatlandırma', href: '/ui/pricing', icon: Tag },
+            { title: 'Alerjenler', href: '/global/allergens', icon: AlertTriangle },
+            { title: 'Tıbbi Durumlar', href: '/global/medical-conditions', icon: Stethoscope },
+            { title: 'İlaçlar', href: '/global/medications', icon: Pill },
+            { title: 'Besin İçerikleri', href: '/global/food-ingredients', icon: Apple },
+            { title: 'Ülkeler', href: '/global/countries', icon: Globe },
+            { title: 'Para Birimleri', href: '/global/currencies', icon: Coins },
         ],
     },
     {
@@ -109,16 +96,17 @@ const Sidebar = () => {
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
     const semidark = themeConfig.semidark;
 
+    const globalActive = pathname.startsWith('/global');
+    const [globalOpen, setGlobalOpen] = useState(globalActive);
+
     const isActive = (href: string) => {
-        if (href === '/') return pathname === '/';
+        if (href === '/') { return pathname === '/'; }
         return pathname === href || pathname.startsWith(href + '/');
     };
 
     return (
         <div className={semidark ? 'dark' : ''}>
-            <nav
-                className={`sidebar fixed bottom-0 top-0 z-50 h-full min-h-screen w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] transition-all duration-300`}
-            >
+            <nav className="sidebar fixed bottom-0 top-0 z-50 h-full min-h-screen w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] transition-all duration-300">
                 <div className="h-full bg-white dark:bg-black">
                     <div className="flex items-center justify-between px-4 py-3">
                         <Link href="/" className="main-logo flex shrink-0 items-center">
@@ -142,45 +130,58 @@ const Sidebar = () => {
                         <ul className="relative space-y-0.5 p-4 py-0 font-semibold">
                             {navGroups.map((group) => (
                                 <li key={group.label} className="menu nav-item">
-                                    <h2 className="mb-1 mt-4 flex items-center px-7 py-3">
-                                        <span className="collapse-icon hidden h-5 min-w-[20px] rotate-90 dark:text-white-dark">
-                                            <ChevronDown className="h-4 w-4" />
-                                        </span>
-                                        <span className="text-xs font-bold uppercase tracking-widest text-white-dark dark:text-white-dark">
-                                            {group.label}
-                                        </span>
-                                    </h2>
-                                    <ul>
-                                        {group.items.map((item) => {
-                                            const Icon = item.icon;
-                                            const active = isActive(item.href);
-                                            return (
-                                                <li key={item.href} className="nav-item">
-                                                    <Link
-                                                        href={item.href}
-                                                        className={`group ${active ? 'active' : ''}`}
-                                                        onClick={() => {
-                                                            // close mobile sidebar on navigate
-                                                            if (window.innerWidth < 1024) {
-                                                                dispatch(toggleSidebar());
-                                                            }
-                                                        }}
-                                                    >
-                                                        <div className="flex items-center">
-                                                            <Icon className="h-5 w-5 shrink-0 group-hover:!text-primary" />
-                                                            <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
-                                                                {item.title}
-                                                            </span>
-                                                        </div>
-                                                    </Link>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
+                                    {group.collapsible ? (
+                                        <button
+                                            type="button"
+                                            className="mb-1 mt-4 flex w-full items-center justify-between px-7 py-3"
+                                            onClick={() => setGlobalOpen((o) => !o)}
+                                        >
+                                            <span className="text-xs font-bold uppercase tracking-widest text-white-dark dark:text-white-dark">
+                                                {group.label}
+                                            </span>
+                                            <ChevronRight
+                                                className={`h-3 w-3 text-white-dark transition-transform duration-200 ${globalOpen ? 'rotate-90' : ''}`}
+                                            />
+                                        </button>
+                                    ) : (
+                                        <h2 className="mb-1 mt-4 flex items-center px-7 py-3">
+                                            <span className="text-xs font-bold uppercase tracking-widest text-white-dark dark:text-white-dark">
+                                                {group.label}
+                                            </span>
+                                        </h2>
+                                    )}
+
+                                    {(!group.collapsible || globalOpen) && (
+                                        <ul>
+                                            {group.items.map((item) => {
+                                                const Icon = item.icon;
+                                                const active = isActive(item.href);
+                                                return (
+                                                    <li key={item.href} className="nav-item">
+                                                        <Link
+                                                            href={item.href}
+                                                            className={`group ${active ? 'active' : ''}`}
+                                                            onClick={() => {
+                                                                if (window.innerWidth < 1024) {
+                                                                    dispatch(toggleSidebar());
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center">
+                                                                <Icon className="h-5 w-5 shrink-0 group-hover:!text-primary" />
+                                                                <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
+                                                                    {item.title}
+                                                                </span>
+                                                            </div>
+                                                        </Link>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
                                 </li>
                             ))}
 
-                            {/* Logout */}
                             <li className="nav-item mt-4 border-t border-white-light/40 pt-4 dark:border-[#1b2e4b]">
                                 <button
                                     type="button"

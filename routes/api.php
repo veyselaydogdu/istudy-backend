@@ -108,8 +108,8 @@ Route::get('/teacher/blogs/{id}/image', [\App\Http\Controllers\Teachers\TeacherB
 Route::prefix('parent/auth')->group(function () {
     Route::middleware('throttle:10,1')->post('/register', [\App\Http\Controllers\Parents\ParentAuthController::class, 'register']);
     Route::middleware('throttle:5,1')->post('/login', [\App\Http\Controllers\Parents\ParentAuthController::class, 'login']);
-    Route::post('/forgot-password', [\App\Http\Controllers\Parents\ParentAuthController::class, 'forgotPassword']);
-    Route::post('/reset-password', [\App\Http\Controllers\Parents\ParentAuthController::class, 'resetPassword']);
+    Route::middleware('throttle:3,1')->post('/forgot-password', [\App\Http\Controllers\Parents\ParentAuthController::class, 'forgotPassword']); // M-3: throttle eklendi
+    Route::middleware('throttle:5,1')->post('/reset-password', [\App\Http\Controllers\Parents\ParentAuthController::class, 'resetPassword']);
     Route::get('/verify-email/{id}/{hash}', [\App\Http\Controllers\Parents\ParentAuthController::class, 'verifyEmail'])->name('parent.verification.verify');
     Route::get('/countries', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'countries']);
     Route::get('/blood-types', [\App\Http\Controllers\Parents\ParentReferenceController::class, 'bloodTypes']);
@@ -121,14 +121,15 @@ Route::prefix('parent/auth')->group(function () {
 Route::prefix('teacher/auth')->group(function () {
     Route::middleware('throttle:10,1')->post('/register', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'register']);
     Route::middleware('throttle:5,1')->post('/login', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'login']);
-    Route::post('/forgot-password', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'forgotPassword']);
-    Route::post('/reset-password', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'resetPassword']);
+    Route::middleware('throttle:3,1')->post('/forgot-password', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'forgotPassword']); // H-7: throttle eklendi
+    Route::middleware('throttle:5,1')->post('/reset-password', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'resetPassword']); // H-7: throttle eklendi
 });
 
 // ═══════════════════════════════════════════════════════════
 // VELİ API (Auth gerekli — Mobil uygulama)
+// L-2: Token ability kontrolü — yalnızca role:parent token'ı erişebilir
 // ═══════════════════════════════════════════════════════════
-Route::middleware('auth:sanctum')->prefix('parent')->group(function () {
+Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->group(function () {
     // Auth
     Route::post('/auth/logout', [\App\Http\Controllers\Parents\ParentAuthController::class, 'logout']);
     Route::get('/auth/me', [\App\Http\Controllers\Parents\ParentAuthController::class, 'me']);
@@ -339,86 +340,91 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ───────────────────────────────────────────────────
-    // ÖĞRETMEN AUTH
+    // ÖĞRETMEN ROUTES — L-2: Yalnızca role:teacher token'ı erişebilir
     // ───────────────────────────────────────────────────
-    Route::prefix('teacher/auth')->group(function () {
-        Route::get('/me', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'me']);
-        Route::post('/logout', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'logout']);
-    });
+    Route::middleware('abilities:role:teacher')->group(function () {
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN — TENANT ÜYELİK YÖNETİMİ
-    // ───────────────────────────────────────────────────
-    Route::prefix('teacher/memberships')->group(function () {
-        Route::get('/my-tenants', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'myTenants']);
-        Route::get('/invitations', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'invitations']);
-        Route::get('/my-join-requests', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'myJoinRequests']);
-        Route::post('/join', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'sendJoinRequest']);
-        Route::patch('/invitations/{id}/accept', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'acceptInvitation']);
-        Route::patch('/invitations/{id}/reject', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'rejectInvitation']);
-        Route::delete('/join-requests/{id}', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'cancelJoinRequest']);
-    });
+        // ÖĞRETMEN AUTH
+        Route::prefix('teacher/auth')->group(function () {
+            Route::get('/me', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'me']);
+            Route::post('/logout', [\App\Http\Controllers\Teachers\TeacherAuthController::class, 'logout']);
+        });
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN — BLOG YÖNETİMİ
-    // ───────────────────────────────────────────────────
-    Route::prefix('teacher/blogs')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'store']);
-        Route::put('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'update']);
-        Route::delete('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'destroy']);
-    });
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN — TENANT ÜYELİK YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher/memberships')->group(function () {
+            Route::get('/my-tenants', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'myTenants']);
+            Route::get('/invitations', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'invitations']);
+            Route::get('/my-join-requests', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'myJoinRequests']);
+            Route::post('/join', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'sendJoinRequest']);
+            Route::patch('/invitations/{id}/accept', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'acceptInvitation']);
+            Route::patch('/invitations/{id}/reject', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'rejectInvitation']);
+            Route::delete('/join-requests/{id}', [\App\Http\Controllers\Teachers\TeacherMembershipController::class, 'cancelJoinRequest']);
+        });
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN SINIFLARI
-    // ───────────────────────────────────────────────────
-    Route::prefix('teacher/classes')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'index']);
-        Route::get('/{classId}', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'show']);
-        Route::get('/{classId}/children', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'children']);
-    });
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN — BLOG YÖNETİMİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher/blogs')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'store']);
+            Route::put('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'destroy']);
+        });
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN — ÖĞRENCİ DETAYI & TESLİM
-    // ───────────────────────────────────────────────────
-    Route::prefix('teacher/children')->group(function () {
-        Route::get('/{childId}', [\App\Http\Controllers\Teachers\TeacherChildController::class, 'show']);
-        Route::get('/{childId}/today-medications', [\App\Http\Controllers\Teachers\TeacherChildController::class, 'todayMedications']);
-        Route::get('/{childId}/authorized-pickups', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'authorizedPickups']);
-        Route::post('/{childId}/record-pickup', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'recordPickup']);
-        Route::get('/{childId}/pickup-logs', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'pickupLogs']);
-    });
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN SINIFLARI
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher/classes')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'index']);
+            Route::get('/{classId}', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'show']);
+            Route::get('/{classId}/children', [\App\Http\Controllers\Teachers\TeacherClassController::class, 'children']);
+        });
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN — İLAÇ TAKİBİ
-    // ───────────────────────────────────────────────────
-    Route::prefix('teacher/medications')->group(function () {
-        Route::post('/mark-given', [\App\Http\Controllers\Teachers\TeacherMedicationController::class, 'markGiven']);
-        Route::get('/given-logs/{childId}', [\App\Http\Controllers\Teachers\TeacherMedicationController::class, 'givenLogs']);
-    });
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN — ÖĞRENCİ DETAYI & TESLİM
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher/children')->group(function () {
+            Route::get('/{childId}', [\App\Http\Controllers\Teachers\TeacherChildController::class, 'show']);
+            Route::get('/{childId}/today-medications', [\App\Http\Controllers\Teachers\TeacherChildController::class, 'todayMedications']);
+            Route::get('/{childId}/authorized-pickups', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'authorizedPickups']);
+            Route::post('/{childId}/record-pickup', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'recordPickup']);
+            Route::get('/{childId}/pickup-logs', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'pickupLogs']);
+        });
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN — YOKLAMA
-    // ───────────────────────────────────────────────────
-    Route::prefix('teacher/attendance')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Teachers\TeacherAttendanceController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\Teachers\TeacherAttendanceController::class, 'store']);
-    });
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN — İLAÇ TAKİBİ
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher/medications')->group(function () {
+            Route::post('/mark-given', [\App\Http\Controllers\Teachers\TeacherMedicationController::class, 'markGiven']);
+            Route::get('/given-logs/{childId}', [\App\Http\Controllers\Teachers\TeacherMedicationController::class, 'givenLogs']);
+        });
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN — YEMEK MENÜSÜ
-    // ───────────────────────────────────────────────────
-    Route::get('teacher/meal-menus', [\App\Http\Controllers\Teachers\TeacherMealMenuController::class, 'index']);
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN — YOKLAMA
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher/attendance')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Teachers\TeacherAttendanceController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Teachers\TeacherAttendanceController::class, 'store']);
+        });
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN GÜNLÜK RAPORLAMA (Teacher Daily Report)
-    // ───────────────────────────────────────────────────
-    Route::prefix('teacher/daily-reports')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'index']); // Liste
-        Route::get('/{childId}/{date}', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'show']); // Tekil detay + şablon
-        Route::post('/', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'store']); // Tekil Kayıt
-        Route::post('/bulk', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'bulkStore']); // Toplu Kayıt
-    });
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN — YEMEK MENÜSÜ
+        // ───────────────────────────────────────────────────
+        Route::get('teacher/meal-menus', [\App\Http\Controllers\Teachers\TeacherMealMenuController::class, 'index']);
+
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN GÜNLÜK RAPORLAMA (Teacher Daily Report)
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher/daily-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'index']); // Liste
+            Route::get('/{childId}/{date}', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'show']); // Tekil detay + şablon
+            Route::post('/', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'store']); // Tekil Kayıt
+            Route::post('/bulk', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'bulkStore']); // Toplu Kayıt
+        });
+
+    }); // end abilities:role:teacher group
 
     // ───────────────────────────────────────────────────
     // FATURA & ÖDEME SİSTEMİ

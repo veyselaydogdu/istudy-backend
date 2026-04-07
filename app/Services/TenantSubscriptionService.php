@@ -11,7 +11,11 @@ use Carbon\Carbon;
 class TenantSubscriptionService
 {
     /**
-     * Tenant için paket aboneliği oluştur
+     * Tenant için paket aboneliği oluştur veya mevcut aboneliği uzat.
+     *
+     * - Aktif abonelik yoksa: yeni abonelik oluştur.
+     * - Aktif abonelik VAR ve aynı paket: bitiş tarihini bir dönem uzat.
+     * - Aktif abonelik VAR ve farklı paket: mevcutu iptal et, yenisini oluştur.
      */
     public function subscribe(Tenant $tenant, array $data): array
     {
@@ -21,21 +25,67 @@ class TenantSubscriptionService
             throw new \Exception('Seçilen paket aktif değil.', 400);
         }
 
-        // Mevcut aktif aboneliği iptal et (varsa)
-        $this->cancelExistingSubscription($tenant);
-
-        // Fiyat hesapla
         $billingCycle = $data['billing_cycle'] ?? 'monthly';
         $price = $package->priceFor($billingCycle);
 
-        // Abonelik tarihlerini hesapla
+        $existingSubscription = $tenant->activeSubscription;
+
+        if ($existingSubscription) {
+            if ($existingSubscription->package_id === $package->id) {
+                // Aynı paket — bitiş tarihini bir dönem uzat
+                $newEndDate = $billingCycle === 'yearly'
+                    ? Carbon::parse($existingSubscription->end_date)->addYear()
+                    : Carbon::parse($existingSubscription->end_date)->addMonth();
+
+                $existingSubscription->update([
+                    'end_date' => $newEndDate,
+                    'billing_cycle' => $billingCycle,
+                    'updated_by' => auth()->id(),
+                ]);
+
+                $subscription = $existingSubscription->fresh()->load('package');
+            } else {
+                // Farklı paket — mevcutu iptal et, yeni oluştur
+                $existingSubscription->update([
+                    'status' => 'cancelled',
+                    'updated_by' => auth()->id(),
+                ]);
+
+                $subscription = $this->createSubscription($tenant, $package, $billingCycle, $data, $price);
+            }
+        } else {
+            // Abonelik yok — yeni oluştur
+            $subscription = $this->createSubscription($tenant, $package, $billingCycle, $data, $price);
+        }
+
+        // Ödeme kaydı oluştur
+        $payment = TenantPayment::create([
+            'tenant_subscription_id' => $subscription->id,
+            'amount' => $price,
+            'currency' => $tenant->currency ?? 'TRY',
+            'payment_method' => $data['payment_method'] ?? 'credit_card',
+            'status' => 'completed',
+            'paid_at' => now(),
+            'created_by' => auth()->id(),
+        ]);
+
+        return [
+            'subscription' => $subscription,
+            'payment' => $payment,
+        ];
+    }
+
+    /**
+     * Yeni TenantSubscription kaydı oluştur (iç yardımcı)
+     */
+    private function createSubscription(Tenant $tenant, Package $package, string $billingCycle, array $data, float $price): TenantSubscription
+    {
         $startDate = Carbon::today();
         $endDate = $billingCycle === 'yearly'
             ? $startDate->copy()->addYear()
             : $startDate->copy()->addMonth();
 
-        // Abonelik oluştur
-        $subscription = TenantSubscription::create([
+        return TenantSubscription::create([
             'tenant_id' => $tenant->id,
             'package_id' => $package->id,
             'billing_cycle' => $billingCycle,
@@ -45,23 +95,7 @@ class TenantSubscriptionService
             'status' => 'active',
             'auto_renew' => $data['auto_renew'] ?? true,
             'created_by' => auth()->id(),
-        ]);
-
-        // Ödeme kaydı oluştur
-        $payment = TenantPayment::create([
-            'tenant_subscription_id' => $subscription->id,
-            'amount' => $price,
-            'currency' => $tenant->currency ?? 'TRY',
-            'payment_method' => $data['payment_method'] ?? 'credit_card',
-            'status' => 'completed', // Şimdilik otomatik onay, ileride gateway entegrasyonu yapılır
-            'paid_at' => now(),
-            'created_by' => auth()->id(),
-        ]);
-
-        return [
-            'subscription' => $subscription->load('package'),
-            'payment' => $payment,
-        ];
+        ])->load('package');
     }
 
     /**

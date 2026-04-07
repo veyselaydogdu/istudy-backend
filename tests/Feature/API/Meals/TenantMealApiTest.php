@@ -276,12 +276,14 @@ class TenantMealApiTest extends TestCase
         ['user' => $user, 'tenant' => $tenant] = $this->createAuthenticatedTenant();
         $school = $this->createSchool($tenant, $user);
         $year = $this->createAcademicYear($school, $user);
+        $ingredient = $this->createTenantIngredient($tenant, $user);
 
         $response = $this->postJson('/api/meals', [
             'school_id' => $school->id,
             'academic_year_id' => $year->id,
             'name' => 'Sebzeli Pirinç Pilavı',
             'meal_type' => 'lunch',
+            'ingredient_ids' => [$ingredient->id],
         ]);
 
         $response->assertStatus(201)
@@ -332,10 +334,12 @@ class TenantMealApiTest extends TestCase
         ['user' => $user, 'tenant' => $tenant] = $this->createAuthenticatedTenant();
         $school = $this->createSchool($tenant, $user);
         $meal = $this->createMeal($school, $user, ['name' => 'Eski Yemek']);
+        $ingredient = $this->createTenantIngredient($tenant, $user);
 
         $response = $this->putJson("/api/meals/{$meal->id}", [
             'name' => 'Yeni Yemek',
             'meal_type' => 'dinner',
+            'ingredient_ids' => [$ingredient->id],
         ]);
 
         $response->assertStatus(200)
@@ -363,9 +367,17 @@ class TenantMealApiTest extends TestCase
         // Tenant A olarak giriş yap
         \Laravel\Sanctum\Sanctum::actingAs($userA);
 
+        // Validation geçmesi için Tenant A'ya ait bir ingredient oluştur
+        $ingredientA = \App\Models\Health\FoodIngredient::withoutGlobalScopes()->create([
+            'tenant_id' => $userA->tenant_id,
+            'name' => 'Test Malzeme',
+            'created_by' => $userA->id,
+        ]);
+
         $response = $this->putJson("/api/meals/{$mealB->id}", [
             'name' => 'A Tarafından Değiştirildi',
             'meal_type' => 'lunch',
+            'ingredient_ids' => [$ingredientA->id],
         ]);
 
         // BUG-003: Başka tenantın yemeğini güncelleyebiliyor (güvenlik açığı).

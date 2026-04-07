@@ -12,7 +12,7 @@ class ParentChildResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->ulid,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
             'full_name' => $this->full_name,
@@ -25,7 +25,7 @@ class ParentChildResource extends JsonResource
             'special_notes' => $this->special_notes,
             'languages' => $this->languages,
             'profile_photo' => $this->profile_photo
-                ? URL::signedRoute('parent.child.photo', ['child' => $this->id], now()->addHours(1))
+                ? URL::signedRoute('parent.child.photo', ['child' => $this->ulid], now()->addHours(1))
                 : null,
             'status' => $this->status,
             'enrollment_date' => $this->enrollment_date?->format('Y-m-d'),

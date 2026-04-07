@@ -64,8 +64,8 @@ class ActivityApiTest extends TestCase
         $response = $this->postJson("/api/schools/{$school->id}/activities", [
             'name' => 'Resim Kursu',
             'academic_year_id' => $year->id,
-            'start_date' => '2025-09-15',
-            'end_date' => '2025-12-15',
+            'start_date' => '2027-09-15',
+            'end_date' => '2027-12-15',
         ]);
 
         // BUG-010: Gerçekte 500 döner. Beklenen: 201.

@@ -27,7 +27,7 @@ class RegisterRequest extends FormRequest
             ],
             'phone' => ['nullable', 'string', 'max:20'],
             'institution_name' => ['required', 'string', 'max:255'],
-            'country' => ['nullable', 'string', 'max:5'],
+            'country' => ['required_with:phone', 'nullable', 'string', 'max:5'],
             'currency' => ['nullable', 'string', 'max:5'],
         ];
     }
@@ -43,6 +43,7 @@ class RegisterRequest extends FormRequest
             'password.confirmed' => 'Şifre tekrarı eşleşmiyor.',
             'password.regex' => 'Şifre en az 1 büyük harf, 1 rakam ve 1 özel karakter içermelidir.',
             'institution_name.required' => 'Kurum adı gereklidir.',
+            'country.required_with' => 'Telefon numarası girildiğinde ülke seçimi zorunludur.',
         ];
     }
 

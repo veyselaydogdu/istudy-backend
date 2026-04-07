@@ -94,10 +94,32 @@ class ParentActivityClassController extends BaseParentController
         }
     }
 
+    /**
+     * C-5: Tenant izolasyonu — veli yalnızca çocuklarının okullarına ait etkinlikleri görebilir.
+     */
     public function show(int $activity_class_id): JsonResponse
     {
         try {
+            $familyProfile = $this->getFamilyProfile();
+            if (! $familyProfile) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            $schoolIds = Child::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $familyProfile->id)
+                ->whereNotNull('school_id')
+                ->pluck('school_id')
+                ->unique()
+                ->filter();
+
+            $tenantIds = School::whereIn('id', $schoolIds)->pluck('tenant_id')->unique()->filter();
+
             $activityClass = ActivityClass::withoutGlobalScope('tenant')
+                ->where('is_active', true)
+                ->where(function ($q) use ($schoolIds, $tenantIds) {
+                    $q->whereIn('school_id', $schoolIds)
+                        ->orWhere(fn ($q2) => $q2->whereNull('school_id')->whereIn('tenant_id', $tenantIds));
+                })
                 ->with(['schoolClasses:id,name', 'teachers.user:id,name,surname', 'materials'])
                 ->findOrFail($activity_class_id);
 
@@ -148,17 +170,47 @@ class ParentActivityClassController extends BaseParentController
                 }
             }
 
-            // Duplicate check
-            if (ActivityClassEnrollment::where('activity_class_id', $activityClass->id)->where('child_id', $child->id)->whereNull('deleted_at')->exists()) {
+            // H-5: Race condition önlemi — duplicate ve kapasite kontrolü DB lock ile atomik yapılır
+            $existingOrFull = DB::transaction(function () use ($activityClass, $child) {
+                // Daha önce iptal edilmiş soft-deleted kaydı temizle
+                ActivityClassEnrollment::withTrashed()
+                    ->where('activity_class_id', $activityClass->id)
+                    ->where('child_id', $child->id)
+                    ->whereNotNull('deleted_at')
+                    ->forceDelete();
+
+                // Duplicate check — lockForUpdate ile atomik
+                $existing = ActivityClassEnrollment::where('activity_class_id', $activityClass->id)
+                    ->where('child_id', $child->id)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existing) {
+                    return 'duplicate';
+                }
+
+                // Kapasite check — lockForUpdate ile atomik
+                if ($activityClass->capacity !== null) {
+                    $count = ActivityClassEnrollment::where('activity_class_id', $activityClass->id)
+                        ->where('status', 'active')
+                        ->lockForUpdate()
+                        ->count();
+                    if ($count >= $activityClass->capacity) {
+                        return 'full';
+                    }
+                }
+
+                return null;
+            });
+
+            if ($existingOrFull === 'duplicate') {
                 return $this->errorResponse("{$child->full_name} zaten bu etkinlik sınıfına kayıtlı.", 422);
             }
 
-            // Daha önce iptal edilmiş (soft-deleted) kayıt varsa unique constraint çakışmasını önlemek için sil
-            ActivityClassEnrollment::withTrashed()
-                ->where('activity_class_id', $activityClass->id)
-                ->where('child_id', $child->id)
-                ->whereNotNull('deleted_at')
-                ->forceDelete();
+            if ($existingOrFull === 'full') {
+                return $this->errorResponse('Etkinlik sınıfının kapasitesi dolu.', 422);
+            }
 
             // Age check
             if ($activityClass->age_min !== null || $activityClass->age_max !== null) {
@@ -168,14 +220,6 @@ class ParentActivityClassController extends BaseParentController
                 }
                 if ($activityClass->age_max !== null && $age > $activityClass->age_max) {
                     return $this->errorResponse("Bu etkinlik için maksimum yaş sınırı {$activityClass->age_max}'dir.", 422);
-                }
-            }
-
-            // Capacity check
-            if ($activityClass->capacity !== null) {
-                $count = ActivityClassEnrollment::where('activity_class_id', $activityClass->id)->where('status', 'active')->count();
-                if ($count >= $activityClass->capacity) {
-                    return $this->errorResponse('Etkinlik sınıfının kapasitesi dolu.', 422);
                 }
             }
 
@@ -300,16 +344,38 @@ class ParentActivityClassController extends BaseParentController
         }
     }
 
+    /**
+     * H-4: Tenant izolasyonu + M-2: İmzalı URL süresi kısaltıldı (2h → 1h)
+     */
     public function gallery(int $activity_class_id): JsonResponse
     {
         try {
+            $familyProfile = $this->getFamilyProfile();
+            if (! $familyProfile) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            $schoolIds = Child::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $familyProfile->id)
+                ->whereNotNull('school_id')
+                ->pluck('school_id')
+                ->unique()
+                ->filter();
+
+            $tenantIds = School::whereIn('id', $schoolIds)->pluck('tenant_id')->unique()->filter();
+
+            // H-4: Veli yalnızca erişim hakkı olduğu etkinliğin galerisini görebilir
             $activityClass = ActivityClass::withoutGlobalScope('tenant')
+                ->where(function ($q) use ($schoolIds, $tenantIds) {
+                    $q->whereIn('school_id', $schoolIds)
+                        ->orWhere(fn ($q2) => $q2->whereNull('school_id')->whereIn('tenant_id', $tenantIds));
+                })
                 ->findOrFail($activity_class_id);
 
             $items = $activityClass->gallery()->get()->map(fn ($item) => [
                 'id' => $item->id,
                 'caption' => $item->caption,
-                'url' => URL::signedRoute('activity-class-gallery.serve', ['galleryItem' => $item->id], now()->addHours(2)),
+                'url' => URL::signedRoute('activity-class-gallery.serve', ['galleryItem' => $item->id], now()->addHour()), // M-2: 2h → 1h
                 'sort_order' => $item->sort_order,
                 'created_at' => $item->created_at,
             ]);

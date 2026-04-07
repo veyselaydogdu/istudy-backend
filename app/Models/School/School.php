@@ -12,12 +12,16 @@ use App\Models\Child\Child;
 use App\Models\Health\MealMenuSchedule;
 use App\Models\Notification\SystemNotification;
 use App\Models\Tenant\Tenant;
+use App\Traits\HasUlid;
 
 class School extends BaseModel
 {
+    use HasUlid;
+
     protected $table = 'schools';
 
     protected $fillable = [
+        'ulid',
         'tenant_id',
         'country_id',
         'name',
@@ -42,6 +46,7 @@ class School extends BaseModel
 
     protected $casts = [
         'is_active' => 'boolean',
+        'ulid' => 'string',
     ];
 
     /*

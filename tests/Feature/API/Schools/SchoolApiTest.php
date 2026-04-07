@@ -141,7 +141,7 @@ class SchoolApiTest extends TestCase
         ['user' => $user, 'tenant' => $tenant] = $this->createAuthenticatedTenant();
         $school = $this->createSchool($tenant, $user, ['name' => 'Detay Okulu']);
 
-        $response = $this->getJson("/api/schools/{$school->id}");
+        $response = $this->getJson("/api/schools/{$school->ulid}");
 
         $response->assertStatus(200)
             ->assertJson(['success' => true])
@@ -168,7 +168,7 @@ class SchoolApiTest extends TestCase
 
         \Laravel\Sanctum\Sanctum::actingAs($userA);
 
-        $response = $this->getJson("/api/schools/{$schoolB->id}");
+        $response = $this->getJson("/api/schools/{$schoolB->ulid}");
 
         // Tenant scope nedeniyle 404 (model bulunamaz) veya 403
         $this->assertContains($response->status(), [403, 404]);
@@ -182,7 +182,7 @@ class SchoolApiTest extends TestCase
         ['user' => $user, 'tenant' => $tenant] = $this->createAuthenticatedTenant();
         $school = $this->createSchool($tenant, $user, ['name' => 'Eski Okul']);
 
-        $response = $this->putJson("/api/schools/{$school->id}", [
+        $response = $this->putJson("/api/schools/{$school->ulid}", [
             'name' => 'Güncellenmiş Okul',
         ]);
 
@@ -203,7 +203,7 @@ class SchoolApiTest extends TestCase
 
         \Laravel\Sanctum\Sanctum::actingAs($userA);
 
-        $response = $this->putJson("/api/schools/{$schoolB->id}", [
+        $response = $this->putJson("/api/schools/{$schoolB->ulid}", [
             'name' => 'Hack',
         ]);
 
@@ -225,7 +225,7 @@ class SchoolApiTest extends TestCase
         ['user' => $user, 'tenant' => $tenant] = $this->createAuthenticatedTenant();
         $school = $this->createSchool($tenant, $user);
 
-        $response = $this->deleteJson("/api/schools/{$school->id}");
+        $response = $this->deleteJson("/api/schools/{$school->ulid}");
 
         $response->assertStatus(200)
             ->assertJson(['success' => true]);
@@ -243,7 +243,7 @@ class SchoolApiTest extends TestCase
 
         \Laravel\Sanctum\Sanctum::actingAs($userA);
 
-        $response = $this->deleteJson("/api/schools/{$schoolB->id}");
+        $response = $this->deleteJson("/api/schools/{$schoolB->ulid}");
 
         $this->assertContains($response->status(), [403, 404]);
 

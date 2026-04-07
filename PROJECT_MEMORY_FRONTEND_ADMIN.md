@@ -1,6 +1,6 @@
 # 🧠 iStudy Frontend Admin — Proje Hafıza Dosyası
 
-> **Son Güncelleme:** 2026-02-22 (Vristo tema entegrasyonu, Tailwind v3'e geçiş, yeni UI sayfaları, invoice, npm güvenlik fix — v8; frontend-tenant-and-website projesi oluşturuldu)
+> **Son Güncelleme:** 2026-04-06 (Global veri sayfaları (/global/*), sidebar yenilendi, dashboard API'den gerçek veri çeker, seeders eklendi)
 > **Amaç:** Bu dosya, Frontend Admin panelinin geliştirilme sürecini, mimari kararlarını, kullanılan teknolojileri ve bileşen yapısını belgelemek için oluşturulmuştur.
 
 > **İlgili Proje:** `frontend-tenant-and-website` (port 3002) — admin kopyasından üretildi. Token: `tenant_token`. Detaylar için bu repo'ya bakın.
@@ -139,16 +139,26 @@ frontend-admin/
    const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
    ```
 
-### Sidebar Navigasyon Grupları
+### Sidebar Navigasyon Grupları (2026-04-06 güncellendi)
 ```
-ANA MENÜ        → / (Dashboard)
-YÖNETİM        → /tenants, /schools, /users, /health
-FİNANS         → /packages, /finance, /subscriptions
-UYGULAMALAR    → /apps/invoice/list
-UI BİLEŞENLERİ → /ui/buttons, /ui/alerts, /ui/forms, /ui/tabs, /ui/modals,
-                   /ui/accordions, /ui/dropdowns, /ui/sweetalerts, /ui/pricing
+GENEL BAKIŞ     → / (Dashboard — real API data)
+YÖNETİM        → /tenants, /schools, /users
+PAKET & SATIŞ  → /packages, /subscriptions, /finance
+GLOBAL VERİLER → /global/allergens, /global/medical-conditions, /global/medications,
+                   /global/food-ingredients, /global/countries, /global/currencies
+                   (collapsible accordion group — başta open eğer /global/* yolundaysa)
+DESTEK         → /contact-requests
 SİSTEM         → /activity-logs, /notifications, /settings
 ```
+
+### Global Veri Sayfaları (2026-04-06)
+- `/global/allergens` — CRUD (ad, açıklama, risk seviyesi: low/medium/high)
+- `/global/medical-conditions` — CRUD (ad, açıklama)
+- `/global/medications` — CRUD (ad, kullanım notu — silme only, no update)
+- `/global/food-ingredients` — CRUD + alerjen seçici (checkbox multi-select)
+- `/global/countries` — CRUD + aktif/pasif toggle
+- `/global/currencies` — CRUD + temel para birimi set + aktif/pasif toggle
+Eski `/health` sayfası hâlâ mevcut (4 tab combined view); sidebar'dan kaldırıldı.
 
 ### npm Güvenlik Açığı Çözüm Yöntemi
 `eslint-config-next` eski `minimatch` getirdiğinde — `package.json`'a ekle:

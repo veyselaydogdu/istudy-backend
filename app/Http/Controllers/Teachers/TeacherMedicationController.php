@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Teachers;
 
+use App\Models\Academic\SchoolClass;
 use App\Models\Child\ChildMedicationLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,9 +13,25 @@ use Illuminate\Support\Facades\Log;
  * TeacherMedicationController — İlaç Takibi
  *
  * Öğretmenin öğrencilere ilaç verme kayıtlarını yönetir.
+ * C-2: Yalnızca öğretmenin atandığı sınıflardaki çocuklar için işlem yapılabilir.
  */
 class TeacherMedicationController extends BaseTeacherController
 {
+    /**
+     * Öğretmenin atandığı bir sınıfta kayıtlı çocuk olup olmadığını doğrular.
+     * C-2 / C-7 güvenlik kontrolü.
+     */
+    private function isChildInTeacherClass(int $teacherProfileId, int $childId): bool
+    {
+        return SchoolClass::whereHas(
+            'teachers',
+            fn ($q) => $q->where('teacher_profile_id', $teacherProfileId)
+        )->whereHas(
+            'children',
+            fn ($q) => $q->where('children.id', $childId)
+        )->exists();
+    }
+
     /**
      * İlaç verildi olarak işaretle
      */
@@ -27,6 +44,16 @@ class TeacherMedicationController extends BaseTeacherController
             'dose' => ['nullable', 'string', 'max:100'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        $profile = $this->teacherProfile();
+        if ($profile instanceof JsonResponse) {
+            return $profile;
+        }
+
+        // C-2: Öğretmen yalnızca kendi sınıfındaki çocuğa ilaç kaydı oluşturabilir
+        if (! $this->isChildInTeacherClass($profile->id, $request->child_id)) {
+            return $this->errorResponse('Bu öğrenciye erişim yetkiniz yok.', 403);
+        }
 
         try {
             $log = ChildMedicationLog::create([
@@ -57,6 +84,16 @@ class TeacherMedicationController extends BaseTeacherController
      */
     public function givenLogs(int $childId): JsonResponse
     {
+        $profile = $this->teacherProfile();
+        if ($profile instanceof JsonResponse) {
+            return $profile;
+        }
+
+        // C-2: Öğretmen yalnızca kendi sınıfındaki çocuğun loglarını görebilir
+        if (! $this->isChildInTeacherClass($profile->id, $childId)) {
+            return $this->errorResponse('Bu öğrenciye erişim yetkiniz yok.', 403);
+        }
+
         try {
             $logs = ChildMedicationLog::with(['medication:id,name', 'givenBy:id,name,surname'])
                 ->where('child_id', $childId)

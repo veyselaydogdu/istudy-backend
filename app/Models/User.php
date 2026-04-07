@@ -10,6 +10,7 @@ use App\Models\Child\FamilyProfile;
 use App\Models\School\School;
 use App\Models\School\TeacherProfile;
 use App\Models\Tenant\Tenant;
+use App\Traits\HasUlid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -19,7 +20,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, HasUlid, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -27,6 +28,7 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
+        'ulid',
         'name',
         'surname',
         'email',
@@ -56,6 +58,7 @@ class User extends Authenticatable
      * @var array<string, string>
      */
     protected $casts = [
+        'ulid' => 'string',
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'last_login_at' => 'datetime',

@@ -32,12 +32,26 @@ abstract class BaseController extends BaseLaravelController
 
     /**
      * Hatalı (Error) Response Helper
+     *
+     * - Geçersiz HTTP kodları (0, MySQL hata kodları vb.) 400'e çekilir.
+     * - Production ortamında 5xx hataları iç mesajı sızdırmaz.
      */
     protected function errorResponse(string $message, int $code = 400): JsonResponse
     {
-        // Code 0 gelirse 500 yap, yoksa code kullan, ancak HTTP statuslarda 0 geçersiz.
-        // Throwable getCode() bazen 0 döner.
-        $statusCode = ($code > 0 && $code < 600) ? $code : 400;
+        // Geçerli HTTP durum kodları aralığına zorla
+        $validHttpCodes = [400, 401, 403, 404, 409, 422, 429, 500, 502, 503];
+        if (in_array($code, $validHttpCodes)) {
+            $statusCode = $code;
+        } elseif ($code >= 100 && $code < 600) {
+            $statusCode = $code;
+        } else {
+            $statusCode = 400;
+        }
+
+        // Production'da 5xx hatalarında iç mesajları gizle (H-2 güvenlik)
+        if ($statusCode >= 500 && app()->isProduction()) {
+            $message = 'Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.';
+        }
 
         return response()->json([
             'success' => false,

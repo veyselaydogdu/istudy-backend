@@ -40,9 +40,10 @@
 │     Layout: PublicNavbar + PublicFooter (server comp.)  │
 ├─────────────────────────────────────────────────────────┤
 │  2. Auth Akışı  → (auth) route group                    │
-│     /login             Giriş                            │
-│     /register          Adım 1: Hesap oluştur            │
-│     /register/plans    Adım 2: Paket seç                │
+│     /login                   Giriş                      │
+│     /register                Adım 1: Hesap oluştur      │
+│     /register/plans          Adım 2: Paket seç          │
+│     /subscription/select-plan  Abonelik yok → paket seç │
 │     Layout: SADECE passthrough <>{children}</>          │
 ├─────────────────────────────────────────────────────────┤
 │  3. Tenant Dashboard  → (tenant) route group            │
@@ -57,7 +58,7 @@
 │     /invoices                    Fatura geçmişi         │
 │     /notifications               Bildirimler (gelen+gönder) │
 │     /profile                     Profil & şifre         │
-│     Layout: Sidebar + Header (tenant_token guard)       │
+│     Layout: Sidebar + Header + subscription guard       │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -79,11 +80,13 @@ frontend-tenant-and-website/
 │   ├── (auth)/                         ← ⚠️ SADECE passthrough layout!
 │   │   ├── layout.tsx                  ← return <>{children}</> — başka hiçbir şey ekleme!
 │   │   ├── login/page.tsx              ← tenant_token → /dashboard yönlendir
-│   │   └── register/
-│   │       ├── page.tsx                ← Adım 1: Hesap bilgileri
-│   │       └── plans/page.tsx          ← Adım 2: Paket seç → /dashboard
-│   └── (tenant)/                       ← tenant_token guard, Sidebar+Header
-│       ├── layout.tsx                  ← Auth check: tenant_token yoksa /login
+│   │   ├── register/
+│   │   │   ├── page.tsx                ← Adım 1: Hesap bilgileri (phone → country zorunlu)
+│   │   │   └── plans/page.tsx          ← Adım 2: Paket seç → /dashboard (Atla butonu var)
+│   │   └── subscription/
+│   │       └── select-plan/page.tsx    ← Abonelik yok sayfası (Atla yok, Çıkış butonu var)
+│   └── (tenant)/                       ← tenant_token + subscription guard, Sidebar+Header
+│       ├── layout.tsx                  ← Auth+subscription check: token yoksa /login, abonelik yoksa /subscription/select-plan
 │       ├── dashboard/page.tsx          ← Stats + usage bars + recent schools
 │       ├── schools/
 │       │   ├── page.tsx                ← CRUD listesi (paginated, search, edit modal)

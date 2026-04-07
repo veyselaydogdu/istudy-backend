@@ -125,7 +125,7 @@ class ClassApiTest extends TestCase
         $year = $this->createAcademicYear($school, $user);
         $class = $this->createClass($school, $year, $user, ['name' => 'C Sınıfı']);
 
-        $response = $this->getJson("/api/schools/{$school->id}/classes/{$class->id}");
+        $response = $this->getJson("/api/schools/{$school->id}/classes/{$class->ulid}");
 
         // BUG-010: Gerçekte 500 döner. Beklenen: 200.
         $response->assertStatus(200)
@@ -149,7 +149,7 @@ class ClassApiTest extends TestCase
         $year = $this->createAcademicYear($school, $user);
         $class = $this->createClass($school, $year, $user, ['name' => 'Eski Sınıf']);
 
-        $response = $this->putJson("/api/schools/{$school->id}/classes/{$class->id}", [
+        $response = $this->putJson("/api/schools/{$school->id}/classes/{$class->ulid}", [
             'name' => 'Güncellenmiş Sınıf',
             'capacity' => 30,
         ]);
@@ -182,7 +182,7 @@ class ClassApiTest extends TestCase
         $year = $this->createAcademicYear($school, $user);
         $class = $this->createClass($school, $year, $user);
 
-        $response = $this->deleteJson("/api/schools/{$school->id}/classes/{$class->id}");
+        $response = $this->deleteJson("/api/schools/{$school->id}/classes/{$class->ulid}");
 
         // BUG-010: Gerçekte 500 döner. Beklenen: 200.
         $response->assertStatus(200)
