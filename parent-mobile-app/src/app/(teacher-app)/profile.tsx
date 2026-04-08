@@ -36,6 +36,24 @@ interface Tenant {
   joined_at: string | null;
 }
 
+interface JoinHistoryEntry {
+  id: number;
+  status_type: 'pending' | 'rejected' | 'removed';
+  sent_at: string | null;
+  joined_at: string | null;
+}
+
+interface JoinRequestGroup {
+  school_id: number | null;
+  school_name: string | null;
+  tenant_id: number;
+  tenant_name: string | null;
+  current_status: 'pending' | 'rejected' | 'removed';
+  pending_id: number | null;
+  sent_at: string | null;
+  history: JoinHistoryEntry[];
+}
+
 interface BlogPost {
   id: number;
   title: string;
@@ -50,6 +68,8 @@ export default function TeacherProfileScreen() {
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [joinRequests, setJoinRequests] = useState<JoinRequestGroup[]>([]);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,13 +89,15 @@ export default function TeacherProfileScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [tenantsRes, invitationsRes, blogsRes] = await Promise.all([
+      const [tenantsRes, invitationsRes, joinRequestsRes, blogsRes] = await Promise.all([
         api.get<{ data: Tenant[] }>('/teacher/memberships/my-tenants'),
         api.get<{ data: Invitation[] }>('/teacher/memberships/invitations'),
+        api.get<{ data: JoinRequest[] }>('/teacher/memberships/my-join-requests'),
         api.get<{ data: BlogPost[]; meta: unknown }>('/teacher/blogs?per_page=5'),
       ]);
       setTenants(tenantsRes.data.data);
       setInvitations(invitationsRes.data.data);
+      setJoinRequests(joinRequestsRes.data.data);
       setBlogPosts(blogsRes.data.data);
     } catch (err: unknown) {
       setError(getApiError(err));
@@ -126,11 +148,38 @@ export default function TeacherProfileScreen() {
     }
   };
 
+  const handleCancelJoinRequest = (pendingId: number) => {
+    Alert.alert('Talebi İptal Et', 'Bu katılma talebini iptal etmek istediğinize emin misiniz?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'İptal Et',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/teacher/memberships/join-requests/${pendingId}`);
+            const res = await api.get<{ data: JoinRequestGroup[] }>('/teacher/memberships/my-join-requests');
+            setJoinRequests(res.data.data);
+          } catch (err: unknown) {
+            Alert.alert('Hata', getApiError(err));
+          }
+        },
+      },
+    ]);
+  };
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      return next;
+    });
+  };
+
   const handleJoinTenant = async () => {
     if (!inviteCode.trim()) { return; }
     setJoinLoading(true);
     try {
-      await api.post('/teacher/memberships/join', { invite_code: inviteCode.trim() });
+      await api.post('/teacher/memberships/join', { registration_code: inviteCode.trim() });
       setInviteCode('');
       setJoinModalVisible(false);
       void loadData();
@@ -257,6 +306,116 @@ export default function TeacherProfileScreen() {
           </View>
         ) : null}
 
+        {/* Gönderilen Talepler */}
+        {joinRequests.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Gönderilen Talepler</Text>
+              {joinRequests.some((g) => g.current_status === 'pending') ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {joinRequests.filter((g) => g.current_status === 'pending').length}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            {joinRequests.map((group) => {
+              const groupKey = group.school_id ? `school_${group.school_id}` : `tenant_${group.tenant_id}`;
+              const isExpanded = expandedGroups.has(groupKey);
+              const statusIcon = group.current_status === 'pending' ? 'time-outline'
+                : group.current_status === 'removed' ? 'remove-circle-outline'
+                : 'close-circle-outline';
+              const statusColor = group.current_status === 'pending' ? '#F59E0B'
+                : group.current_status === 'removed' ? '#EA580C'
+                : '#EF4444';
+              const statusIconBg = group.current_status === 'pending' ? '#FEF3C7'
+                : group.current_status === 'removed' ? '#FFF7ED'
+                : '#FEE2E2';
+              const statusBorderColor = group.current_status === 'pending' ? '#F59E0B'
+                : group.current_status === 'removed' ? '#EA580C'
+                : '#EF4444';
+              const statusLabel = group.current_status === 'pending' ? 'Bekliyor'
+                : group.current_status === 'removed' ? 'Kaldırıldı'
+                : 'Reddedildi';
+              const statusBadgeStyle = group.current_status === 'pending' ? styles.joinStatusPending
+                : group.current_status === 'removed' ? styles.joinStatusRemoved
+                : styles.joinStatusRejected;
+              const statusTextStyle = group.current_status === 'pending' ? styles.joinStatusTextPending
+                : group.current_status === 'removed' ? styles.joinStatusTextRemoved
+                : styles.joinStatusTextRejected;
+
+              return (
+                <View key={groupKey} style={[styles.joinRequestCard, { borderLeftColor: statusBorderColor }]}>
+                  <TouchableOpacity
+                    style={styles.joinRequestCardInner}
+                    onPress={() => toggleGroup(groupKey)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.joinRequestIconWrap, { backgroundColor: statusIconBg }]}>
+                      <Ionicons name={statusIcon} size={20} color={statusColor} />
+                    </View>
+                    <View style={styles.joinRequestInfo}>
+                      <Text style={styles.joinRequestTenant}>
+                        {group.school_name ?? group.tenant_name ?? 'Okul'}
+                      </Text>
+                      {group.school_name ? (
+                        <Text style={styles.joinRequestDate}>{group.tenant_name}</Text>
+                      ) : null}
+                      <Text style={styles.joinRequestDate}>
+                        {group.sent_at ? new Date(group.sent_at).toLocaleDateString('tr-TR') : ''}
+                      </Text>
+                    </View>
+                    <View style={[styles.joinStatusBadge, statusBadgeStyle]}>
+                      <Text style={[styles.joinStatusText, statusTextStyle]}>{statusLabel}</Text>
+                    </View>
+                    {group.current_status === 'pending' && group.pending_id ? (
+                      <TouchableOpacity
+                        style={styles.cancelRequestBtn}
+                        onPress={() => handleCancelJoinRequest(group.pending_id!)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="close" size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                    ) : null}
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={AppColors.onSurfaceVariant}
+                      style={{ marginLeft: 4 }}
+                    />
+                  </TouchableOpacity>
+
+                  {isExpanded ? (
+                    <View style={styles.historySection}>
+                      {group.history.map((entry, idx) => {
+                        const eLabel = entry.status_type === 'pending' ? 'Bekliyor'
+                          : entry.status_type === 'removed' ? 'Kaldırıldı'
+                          : 'Reddedildi';
+                        const eColor = entry.status_type === 'pending' ? '#F59E0B'
+                          : entry.status_type === 'removed' ? '#EA580C'
+                          : '#EF4444';
+                        return (
+                          <View key={entry.id} style={styles.historyItem}>
+                            <View style={[styles.historyDot, { backgroundColor: eColor }]} />
+                            {idx < group.history.length - 1 ? <View style={styles.historyLine} /> : null}
+                            <View style={styles.historyItemContent}>
+                              <Text style={[styles.historyLabel, { color: eColor }]}>{eLabel}</Text>
+                              <Text style={styles.historyDate}>
+                                {entry.sent_at ? new Date(entry.sent_at).toLocaleDateString('tr-TR') : ''}
+                                {entry.joined_at ? ` — Katıldı: ${new Date(entry.joined_at).toLocaleDateString('tr-TR')}` : ''}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+
         {/* Kurumlarım */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -380,11 +539,11 @@ export default function TeacherProfileScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Kuruma Katıl</Text>
             <Text style={styles.modalSubtitle}>
-              Kurumun davet kodunu girerek katılma talebi gönderin.
+              Okulun kayıt kodunu girerek katılma talebi gönderin.
             </Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Davet kodu"
+              placeholder="Kayıt kodu (örn: 7568B9E6)"
               placeholderTextColor="#9CA3AF"
               value={inviteCode}
               onChangeText={setInviteCode}
@@ -575,6 +734,90 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  joinRequestCard: {
+    backgroundColor: AppColors.white,
+    borderRadius: 14,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+    overflow: 'hidden',
+  },
+  joinRequestCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  joinRequestIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  joinRequestInfo: { flex: 1 },
+  joinRequestTenant: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
+  joinRequestDate: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  joinStatusBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginRight: 8,
+  },
+  joinStatusPending: { backgroundColor: '#FEF3C7' },
+  joinStatusRejected: { backgroundColor: '#FEE2E2' },
+  joinStatusRemoved: { backgroundColor: '#FFF7ED' },
+  joinStatusText: { fontSize: 11, fontWeight: '700' },
+  joinStatusTextPending: { color: '#D97706' },
+  joinStatusTextRejected: { color: '#EF4444' },
+  joinStatusTextRemoved: { color: '#EA580C' },
+  cancelRequestBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  historySection: {
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.surfaceContainerLow,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 10,
+    position: 'relative',
+  },
+  historyDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 3,
+    marginRight: 10,
+    zIndex: 1,
+  },
+  historyLine: {
+    position: 'absolute',
+    left: 4,
+    top: 13,
+    width: 2,
+    height: 22,
+    backgroundColor: AppColors.surfaceContainerLow,
+  },
+  historyItemContent: { flex: 1 },
+  historyLabel: { fontSize: 13, fontWeight: '700' },
+  historyDate: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 2 },
   tenantCard: {
     flexDirection: 'row',
     alignItems: 'center',

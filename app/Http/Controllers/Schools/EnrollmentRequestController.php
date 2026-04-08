@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Schools;
 
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Resources\EnrollmentRequestResource;
+use App\Models\School\School;
 use App\Models\School\SchoolEnrollmentRequest;
 use App\Services\EnrollmentRequestService;
 use Illuminate\Http\JsonResponse;
@@ -202,11 +203,16 @@ class EnrollmentRequestController extends BaseController
      * Okuldaki kayıt taleplerini listele
      * GET /schools/{school_id}/enrollment-requests?status=pending
      */
-    public function schoolIndex(Request $request, int $schoolId): JsonResponse
+    public function schoolIndex(Request $request): JsonResponse
     {
         try {
+            $school = $this->resolveSchool();
+            if (! $school) {
+                return $this->errorResponse('Okul bulunamadı.', 404);
+            }
+
             $status = $request->query('status'); // pending | approved | rejected | null (hepsi)
-            $requests = $this->service->listForSchool($schoolId, $status);
+            $requests = $this->service->listForSchool($school->id, $status);
 
             return $this->paginatedResponse(EnrollmentRequestResource::collection($requests));
         } catch (\Throwable $e) {
@@ -214,6 +220,25 @@ class EnrollmentRequestController extends BaseController
 
             return $this->errorResponse('Talepler listelenirken bir hata oluştu.', 500);
         }
+    }
+
+    /**
+     * Rota parametresinden okul çöz (ULID veya integer PK).
+     * Tenant sahipliğini doğrular.
+     */
+    private function resolveSchool(): ?School
+    {
+        $param = request()->route('school_id');
+        if (! $param) {
+            return null;
+        }
+
+        $user = $this->user();
+        $query = School::where('tenant_id', $user->tenant_id);
+
+        return is_numeric($param)
+            ? $query->where('id', (int) $param)->first()
+            : $query->where('ulid', $param)->first();
     }
 
     /**
@@ -242,12 +267,17 @@ class EnrollmentRequestController extends BaseController
      * Talebi onayla (User + FamilyProfile + schoolAssignment oluşturulur)
      * PATCH /schools/{school_id}/enrollment-requests/{id}/approve
      */
-    public function approve(int $schoolId, int $id): JsonResponse
+    public function approve(int $id): JsonResponse
     {
+        $school = $this->resolveSchool();
+        if (! $school) {
+            return $this->errorResponse('Okul bulunamadı.', 404);
+        }
+
         DB::beginTransaction();
         try {
             $enrollmentRequest = SchoolEnrollmentRequest::where('id', $id)
-                ->where('school_id', $schoolId)
+                ->where('school_id', $school->id)
                 ->with('school')
                 ->firstOrFail();
 
@@ -279,16 +309,21 @@ class EnrollmentRequestController extends BaseController
      * Talebi reddet (red sebebi zorunlu)
      * PATCH /schools/{school_id}/enrollment-requests/{id}/reject
      */
-    public function reject(Request $request, int $schoolId, int $id): JsonResponse
+    public function reject(Request $request, int $id): JsonResponse
     {
         $request->validate([
             'rejection_reason' => ['required', 'string', 'min:5', 'max:500'],
         ]);
 
+        $school = $this->resolveSchool();
+        if (! $school) {
+            return $this->errorResponse('Okul bulunamadı.', 404);
+        }
+
         DB::beginTransaction();
         try {
             $enrollmentRequest = SchoolEnrollmentRequest::where('id', $id)
-                ->where('school_id', $schoolId)
+                ->where('school_id', $school->id)
                 ->firstOrFail();
 
             if (! $enrollmentRequest->isPending()) {

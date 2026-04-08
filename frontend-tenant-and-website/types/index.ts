@@ -431,6 +431,7 @@ export type SchoolTeacher = {
     employment_type?: string
     is_active: boolean
     role_type?: { id: number; name: string } | null
+    classes?: Array<{ id: number; name: string }>
 }
 
 // ─── Enrollment Request (Veli Kayıt Talebi) ──────────────────────────────────

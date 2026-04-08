@@ -35,7 +35,7 @@ class TenantTeacherController extends BaseController
 
             $query = TeacherTenantMembership::where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'inactive'])
-                ->with(['teacherProfile' => fn ($q) => $q->with('user', 'schools', 'country')])
+                ->with(['teacherProfile' => fn ($q) => $q->withoutGlobalScope('tenant')->with('user', 'schools', 'country')])
                 ->when($request->search, function ($q) use ($request) {
                     $q->whereHas('teacherProfile.user', fn ($u) => $u->where('name', 'like', "%{$request->search}%")
                         ->orWhere('surname', 'like', "%{$request->search}%")
@@ -79,7 +79,7 @@ class TenantTeacherController extends BaseController
     {
         try {
             $tenantId = $this->user()->tenant_id;
-            $teacher = TeacherProfile::with([
+            $teacher = TeacherProfile::withoutGlobalScope('tenant')->with([
                 'user',
                 'schools',
                 'country',
@@ -286,9 +286,16 @@ class TenantTeacherController extends BaseController
     }
 
     /**
-     * Öğretmeni okula ata
+     * Öğretmeni okula ata — devre dışı.
+     * Öğretmenler okula sadece davet/kabul akışı üzerinden katılabilir.
      */
     public function assignToSchool(Request $request, int $id): JsonResponse
+    {
+        return $this->errorResponse('Öğretmenler okula doğrudan atanamaz. Davet gönderin veya katılma talebini onaylayın.', 405);
+    }
+
+    /** @deprecated */
+    private function _assignToSchool_disabled(Request $request, int $id): JsonResponse
     {
         $request->validate([
             'school_id' => ['required', 'exists:schools,id'],
@@ -331,9 +338,16 @@ class TenantTeacherController extends BaseController
     }
 
     /**
-     * Öğretmeni okuldan çıkar
+     * Öğretmeni okuldan çıkar — devre dışı.
+     * Öğretmen çıkarmak için removeMembership kullanın.
      */
     public function removeFromSchool(int $id, int $schoolId): JsonResponse
+    {
+        return $this->errorResponse('Bu işlem için üyelik kaldırma endpoint\'ini kullanın.', 405);
+    }
+
+    /** @deprecated */
+    private function _removeFromSchool_disabled(int $id, int $schoolId): JsonResponse
     {
         try {
             $tenantId = $this->user()->tenant_id;
@@ -477,7 +491,7 @@ class TenantTeacherController extends BaseController
             $requests = TeacherTenantMembership::where('tenant_id', $this->user()->tenant_id)
                 ->where('status', 'pending')
                 ->where('invite_type', 'teacher_request')
-                ->with('teacherProfile.user')
+                ->with(['teacherProfile' => fn ($q) => $q->withoutGlobalScope('tenant')->with('user')])
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(fn ($m) => [
@@ -485,6 +499,7 @@ class TenantTeacherController extends BaseController
                     'teacher_profile_id' => $m->teacher_profile_id,
                     'name' => trim(($m->teacherProfile?->user?->name ?? '').' '.($m->teacherProfile?->user?->surname ?? '')),
                     'email' => $m->teacherProfile?->user?->email,
+                    'phone' => $m->teacherProfile?->user?->phone,
                     'specialization' => $m->teacherProfile?->specialization,
                     'experience_years' => $m->teacherProfile?->experience_years,
                     'sent_at' => $m->created_at?->toISOString(),
@@ -510,6 +525,18 @@ class TenantTeacherController extends BaseController
                 ->firstOrFail();
 
             $membership->update(['status' => 'active', 'joined_at' => now()]);
+
+            // Öğretmen okul kodu ile katıldıysa → school_teacher_assignments kaydı oluştur
+            if ($membership->school_id) {
+                \Illuminate\Support\Facades\DB::table('school_teacher_assignments')->insertOrIgnore([
+                    'school_id' => $membership->school_id,
+                    'teacher_profile_id' => $membership->teacher_profile_id,
+                    'employment_type' => 'full_time',
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             return $this->successResponse(null, 'Talep onaylandı. Öğretmen kurumunuza eklendi.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
@@ -545,7 +572,7 @@ class TenantTeacherController extends BaseController
     }
 
     /**
-     * Öğretmeni aktif yap
+     * Öğretmeni aktif yap (bu tenant için)
      */
     public function activate(int $id): JsonResponse
     {
@@ -555,11 +582,6 @@ class TenantTeacherController extends BaseController
                 ->firstOrFail();
 
             $membership->update(['status' => 'active']);
-
-            // users.is_active'i de aktif yap
-            if ($membership->teacherProfile?->user_id) {
-                User::where('id', $membership->teacherProfile->user_id)->update(['is_active' => true]);
-            }
 
             return $this->successResponse(null, 'Öğretmen aktif edildi.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
@@ -572,7 +594,8 @@ class TenantTeacherController extends BaseController
     }
 
     /**
-     * Öğretmeni pasif yap — sisteme giriş yapamaz
+     * Öğretmeni pasif yap — bu tenant için erişimi kısıtla.
+     * Öğretmen hesabı kapatılmaz; diğer okullara girişi devam eder.
      */
     public function deactivate(int $id): JsonResponse
     {
@@ -584,17 +607,7 @@ class TenantTeacherController extends BaseController
 
             $membership->update(['status' => 'inactive']);
 
-            // Eğer öğretmenin başka hiçbir aktif üyeliği yoksa users.is_active → false
-            $hasOtherActiveMemberships = TeacherTenantMembership::where('teacher_profile_id', $membership->teacher_profile_id)
-                ->where('id', '!=', $id)
-                ->where('status', 'active')
-                ->exists();
-
-            if (! $hasOtherActiveMemberships && $membership->teacherProfile?->user_id) {
-                User::where('id', $membership->teacherProfile->user_id)->update(['is_active' => false]);
-            }
-
-            return $this->successResponse(null, 'Öğretmen pasif yapıldı. Sisteme giriş yapamayacak.');
+            return $this->successResponse(null, 'Öğretmen bu kurum için pasif yapıldı.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Aktif öğretmen bulunamadı.', 404);
         } catch (\Throwable $e) {
@@ -605,34 +618,79 @@ class TenantTeacherController extends BaseController
     }
 
     /**
-     * Öğretmeni kurumdan çıkar (soft remove — profil korunur)
+     * Öğretmeni okuldan çıkar.
+     * Öğretmen hesabı kapatılmaz; sistemde ve diğer okullarda girişi devam eder.
+     * Daha sonra aynı okula yeniden katılma talebi gönderebilir.
      */
     public function removeMembership(int $id): JsonResponse
     {
         try {
+            $tenantId = $this->user()->tenant_id;
+
             $membership = TeacherTenantMembership::where('id', $id)
-                ->where('tenant_id', $this->user()->tenant_id)
+                ->where('tenant_id', $tenantId)
                 ->firstOrFail();
 
             $membership->update(['status' => 'removed']);
 
-            // Başka aktif üyelik yoksa hesabı pasifleştir
-            $hasOtherActive = TeacherTenantMembership::where('teacher_profile_id', $membership->teacher_profile_id)
-                ->where('id', '!=', $id)
-                ->where('status', 'active')
-                ->exists();
+            // Öğretmeni bu tenant'a ait tüm school_teacher_assignments'lardan çıkar
+            $tenantSchoolIds = \App\Models\School\School::where('tenant_id', $tenantId)->pluck('id');
+            \Illuminate\Support\Facades\DB::table('school_teacher_assignments')
+                ->where('teacher_profile_id', $membership->teacher_profile_id)
+                ->whereIn('school_id', $tenantSchoolIds)
+                ->delete();
 
-            if (! $hasOtherActive && $membership->teacherProfile?->user_id) {
-                User::where('id', $membership->teacherProfile->user_id)->update(['is_active' => false]);
-            }
-
-            return $this->successResponse(null, 'Öğretmen kurumdan çıkarıldı. Profili sistemde korunmaktadır.');
+            return $this->successResponse(null, 'Öğretmen okuldan çıkarıldı. Sisteme girişi ve diğer okullardaki üyeliği devam etmektedir.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Öğretmen bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('TenantTeacherController::removeMembership Error: '.$e->getMessage());
 
             return $this->errorResponse('İşlem başarısız.', 500);
+        }
+    }
+
+    /**
+     * Okul bazında öğretmen katılma talepleri.
+     * Okul bir tenant'a ait olduğundan tenant'ın tüm pending teacher_request'leri döner.
+     * GET /schools/{school_id}/teacher-join-requests
+     */
+    public function schoolJoinRequests(int $school_id): JsonResponse
+    {
+        try {
+            $tenantId = $this->user()->tenant_id;
+
+            // school_id doğrulama BaseSchoolController middleware ile zaten yapılmış olabilir,
+            // ek güvence olarak tenant sahipliğini kontrol et
+            $school = \App\Models\School\School::where('id', $school_id)
+                ->where('tenant_id', $tenantId)
+                ->firstOrFail();
+
+            $requests = TeacherTenantMembership::where('tenant_id', $school->tenant_id)
+                ->where('school_id', $school->id)
+                ->where('status', 'pending')
+                ->where('invite_type', 'teacher_request')
+                ->with(['teacherProfile' => fn ($q) => $q->withoutGlobalScope('tenant')->with('user')])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(fn ($m) => [
+                    'id' => $m->id,
+                    'teacher_profile_id' => $m->teacher_profile_id,
+                    'name' => trim(($m->teacherProfile?->user?->name ?? '').' '.($m->teacherProfile?->user?->surname ?? '')),
+                    'email' => $m->teacherProfile?->user?->email,
+                    'phone' => $m->teacherProfile?->user?->phone,
+                    'specialization' => $m->teacherProfile?->specialization,
+                    'experience_years' => $m->teacherProfile?->experience_years,
+                    'sent_at' => $m->created_at?->toISOString(),
+                ]);
+
+            return $this->successResponse($requests, 'Öğretmen katılma talepleri listelendi.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Okul bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('TenantTeacherController::schoolJoinRequests Error: '.$e->getMessage());
+
+            return $this->errorResponse('Talepler yüklenemedi.', 500);
         }
     }
 

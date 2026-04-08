@@ -33,7 +33,7 @@ class ChildRemovalRequestController extends BaseSchoolController
 
             $requests = $query->latest()->paginate($request->integer('per_page', 20));
 
-            return $this->paginatedResponse(
+            $requests->setCollection(
                 $requests->getCollection()->map(fn ($r) => [
                     'id' => $r->id,
                     'status' => $r->status,
@@ -54,9 +54,10 @@ class ChildRemovalRequestController extends BaseSchoolController
                     'owner_email' => $r->familyProfile?->owner?->email,
                     'requested_by' => $r->requestedBy?->name,
                     'reviewer' => $r->reviewer?->name,
-                ])->values(),
-                $requests
+                ])->values()
             );
+
+            return $this->paginatedResponse($requests);
         } catch (\Throwable $e) {
             Log::error('ChildRemovalRequestController::index', ['message' => $e->getMessage()]);
 

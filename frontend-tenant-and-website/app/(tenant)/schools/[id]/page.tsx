@@ -37,13 +37,7 @@ export default function SchoolDetailPage() {
     const [schoolLevelTeachers, setSchoolLevelTeachers] = useState<SchoolTeacher[]>([]);
     const [loadingSchoolTeachers, setLoadingSchoolTeachers] = useState(false);
     const [teachersFetched, setTeachersFetched] = useState(false);
-    const [showSchoolTeacherModal, setShowSchoolTeacherModal] = useState(false);
-    const [allTenantTeachers, setAllTenantTeachers] = useState<Pick<TeacherProfile, 'id' | 'name'>[]>([]);
     const [roleTypes, setRoleTypes] = useState<TeacherRoleType[]>([]);
-    const [assignTeacherProfileId, setAssignTeacherProfileId] = useState('');
-    const [assignRoleTypeId, setAssignRoleTypeId] = useState('');
-    const [assignEmploymentType, setAssignEmploymentType] = useState('full_time');
-    const [savingSchoolTeacher, setSavingSchoolTeacher] = useState(false);
 
     // Enrollment requests
     const [enrollmentRequests, setEnrollmentRequests] = useState<EnrollmentRequest[]>([]);
@@ -265,43 +259,6 @@ export default function SchoolDetailPage() {
         }
     }, [id]);
 
-    const openSchoolTeacherModal = async () => {
-        setAssignTeacherProfileId('');
-        setAssignRoleTypeId('');
-        setAssignEmploymentType('full_time');
-        try {
-            const [teachersRes, roleTypesRes] = await Promise.all([
-                apiClient.get('/teachers', { params: { per_page: 100 } }),
-                apiClient.get('/teacher-role-types'),
-            ]);
-            const all: Pick<TeacherProfile, 'id' | 'name'>[] = teachersRes.data?.data ?? [];
-            const assignedIds = new Set(schoolLevelTeachers.map(t => t.id));
-            setAllTenantTeachers(all.filter(t => !assignedIds.has(t.id)));
-            setRoleTypes(roleTypesRes.data?.data ?? []);
-        } catch {
-            toast.error('Veriler yüklenemedi.');
-        }
-        setShowSchoolTeacherModal(true);
-    };
-
-    const handleAssignTeacherToSchool = async () => {
-        if (!assignTeacherProfileId) return;
-        setSavingSchoolTeacher(true);
-        try {
-            await apiClient.post(`/schools/${id}/teachers`, {
-                teacher_profile_id: Number(assignTeacherProfileId),
-                employment_type: assignEmploymentType,
-            });
-            toast.success('Öğretmen okula atandı.');
-            setShowSchoolTeacherModal(false);
-            fetchSchoolLevelTeachers();
-        } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Atama başarısız.');
-        } finally {
-            setSavingSchoolTeacher(false);
-        }
-    };
 
     const handleUnenrollChild = async (child: Child, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -693,11 +650,14 @@ export default function SchoolDetailPage() {
         setSelectedClass(cls);
         setSelectedTeacherId('');
         setClassTeacherRoleTypeId('');
+        setClassTeachers([]);
+        setSchoolTeachers([]);
+        setShowTeacherModal(true);
         try {
             const [teachersRes, schoolTeachersRes, roleTypesRes] = await Promise.all([
-                apiClient.get(`/schools/${id}/classes/${cls.id}/teachers`).catch(() => ({ data: { data: [] } })),
-                apiClient.get(`/schools/${id}/teachers`).catch(() => ({ data: { data: [] } })),
-                roleTypes.length === 0 ? apiClient.get('/teacher-role-types').catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: roleTypes } }),
+                apiClient.get(`/schools/${id}/classes/${cls.id}/teachers`),
+                apiClient.get(`/schools/${id}/teachers`),
+                roleTypes.length === 0 ? apiClient.get('/teacher-role-types') : Promise.resolve({ data: { data: roleTypes } }),
             ]);
             setClassTeachers(teachersRes.data?.data ?? []);
             setSchoolTeachers(schoolTeachersRes.data?.data ?? []);
@@ -705,7 +665,6 @@ export default function SchoolDetailPage() {
         } catch {
             toast.error('Öğretmenler yüklenemedi.');
         }
-        setShowTeacherModal(true);
     };
 
     const handleAssignTeacher = async () => {
@@ -716,10 +675,9 @@ export default function SchoolDetailPage() {
                 teacher_profile_id: Number(selectedTeacherId),
                 teacher_role_type_id: classTeacherRoleTypeId ? Number(classTeacherRoleTypeId) : undefined,
             });
-            toast.success('Öğretmen atandı.');
-            const res = await apiClient.get(`/schools/${id}/classes/${selectedClass.id}/teachers`);
-            setClassTeachers(res.data?.data ?? []);
-            setSelectedTeacherId('');
+            toast.success('Öğretmen sınıfa atandı.');
+            setShowTeacherModal(false);
+            fetchSchoolLevelTeachers();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message ?? 'Atama başarısız.');
@@ -1111,12 +1069,6 @@ export default function SchoolDetailPage() {
                 {/* Öğretmenler Tab */}
                 {activeTab === 'teachers' && (
                     <>
-                        <div className="mb-4 flex justify-end">
-                            <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openSchoolTeacherModal}>
-                                <UserPlus className="h-4 w-4" />
-                                Öğretmen Ata
-                            </button>
-                        </div>
                         {loadingSchoolTeachers ? (
                             <div className="flex h-32 items-center justify-center">
                                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -1131,6 +1083,7 @@ export default function SchoolDetailPage() {
                                             <th>Ad</th>
                                             <th>Unvan</th>
                                             <th>İstihdam</th>
+                                            <th>Sınıflar</th>
                                             <th>Durum</th>
                                             <th>İşlemler</th>
                                         </tr>
@@ -1141,6 +1094,17 @@ export default function SchoolDetailPage() {
                                                 <td className="font-medium text-dark dark:text-white">{teacher.name}</td>
                                                 <td>{teacher.title ?? '—'}</td>
                                                 <td>{employmentLabel(teacher.employment_type)}</td>
+                                                <td>
+                                                    {teacher.classes && teacher.classes.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {teacher.classes.map(c => (
+                                                                <span key={c.id} className="badge badge-outline-info text-xs">{c.name}</span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-[#888ea8]">Atanmamış</span>
+                                                    )}
+                                                </td>
                                                 <td>
                                                     {teacher.is_active ? (
                                                         <span className="badge badge-outline-success">Aktif</span>
@@ -2144,59 +2108,6 @@ export default function SchoolDetailPage() {
                 </div>
             )}
 
-            {/* Okul Öğretmen Atama Modal */}
-            {showSchoolTeacherModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Okula Öğretmen Ata</h2>
-                            <button type="button" onClick={() => setShowSchoolTeacherModal(false)} className="text-[#888ea8] hover:text-danger">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Öğretmen *</label>
-                                <select
-                                    className="form-select mt-1"
-                                    value={assignTeacherProfileId}
-                                    onChange={e => setAssignTeacherProfileId(e.target.value)}
-                                >
-                                    <option value="">Öğretmen seçin</option>
-                                    {allTenantTeachers.map(t => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">İstihdam Türü</label>
-                                <select
-                                    className="form-select mt-1"
-                                    value={assignEmploymentType}
-                                    onChange={e => setAssignEmploymentType(e.target.value)}
-                                >
-                                    <option value="full_time">Tam Zamanlı</option>
-                                    <option value="part_time">Yarı Zamanlı</option>
-                                    <option value="contract">Sözleşmeli</option>
-                                    <option value="intern">Stajyer</option>
-                                    <option value="volunteer">Gönüllü</option>
-                                </select>
-                            </div>
-                            <div className="flex gap-3 pt-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-primary flex-1"
-                                    onClick={handleAssignTeacherToSchool}
-                                    disabled={!assignTeacherProfileId || savingSchoolTeacher}
-                                >
-                                    {savingSchoolTeacher ? 'Atanıyor...' : 'Ata'}
-                                </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowSchoolTeacherModal(false)}>İptal</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Red Sebebi Modal */}
             {showRejectModal && (
@@ -2275,11 +2186,14 @@ export default function SchoolDetailPage() {
                             <p className="text-sm font-medium text-dark dark:text-white-light">Öğretmen Ekle</p>
                             <select className="form-select" value={selectedTeacherId} onChange={e => setSelectedTeacherId(e.target.value)}>
                                 <option value="">Öğretmen seçin</option>
-                                {schoolTeachers
-                                    .filter(t => !classTeachers.find(ct => ct.id === t.id))
-                                    .map(t => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
+                                {schoolTeachers.map(t => {
+                                    const assigned = classTeachers.some(ct => Number(ct.id) === Number(t.id));
+                                    return (
+                                        <option key={t.id} value={t.id} disabled={assigned}>
+                                            {t.name}{assigned ? ' (Zaten atanmış)' : ''}
+                                        </option>
+                                    );
+                                })}
                             </select>
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">Görev Türü <span className="text-danger">*</span></label>

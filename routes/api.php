@@ -643,6 +643,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'assignTeacherToSchool']);
             Route::delete('/teachers/{teacher_profile_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'removeTeacherFromSchool']);
 
+            // Öğretmen katılma talepleri (tenant düzeyinde, okul ile birlikte yönetilebilir)
+            Route::prefix('teacher-join-requests')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'schoolJoinRequests']);
+                Route::patch('/{id}/approve', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'approveJoinRequest']);
+                Route::patch('/{id}/reject', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'rejectJoinRequest']);
+            });
+
             // ───────────────────────────────────────────────────
             // ETKİNLİK SINIFLARI
             // ───────────────────────────────────────────────────
@@ -711,6 +718,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('teachers')->group(function () {
             Route::get('/', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'index']);
             Route::post('/', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'store']);
+
+            // Davet & Üyelik yönetimi — /{id} pattern'inden önce tanımlanmalı
+            Route::post('/invite', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'invite']);
+            Route::get('/join-requests', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'joinRequests']);
+            Route::patch('/join-requests/{id}/approve', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'approveJoinRequest']);
+            Route::patch('/join-requests/{id}/reject', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'rejectJoinRequest']);
+
             Route::get('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'show']);
             Route::put('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'update']);
             Route::delete('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'destroy']);
@@ -719,12 +733,6 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/{id}/schools', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'schoolAssignments']);
             Route::post('/{id}/schools', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'assignToSchool']);
             Route::delete('/{id}/schools/{schoolId}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'removeFromSchool']);
-
-            // Davet & Üyelik yönetimi
-            Route::post('/invite', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'invite']);
-            Route::get('/join-requests', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'joinRequests']);
-            Route::patch('/join-requests/{id}/approve', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'approveJoinRequest']);
-            Route::patch('/join-requests/{id}/reject', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'rejectJoinRequest']);
 
             // Üyelik durum yönetimi
             Route::patch('/{id}/activate', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'activate']);
