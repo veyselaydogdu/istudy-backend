@@ -265,6 +265,10 @@ export default function TeacherProfileScreen() {
             {teacherUser?.name} {teacherUser?.surname}
           </Text>
           <Text style={styles.profileEmail}>{teacherUser?.email}</Text>
+          <TouchableOpacity style={styles.editProfileBtn} onPress={() => router.push('/(teacher-app)/edit-profile')}>
+            <Ionicons name="create-outline" size={15} color={AppColors.primary} />
+            <Text style={styles.editProfileBtnText}>Profili Düzenle</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Davetler */}
@@ -667,6 +671,17 @@ const styles = StyleSheet.create({
   avatarText: { color: AppColors.white, fontSize: 28, fontWeight: '800' },
   profileName: { fontSize: 20, fontWeight: '800', color: AppColors.white },
   profileEmail: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
+  editProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+    backgroundColor: AppColors.white,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  editProfileBtnText: { fontSize: 13, fontWeight: '700', color: AppColors.primary },
   section: { marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface, flex: 1 },
