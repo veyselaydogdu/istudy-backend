@@ -24,7 +24,21 @@ class UpdateSchoolClassRequest extends FormRequest
             'age_min' => ['nullable', 'integer', 'min:0', 'max:18'],
             'age_max' => ['nullable', 'integer', 'min:0', 'max:18', 'gte:age_min'],
             'capacity' => ['nullable', 'integer', 'min:1'],
-            'color' => ['nullable', 'string', 'max:20'],
+            'color' => ['sometimes', 'required', 'string', 'max:20'],
+            'icon' => ['nullable', 'string', 'max:50'],
+            'logo' => ['nullable', 'file', 'mimes:jpeg,jpg,png,gif,webp', 'max:10240'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'color.required' => 'Sınıf rengi zorunludur.',
+            'logo.max' => 'Logo dosyası en fazla 10 MB olabilir.',
+            'logo.mimes' => 'Logo yalnızca JPEG, PNG, GIF veya WebP formatında olabilir.',
         ];
     }
 }

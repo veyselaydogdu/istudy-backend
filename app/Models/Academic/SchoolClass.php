@@ -25,6 +25,7 @@ class SchoolClass extends BaseModel
         'age_max',
         'color',
         'logo',
+        'icon',
         'capacity',
         'is_active',
         'created_by',

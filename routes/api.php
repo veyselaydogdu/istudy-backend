@@ -102,6 +102,11 @@ Route::get('/teacher/blogs/{id}/image', [\App\Http\Controllers\Teachers\TeacherB
     ->name('teacher.blog.image')
     ->middleware('signed');
 
+// SINIF LOGO — İmzalı URL (auth header gerektirmez)
+Route::get('/class-logo/{class}', [\App\Http\Controllers\Schools\ClassController::class, 'serveLogo'])
+    ->name('class.logo')
+    ->middleware('signed');
+
 // ═══════════════════════════════════════════════════════════
 // VELİ AUTH (Public — Mobil uygulama)
 // ═══════════════════════════════════════════════════════════

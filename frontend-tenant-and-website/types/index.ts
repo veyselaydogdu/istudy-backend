@@ -132,6 +132,9 @@ export type SchoolClass = {
     age_max?: number
     capacity?: number
     color?: string
+    icon?: string | null
+    logo?: string | null
+    logo_url?: string | null
     is_active?: boolean
     children_count?: number
     teachers_count?: number
