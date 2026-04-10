@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { FoodIngredient, Meal, School, Allergen, SchoolMealType } from '@/types';
-import { Plus, Trash2, Edit2, X, Utensils, Leaf, ShieldAlert, Settings, Lock, Stethoscope, Clock, Check, XCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Utensils, Leaf, ShieldAlert, Settings, Lock, Stethoscope, Clock, Check, XCircle, Camera } from 'lucide-react';
+import AuthImg from '@/components/AuthImg';
 
 type Tab = 'meals' | 'ingredients' | 'allergens' | 'conditions' | 'meal-types';
 type HealthSubTab = 'approved' | 'pending';
@@ -47,6 +48,10 @@ export default function MealsPage() {
     const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
     const [mealForm, setMealForm] = useState({ name: '', meal_type: '', ingredient_ids: [] as number[] });
     const [savingMeal, setSavingMeal] = useState(false);
+    const [mealPhotoFile, setMealPhotoFile] = useState<File | null>(null);
+    const [mealPhotoPreview, setMealPhotoPreview] = useState<string | null>(null);
+    const [existingMealPhotoUrl, setExistingMealPhotoUrl] = useState<string | null>(null);
+    const [removePhoto, setRemovePhoto] = useState(false);
 
     // Ingredients
     const [ingredients, setIngredients] = useState<FoodIngredient[]>([]);
@@ -178,6 +183,10 @@ export default function MealsPage() {
     const openCreateMeal = () => {
         setEditingMeal(null);
         setMealForm({ name: '', meal_type: mealTypes[0]?.name ?? '', ingredient_ids: [] });
+        setMealPhotoFile(null);
+        setMealPhotoPreview(null);
+        setExistingMealPhotoUrl(null);
+        setRemovePhoto(false);
         setShowMealModal(true);
         if (ingredients.length === 0) fetchIngredients();
     };
@@ -189,6 +198,10 @@ export default function MealsPage() {
             meal_type: meal.meal_type ?? '',
             ingredient_ids: meal.ingredients?.map(i => i.id) ?? [],
         });
+        setMealPhotoFile(null);
+        setMealPhotoPreview(null);
+        setExistingMealPhotoUrl(meal.photo_url ?? null);
+        setRemovePhoto(false);
         setShowMealModal(true);
         if (ingredients.length === 0) fetchIngredients();
     };
@@ -200,20 +213,28 @@ export default function MealsPage() {
         if (mealForm.ingredient_ids.length === 0) { toast.error('En az bir besin öğesi seçilmelidir.'); return; }
 
         setSavingMeal(true);
-        const payload = { ...mealForm, school_id: Number(selectedSchoolId) };
         try {
+            const fd = new FormData();
+            fd.append('name', mealForm.name);
+            if (mealForm.meal_type) fd.append('meal_type', mealForm.meal_type);
+            mealForm.ingredient_ids.forEach(id => fd.append('ingredient_ids[]', String(id)));
+            if (mealPhotoFile) fd.append('photo', mealPhotoFile);
+
             if (editingMeal) {
-                await apiClient.put(`/meals/${editingMeal.id}`, payload);
+                if (removePhoto) fd.append('remove_photo', '1');
+                await apiClient.post(`/meals/${editingMeal.id}?_method=PUT`, fd);
                 toast.success('Yemek güncellendi.');
             } else {
-                await apiClient.post('/meals', payload);
+                fd.append('school_id', selectedSchoolId);
+                await apiClient.post('/meals', fd);
                 toast.success('Yemek oluşturuldu.');
             }
             setShowMealModal(false);
             fetchMeals();
         } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            const error = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+            const errs = error.response?.data?.errors;
+            toast.error(errs ? (Object.values(errs)[0]?.[0] ?? 'Hata oluştu.') : (error.response?.data?.message ?? 'Hata oluştu.'));
         } finally {
             setSavingMeal(false);
         }
@@ -566,7 +587,16 @@ export default function MealsPage() {
                         ) : (
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 {meals.map(meal => (
-                                    <div key={meal.id} className="rounded border border-[#ebedf2] p-4 dark:border-[#1b2e4b]">
+                                    <div key={meal.id} className="overflow-hidden rounded border border-[#ebedf2] dark:border-[#1b2e4b]">
+                                        {meal.photo_url && (
+                                            <AuthImg
+                                                src={meal.photo_url}
+                                                alt={meal.name}
+                                                className="h-36 w-full object-cover"
+                                                fallback={<div className="h-36 w-full animate-pulse bg-gray-100 dark:bg-[#1b2e4b]" />}
+                                            />
+                                        )}
+                                        <div className="p-4">
                                         <div className="mb-2 flex items-start justify-between">
                                             <div>
                                                 <h3 className="font-semibold text-dark dark:text-white">{meal.name}</h3>
@@ -611,6 +641,7 @@ export default function MealsPage() {
                                                 })()}
                                             </div>
                                         )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -1054,29 +1085,78 @@ export default function MealsPage() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">Öğün Türü</label>
-                                {mealTypes.length > 0 ? (
-                                    <select
-                                        className="form-select mt-1"
-                                        value={mealForm.meal_type}
-                                        onChange={e => setMealForm(p => ({ ...p, meal_type: e.target.value }))}
-                                    >
-                                        <option value="">— Seçin —</option>
-                                        {mealTypes.map(mt => <option key={mt.id} value={mt.name}>{mt.name}</option>)}
-                                    </select>
-                                ) : (
-                                    <div className="mt-1">
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="Öğün türü adı girin..."
-                                            value={mealForm.meal_type}
-                                            onChange={e => setMealForm(p => ({ ...p, meal_type: e.target.value }))}
-                                        />
-                                        <p className="mt-1 text-xs text-[#888ea8]">
-                                            Öğün türleri tanımlamak için &quot;Öğün Türleri&quot; sekmesini kullanın.
-                                        </p>
-                                    </div>
+                                <select
+                                    className="form-select mt-1"
+                                    value={mealForm.meal_type}
+                                    onChange={e => setMealForm(p => ({ ...p, meal_type: e.target.value }))}
+                                    disabled={mealTypes.length === 0}
+                                >
+                                    <option value="">— Seçin —</option>
+                                    {mealTypes.map(mt => <option key={mt.id} value={mt.name}>{mt.name}</option>)}
+                                </select>
+                                {mealTypes.length === 0 && (
+                                    <p className="mt-1 text-xs text-[#888ea8]">
+                                        Öğün türü tanımlamak için &quot;Öğün Türleri&quot; sekmesini kullanın.
+                                    </p>
                                 )}
+                            </div>
+
+                            {/* Fotoğraf */}
+                            <div>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                    Fotoğraf <span className="text-xs text-[#888ea8]">(isteğe bağlı, maks. 5 MB)</span>
+                                </label>
+                                <div className="mt-1">
+                                    {/* Mevcut fotoğraf önizleme */}
+                                    {!mealPhotoPreview && existingMealPhotoUrl && !removePhoto && (
+                                        <div className="mb-2 flex items-center gap-3">
+                                            <AuthImg
+                                                src={existingMealPhotoUrl}
+                                                alt="Mevcut fotoğraf"
+                                                className="h-20 w-28 rounded-lg object-cover"
+                                                fallback={<div className="h-20 w-28 animate-pulse rounded-lg bg-gray-200 dark:bg-[#1b2e4b]" />}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="text-xs text-danger hover:underline"
+                                                onClick={() => { setRemovePhoto(true); setExistingMealPhotoUrl(null); }}
+                                            >
+                                                Fotoğrafı Kaldır
+                                            </button>
+                                        </div>
+                                    )}
+                                    {/* Yeni fotoğraf önizleme */}
+                                    {mealPhotoPreview && (
+                                        <div className="mb-2 flex items-center gap-3">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={mealPhotoPreview} alt="Önizleme" className="h-20 w-28 rounded-lg object-cover" />
+                                            <button
+                                                type="button"
+                                                className="text-xs text-danger hover:underline"
+                                                onClick={() => { setMealPhotoFile(null); setMealPhotoPreview(null); }}
+                                            >
+                                                İptal
+                                            </button>
+                                        </div>
+                                    )}
+                                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[#e0e6ed] px-4 py-3 text-sm text-[#515365] hover:border-primary hover:text-primary dark:border-[#1b2e4b]">
+                                        <Camera className="h-4 w-4" />
+                                        <span>{mealPhotoFile ? mealPhotoFile.name : 'Fotoğraf seç...'}</span>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                                            className="sr-only"
+                                            onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                setMealPhotoFile(file);
+                                                setMealPhotoPreview(URL.createObjectURL(file));
+                                                setRemovePhoto(false);
+                                                e.target.value = '';
+                                            }}
+                                        />
+                                    </label>
+                                </div>
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">

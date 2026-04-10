@@ -7,7 +7,7 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import AuthImg from '@/components/AuthImg';
 import { School, SchoolClass, Child, Teacher, AcademicYear, SchoolTeacher, TeacherRoleType, TeacherProfile, EnrollmentRequest, SchoolParent } from '@/types';
-import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight, Baby } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight, Baby, Eye } from 'lucide-react';
 
 type ClassForm = { name: string; description: string; age_min: string; age_max: string; capacity: string; color: string; icon: string; academic_year_id: string };
 const emptyClassForm: ClassForm = { name: '', description: '', age_min: '', age_max: '', capacity: '20', color: '', icon: '', academic_year_id: '' };
@@ -65,6 +65,8 @@ export default function SchoolDetailPage() {
     const [loadingSchoolTeachers, setLoadingSchoolTeachers] = useState(false);
     const [teachersFetched, setTeachersFetched] = useState(false);
     const [roleTypes, setRoleTypes] = useState<TeacherRoleType[]>([]);
+    const [selectedTeacherDetail, setSelectedTeacherDetail] = useState<SchoolTeacher | null>(null);
+    const [selectedFamilyDetail, setSelectedFamilyDetail] = useState<SchoolParent | null>(null);
 
     // Enrollment requests
     const [enrollmentRequests, setEnrollmentRequests] = useState<EnrollmentRequest[]>([]);
@@ -1230,14 +1232,24 @@ export default function SchoolDetailPage() {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-outline-danger p-2"
-                                                        onClick={() => handleRemoveTeacherFromSchool(teacher)}
-                                                        title="Okuldan Çıkar"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary p-2"
+                                                            onClick={() => setSelectedTeacherDetail(teacher)}
+                                                            title="Detay"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger p-2"
+                                                            onClick={() => handleRemoveTeacherFromSchool(teacher)}
+                                                            title="Okuldan Çıkar"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -1379,6 +1391,7 @@ export default function SchoolDetailPage() {
                                             <th>E-posta</th>
                                             <th>Telefon</th>
                                             <th>Çocuklar</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1402,6 +1415,16 @@ export default function SchoolDetailPage() {
                                                     <td>{parent.phone ?? '—'}</td>
                                                     <td>
                                                         <span className="badge badge-outline-info">{parent.children.length} çocuk</span>
+                                                    </td>
+                                                    <td onClick={e => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary p-2"
+                                                            onClick={() => setSelectedFamilyDetail(parent)}
+                                                            title="Detay"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                                 {expandedParent === parent.id && parent.children.length > 0 && (
@@ -1655,6 +1678,149 @@ export default function SchoolDetailPage() {
                     </>
                 )}
             </div>
+
+            {/* Öğretmen Detay Modalı */}
+            {selectedTeacherDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between border-b border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğretmen Detayı</h2>
+                            <button type="button" onClick={() => setSelectedTeacherDetail(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-5 p-6">
+                            {/* Başlık kartı */}
+                            <div className="flex items-center gap-4 rounded-lg bg-primary/5 p-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
+                                    {selectedTeacherDetail.name.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="text-xl font-bold text-dark dark:text-white">{selectedTeacherDetail.name}</p>
+                                    {selectedTeacherDetail.title && (
+                                        <p className="text-sm text-[#888ea8]">{selectedTeacherDetail.title}</p>
+                                    )}
+                                    <span className={`badge mt-1 ${selectedTeacherDetail.is_active ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
+                                        {selectedTeacherDetail.is_active ? 'Aktif' : 'Pasif'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Bilgi satırları */}
+                            <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
+                                {selectedTeacherDetail.employment_type && (
+                                    <div className="flex justify-between py-2.5">
+                                        <span className="text-sm text-[#888ea8]">İstihdam Türü</span>
+                                        <span className="text-sm font-medium text-dark dark:text-white">{employmentLabel(selectedTeacherDetail.employment_type)}</span>
+                                    </div>
+                                )}
+                                {selectedTeacherDetail.role_type && (
+                                    <div className="flex justify-between py-2.5">
+                                        <span className="text-sm text-[#888ea8]">Rol Tipi</span>
+                                        <span className="text-sm font-medium text-dark dark:text-white">{selectedTeacherDetail.role_type.name}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Atandığı sınıflar */}
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Atandığı Sınıflar</p>
+                                {(selectedTeacherDetail.classes?.length ?? 0) === 0 ? (
+                                    <p className="text-sm text-[#888ea8]">Henüz bir sınıfa atanmamış.</p>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedTeacherDetail.classes!.map(cls => (
+                                            <span key={cls.id} className="badge badge-outline-info">{cls.name}</span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="border-t border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedTeacherDetail(null)}>Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Aile Detay Modalı */}
+            {selectedFamilyDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between border-b border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Aile Detayı</h2>
+                            <button type="button" onClick={() => setSelectedFamilyDetail(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-5 p-6">
+                            {/* Başlık kartı */}
+                            <div className="flex items-center gap-4 rounded-lg bg-primary/5 p-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
+                                    {selectedFamilyDetail.owner_name.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="text-xl font-bold text-dark dark:text-white">{selectedFamilyDetail.owner_name}</p>
+                                    {selectedFamilyDetail.family_name && (
+                                        <p className="text-sm text-[#888ea8]">{selectedFamilyDetail.family_name} Ailesi</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* İletişim bilgileri */}
+                            <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
+                                {selectedFamilyDetail.email && (
+                                    <div className="flex justify-between py-2.5">
+                                        <span className="text-sm text-[#888ea8]">E-posta</span>
+                                        <span className="text-sm font-medium text-dark dark:text-white">{selectedFamilyDetail.email}</span>
+                                    </div>
+                                )}
+                                {selectedFamilyDetail.phone && (
+                                    <div className="flex justify-between py-2.5">
+                                        <span className="text-sm text-[#888ea8]">Telefon</span>
+                                        <span className="text-sm font-medium text-dark dark:text-white">{selectedFamilyDetail.phone}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Çocuklar */}
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">
+                                    Çocuklar ({selectedFamilyDetail.children.length})
+                                </p>
+                                {selectedFamilyDetail.children.length === 0 ? (
+                                    <p className="text-sm text-[#888ea8]">Kayıtlı çocuk bulunmuyor.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {selectedFamilyDetail.children.map(child => (
+                                            <div key={child.id} className="flex items-center gap-3 rounded-lg border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-info/20 text-sm font-bold text-info">
+                                                    {child.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-dark dark:text-white">{child.name}</p>
+                                                    <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-[#888ea8]">
+                                                        {child.birth_date && <span>{new Date(child.birth_date).toLocaleDateString('tr-TR')}</span>}
+                                                        {child.gender && <span>{child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : child.gender}</span>}
+                                                    </div>
+                                                </div>
+                                                {child.status && (
+                                                    <span className={`badge ${child.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'} text-xs`}>
+                                                        {child.status === 'active' ? 'Aktif' : child.status}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="border-t border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedFamilyDetail(null)}>Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Silme Talebi Reddetme Modalı */}
             {showRejectRemovalModal && (

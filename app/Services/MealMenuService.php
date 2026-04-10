@@ -24,12 +24,12 @@ class MealMenuService extends BaseService
     {
         $query = MealMenuSchedule::where('school_id', $schoolId)
             ->where('menu_date', $date)
-            ->with(['meal.ingredients']);
+            ->with(['meal.ingredients.allergens']);
 
         if ($classId) {
             $query->where(function ($q) use ($classId) {
                 $q->where('class_id', $classId)
-                  ->orWhereNull('class_id');
+                    ->orWhereNull('class_id');
             });
         }
 
@@ -41,17 +41,17 @@ class MealMenuService extends BaseService
      */
     public function getWeeklyMenu(int $schoolId, string $startDate, ?int $classId = null)
     {
-        $endDate = date('Y-m-d', strtotime($startDate . ' +6 days'));
+        $endDate = date('Y-m-d', strtotime($startDate.' +6 days'));
 
         $query = MealMenuSchedule::where('school_id', $schoolId)
             ->whereBetween('menu_date', [$startDate, $endDate])
-            ->with(['meal.ingredients'])
+            ->with(['meal.ingredients.allergens'])
             ->orderBy('menu_date');
 
         if ($classId) {
             $query->where(function ($q) use ($classId) {
                 $q->where('class_id', $classId)
-                  ->orWhereNull('class_id');
+                    ->orWhereNull('class_id');
             });
         }
 
@@ -68,13 +68,13 @@ class MealMenuService extends BaseService
 
         $query = MealMenuSchedule::where('school_id', $schoolId)
             ->whereBetween('menu_date', [$startDate, $endDate])
-            ->with(['meal.ingredients'])
+            ->with(['meal.ingredients.allergens'])
             ->orderBy('menu_date');
 
         if ($classId) {
             $query->where(function ($q) use ($classId) {
                 $q->where('class_id', $classId)
-                  ->orWhereNull('class_id');
+                    ->orWhereNull('class_id');
             });
         }
 

@@ -104,6 +104,10 @@ Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     // Sosyal post medyası
     Route::get('/social-media/{media}/serve', [\App\Http\Controllers\Media\SocialMediaController::class, 'serve'])
         ->name('social-media.serve');
+
+    // Yemek fotoğrafı
+    Route::get('/meal-photo/{meal}', [\App\Http\Controllers\Media\MealPhotoController::class, 'serve'])
+        ->name('meal.photo');
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -785,7 +789,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('meals')->group(function () {
             Route::get('/', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealIndex']);
             Route::post('/', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealStore']);
-            Route::put('/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealUpdate']);
+            Route::match(['PUT', 'POST'], '/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealUpdate']);
             Route::delete('/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealDestroy']);
         });
 

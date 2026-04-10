@@ -207,6 +207,7 @@ export type Meal = {
     school_id: number
     name: string
     meal_type?: string
+    photo_url?: string | null
     ingredients?: { id: number; name: string; allergens?: { id: number; name: string }[] }[]
 }
 

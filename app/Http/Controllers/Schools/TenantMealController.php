@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Schools;
 use App\Http\Controllers\Base\BaseController;
 use App\Models\Health\FoodIngredient;
 use App\Models\Health\Meal;
+use App\Models\School\School;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Tenant tarafından yönetilen besin öğeleri ve yemek CRUD işlemleri.
@@ -167,15 +170,39 @@ class TenantMealController extends BaseController
     // ──────────────────────────────────────────────────────────────
 
     /**
+     * Okuldaki yemeği resolve et: ulid veya integer id ile arayabilir.
+     */
+    private function resolveSchool(string $schoolId): School
+    {
+        return School::where('ulid', $schoolId)
+            ->orWhere('id', is_numeric($schoolId) ? (int) $schoolId : 0)
+            ->firstOrFail();
+    }
+
+    /**
+     * Yemek fotoğrafının signed URL'ini oluştur.
+     */
+    private function mealPhotoUrl(Meal $meal): ?string
+    {
+        if (! $meal->photo) {
+            return null;
+        }
+
+        return URL::temporarySignedRoute('meal.photo', now()->addHours(2), ['meal' => $meal->id]);
+    }
+
+    /**
      * Yemek listesi (okul bazlı)
      */
     public function mealIndex(Request $request): JsonResponse
     {
-        $request->validate(['school_id' => ['required', 'exists:schools,id']]);
+        $request->validate(['school_id' => ['required', 'string']]);
 
         try {
+            $school = $this->resolveSchool($request->school_id);
+
             $meals = Meal::with('ingredients.allergens')
-                ->where('school_id', $request->school_id)
+                ->where('school_id', $school->id)
                 ->when($request->search, fn ($q) => $q->where('name', 'like', '%'.$request->search.'%'))
                 ->orderBy('name')
                 ->get();
@@ -185,6 +212,7 @@ class TenantMealController extends BaseController
                 'name' => $m->name,
                 'meal_type' => $m->meal_type,
                 'school_id' => $m->school_id,
+                'photo_url' => $this->mealPhotoUrl($m),
                 'ingredients' => $m->ingredients->map(fn ($i) => [
                     'id' => $i->id,
                     'name' => $i->name,
@@ -204,29 +232,38 @@ class TenantMealController extends BaseController
     public function mealStore(Request $request): JsonResponse
     {
         $request->validate([
-            'school_id' => ['required', 'exists:schools,id'],
+            'school_id' => ['required', 'string'],
             'academic_year_id' => ['nullable', 'exists:academic_years,id'],
             'name' => ['required', 'string', 'max:255'],
             'meal_type' => ['nullable', 'string', 'max:100'],
             'ingredient_ids' => ['required', 'array', 'min:1'],
             'ingredient_ids.*' => ['exists:food_ingredients,id'],
+            'photo' => ['nullable', 'image', 'max:5120'],
         ]);
 
         try {
             DB::beginTransaction();
 
+            $school = $this->resolveSchool($request->school_id);
+            $tenantId = $this->user()->tenant_id;
+
             $meal = Meal::create([
-                'school_id' => $request->school_id,
+                'school_id' => $school->id,
                 'academic_year_id' => $request->academic_year_id,
                 'name' => $request->name,
-                'meal_type' => $request->meal_type,
+                'meal_type' => $request->meal_type ?: null,
                 'created_by' => $this->user()->id,
             ]);
 
-            if ($request->ingredient_ids) {
-                $meal->ingredients()->sync($request->ingredient_ids);
+            if ($request->hasFile('photo')) {
+                $path = $request->file('photo')->store(
+                    "tenants/{$tenantId}/meals/{$meal->id}",
+                    'local'
+                );
+                $meal->update(['photo' => $path]);
             }
 
+            $meal->ingredients()->sync($request->ingredient_ids);
             $meal->load('ingredients.allergens');
 
             DB::commit();
@@ -236,6 +273,7 @@ class TenantMealController extends BaseController
                 'name' => $meal->name,
                 'meal_type' => $meal->meal_type,
                 'school_id' => $meal->school_id,
+                'photo_url' => $this->mealPhotoUrl($meal),
                 'ingredients' => $meal->ingredients->map(fn ($i) => [
                     'id' => $i->id,
                     'name' => $i->name,
@@ -260,6 +298,8 @@ class TenantMealController extends BaseController
             'meal_type' => ['nullable', 'string', 'max:100'],
             'ingredient_ids' => ['required', 'array', 'min:1'],
             'ingredient_ids.*' => ['exists:food_ingredients,id'],
+            'photo' => ['nullable', 'image', 'max:5120'],
+            'remove_photo' => ['nullable', 'boolean'],
         ]);
 
         try {
@@ -269,22 +309,37 @@ class TenantMealController extends BaseController
                 return $this->errorResponse('Bu yemeğe erişim yetkiniz yok.', 403);
             }
 
+            $tenantId = $this->user()->tenant_id;
+
             $meal->update([
                 'name' => $request->name,
-                'meal_type' => $request->meal_type ?? $meal->meal_type,
+                'meal_type' => $request->meal_type ?: null,
                 'updated_by' => $this->user()->id,
             ]);
 
-            if ($request->has('ingredient_ids')) {
-                $meal->ingredients()->sync($request->ingredient_ids ?? []);
+            if ($request->boolean('remove_photo') && $meal->photo) {
+                Storage::disk('local')->delete($meal->photo);
+                $meal->update(['photo' => null]);
+            } elseif ($request->hasFile('photo')) {
+                if ($meal->photo) {
+                    Storage::disk('local')->delete($meal->photo);
+                }
+                $path = $request->file('photo')->store(
+                    "tenants/{$tenantId}/meals/{$meal->id}",
+                    'local'
+                );
+                $meal->update(['photo' => $path]);
             }
 
+            $meal->ingredients()->sync($request->ingredient_ids);
             $meal->load('ingredients.allergens');
 
             return $this->successResponse([
                 'id' => $meal->id,
                 'name' => $meal->name,
                 'meal_type' => $meal->meal_type,
+                'school_id' => $meal->school_id,
+                'photo_url' => $this->mealPhotoUrl($meal),
                 'ingredients' => $meal->ingredients->map(fn ($i) => [
                     'id' => $i->id,
                     'name' => $i->name,
@@ -308,6 +363,10 @@ class TenantMealController extends BaseController
 
             if ($meal->school->tenant_id !== $this->user()->tenant_id) {
                 return $this->errorResponse('Bu yemeğe erişim yetkiniz yok.', 403);
+            }
+
+            if ($meal->photo) {
+                Storage::disk('local')->delete($meal->photo);
             }
 
             $meal->delete();
