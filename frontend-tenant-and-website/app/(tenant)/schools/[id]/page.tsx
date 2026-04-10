@@ -697,11 +697,10 @@ export default function SchoolDetailPage() {
         } else if (classForm.icon) {
             fd.append('icon', classForm.icon);
         }
-        if (editingClass) fd.append('_method', 'PUT');
 
         try {
             if (editingClass) {
-                await apiClient.post(`/schools/${id}/classes/${editingClass.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                await apiClient.post(`/schools/${id}/classes/${editingClass.id}/update-media`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
                 toast.success('Sınıf güncellendi.');
             } else {
                 await apiClient.post(`/schools/${id}/classes`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });

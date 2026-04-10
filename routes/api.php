@@ -573,6 +573,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('schools/{school_id}')->group(function () {
             Route::apiResource('classes', \App\Http\Controllers\Schools\ClassController::class);
             Route::patch('classes/{class}/toggle-status', [\App\Http\Controllers\Schools\ClassController::class, 'toggleStatus']);
+            // Multipart (FormData) ile logo yüklemeyi desteklemek için POST update route'u
+            Route::post('classes/{class}/update-media', [\App\Http\Controllers\Schools\ClassController::class, 'update']);
             Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
             Route::patch('children/{child}/unenroll', [\App\Http\Controllers\Schools\ChildController::class, 'unenroll']);
             Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
