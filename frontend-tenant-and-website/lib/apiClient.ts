@@ -17,6 +17,10 @@ apiClient.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        // FormData gönderimlerinde Content-Type'ı kaldır — axios boundary'i otomatik eklesin
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+        }
         return config;
     },
     (error) => {

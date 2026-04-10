@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
+import AuthImg from '@/components/AuthImg';
 import { School, SchoolClass, Child, Teacher, AcademicYear, SchoolTeacher, TeacherRoleType, TeacherProfile, EnrollmentRequest, SchoolParent } from '@/types';
 import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight, Baby } from 'lucide-react';
 
@@ -147,7 +148,8 @@ export default function SchoolDetailPage() {
     const [savingClass, setSavingClass] = useState(false);
     // Logo upload & crop
     const [logoFile, setLogoFile] = useState<File | null>(null);
-    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null); // canvas/blob URL (yerel)
+    const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null); // API signed URL (auth gerekli)
     const [cropSrc, setCropSrc] = useState<string | null>(null);
     const [showCropModal, setShowCropModal] = useState(false);
     const [cropX, setCropX] = useState(0);
@@ -595,6 +597,7 @@ export default function SchoolDetailPage() {
         });
         setLogoFile(null);
         setLogoPreview(null);
+        setExistingLogoUrl(null);
         setCropSrc(null);
         setShowIconPicker(false);
         setShowClassModal(true);
@@ -611,7 +614,8 @@ export default function SchoolDetailPage() {
             academic_year_id: cls.academic_year_id ? String(cls.academic_year_id) : '',
         });
         setLogoFile(null);
-        setLogoPreview(cls.logo_url ?? null);
+        setLogoPreview(null);
+        setExistingLogoUrl(cls.logo_url ?? null);
         setCropSrc(null);
         setShowIconPicker(false);
         setShowClassModal(true);
@@ -670,6 +674,7 @@ export default function SchoolDetailPage() {
             const f = new File([blob], 'logo.jpg', { type: 'image/jpeg' });
             setLogoFile(f);
             setLogoPreview(canvas.toDataURL('image/jpeg', 0.9));
+            setExistingLogoUrl(null); // yeni logo seçildi, eski URL artık geçersiz
             setClassForm(prev => ({ ...prev, icon: '' }));
             setShowCropModal(false);
             setCropSrc(null);
@@ -681,7 +686,7 @@ export default function SchoolDetailPage() {
         if (!classForm.name.trim()) { toast.error('Sınıf adı zorunludur.'); return; }
         if (!classForm.color) { toast.error('Sınıf rengi zorunludur.'); return; }
         if (!editingClass && !classForm.icon && !logoFile) { toast.error('İkon veya logo seçilmelidir.'); return; }
-        if (editingClass && !classForm.icon && !logoFile && !editingClass.logo) { toast.error('İkon veya logo seçilmelidir.'); return; }
+        if (editingClass && !classForm.icon && !logoFile && !existingLogoUrl) { toast.error('İkon veya logo seçilmelidir.'); return; }
 
         setSavingClass(true);
         const fd = new FormData();
@@ -700,10 +705,10 @@ export default function SchoolDetailPage() {
 
         try {
             if (editingClass) {
-                await apiClient.post(`/schools/${id}/classes/${editingClass.id}/update-media`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                await apiClient.post(`/schools/${id}/classes/${editingClass.id}/update-media`, fd);
                 toast.success('Sınıf güncellendi.');
             } else {
-                await apiClient.post(`/schools/${id}/classes`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                await apiClient.post(`/schools/${id}/classes`, fd);
                 toast.success('Sınıf oluşturuldu.');
             }
             setShowClassModal(false);
@@ -1030,8 +1035,7 @@ export default function SchoolDetailPage() {
                                                             style={{ backgroundColor: cls.color || '#e5e7eb' }}
                                                         >
                                                             {cls.logo_url ? (
-                                                                // eslint-disable-next-line @next/next/no-img-element
-                                                                <img src={cls.logo_url} alt={cls.name} className="h-10 w-10 rounded-xl object-cover" />
+                                                                <AuthImg src={cls.logo_url} alt={cls.name} className="h-10 w-10 rounded-xl object-cover" fallback={<span className="text-xl font-bold text-white">{cls.name.charAt(0)}</span>} />
                                                             ) : cls.icon ? (
                                                                 <span>{cls.icon}</span>
                                                             ) : (
@@ -2280,7 +2284,7 @@ export default function SchoolDetailPage() {
                                         </div>
                                     )}
 
-                                    {/* Logo önizlemesi */}
+                                    {/* Logo önizlemesi — yeni kırpılan (blob) */}
                                     {logoPreview && (
                                         <div className="mt-2 flex items-center gap-3">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2289,6 +2293,24 @@ export default function SchoolDetailPage() {
                                                 type="button"
                                                 className="text-xs text-danger hover:underline"
                                                 onClick={() => { setLogoFile(null); setLogoPreview(null); }}
+                                            >
+                                                Logoyu Kaldır
+                                            </button>
+                                        </div>
+                                    )}
+                                    {/* Logo önizlemesi — mevcut kayıtlı logo (auth gerekli) */}
+                                    {!logoPreview && existingLogoUrl && (
+                                        <div className="mt-2 flex items-center gap-3">
+                                            <AuthImg
+                                                src={existingLogoUrl}
+                                                alt="Mevcut logo"
+                                                className="h-12 w-12 rounded-xl object-cover shadow-sm"
+                                                fallback={<div className="h-12 w-12 animate-pulse rounded-xl bg-gray-200 dark:bg-[#1b2e4b]" />}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="text-xs text-danger hover:underline"
+                                                onClick={() => { setExistingLogoUrl(null); setClassForm(prev => ({ ...prev, icon: '' })); }}
                                             >
                                                 Logoyu Kaldır
                                             </button>

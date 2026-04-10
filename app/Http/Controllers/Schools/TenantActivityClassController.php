@@ -450,7 +450,8 @@ class TenantActivityClassController extends BaseController
         try {
             $activityClass = $this->findOwned($activity_class_id);
             $file = $request->file('image');
-            $path = $file->store("activity-classes/{$activityClass->id}/gallery", 'local');
+            $tenantId = $this->user()->tenant_id;
+            $path = $file->store("tenants/{$tenantId}/activity-classes/{$activityClass->id}/gallery", 'local');
 
             $item = $activityClass->gallery()->create([
                 'file_path' => $path,

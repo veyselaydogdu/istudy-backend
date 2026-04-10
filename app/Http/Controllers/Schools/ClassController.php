@@ -11,7 +11,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ClassController extends BaseSchoolController
 {
@@ -63,8 +62,8 @@ class ClassController extends BaseSchoolController
 
             // Logo yükle
             if ($request->hasFile('logo')) {
-                $schoolId = $data['school_id'];
-                $path = $request->file('logo')->store("class-logos/{$schoolId}", 'local');
+                $tenantId = $this->user()->tenant_id;
+                $path = $request->file('logo')->store("tenants/{$tenantId}/class-logos", 'local');
                 $data['logo'] = $path;
             }
 
@@ -122,7 +121,8 @@ class ClassController extends BaseSchoolController
                 if ($class->logo) {
                     Storage::disk('local')->delete($class->logo);
                 }
-                $path = $request->file('logo')->store("class-logos/{$class->school_id}", 'local');
+                $tenantId = $this->user()->tenant_id;
+                $path = $request->file('logo')->store("tenants/{$tenantId}/class-logos", 'local');
                 $data['logo'] = $path;
                 // Logo yüklenince ikonı temizle
                 $data['icon'] = null;
@@ -203,17 +203,5 @@ class ClassController extends BaseSchoolController
 
             return $this->errorResponse('Durum değiştirme başarısız.', 500);
         }
-    }
-
-    /**
-     * Sınıf logosunu sun (imzalı URL ile erişilir)
-     */
-    public function serveLogo(SchoolClass $class): BinaryFileResponse|JsonResponse
-    {
-        if (! $class->logo || ! Storage::disk('local')->exists($class->logo)) {
-            return $this->errorResponse('Logo bulunamadı.', 404);
-        }
-
-        return Storage::disk('local')->response($class->logo);
     }
 }

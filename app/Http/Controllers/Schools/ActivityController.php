@@ -282,7 +282,8 @@ class ActivityController extends BaseSchoolController
                 default => 'document',
             };
 
-            $path = $file->store("activities/{$activity->id}/gallery", 'local');
+            $tenantId = $this->user()->tenant_id;
+            $path = $file->store("tenants/{$tenantId}/activities/{$activity->id}/gallery", 'local');
 
             $item = $activity->gallery()->create([
                 'file_path' => $path,

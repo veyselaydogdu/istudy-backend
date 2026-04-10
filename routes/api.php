@@ -74,38 +74,37 @@ Route::prefix('countries')->group(function () {
 });
 
 // ═══════════════════════════════════════════════════════════
-// VELİ ÇOCUK FOTOĞRAFI — İmzalı URL (auth header gerektirmez)
+// MEDYA SUNUCU — Tüm private dosyalar auth:sanctum zorunlu
 // ═══════════════════════════════════════════════════════════
-Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
-    ->name('parent.child.photo')
-    ->middleware('signed');
+Route::middleware(['auth:sanctum', 'signed'])->group(function () {
+    // Çocuk profil fotoğrafı
+    Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
+        ->name('parent.child.photo');
 
-// ═══════════════════════════════════════════════════════════
-// ETKİNLİK SINIFI GALERİ — İmzalı URL (auth header gerektirmez)
-// ═══════════════════════════════════════════════════════════
-Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'serve'])
-    ->name('activity-class-gallery.serve')
-    ->middleware('signed');
+    // Etkinlik sınıfı galerisi
+    Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'serve'])
+        ->name('activity-class-gallery.serve');
 
-// ETKİNLİK GALERİSİ (Tenant) — İmzalı URL
-Route::get('/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityController::class, 'serveGalleryItem'])
-    ->name('activity-gallery.serve')
-    ->middleware('signed');
+    // Etkinlik galerisi (Tenant)
+    Route::get('/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityController::class, 'serveGalleryItem'])
+        ->name('activity-gallery.serve');
 
-// ETKİNLİK GALERİSİ (Veli) — İmzalı URL
-Route::get('/parent/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Parents\ParentActivityController::class, 'serveGalleryItem'])
-    ->name('parent.activity-gallery.serve')
-    ->middleware('signed');
+    // Etkinlik galerisi (Veli)
+    Route::get('/parent/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Parents\ParentActivityController::class, 'serveGalleryItem'])
+        ->name('parent.activity-gallery.serve');
 
-// ÖĞRETMEN BLOG GÖRSELI — İmzalı URL (auth header gerektirmez)
-Route::get('/teacher/blogs/{id}/image', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'serveImage'])
-    ->name('teacher.blog.image')
-    ->middleware('signed');
+    // Öğretmen blog görseli
+    Route::get('/teacher/blogs/{id}/image', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'serveImage'])
+        ->name('teacher.blog.image');
 
-// SINIF LOGO — İmzalı URL (auth header gerektirmez)
-Route::get('/class-logo/{class}', [\App\Http\Controllers\Schools\ClassController::class, 'serveLogo'])
-    ->name('class.logo')
-    ->middleware('signed');
+    // Sınıf logosu
+    Route::get('/class-logo/{class}', [\App\Http\Controllers\Media\ClassLogoController::class, 'serve'])
+        ->name('class.logo');
+
+    // Sosyal post medyası
+    Route::get('/social-media/{media}/serve', [\App\Http\Controllers\Media\SocialMediaController::class, 'serve'])
+        ->name('social-media.serve');
+});
 
 // ═══════════════════════════════════════════════════════════
 // VELİ AUTH (Public — Mobil uygulama)
