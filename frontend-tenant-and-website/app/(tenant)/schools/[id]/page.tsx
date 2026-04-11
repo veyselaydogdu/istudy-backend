@@ -5,11 +5,38 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
+import AuthImg from '@/components/AuthImg';
 import { School, SchoolClass, Child, Teacher, AcademicYear, SchoolTeacher, TeacherRoleType, TeacherProfile, EnrollmentRequest, SchoolParent } from '@/types';
-import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight, Baby } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight, Baby, Eye } from 'lucide-react';
 
-type ClassForm = { name: string; description: string; age_min: string; age_max: string; capacity: string; color: string; academic_year_id: string };
-const emptyClassForm: ClassForm = { name: '', description: '', age_min: '', age_max: '', capacity: '20', color: '', academic_year_id: '' };
+type ClassForm = { name: string; description: string; age_min: string; age_max: string; capacity: string; color: string; icon: string; academic_year_id: string };
+const emptyClassForm: ClassForm = { name: '', description: '', age_min: '', age_max: '', capacity: '20', color: '', icon: '', academic_year_id: '' };
+
+const CLASS_COLORS = [
+    '#FF6B6B', '#FF8E53', '#FFC300', '#A8E063', '#56AB2F',
+    '#43C6AC', '#00B4D8', '#4285F4', '#7B2FBE', '#E91E8C',
+    '#FF5F6D', '#FFA500', '#FFD700', '#90EE90', '#20B2AA',
+    '#87CEEB', '#6A5ACD', '#DA70D6', '#F08080', '#98D8C8',
+];
+
+const CLASS_ICONS = [
+    '🌟', '⭐', '🌈', '☀️', '🌙', '🌸', '🌺', '🌻', '🌼', '🍀',
+    '🦋', '🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐨', '🐸', '🦁',
+    '🐬', '🦒', '🦄', '🐠', '🦜', '🦅', '🐣', '🐥', '🦔', '🐞',
+    '🍎', '🍓', '🍊', '🍋', '🍇', '🍒', '🍑', '🍌', '🥝', '🍉',
+    '✏️', '📚', '🎨', '🎵', '🎸', '🎺', '🎻', '🥁', '🎤', '🎭',
+    '🚀', '✈️', '🚂', '⛵', '🏠', '🏰', '⛄', '🌊', '🏖️', '🎠',
+    '🎈', '🎉', '🎁', '🎊', '🎀', '🏆', '🥇', '💎', '🔮', '🎯',
+];
+
+const ICON_CATEGORIES = [
+    { label: 'Doğa', icons: ['🌟', '⭐', '🌈', '☀️', '🌙', '🌸', '🌺', '🌻', '🌼', '🍀'] },
+    { label: 'Hayvanlar', icons: ['🦋', '🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐨', '🐸', '🦁', '🐬', '🦒', '🦄', '🐠', '🦜', '🦅', '🐣', '🐥', '🦔', '🐞'] },
+    { label: 'Meyveler', icons: ['🍎', '🍓', '🍊', '🍋', '🍇', '🍒', '🍑', '🍌', '🥝', '🍉'] },
+    { label: 'Sanat & Müzik', icons: ['✏️', '📚', '🎨', '🎵', '🎸', '🎺', '🎻', '🥁', '🎤', '🎭'] },
+    { label: 'Macera', icons: ['🚀', '✈️', '🚂', '⛵', '🏠', '🏰', '⛄', '🌊', '🏖️', '🎠'] },
+    { label: 'Kutlama', icons: ['🎈', '🎉', '🎁', '🎊', '🎀', '🏆', '🥇', '💎', '🔮', '🎯'] },
+];
 
 export default function SchoolDetailPage() {
     const params = useParams();
@@ -37,13 +64,9 @@ export default function SchoolDetailPage() {
     const [schoolLevelTeachers, setSchoolLevelTeachers] = useState<SchoolTeacher[]>([]);
     const [loadingSchoolTeachers, setLoadingSchoolTeachers] = useState(false);
     const [teachersFetched, setTeachersFetched] = useState(false);
-    const [showSchoolTeacherModal, setShowSchoolTeacherModal] = useState(false);
-    const [allTenantTeachers, setAllTenantTeachers] = useState<Pick<TeacherProfile, 'id' | 'name'>[]>([]);
     const [roleTypes, setRoleTypes] = useState<TeacherRoleType[]>([]);
-    const [assignTeacherProfileId, setAssignTeacherProfileId] = useState('');
-    const [assignRoleTypeId, setAssignRoleTypeId] = useState('');
-    const [assignEmploymentType, setAssignEmploymentType] = useState('full_time');
-    const [savingSchoolTeacher, setSavingSchoolTeacher] = useState(false);
+    const [selectedTeacherDetail, setSelectedTeacherDetail] = useState<SchoolTeacher | null>(null);
+    const [selectedFamilyDetail, setSelectedFamilyDetail] = useState<SchoolParent | null>(null);
 
     // Enrollment requests
     const [enrollmentRequests, setEnrollmentRequests] = useState<EnrollmentRequest[]>([]);
@@ -125,6 +148,16 @@ export default function SchoolDetailPage() {
     const [editingClass, setEditingClass] = useState<SchoolClass | null>(null);
     const [classForm, setClassForm] = useState<ClassForm>(emptyClassForm);
     const [savingClass, setSavingClass] = useState(false);
+    // Logo upload & crop
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null); // canvas/blob URL (yerel)
+    const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null); // API signed URL (auth gerekli)
+    const [cropSrc, setCropSrc] = useState<string | null>(null);
+    const [showCropModal, setShowCropModal] = useState(false);
+    const [cropX, setCropX] = useState(0);
+    const [cropY, setCropY] = useState(0);
+    const [cropSize, setCropSize] = useState(200);
+    const [showIconPicker, setShowIconPicker] = useState(false);
 
     // Teacher assignment
     const [showTeacherModal, setShowTeacherModal] = useState(false);
@@ -265,43 +298,6 @@ export default function SchoolDetailPage() {
         }
     }, [id]);
 
-    const openSchoolTeacherModal = async () => {
-        setAssignTeacherProfileId('');
-        setAssignRoleTypeId('');
-        setAssignEmploymentType('full_time');
-        try {
-            const [teachersRes, roleTypesRes] = await Promise.all([
-                apiClient.get('/teachers', { params: { per_page: 100 } }),
-                apiClient.get('/teacher-role-types'),
-            ]);
-            const all: Pick<TeacherProfile, 'id' | 'name'>[] = teachersRes.data?.data ?? [];
-            const assignedIds = new Set(schoolLevelTeachers.map(t => t.id));
-            setAllTenantTeachers(all.filter(t => !assignedIds.has(t.id)));
-            setRoleTypes(roleTypesRes.data?.data ?? []);
-        } catch {
-            toast.error('Veriler yüklenemedi.');
-        }
-        setShowSchoolTeacherModal(true);
-    };
-
-    const handleAssignTeacherToSchool = async () => {
-        if (!assignTeacherProfileId) return;
-        setSavingSchoolTeacher(true);
-        try {
-            await apiClient.post(`/schools/${id}/teachers`, {
-                teacher_profile_id: Number(assignTeacherProfileId),
-                employment_type: assignEmploymentType,
-            });
-            toast.success('Öğretmen okula atandı.');
-            setShowSchoolTeacherModal(false);
-            fetchSchoolLevelTeachers();
-        } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Atama başarısız.');
-        } finally {
-            setSavingSchoolTeacher(false);
-        }
-    };
 
     const handleUnenrollChild = async (child: Child, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -601,6 +597,11 @@ export default function SchoolDetailPage() {
             ...emptyClassForm,
             academic_year_id: active ? String(active.id) : (academicYears[0] ? String(academicYears[0].id) : ''),
         });
+        setLogoFile(null);
+        setLogoPreview(null);
+        setExistingLogoUrl(null);
+        setCropSrc(null);
+        setShowIconPicker(false);
         setShowClassModal(true);
     };
 
@@ -611,8 +612,14 @@ export default function SchoolDetailPage() {
             age_min: cls.age_min != null ? String(cls.age_min) : '',
             age_max: cls.age_max != null ? String(cls.age_max) : '',
             capacity: String(cls.capacity ?? 20), color: cls.color ?? '',
+            icon: cls.icon ?? '',
             academic_year_id: cls.academic_year_id ? String(cls.academic_year_id) : '',
         });
+        setLogoFile(null);
+        setLogoPreview(null);
+        setExistingLogoUrl(cls.logo_url ?? null);
+        setCropSrc(null);
+        setShowIconPicker(false);
         setShowClassModal(true);
     };
 
@@ -637,32 +644,86 @@ export default function SchoolDetailPage() {
         }
     };
 
+    const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setCropSrc(ev.target?.result as string);
+            setCropX(0);
+            setCropY(0);
+            setCropSize(200);
+            setShowCropModal(true);
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
+
+    const handleCropConfirm = () => {
+        const imgEl = document.getElementById('crop-img') as HTMLImageElement | null;
+        if (!imgEl) return;
+        const canvas = document.createElement('canvas');
+        const outputSize = 400;
+        canvas.width = outputSize;
+        canvas.height = outputSize;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const scaleX = imgEl.naturalWidth / imgEl.width;
+        const scaleY = imgEl.naturalHeight / imgEl.height;
+        ctx.drawImage(imgEl, cropX * scaleX, cropY * scaleY, cropSize * scaleX, cropSize * scaleY, 0, 0, outputSize, outputSize);
+        canvas.toBlob((blob) => {
+            if (!blob) return;
+            const f = new File([blob], 'logo.jpg', { type: 'image/jpeg' });
+            setLogoFile(f);
+            setLogoPreview(canvas.toDataURL('image/jpeg', 0.9));
+            setExistingLogoUrl(null); // yeni logo seçildi, eski URL artık geçersiz
+            setClassForm(prev => ({ ...prev, icon: '' }));
+            setShowCropModal(false);
+            setCropSrc(null);
+        }, 'image/jpeg', 0.9);
+    };
+
     const handleClassSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!classForm.name.trim()) { toast.error('Sınıf adı zorunludur.'); return; }
+        if (!classForm.color) { toast.error('Sınıf rengi zorunludur.'); return; }
+        if (!editingClass && !classForm.icon && !logoFile) { toast.error('İkon veya logo seçilmelidir.'); return; }
+        if (editingClass && !classForm.icon && !logoFile && !existingLogoUrl) { toast.error('İkon veya logo seçilmelidir.'); return; }
+
         setSavingClass(true);
-        const payload = {
-            name: classForm.name,
-            description: classForm.description || undefined,
-            age_min: classForm.age_min !== '' ? Number(classForm.age_min) : undefined,
-            age_max: classForm.age_max !== '' ? Number(classForm.age_max) : undefined,
-            capacity: Number(classForm.capacity),
-            color: classForm.color || undefined,
-            academic_year_id: classForm.academic_year_id ? Number(classForm.academic_year_id) : undefined,
-        };
+        const fd = new FormData();
+        fd.append('name', classForm.name);
+        fd.append('color', classForm.color);
+        if (classForm.description) fd.append('description', classForm.description);
+        if (classForm.age_min !== '') fd.append('age_min', classForm.age_min);
+        if (classForm.age_max !== '') fd.append('age_max', classForm.age_max);
+        fd.append('capacity', classForm.capacity || '20');
+        if (classForm.academic_year_id) fd.append('academic_year_id', classForm.academic_year_id);
+        if (logoFile) {
+            fd.append('logo', logoFile);
+        } else if (classForm.icon) {
+            fd.append('icon', classForm.icon);
+        }
+
         try {
             if (editingClass) {
-                await apiClient.put(`/schools/${id}/classes/${editingClass.id}`, payload);
+                await apiClient.post(`/schools/${id}/classes/${editingClass.id}/update-media`, fd);
                 toast.success('Sınıf güncellendi.');
             } else {
-                await apiClient.post(`/schools/${id}/classes`, payload);
+                await apiClient.post(`/schools/${id}/classes`, fd);
                 toast.success('Sınıf oluşturuldu.');
             }
             setShowClassModal(false);
             loadData();
         } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            const error = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+            const errs = error.response?.data?.errors;
+            if (errs) {
+                const first = Object.values(errs)[0]?.[0];
+                toast.error(first ?? 'Hata oluştu.');
+            } else {
+                toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            }
         } finally {
             setSavingClass(false);
         }
@@ -693,11 +754,14 @@ export default function SchoolDetailPage() {
         setSelectedClass(cls);
         setSelectedTeacherId('');
         setClassTeacherRoleTypeId('');
+        setClassTeachers([]);
+        setSchoolTeachers([]);
+        setShowTeacherModal(true);
         try {
             const [teachersRes, schoolTeachersRes, roleTypesRes] = await Promise.all([
-                apiClient.get(`/schools/${id}/classes/${cls.id}/teachers`).catch(() => ({ data: { data: [] } })),
-                apiClient.get(`/schools/${id}/teachers`).catch(() => ({ data: { data: [] } })),
-                roleTypes.length === 0 ? apiClient.get('/teacher-role-types').catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: roleTypes } }),
+                apiClient.get(`/schools/${id}/classes/${cls.id}/teachers`),
+                apiClient.get(`/schools/${id}/teachers`),
+                roleTypes.length === 0 ? apiClient.get('/teacher-role-types') : Promise.resolve({ data: { data: roleTypes } }),
             ]);
             setClassTeachers(teachersRes.data?.data ?? []);
             setSchoolTeachers(schoolTeachersRes.data?.data ?? []);
@@ -705,7 +769,6 @@ export default function SchoolDetailPage() {
         } catch {
             toast.error('Öğretmenler yüklenemedi.');
         }
-        setShowTeacherModal(true);
     };
 
     const handleAssignTeacher = async () => {
@@ -716,10 +779,9 @@ export default function SchoolDetailPage() {
                 teacher_profile_id: Number(selectedTeacherId),
                 teacher_role_type_id: classTeacherRoleTypeId ? Number(classTeacherRoleTypeId) : undefined,
             });
-            toast.success('Öğretmen atandı.');
-            const res = await apiClient.get(`/schools/${id}/classes/${selectedClass.id}/teachers`);
-            setClassTeachers(res.data?.data ?? []);
-            setSelectedTeacherId('');
+            toast.success('Öğretmen sınıfa atandı.');
+            setShowTeacherModal(false);
+            fetchSchoolLevelTeachers();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
             toast.error(error.response?.data?.message ?? 'Atama başarısız.');
@@ -956,7 +1018,7 @@ export default function SchoolDetailPage() {
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Sınıf Adı</th>
+                                            <th>Sınıf</th>
                                             <th>Yaş Grubu</th>
                                             <th>Kapasite</th>
                                             <th>Öğrenci</th>
@@ -968,9 +1030,24 @@ export default function SchoolDetailPage() {
                                         {classes.map((cls) => (
                                             <tr key={cls.id}>
                                                 <td>
-                                                    <Link href={`/schools/${id}/classes/${cls.id}`} className="font-medium text-primary hover:underline">
-                                                        {cls.name}
-                                                    </Link>
+                                                    <div className="flex items-center gap-3">
+                                                        {/* Renk + ikon/logo */}
+                                                        <div
+                                                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl shadow-sm"
+                                                            style={{ backgroundColor: cls.color || '#e5e7eb' }}
+                                                        >
+                                                            {cls.logo_url ? (
+                                                                <AuthImg src={cls.logo_url} alt={cls.name} className="h-10 w-10 rounded-xl object-cover" fallback={<span className="text-xl font-bold text-white">{cls.name.charAt(0)}</span>} />
+                                                            ) : cls.icon ? (
+                                                                <span>{cls.icon}</span>
+                                                            ) : (
+                                                                <span className="text-sm font-bold text-white">{cls.name.charAt(0).toUpperCase()}</span>
+                                                            )}
+                                                        </div>
+                                                        <Link href={`/schools/${id}/classes/${cls.id}`} className="font-medium text-primary hover:underline">
+                                                            {cls.name}
+                                                        </Link>
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     {cls.age_min != null && cls.age_max != null
@@ -1111,12 +1188,6 @@ export default function SchoolDetailPage() {
                 {/* Öğretmenler Tab */}
                 {activeTab === 'teachers' && (
                     <>
-                        <div className="mb-4 flex justify-end">
-                            <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openSchoolTeacherModal}>
-                                <UserPlus className="h-4 w-4" />
-                                Öğretmen Ata
-                            </button>
-                        </div>
                         {loadingSchoolTeachers ? (
                             <div className="flex h-32 items-center justify-center">
                                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -1131,6 +1202,7 @@ export default function SchoolDetailPage() {
                                             <th>Ad</th>
                                             <th>Unvan</th>
                                             <th>İstihdam</th>
+                                            <th>Sınıflar</th>
                                             <th>Durum</th>
                                             <th>İşlemler</th>
                                         </tr>
@@ -1142,6 +1214,17 @@ export default function SchoolDetailPage() {
                                                 <td>{teacher.title ?? '—'}</td>
                                                 <td>{employmentLabel(teacher.employment_type)}</td>
                                                 <td>
+                                                    {teacher.classes && teacher.classes.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {teacher.classes.map(c => (
+                                                                <span key={c.id} className="badge badge-outline-info text-xs">{c.name}</span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-[#888ea8]">Atanmamış</span>
+                                                    )}
+                                                </td>
+                                                <td>
                                                     {teacher.is_active ? (
                                                         <span className="badge badge-outline-success">Aktif</span>
                                                     ) : (
@@ -1149,14 +1232,24 @@ export default function SchoolDetailPage() {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-outline-danger p-2"
-                                                        onClick={() => handleRemoveTeacherFromSchool(teacher)}
-                                                        title="Okuldan Çıkar"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary p-2"
+                                                            onClick={() => setSelectedTeacherDetail(teacher)}
+                                                            title="Detay"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger p-2"
+                                                            onClick={() => handleRemoveTeacherFromSchool(teacher)}
+                                                            title="Okuldan Çıkar"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -1298,6 +1391,7 @@ export default function SchoolDetailPage() {
                                             <th>E-posta</th>
                                             <th>Telefon</th>
                                             <th>Çocuklar</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1321,6 +1415,16 @@ export default function SchoolDetailPage() {
                                                     <td>{parent.phone ?? '—'}</td>
                                                     <td>
                                                         <span className="badge badge-outline-info">{parent.children.length} çocuk</span>
+                                                    </td>
+                                                    <td onClick={e => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary p-2"
+                                                            onClick={() => setSelectedFamilyDetail(parent)}
+                                                            title="Detay"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                                 {expandedParent === parent.id && parent.children.length > 0 && (
@@ -1574,6 +1678,149 @@ export default function SchoolDetailPage() {
                     </>
                 )}
             </div>
+
+            {/* Öğretmen Detay Modalı */}
+            {selectedTeacherDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between border-b border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğretmen Detayı</h2>
+                            <button type="button" onClick={() => setSelectedTeacherDetail(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-5 p-6">
+                            {/* Başlık kartı */}
+                            <div className="flex items-center gap-4 rounded-lg bg-primary/5 p-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
+                                    {selectedTeacherDetail.name.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="text-xl font-bold text-dark dark:text-white">{selectedTeacherDetail.name}</p>
+                                    {selectedTeacherDetail.title && (
+                                        <p className="text-sm text-[#888ea8]">{selectedTeacherDetail.title}</p>
+                                    )}
+                                    <span className={`badge mt-1 ${selectedTeacherDetail.is_active ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
+                                        {selectedTeacherDetail.is_active ? 'Aktif' : 'Pasif'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Bilgi satırları */}
+                            <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
+                                {selectedTeacherDetail.employment_type && (
+                                    <div className="flex justify-between py-2.5">
+                                        <span className="text-sm text-[#888ea8]">İstihdam Türü</span>
+                                        <span className="text-sm font-medium text-dark dark:text-white">{employmentLabel(selectedTeacherDetail.employment_type)}</span>
+                                    </div>
+                                )}
+                                {selectedTeacherDetail.role_type && (
+                                    <div className="flex justify-between py-2.5">
+                                        <span className="text-sm text-[#888ea8]">Rol Tipi</span>
+                                        <span className="text-sm font-medium text-dark dark:text-white">{selectedTeacherDetail.role_type.name}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Atandığı sınıflar */}
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Atandığı Sınıflar</p>
+                                {(selectedTeacherDetail.classes?.length ?? 0) === 0 ? (
+                                    <p className="text-sm text-[#888ea8]">Henüz bir sınıfa atanmamış.</p>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedTeacherDetail.classes!.map(cls => (
+                                            <span key={cls.id} className="badge badge-outline-info">{cls.name}</span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="border-t border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedTeacherDetail(null)}>Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Aile Detay Modalı */}
+            {selectedFamilyDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between border-b border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Aile Detayı</h2>
+                            <button type="button" onClick={() => setSelectedFamilyDetail(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-5 p-6">
+                            {/* Başlık kartı */}
+                            <div className="flex items-center gap-4 rounded-lg bg-primary/5 p-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
+                                    {selectedFamilyDetail.owner_name.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="text-xl font-bold text-dark dark:text-white">{selectedFamilyDetail.owner_name}</p>
+                                    {selectedFamilyDetail.family_name && (
+                                        <p className="text-sm text-[#888ea8]">{selectedFamilyDetail.family_name} Ailesi</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* İletişim bilgileri */}
+                            <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
+                                {selectedFamilyDetail.email && (
+                                    <div className="flex justify-between py-2.5">
+                                        <span className="text-sm text-[#888ea8]">E-posta</span>
+                                        <span className="text-sm font-medium text-dark dark:text-white">{selectedFamilyDetail.email}</span>
+                                    </div>
+                                )}
+                                {selectedFamilyDetail.phone && (
+                                    <div className="flex justify-between py-2.5">
+                                        <span className="text-sm text-[#888ea8]">Telefon</span>
+                                        <span className="text-sm font-medium text-dark dark:text-white">{selectedFamilyDetail.phone}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Çocuklar */}
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">
+                                    Çocuklar ({selectedFamilyDetail.children.length})
+                                </p>
+                                {selectedFamilyDetail.children.length === 0 ? (
+                                    <p className="text-sm text-[#888ea8]">Kayıtlı çocuk bulunmuyor.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {selectedFamilyDetail.children.map(child => (
+                                            <div key={child.id} className="flex items-center gap-3 rounded-lg border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-info/20 text-sm font-bold text-info">
+                                                    {child.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-dark dark:text-white">{child.name}</p>
+                                                    <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-[#888ea8]">
+                                                        {child.birth_date && <span>{new Date(child.birth_date).toLocaleDateString('tr-TR')}</span>}
+                                                        {child.gender && <span>{child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : child.gender}</span>}
+                                                    </div>
+                                                </div>
+                                                {child.status && (
+                                                    <span className={`badge ${child.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'} text-xs`}>
+                                                        {child.status === 'active' ? 'Aktif' : child.status}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="border-t border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedFamilyDetail(null)}>Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Silme Talebi Reddetme Modalı */}
             {showRejectRemovalModal && (
@@ -2071,8 +2318,8 @@ export default function SchoolDetailPage() {
             {/* Sınıf Oluştur/Düzenle Modal */}
             {showClassModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
-                        <div className="mb-4 flex items-center justify-between">
+                    <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-[#0e1726]">
+                        <div className="flex shrink-0 items-center justify-between border-b border-[#e0e6ed] px-6 py-4 dark:border-[#1b2e4b]">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
                                 {editingClass ? 'Sınıf Düzenle' : 'Yeni Sınıf'}
                             </h2>
@@ -2080,60 +2327,205 @@ export default function SchoolDetailPage() {
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
-                        <form onSubmit={handleClassSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Sınıf Adı *</label>
-                                <input type="text" className="form-input mt-1" value={classForm.name} onChange={cf('name')} required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Eğitim Yılı</label>
-                                <select
-                                    className="form-select mt-1"
-                                    value={classForm.academic_year_id}
-                                    onChange={e => setClassForm(prev => ({ ...prev, academic_year_id: e.target.value }))}
-                                >
-                                    <option value="">— Seçin (İsteğe Bağlı) —</option>
-                                    {academicYears.map(y => (
-                                        <option key={y.id} value={y.id}>
-                                            {y.name}{y.is_active ? ' (Aktif)' : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Yaş Aralığı</label>
-                                <div className="mt-1 flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        className="form-input w-full"
-                                        placeholder="Min"
-                                        min={0}
-                                        max={18}
-                                        value={classForm.age_min}
-                                        onChange={cf('age_min')}
-                                    />
-                                    <span className="shrink-0 text-[#888ea8]">—</span>
-                                    <input
-                                        type="number"
-                                        className="form-input w-full"
-                                        placeholder="Max"
-                                        min={0}
-                                        max={18}
-                                        value={classForm.age_max}
-                                        onChange={cf('age_max')}
-                                    />
-                                    <span className="shrink-0 text-sm text-[#888ea8]">yaş</span>
+                        <form onSubmit={handleClassSubmit} className="flex flex-1 flex-col overflow-y-auto">
+                            <div className="space-y-5 px-6 py-5">
+
+                                {/* Sınıf Adı */}
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Sınıf Adı *</label>
+                                    <input type="text" className="form-input mt-1" value={classForm.name} onChange={cf('name')} required />
+                                </div>
+
+                                {/* Renk Seçici — zorunlu */}
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                        Sınıf Rengi <span className="text-danger">*</span>
+                                    </label>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {CLASS_COLORS.map(c => (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                onClick={() => setClassForm(prev => ({ ...prev, color: c }))}
+                                                className="relative h-8 w-8 rounded-full transition-transform hover:scale-110 focus:outline-none"
+                                                style={{ backgroundColor: c }}
+                                                title={c}
+                                            >
+                                                {classForm.color === c && (
+                                                    <span className="absolute inset-0 flex items-center justify-center rounded-full ring-2 ring-white ring-offset-1 ring-offset-dark">
+                                                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                        {/* Özel renk */}
+                                        <label
+                                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-dashed border-[#888ea8] text-xs text-[#888ea8] hover:border-primary hover:text-primary"
+                                            title="Özel Renk"
+                                        >
+                                            <span>+</span>
+                                            <input
+                                                type="color"
+                                                className="sr-only"
+                                                value={classForm.color || '#4285F4'}
+                                                onChange={e => setClassForm(prev => ({ ...prev, color: e.target.value }))}
+                                            />
+                                        </label>
+                                    </div>
+                                    {classForm.color && (
+                                        <div className="mt-2 flex items-center gap-2 text-sm text-[#515365]">
+                                            <span className="inline-block h-4 w-4 rounded-full" style={{ backgroundColor: classForm.color }} />
+                                            <span>Seçili: {classForm.color}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* İkon veya Logo — birinden biri zorunlu */}
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                        İkon veya Logo <span className="text-danger">*</span>
+                                        <span className="ml-1 text-xs font-normal text-[#888ea8]">(birini seçin)</span>
+                                    </label>
+
+                                    <div className="mt-2 flex gap-3">
+                                        {/* İkon seçme butonu */}
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowIconPicker(v => !v); setLogoFile(null); setLogoPreview(null); }}
+                                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${classForm.icon && !logoFile ? 'border-primary bg-primary/10 text-primary' : 'border-[#e0e6ed] text-[#515365] hover:border-primary dark:border-[#1b2e4b]'}`}
+                                        >
+                                            <span className="text-lg">{classForm.icon || '😊'}</span>
+                                            <span>İkon Seç</span>
+                                        </button>
+
+                                        {/* Logo yükleme butonu */}
+                                        <label className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${logoFile ? 'border-primary bg-primary/10 text-primary' : 'border-[#e0e6ed] text-[#515365] hover:border-primary dark:border-[#1b2e4b]'}`}>
+                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <span>Logo Yükle</span>
+                                            <input type="file" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" className="sr-only" onChange={handleLogoFileChange} />
+                                        </label>
+                                    </div>
+
+                                    {/* İkon picker */}
+                                    {showIconPicker && !logoFile && (
+                                        <div className="mt-3 max-h-56 overflow-y-auto rounded-xl border border-[#e0e6ed] bg-[#f8f9fa] p-3 dark:border-[#1b2e4b] dark:bg-[#1b2e4b]">
+                                            {ICON_CATEGORIES.map(cat => (
+                                                <div key={cat.label} className="mb-3">
+                                                    <p className="mb-1 text-xs font-semibold uppercase text-[#888ea8]">{cat.label}</p>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {cat.icons.map(icon => (
+                                                            <button
+                                                                key={icon}
+                                                                type="button"
+                                                                onClick={() => { setClassForm(prev => ({ ...prev, icon })); setShowIconPicker(false); }}
+                                                                className={`rounded-lg p-1.5 text-2xl transition-colors hover:bg-white dark:hover:bg-[#0e1726] ${classForm.icon === icon ? 'bg-primary/20 ring-2 ring-primary' : ''}`}
+                                                                title={icon}
+                                                            >
+                                                                {icon}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Seçilen ikon önizlemesi */}
+                                    {classForm.icon && !logoFile && (
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <div
+                                                className="flex h-12 w-12 items-center justify-center rounded-xl text-2xl shadow-sm"
+                                                style={{ backgroundColor: classForm.color || '#e5e7eb' }}
+                                            >
+                                                {classForm.icon}
+                                            </div>
+                                            <span className="text-sm text-[#515365]">Seçili ikon</span>
+                                            <button type="button" className="text-xs text-danger hover:underline" onClick={() => setClassForm(prev => ({ ...prev, icon: '' }))}>
+                                                Kaldır
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Logo önizlemesi — yeni kırpılan (blob) */}
+                                    {logoPreview && (
+                                        <div className="mt-2 flex items-center gap-3">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={logoPreview} alt="Logo önizleme" className="h-12 w-12 rounded-xl object-cover shadow-sm" />
+                                            <button
+                                                type="button"
+                                                className="text-xs text-danger hover:underline"
+                                                onClick={() => { setLogoFile(null); setLogoPreview(null); }}
+                                            >
+                                                Logoyu Kaldır
+                                            </button>
+                                        </div>
+                                    )}
+                                    {/* Logo önizlemesi — mevcut kayıtlı logo (auth gerekli) */}
+                                    {!logoPreview && existingLogoUrl && (
+                                        <div className="mt-2 flex items-center gap-3">
+                                            <AuthImg
+                                                src={existingLogoUrl}
+                                                alt="Mevcut logo"
+                                                className="h-12 w-12 rounded-xl object-cover shadow-sm"
+                                                fallback={<div className="h-12 w-12 animate-pulse rounded-xl bg-gray-200 dark:bg-[#1b2e4b]" />}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="text-xs text-danger hover:underline"
+                                                onClick={() => { setExistingLogoUrl(null); setClassForm(prev => ({ ...prev, icon: '' })); }}
+                                            >
+                                                Logoyu Kaldır
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Eğitim Yılı */}
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Eğitim Yılı</label>
+                                    <select
+                                        className="form-select mt-1"
+                                        value={classForm.academic_year_id}
+                                        onChange={e => setClassForm(prev => ({ ...prev, academic_year_id: e.target.value }))}
+                                    >
+                                        <option value="">— Seçin (İsteğe Bağlı) —</option>
+                                        {academicYears.map(y => (
+                                            <option key={y.id} value={y.id}>
+                                                {y.name}{y.is_active ? ' (Aktif)' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Yaş Aralığı */}
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Yaş Aralığı</label>
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <input type="number" className="form-input w-full" placeholder="Min" min={0} max={18} value={classForm.age_min} onChange={cf('age_min')} />
+                                        <span className="shrink-0 text-[#888ea8]">—</span>
+                                        <input type="number" className="form-input w-full" placeholder="Max" min={0} max={18} value={classForm.age_max} onChange={cf('age_max')} />
+                                        <span className="shrink-0 text-sm text-[#888ea8]">yaş</span>
+                                    </div>
+                                </div>
+
+                                {/* Kapasite */}
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Kapasite</label>
+                                    <input type="number" className="form-input mt-1" min={1} value={classForm.capacity} onChange={cf('capacity')} />
+                                </div>
+
+                                {/* Açıklama */}
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Açıklama</label>
+                                    <textarea className="form-input mt-1" rows={2} value={classForm.description} onChange={cf('description')} />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Kapasite</label>
-                                <input type="number" className="form-input mt-1" min={1} value={classForm.capacity} onChange={cf('capacity')} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Açıklama</label>
-                                <textarea className="form-input mt-1" rows={2} value={classForm.description} onChange={cf('description')} />
-                            </div>
-                            <div className="flex gap-3 pt-2">
+
+                            <div className="flex shrink-0 gap-3 border-t border-[#e0e6ed] px-6 py-4 dark:border-[#1b2e4b]">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingClass}>
                                     {savingClass ? 'Kaydediliyor...' : (editingClass ? 'Güncelle' : 'Kaydet')}
                                 </button>
@@ -2144,59 +2536,91 @@ export default function SchoolDetailPage() {
                 </div>
             )}
 
-            {/* Okul Öğretmen Atama Modal */}
-            {showSchoolTeacherModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Okula Öğretmen Ata</h2>
-                            <button type="button" onClick={() => setShowSchoolTeacherModal(false)} className="text-[#888ea8] hover:text-danger">
+            {/* Logo Kırpma Modal */}
+            {showCropModal && cropSrc && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+                    <div className="flex w-full max-w-lg flex-col rounded-xl bg-white shadow-2xl dark:bg-[#0e1726]">
+                        <div className="flex items-center justify-between border-b border-[#e0e6ed] px-6 py-4 dark:border-[#1b2e4b]">
+                            <h3 className="text-base font-bold text-dark dark:text-white">Logo Kırp</h3>
+                            <button type="button" onClick={() => { setShowCropModal(false); setCropSrc(null); }} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Öğretmen *</label>
-                                <select
-                                    className="form-select mt-1"
-                                    value={assignTeacherProfileId}
-                                    onChange={e => setAssignTeacherProfileId(e.target.value)}
-                                >
-                                    <option value="">Öğretmen seçin</option>
-                                    {allTenantTeachers.map(t => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">İstihdam Türü</label>
-                                <select
-                                    className="form-select mt-1"
-                                    value={assignEmploymentType}
-                                    onChange={e => setAssignEmploymentType(e.target.value)}
-                                >
-                                    <option value="full_time">Tam Zamanlı</option>
-                                    <option value="part_time">Yarı Zamanlı</option>
-                                    <option value="contract">Sözleşmeli</option>
-                                    <option value="intern">Stajyer</option>
-                                    <option value="volunteer">Gönüllü</option>
-                                </select>
-                            </div>
-                            <div className="flex gap-3 pt-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-primary flex-1"
-                                    onClick={handleAssignTeacherToSchool}
-                                    disabled={!assignTeacherProfileId || savingSchoolTeacher}
-                                >
-                                    {savingSchoolTeacher ? 'Atanıyor...' : 'Ata'}
-                                </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowSchoolTeacherModal(false)}>İptal</button>
-                            </div>
+                        <div className="relative overflow-hidden p-4" style={{ height: 360 }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                id="crop-img"
+                                src={cropSrc}
+                                alt="Kırpılacak"
+                                className="h-full w-full object-contain"
+                                style={{ display: 'block' }}
+                            />
+                            {/* Kırpma çerçevesi */}
+                            <div
+                                className="absolute border-2 border-white shadow-lg"
+                                style={{
+                                    left: cropX,
+                                    top: cropY,
+                                    width: cropSize,
+                                    height: cropSize,
+                                    cursor: 'move',
+                                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+                                    borderRadius: '8px',
+                                }}
+                                onMouseDown={(e) => {
+                                    const startX = e.clientX - cropX;
+                                    const startY = e.clientY - cropY;
+                                    const img = document.getElementById('crop-img') as HTMLImageElement;
+                                    const rect = img?.getBoundingClientRect();
+                                    const maxX = (rect?.width ?? 400) - cropSize;
+                                    const maxY = (rect?.height ?? 360) - cropSize;
+                                    const onMove = (me: MouseEvent) => {
+                                        setCropX(Math.max(0, Math.min(maxX, me.clientX - startX)));
+                                        setCropY(Math.max(0, Math.min(maxY, me.clientY - startY)));
+                                    };
+                                    const onUp = () => {
+                                        window.removeEventListener('mousemove', onMove);
+                                        window.removeEventListener('mouseup', onUp);
+                                    };
+                                    window.addEventListener('mousemove', onMove);
+                                    window.addEventListener('mouseup', onUp);
+                                }}
+                            />
+                        </div>
+                        <div className="border-t border-[#e0e6ed] px-6 py-3 dark:border-[#1b2e4b]">
+                            <label className="block text-xs font-medium text-[#515365] dark:text-[#888ea8]">
+                                Kırpma Boyutu: {cropSize}px
+                            </label>
+                            <input
+                                type="range"
+                                min={80}
+                                max={320}
+                                value={cropSize}
+                                onChange={e => {
+                                    const s = Number(e.target.value);
+                                    setCropSize(s);
+                                    const img = document.getElementById('crop-img') as HTMLImageElement;
+                                    const rect = img?.getBoundingClientRect();
+                                    if (rect) {
+                                        setCropX(prev => Math.min(prev, rect.width - s));
+                                        setCropY(prev => Math.min(prev, rect.height - s));
+                                    }
+                                }}
+                                className="mt-1 w-full"
+                            />
+                        </div>
+                        <div className="flex gap-3 border-t border-[#e0e6ed] px-6 py-4 dark:border-[#1b2e4b]">
+                            <button type="button" className="btn btn-primary flex-1" onClick={handleCropConfirm}>
+                                Kırp ve Kullan
+                            </button>
+                            <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => { setShowCropModal(false); setCropSrc(null); }}>
+                                İptal
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
+
 
             {/* Red Sebebi Modal */}
             {showRejectModal && (
@@ -2275,11 +2699,14 @@ export default function SchoolDetailPage() {
                             <p className="text-sm font-medium text-dark dark:text-white-light">Öğretmen Ekle</p>
                             <select className="form-select" value={selectedTeacherId} onChange={e => setSelectedTeacherId(e.target.value)}>
                                 <option value="">Öğretmen seçin</option>
-                                {schoolTeachers
-                                    .filter(t => !classTeachers.find(ct => ct.id === t.id))
-                                    .map(t => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
+                                {schoolTeachers.map(t => {
+                                    const assigned = classTeachers.some(ct => Number(ct.id) === Number(t.id));
+                                    return (
+                                        <option key={t.id} value={t.id} disabled={assigned}>
+                                            {t.name}{assigned ? ' (Zaten atanmış)' : ''}
+                                        </option>
+                                    );
+                                })}
                             </select>
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">Görev Türü <span className="text-danger">*</span></label>

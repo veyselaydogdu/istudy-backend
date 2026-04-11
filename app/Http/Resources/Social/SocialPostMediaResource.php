@@ -4,7 +4,7 @@ namespace App\Http\Resources\Social;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class SocialPostMediaResource extends JsonResource
 {
@@ -13,7 +13,7 @@ class SocialPostMediaResource extends JsonResource
         return [
             'id' => $this->id,
             'type' => $this->type,
-            'url' => Storage::disk($this->disk)->url($this->path),
+            'url' => URL::temporarySignedRoute('social-media.serve', now()->addHours(2), ['media' => $this->id]),
             'original_name' => $this->original_name,
             'file_size' => $this->file_size,
             'mime_type' => $this->mime_type,

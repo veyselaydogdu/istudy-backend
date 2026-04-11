@@ -74,33 +74,41 @@ Route::prefix('countries')->group(function () {
 });
 
 // ═══════════════════════════════════════════════════════════
-// VELİ ÇOCUK FOTOĞRAFI — İmzalı URL (auth header gerektirmez)
+// MEDYA SUNUCU — Tüm private dosyalar auth:sanctum zorunlu
 // ═══════════════════════════════════════════════════════════
-Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
-    ->name('parent.child.photo')
-    ->middleware('signed');
+Route::middleware(['auth:sanctum', 'signed'])->group(function () {
+    // Çocuk profil fotoğrafı
+    Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
+        ->name('parent.child.photo');
 
-// ═══════════════════════════════════════════════════════════
-// ETKİNLİK SINIFI GALERİ — İmzalı URL (auth header gerektirmez)
-// ═══════════════════════════════════════════════════════════
-Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'serve'])
-    ->name('activity-class-gallery.serve')
-    ->middleware('signed');
+    // Etkinlik sınıfı galerisi
+    Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'serve'])
+        ->name('activity-class-gallery.serve');
 
-// ETKİNLİK GALERİSİ (Tenant) — İmzalı URL
-Route::get('/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityController::class, 'serveGalleryItem'])
-    ->name('activity-gallery.serve')
-    ->middleware('signed');
+    // Etkinlik galerisi (Tenant)
+    Route::get('/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityController::class, 'serveGalleryItem'])
+        ->name('activity-gallery.serve');
 
-// ETKİNLİK GALERİSİ (Veli) — İmzalı URL
-Route::get('/parent/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Parents\ParentActivityController::class, 'serveGalleryItem'])
-    ->name('parent.activity-gallery.serve')
-    ->middleware('signed');
+    // Etkinlik galerisi (Veli)
+    Route::get('/parent/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Parents\ParentActivityController::class, 'serveGalleryItem'])
+        ->name('parent.activity-gallery.serve');
 
-// ÖĞRETMEN BLOG GÖRSELI — İmzalı URL (auth header gerektirmez)
-Route::get('/teacher/blogs/{id}/image', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'serveImage'])
-    ->name('teacher.blog.image')
-    ->middleware('signed');
+    // Öğretmen blog görseli
+    Route::get('/teacher/blogs/{id}/image', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'serveImage'])
+        ->name('teacher.blog.image');
+
+    // Sınıf logosu
+    Route::get('/class-logo/{class}', [\App\Http\Controllers\Media\ClassLogoController::class, 'serve'])
+        ->name('class.logo');
+
+    // Sosyal post medyası
+    Route::get('/social-media/{media}/serve', [\App\Http\Controllers\Media\SocialMediaController::class, 'serve'])
+        ->name('social-media.serve');
+
+    // Yemek fotoğrafı
+    Route::get('/meal-photo/{meal}', [\App\Http\Controllers\Media\MealPhotoController::class, 'serve'])
+        ->name('meal.photo');
+});
 
 // ═══════════════════════════════════════════════════════════
 // VELİ AUTH (Public — Mobil uygulama)
@@ -568,6 +576,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('schools/{school_id}')->group(function () {
             Route::apiResource('classes', \App\Http\Controllers\Schools\ClassController::class);
             Route::patch('classes/{class}/toggle-status', [\App\Http\Controllers\Schools\ClassController::class, 'toggleStatus']);
+            // Multipart (FormData) ile logo yüklemeyi desteklemek için POST update route'u
+            Route::post('classes/{class}/update-media', [\App\Http\Controllers\Schools\ClassController::class, 'update']);
             Route::apiResource('children', \App\Http\Controllers\Schools\ChildController::class);
             Route::patch('children/{child}/unenroll', [\App\Http\Controllers\Schools\ChildController::class, 'unenroll']);
             Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
@@ -643,6 +653,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/teachers', [\App\Http\Controllers\Schools\ClassManagementController::class, 'assignTeacherToSchool']);
             Route::delete('/teachers/{teacher_profile_id}', [\App\Http\Controllers\Schools\ClassManagementController::class, 'removeTeacherFromSchool']);
 
+            // Öğretmen katılma talepleri (tenant düzeyinde, okul ile birlikte yönetilebilir)
+            Route::prefix('teacher-join-requests')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'schoolJoinRequests']);
+                Route::patch('/{id}/approve', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'approveJoinRequest']);
+                Route::patch('/{id}/reject', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'rejectJoinRequest']);
+            });
+
             // ───────────────────────────────────────────────────
             // ETKİNLİK SINIFLARI
             // ───────────────────────────────────────────────────
@@ -711,6 +728,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('teachers')->group(function () {
             Route::get('/', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'index']);
             Route::post('/', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'store']);
+
+            // Davet & Üyelik yönetimi — /{id} pattern'inden önce tanımlanmalı
+            Route::post('/invite', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'invite']);
+            Route::get('/join-requests', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'joinRequests']);
+            Route::patch('/join-requests/{id}/approve', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'approveJoinRequest']);
+            Route::patch('/join-requests/{id}/reject', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'rejectJoinRequest']);
+
             Route::get('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'show']);
             Route::put('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'update']);
             Route::delete('/{id}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'destroy']);
@@ -719,12 +743,6 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/{id}/schools', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'schoolAssignments']);
             Route::post('/{id}/schools', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'assignToSchool']);
             Route::delete('/{id}/schools/{schoolId}', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'removeFromSchool']);
-
-            // Davet & Üyelik yönetimi
-            Route::post('/invite', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'invite']);
-            Route::get('/join-requests', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'joinRequests']);
-            Route::patch('/join-requests/{id}/approve', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'approveJoinRequest']);
-            Route::patch('/join-requests/{id}/reject', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'rejectJoinRequest']);
 
             // Üyelik durum yönetimi
             Route::patch('/{id}/activate', [\App\Http\Controllers\Schools\TenantTeacherController::class, 'activate']);
@@ -771,7 +789,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('meals')->group(function () {
             Route::get('/', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealIndex']);
             Route::post('/', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealStore']);
-            Route::put('/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealUpdate']);
+            Route::match(['PUT', 'POST'], '/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealUpdate']);
             Route::delete('/{id}', [\App\Http\Controllers\Schools\TenantMealController::class, 'mealDestroy']);
         });
 

@@ -613,7 +613,8 @@ class ParentChildController extends BaseParentController
                 Storage::disk('local')->delete($childModel->profile_photo);
             }
 
-            $path = $request->file('photo')->store('children/photos', 'local');
+            $parentId = $this->user()->id;
+            $path = $request->file('photo')->store("parents/{$parentId}/children/{$childModel->id}", 'local');
             $childModel->update(['profile_photo' => $path]);
 
             // M-2: İmzalı URL süresi 1h → 30 dakika

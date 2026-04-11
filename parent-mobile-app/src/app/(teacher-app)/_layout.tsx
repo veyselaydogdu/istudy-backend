@@ -91,6 +91,7 @@ export default function TeacherAppLayout() {
 
       {/* Tab bar'da gizlenecek ekranlar */}
       <Tabs.Screen name="children" options={{ href: null }} />
+      <Tabs.Screen name="edit-profile" options={{ href: null }} />
     </Tabs>
   );
 }

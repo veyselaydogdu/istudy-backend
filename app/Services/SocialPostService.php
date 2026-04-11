@@ -97,12 +97,13 @@ class SocialPostService
         $mimeType = $file->getMimeType() ?? '';
         $type = $this->resolveMediaType($mimeType);
 
-        $path = Storage::disk('public')->putFile("social/{$post->school_id}/{$post->id}", $file);
+        $tenantId = $post->tenant_id;
+        $path = Storage::disk('local')->putFile("{$tenantId}/social/{$post->school_id}/{$post->id}", $file);
 
         return SocialPostMedia::create([
             'post_id' => $post->id,
             'type' => $type,
-            'disk' => 'public',
+            'disk' => 'local',
             'path' => $path,
             'original_name' => $file->getClientOriginalName(),
             'file_size' => $file->getSize(),

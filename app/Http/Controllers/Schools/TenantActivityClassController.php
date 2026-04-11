@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Schools;
 
 use App\Http\Controllers\Base\BaseController;
+use App\Models\Academic\SchoolClass;
 use App\Models\ActivityClass\ActivityClass;
 use App\Models\ActivityClass\ActivityClassEnrollment;
 use App\Models\ActivityClass\ActivityClassGalleryItem;
@@ -76,7 +77,7 @@ class TenantActivityClassController extends BaseController
             'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string',
             'school_class_ids' => 'nullable|array',
-            'school_class_ids.*' => 'integer|exists:classes,id',
+            'school_class_ids.*' => 'string',
         ]);
 
         try {
@@ -88,7 +89,7 @@ class TenantActivityClassController extends BaseController
             ]));
 
             if (! ($validated['is_school_wide'] ?? true) && ! empty($validated['school_class_ids'])) {
-                $activityClass->schoolClasses()->sync($validated['school_class_ids']);
+                $activityClass->schoolClasses()->sync($this->resolveClassIds($validated['school_class_ids']));
             }
 
             $activityClass->load(['schoolClasses:id,name', 'teachers.user:id,name,surname']);
@@ -151,7 +152,7 @@ class TenantActivityClassController extends BaseController
             'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string',
             'school_class_ids' => 'nullable|array',
-            'school_class_ids.*' => 'integer|exists:classes,id',
+            'school_class_ids.*' => 'string',
         ]);
 
         try {
@@ -164,7 +165,7 @@ class TenantActivityClassController extends BaseController
                 if ($validated['is_school_wide'] ?? $activityClass->is_school_wide) {
                     $activityClass->schoolClasses()->detach();
                 } else {
-                    $activityClass->schoolClasses()->sync($validated['school_class_ids'] ?? []);
+                    $activityClass->schoolClasses()->sync($this->resolveClassIds($validated['school_class_ids'] ?? []));
                 }
             }
 
@@ -450,7 +451,8 @@ class TenantActivityClassController extends BaseController
         try {
             $activityClass = $this->findOwned($activity_class_id);
             $file = $request->file('image');
-            $path = $file->store("activity-classes/{$activityClass->id}/gallery", 'local');
+            $tenantId = $this->user()->tenant_id;
+            $path = $file->store("tenants/{$tenantId}/activity-classes/{$activityClass->id}/gallery", 'local');
 
             $item = $activityClass->gallery()->create([
                 'file_path' => $path,
@@ -558,5 +560,24 @@ class TenantActivityClassController extends BaseController
             'url' => URL::signedRoute('activity-class-gallery.serve', ['galleryItem' => $item->id], now()->addHours(2)),
             'created_at' => $item->created_at,
         ];
+    }
+
+    /**
+     * ULID veya integer class ID listesini integer PK listesine çevirir.
+     *
+     * @param  array<int|string>  $rawIds
+     * @return array<int>
+     */
+    private function resolveClassIds(array $rawIds): array
+    {
+        $ulids = array_filter($rawIds, fn ($id) => ! is_numeric($id));
+        $integers = array_values(array_filter($rawIds, fn ($id) => is_numeric($id)));
+
+        if (! empty($ulids)) {
+            $resolved = SchoolClass::whereIn('ulid', $ulids)->pluck('id')->toArray();
+            $integers = array_merge($integers, $resolved);
+        }
+
+        return array_map('intval', $integers);
     }
 }

@@ -15,6 +15,7 @@ class Meal extends BaseModel
         'academic_year_id',
         'name',
         'meal_type',
+        'photo',
         'created_by',
         'updated_by',
     ];

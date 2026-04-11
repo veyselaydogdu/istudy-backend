@@ -28,8 +28,18 @@ type ClassTeacher = {
 
 type MealSchedule = {
     id: number; menu_date: string; schedule_type: string;
-    meal?: { id: number; name: string; meal_type?: string } | null;
+    meal?: {
+        id: number; name: string; meal_type?: string;
+        ingredients?: { id: number; name: string; allergens?: { id: number; name: string }[] }[];
+    } | null;
 };
+
+type AvailableMeal = {
+    id: number; name: string; meal_type?: string;
+    ingredients?: { id: number; name: string; allergens?: { id: number; name: string }[] }[];
+};
+
+type AllergenConflict = { childName: string; allergenName: string };
 
 type Tab = 'students' | 'teachers' | 'attendance' | 'activities' | 'meals' | 'supply';
 
@@ -89,6 +99,15 @@ export default function ClassDetailPage() {
     const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
     const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth() + 1);
     const mealLoadedKeyRef = useRef<string>('');
+
+    // Menü ekleme
+    const [availableMeals, setAvailableMeals] = useState<AvailableMeal[]>([]);
+    const [availableMealsFetched, setAvailableMealsFetched] = useState(false);
+    const [showMenuModal, setShowMenuModal] = useState(false);
+    const [menuForm, setMenuForm] = useState({ meal_id: '', menu_date: new Date().toISOString().split('T')[0], schedule_type: 'daily' });
+    const [savingMenu, setSavingMenu] = useState(false);
+    const [pendingAllergenConflicts, setPendingAllergenConflicts] = useState<AllergenConflict[]>([]);
+    const [showAllergenWarning, setShowAllergenWarning] = useState(false);
 
     // İhtiyaç listesi
     const [supplyItems, setSupplyItems] = useState<SupplyItem[]>([]);
@@ -178,6 +197,15 @@ export default function ClassDetailPage() {
         } catch { toast.error('İhtiyaç listesi yüklenemedi.'); }
     }, [schoolId, classId, supplyFetched]);
 
+    const loadAvailableMeals = useCallback(async () => {
+        if (availableMealsFetched) { return; }
+        try {
+            const res = await apiClient.get('/meals', { params: { school_id: schoolId } });
+            setAvailableMeals(res.data?.data ?? []);
+            setAvailableMealsFetched(true);
+        } catch { toast.error('Yemekler yüklenemedi.'); }
+    }, [schoolId, availableMealsFetched]);
+
     useEffect(() => { loadInitial(); }, [loadInitial]);
 
     useEffect(() => {
@@ -221,12 +249,10 @@ export default function ClassDetailPage() {
         setSavingAttendance(true);
         const records = children.map(child => ({
             child_id: child.id,
-            class_id: Number(classId),
-            attendance_date: attendanceDate,
             status: attendanceStatuses[child.id] ?? 'present',
         }));
         try {
-            await apiClient.post(`/schools/${schoolId}/attendances`, { attendances: records });
+            await apiClient.post(`/schools/${schoolId}/attendances`, { class_id: classId, date: attendanceDate, attendances: records });
             toast.success('Yoklama kaydedildi.');
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
@@ -284,6 +310,115 @@ export default function ClassDetailPage() {
             await apiClient.delete(`/schools/${schoolId}/classes/${classId}/supply-list/${item.id}`);
             toast.success('Silindi.');
             setSupplyItems(prev => prev.filter(s => s.id !== item.id));
+        } catch { toast.error('Silme başarısız.'); }
+    };
+
+    const detectAllergenConflicts = (mealId: string): AllergenConflict[] => {
+        const meal = availableMeals.find(m => String(m.id) === mealId);
+        if (!meal) { return []; }
+        const mealAllergenIds = new Set<number>();
+        const allergenNameMap = new Map<number, string>();
+        (meal.ingredients ?? []).forEach(ing => {
+            (ing.allergens ?? []).forEach(a => {
+                mealAllergenIds.add(a.id);
+                allergenNameMap.set(a.id, a.name);
+            });
+        });
+        if (mealAllergenIds.size === 0) { return []; }
+        const conflicts: AllergenConflict[] = [];
+        children.forEach(child => {
+            (child.allergens ?? []).filter(a => a.status !== 'pending').forEach(ca => {
+                if (mealAllergenIds.has(ca.id)) {
+                    conflicts.push({ childName: child.full_name, allergenName: allergenNameMap.get(ca.id) ?? ca.name });
+                }
+            });
+        });
+        return conflicts;
+    };
+
+    const getMealAllergenConflicts = (schedule: MealSchedule): AllergenConflict[] => {
+        if (!schedule.meal?.ingredients) { return []; }
+        const mealAllergenIds = new Set<number>();
+        const allergenNameMap = new Map<number, string>();
+        schedule.meal.ingredients.forEach(ing => {
+            (ing.allergens ?? []).forEach(a => {
+                mealAllergenIds.add(a.id);
+                allergenNameMap.set(a.id, a.name);
+            });
+        });
+        if (mealAllergenIds.size === 0) { return []; }
+        const conflicts: AllergenConflict[] = [];
+        children.forEach(child => {
+            (child.allergens ?? []).filter(a => a.status !== 'pending').forEach(ca => {
+                if (mealAllergenIds.has(ca.id)) {
+                    conflicts.push({ childName: child.full_name, allergenName: allergenNameMap.get(ca.id) ?? ca.name });
+                }
+            });
+        });
+        return conflicts;
+    };
+
+    const openMenuModal = () => {
+        setMenuForm({ meal_id: '', menu_date: new Date().toISOString().split('T')[0], schedule_type: 'daily' });
+        setPendingAllergenConflicts([]);
+        setShowAllergenWarning(false);
+        setShowMenuModal(true);
+        loadAvailableMeals();
+    };
+
+    const saveMenuEntry = async () => {
+        setSavingMenu(true);
+        try {
+            const res = await apiClient.post('/meal-menus', {
+                school_id: schoolId,
+                class_id: classId,
+                meal_id: Number(menuForm.meal_id),
+                menu_date: menuForm.menu_date,
+                schedule_type: menuForm.schedule_type,
+            });
+            const newSchedule: MealSchedule = res.data?.data;
+            if (newSchedule) {
+                setMealSchedules(prev => [...prev, newSchedule]);
+            }
+            setShowMenuModal(false);
+            setShowAllergenWarning(false);
+            toast.success('Menüye eklendi.');
+            // Reload to get updated data
+            mealLoadedKeyRef.current = '';
+            loadMeals(calendarYear, calendarMonth);
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
+            toast.error(e.response?.data?.message ?? 'Menü eklenemedi.');
+        } finally {
+            setSavingMenu(false);
+        }
+    };
+
+    const handleMenuSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!menuForm.meal_id) { toast.error('Yemek seçiniz.'); return; }
+        const conflicts = detectAllergenConflicts(menuForm.meal_id);
+        if (conflicts.length > 0) {
+            setPendingAllergenConflicts(conflicts);
+            setShowAllergenWarning(true);
+            return;
+        }
+        await saveMenuEntry();
+    };
+
+    const handleDeleteMenuEntry = async (scheduleId: number) => {
+        const result = await Swal.fire({
+            title: 'Menüden Çıkar',
+            text: 'Bu yemek menüden kaldırılacak.',
+            icon: 'warning', showCancelButton: true,
+            confirmButtonText: 'Evet, Kaldır', cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+        });
+        if (!result.isConfirmed) { return; }
+        try {
+            await apiClient.delete(`/meal-menus/${scheduleId}`);
+            setMealSchedules(prev => prev.filter(s => s.id !== scheduleId));
+            toast.success('Menüden kaldırıldı.');
         } catch { toast.error('Silme başarısız.'); }
     };
 
@@ -633,19 +768,28 @@ export default function ClassDetailPage() {
 
                     {/* ── Yemek Takvimi ───────────────────────────────────────── */}
                     {activeTab === 'meals' && (
-                        <MealCalendar
-                            mealSchedules={mealSchedules}
-                            year={calendarYear}
-                            month={calendarMonth}
-                            onPrev={() => {
-                                if (calendarMonth === 1) { setCalendarMonth(12); setCalendarYear(y => y - 1); }
-                                else { setCalendarMonth(m => m - 1); }
-                            }}
-                            onNext={() => {
-                                if (calendarMonth === 12) { setCalendarMonth(1); setCalendarYear(y => y + 1); }
-                                else { setCalendarMonth(m => m + 1); }
-                            }}
-                        />
+                        <div>
+                            <div className="mb-4 flex justify-end">
+                                <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openMenuModal}>
+                                    <Plus className="h-4 w-4" />Menüye Ekle
+                                </button>
+                            </div>
+                            <MealCalendar
+                                mealSchedules={mealSchedules}
+                                year={calendarYear}
+                                month={calendarMonth}
+                                onPrev={() => {
+                                    if (calendarMonth === 1) { setCalendarMonth(12); setCalendarYear(y => y - 1); }
+                                    else { setCalendarMonth(m => m - 1); }
+                                }}
+                                onNext={() => {
+                                    if (calendarMonth === 12) { setCalendarMonth(1); setCalendarYear(y => y + 1); }
+                                    else { setCalendarMonth(m => m + 1); }
+                                }}
+                                onDelete={handleDeleteMenuEntry}
+                                getConflicts={getMealAllergenConflicts}
+                            />
+                        </div>
                     )}
 
                     {/* ── İhtiyaç Listesi ─────────────────────────────────────── */}
@@ -862,6 +1006,103 @@ export default function ClassDetailPage() {
                 </div>
             )}
 
+            {/* ── Menü Ekle Modalı ──────────────────────────────────────────── */}
+            {showMenuModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">Yemek Menüsüne Ekle</h2>
+                            <button type="button" onClick={() => setShowMenuModal(false)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {showAllergenWarning ? (
+                            <div>
+                                <div className="mb-4 rounded-lg border border-warning/30 bg-warning/5 p-4">
+                                    <p className="mb-2 font-semibold text-warning">⚠ Alerjen Uyarısı</p>
+                                    <p className="mb-3 text-sm text-[#888ea8]">
+                                        Bu yemeğin içerdiği alerjenler sınıfta alerji kaydı olan öğrencilerle çakışıyor:
+                                    </p>
+                                    <ul className="space-y-1">
+                                        {pendingAllergenConflicts.map((c, i) => (
+                                            <li key={i} className="text-sm">
+                                                <span className="font-medium text-dark dark:text-white">{c.childName}</span>
+                                                <span className="text-[#888ea8]"> → </span>
+                                                <span className="text-danger">{c.allergenName}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <p className="mb-4 text-sm text-[#888ea8]">Yine de menüye eklemek istiyor musunuz?</p>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        className="btn btn-warning flex-1"
+                                        onClick={saveMenuEntry}
+                                        disabled={savingMenu}
+                                    >
+                                        {savingMenu ? 'Ekleniyor...' : 'Evet, Yine de Ekle'}
+                                    </button>
+                                    <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowAllergenWarning(false)}>
+                                        Geri Dön
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleMenuSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Yemek *</label>
+                                    <select
+                                        className="form-input mt-1"
+                                        value={menuForm.meal_id}
+                                        onChange={e => setMenuForm(p => ({ ...p, meal_id: e.target.value }))}
+                                        required
+                                    >
+                                        <option value="">-- Yemek Seçin --</option>
+                                        {availableMeals.map(m => (
+                                            <option key={m.id} value={String(m.id)}>
+                                                {m.name}{m.meal_type ? ` (${m.meal_type})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {availableMeals.length === 0 && availableMealsFetched && (
+                                        <p className="mt-1 text-xs text-[#888ea8]">Bu okul için henüz yemek tanımlanmamış.</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Tarih *</label>
+                                    <input
+                                        type="date" className="form-input mt-1"
+                                        value={menuForm.menu_date}
+                                        onChange={e => setMenuForm(p => ({ ...p, menu_date: e.target.value }))}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Tür</label>
+                                    <select
+                                        className="form-input mt-1"
+                                        value={menuForm.schedule_type}
+                                        onChange={e => setMenuForm(p => ({ ...p, schedule_type: e.target.value }))}
+                                    >
+                                        <option value="daily">Günlük</option>
+                                        <option value="weekly">Haftalık</option>
+                                        <option value="monthly">Aylık</option>
+                                    </select>
+                                </div>
+                                <div className="flex gap-3 pt-2">
+                                    <button type="submit" className="btn btn-primary flex-1" disabled={savingMenu}>
+                                        {savingMenu ? 'Ekleniyor...' : 'Menüye Ekle'}
+                                    </button>
+                                    <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMenuModal(false)}>İptal</button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* ── İhtiyaç Listesi Modalı ──────────────────────────────────────── */}
             {showSupplyModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -994,12 +1235,15 @@ function FamilyMemberCard({ name, email, phone, label, primary }: {
 }
 
 function MealCalendar({
-    mealSchedules, year, month, onPrev, onNext,
+    mealSchedules, year, month, onPrev, onNext, onDelete, getConflicts,
 }: {
     mealSchedules: MealSchedule[];
     year: number; month: number;
     onPrev: () => void; onNext: () => void;
+    onDelete?: (id: number) => void;
+    getConflicts?: (s: MealSchedule) => AllergenConflict[];
 }) {
+    const [expandedSchedule, setExpandedSchedule] = useState<number | null>(null);
     const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
     const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -1037,7 +1281,7 @@ function MealCalendar({
                     return (
                         <div
                             key={i}
-                            className={`min-h-[70px] rounded border p-1.5 text-xs ${
+                            className={`min-h-[80px] rounded border p-1.5 text-xs ${
                                 day ? 'border-[#ebedf2] dark:border-[#1b2e4b]' : 'border-transparent'
                             } ${isToday ? 'bg-primary/5 ring-1 ring-primary/30' : ''}`}
                         >
@@ -1046,15 +1290,46 @@ function MealCalendar({
                                     <div className={`mb-1 text-xs font-semibold ${isToday ? 'text-primary' : 'text-dark dark:text-white'}`}>
                                         {day}
                                     </div>
-                                    {meals.map(s => (
-                                        <div
-                                            key={s.id}
-                                            className="mb-0.5 truncate rounded bg-primary/10 px-1 py-0.5 text-primary"
-                                            title={s.meal?.name}
-                                        >
-                                            {s.meal?.name}
-                                        </div>
-                                    ))}
+                                    {meals.map(s => {
+                                        const conflicts = getConflicts ? getConflicts(s) : [];
+                                        const hasConflict = conflicts.length > 0;
+                                        return (
+                                            <div key={s.id} className="mb-0.5">
+                                                <div
+                                                    className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${hasConflict ? 'bg-danger/10 text-danger' : 'bg-primary/10 text-primary'}`}
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        className="min-w-0 flex-1 truncate text-left"
+                                                        title={s.meal?.name}
+                                                        onClick={() => setExpandedSchedule(expandedSchedule === s.id ? null : s.id)}
+                                                    >
+                                                        {hasConflict && '⚠ '}{s.meal?.name}
+                                                    </button>
+                                                    {onDelete && (
+                                                        <button
+                                                            type="button"
+                                                            className="shrink-0 opacity-60 hover:opacity-100"
+                                                            onClick={() => onDelete(s.id)}
+                                                            title="Menüden kaldır"
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {expandedSchedule === s.id && hasConflict && (
+                                                    <div className="mt-0.5 rounded border border-danger/20 bg-danger/5 p-1 text-[10px]">
+                                                        <p className="mb-0.5 font-semibold text-danger">Alerjen Çakışmaları:</p>
+                                                        {conflicts.map((c, ci) => (
+                                                            <p key={ci} className="text-danger">
+                                                                {c.childName}: {c.allergenName}
+                                                            </p>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </>
                             )}
                         </div>

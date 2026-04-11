@@ -97,7 +97,7 @@ class TeacherPickupController extends BaseTeacherController
 
             if ($request->hasFile('picked_by_photo')) {
                 $photoPath = $request->file('picked_by_photo')
-                    ->store("pickups/{$childId}", 'local');
+                    ->store("teachers/{$profile->id}/pickups/{$childId}", 'local');
             }
 
             $log = ChildPickupLog::create([

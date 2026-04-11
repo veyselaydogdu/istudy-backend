@@ -25,14 +25,15 @@ class ClassManagementController extends BaseController
     /**
      * Sınıfa atanmış öğretmenleri listele
      */
-    public function classTeachers(int $schoolId, int $classId): JsonResponse
+    public function classTeachers(): JsonResponse
     {
         try {
-            $class = SchoolClass::where('id', $classId)
-                ->where('school_id', $schoolId)
-                ->firstOrFail();
+            $class = $this->resolveClass();
+            if (! $class) {
+                return $this->errorResponse('Sınıf bulunamadı.', 404);
+            }
 
-            $teacherList = $class->teachers()->with('user')->get();
+            $teacherList = $class->teachers()->withoutGlobalScope('tenant')->with('user')->get();
             $roleTypeIds = $teacherList->pluck('pivot.teacher_role_type_id')->filter()->unique();
             $roleTypeMap = $roleTypeIds->isNotEmpty()
                 ? TeacherRoleType::whereIn('id', $roleTypeIds)->get()->keyBy('id')
@@ -62,26 +63,44 @@ class ClassManagementController extends BaseController
     /**
      * Sınıfa öğretmen ata
      */
-    public function assignTeacher(Request $request, int $schoolId, int $classId): JsonResponse
+    public function assignTeacher(Request $request): JsonResponse
     {
         $request->validate([
             'teacher_profile_id' => ['required', 'exists:teacher_profiles,id'],
             'teacher_role_type_id' => ['required', 'exists:teacher_role_types,id'],
         ]);
 
+        $schoolId = $this->resolveSchoolId();
+        if (! $schoolId) {
+            return $this->errorResponse('Okul bulunamadı.', 404);
+        }
+
         try {
             DB::beginTransaction();
 
-            $class = SchoolClass::where('id', $classId)
-                ->where('school_id', $schoolId)
-                ->firstOrFail();
+            $class = $this->resolveClass($schoolId);
+            if (! $class) {
+                return $this->errorResponse('Sınıf bulunamadı.', 404);
+            }
 
-            $teacher = TeacherProfile::where('id', $request->teacher_profile_id)
+            $teacher = TeacherProfile::withoutGlobalScope('tenant')
+                ->where('id', $request->teacher_profile_id)
                 ->where(function ($q) use ($schoolId) {
                     $q->where('school_id', $schoolId)
                         ->orWhereHas('schools', fn ($s) => $s->where('schools.id', $schoolId));
                 })
                 ->firstOrFail();
+
+            $alreadyAssigned = DB::table('class_teacher_assignments')
+                ->where('class_id', $class->id)
+                ->where('teacher_profile_id', $teacher->id)
+                ->exists();
+
+            if ($alreadyAssigned) {
+                DB::rollBack();
+
+                return $this->errorResponse('Bu öğretmen zaten bu sınıfa atanmış.', 422);
+            }
 
             $class->teachers()->syncWithoutDetaching([
                 $teacher->id => ['teacher_role_type_id' => $request->teacher_role_type_id ?? null],
@@ -90,25 +109,30 @@ class ClassManagementController extends BaseController
             DB::commit();
 
             return $this->successResponse(null, 'Öğretmen sınıfa atandı.', 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            DB::rollBack();
+
+            return $this->errorResponse('Sınıf veya öğretmen bulunamadı.', 404);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ClassManagementController::assignTeacher Error: '.$e->getMessage());
 
-            return $this->errorResponse('Atama başarısız: '.$e->getMessage(), 500);
+            return $this->errorResponse('Atama başarısız.', 500);
         }
     }
 
     /**
      * Sınıftan öğretmeni çıkar
      */
-    public function removeTeacher(int $schoolId, int $classId, int $teacherProfileId): JsonResponse
+    public function removeTeacher(int $teacherProfileId): JsonResponse
     {
         try {
             DB::beginTransaction();
 
-            $class = SchoolClass::where('id', $classId)
-                ->where('school_id', $schoolId)
-                ->firstOrFail();
+            $class = $this->resolveClass();
+            if (! $class) {
+                return $this->errorResponse('Sınıf bulunamadı.', 404);
+            }
 
             $class->teachers()->detach($teacherProfileId);
 
@@ -128,57 +152,65 @@ class ClassManagementController extends BaseController
      * ?detailed=1 → Görev türü, istihdam tipi, aktiflik bilgisi de döner (okul detayı sekmesi için).
      * Hem eski school_id hem yeni school_teacher_assignments pivot desteklenir.
      */
-    public function schoolTeachers(Request $request, int $schoolId): JsonResponse
+    public function schoolTeachers(Request $request): JsonResponse
     {
         try {
+            $schoolId = $this->resolveSchoolId();
+            if (! $schoolId) {
+                return $this->errorResponse('Okul bulunamadı.', 404);
+            }
+
             $detailed = (bool) $request->query('detailed', false);
 
-            $teachers = TeacherProfile::with('user')
+            $teachers = TeacherProfile::withoutGlobalScope('tenant')->with('user')
                 ->where(function ($q) use ($schoolId) {
                     $q->where('school_id', $schoolId)
                         ->orWhereHas('schools', fn ($s) => $s->where('schools.id', $schoolId)->where('school_teacher_assignments.is_active', true));
                 })
                 ->get();
 
-            // Detailed modda pivot verisini direkt DB'den tek sorguda çek
-            $pivotMap = collect();
-            $roleTypeMap = collect();
+            $teacherIds = $teachers->pluck('id');
 
-            if ($detailed) {
-                $teacherIds = $teachers->pluck('id');
+            // Pivot verisi (employment type, role type, is_active)
+            $pivotMap = DB::table('school_teacher_assignments')
+                ->where('school_id', $schoolId)
+                ->whereIn('teacher_profile_id', $teacherIds)
+                ->get()
+                ->keyBy('teacher_profile_id');
 
-                $pivotMap = DB::table('school_teacher_assignments')
-                    ->where('school_id', $schoolId)
-                    ->whereIn('teacher_profile_id', $teacherIds)
-                    ->get()
-                    ->keyBy('teacher_profile_id');
+            $roleTypeIds = $pivotMap->pluck('teacher_role_type_id')->filter()->unique();
+            $roleTypeMap = $roleTypeIds->isNotEmpty()
+                ? TeacherRoleType::whereIn('id', $roleTypeIds)->get()->keyBy('id')
+                : collect();
 
-                $roleTypeIds = $pivotMap->pluck('teacher_role_type_id')->filter()->unique();
-                if ($roleTypeIds->isNotEmpty()) {
-                    $roleTypeMap = TeacherRoleType::whereIn('id', $roleTypeIds)
-                        ->get()
-                        ->keyBy('id');
-                }
-            }
+            // Bu okuldaki sınıf atamaları
+            $classMap = DB::table('class_teacher_assignments')
+                ->join('classes', 'classes.id', '=', 'class_teacher_assignments.class_id')
+                ->where('classes.school_id', $schoolId)
+                ->whereIn('class_teacher_assignments.teacher_profile_id', $teacherIds)
+                ->select('class_teacher_assignments.teacher_profile_id', 'classes.id as class_id', 'classes.name as class_name')
+                ->get()
+                ->groupBy('teacher_profile_id');
 
-            $result = $teachers->map(function ($t) use ($detailed, $pivotMap, $roleTypeMap) {
+            $result = $teachers->map(function ($t) use ($pivotMap, $roleTypeMap, $classMap) {
+                $pivot = $pivotMap->get($t->id);
+                $roleType = $pivot?->teacher_role_type_id
+                    ? $roleTypeMap->get($pivot->teacher_role_type_id)
+                    : null;
+
                 $base = [
                     'id' => $t->id,
                     'user_id' => $t->user_id,
                     'name' => trim(($t->user?->name ?? '').' '.($t->user?->surname ?? '')),
                     'title' => $t->title,
+                    'employment_type' => $pivot?->employment_type ?? $t->employment_type,
+                    'is_active' => (bool) ($pivot ? $pivot->is_active : true),
+                    'role_type' => $roleType ? ['id' => $roleType->id, 'name' => $roleType->name] : null,
+                    'classes' => ($classMap->get($t->id) ?? collect())->map(fn ($c) => [
+                        'id' => $c->class_id,
+                        'name' => $c->class_name,
+                    ])->values(),
                 ];
-
-                if ($detailed) {
-                    $pivot = $pivotMap->get($t->id);
-                    $roleType = $pivot?->teacher_role_type_id
-                        ? $roleTypeMap->get($pivot->teacher_role_type_id)
-                        : null;
-
-                    $base['employment_type'] = $pivot?->employment_type ?? $t->employment_type;
-                    $base['is_active'] = (bool) ($pivot ? $pivot->is_active : true);
-                    $base['role_type'] = $roleType ? ['id' => $roleType->id, 'name' => $roleType->name] : null;
-                }
 
                 return $base;
             });
@@ -192,9 +224,16 @@ class ClassManagementController extends BaseController
     }
 
     /**
-     * Okula öğretmen ata (school_teacher_assignments pivot)
+     * Okula öğretmen ata — devre dışı.
+     * Öğretmenler okula sadece davet/kabul akışı üzerinden katılabilir.
      */
     public function assignTeacherToSchool(Request $request, int $schoolId): JsonResponse
+    {
+        return $this->errorResponse('Öğretmenler okula doğrudan atanamaz. Davet gönderin veya katılma talebini onaylayın.', 405);
+    }
+
+    /** @deprecated */
+    private function _assignTeacherToSchool_disabled(Request $request, int $schoolId): JsonResponse
     {
         $data = $request->validate([
             'teacher_profile_id' => ['required', 'exists:teacher_profiles,id'],
@@ -230,9 +269,15 @@ class ClassManagementController extends BaseController
     }
 
     /**
-     * Okul-öğretmen atamasını kaldır
+     * Okul-öğretmen atamasını kaldır — devre dışı.
      */
     public function removeTeacherFromSchool(int $schoolId, int $teacherProfileId): JsonResponse
+    {
+        return $this->errorResponse('Bu işlem için üyelik kaldırma endpoint\'ini kullanın.', 405);
+    }
+
+    /** @deprecated */
+    private function _removeTeacherFromSchool_disabled(int $schoolId, int $teacherProfileId): JsonResponse
     {
         try {
             $teacher = TeacherProfile::where('id', $teacherProfileId)
@@ -258,16 +303,22 @@ class ClassManagementController extends BaseController
     /**
      * Sınıfa öğrenci ata (yaş aralığı kontrolü ile)
      */
-    public function assignChild(Request $request, int $schoolId, int $classId): JsonResponse
+    public function assignChild(Request $request): JsonResponse
     {
         $request->validate([
             'child_id' => ['required', 'integer', 'exists:children,id'],
         ]);
 
+        $schoolId = $this->resolveSchoolId();
+        if (! $schoolId) {
+            return $this->errorResponse('Okul bulunamadı.', 404);
+        }
+
         try {
-            $class = SchoolClass::where('id', $classId)
-                ->where('school_id', $schoolId)
-                ->firstOrFail();
+            $class = $this->resolveClass($schoolId);
+            if (! $class) {
+                return $this->errorResponse('Sınıf bulunamadı.', 404);
+            }
 
             if (! $class->is_active) {
                 return $this->errorResponse('Pasif sınıfa öğrenci ataması yapılamaz.', 422);
@@ -329,12 +380,13 @@ class ClassManagementController extends BaseController
     /**
      * Öğrenciyi sınıftan çıkar
      */
-    public function removeChild(int $schoolId, int $classId, int $childId): JsonResponse
+    public function removeChild(int $childId): JsonResponse
     {
         try {
-            $class = SchoolClass::where('id', $classId)
-                ->where('school_id', $schoolId)
-                ->firstOrFail();
+            $class = $this->resolveClass();
+            if (! $class) {
+                return $this->errorResponse('Sınıf bulunamadı.', 404);
+            }
 
             $class->children()->detach($childId);
 
@@ -355,8 +407,12 @@ class ClassManagementController extends BaseController
     /**
      * Sınıfın ihtiyaç listesini getir
      */
-    public function supplyList(int $schoolId, int $classId): JsonResponse
+    public function supplyList(): JsonResponse
     {
+        $schoolId = $this->resolveSchoolId();
+        $class = $this->resolveClass($schoolId);
+        $classId = $class?->id;
+
         try {
             $materials = \App\Models\Activity\Material::where('school_id', $schoolId)
                 ->where('class_id', $classId)
@@ -383,7 +439,7 @@ class ClassManagementController extends BaseController
     /**
      * İhtiyaç listesine yeni kalem ekle
      */
-    public function addSupplyItem(Request $request, int $schoolId, int $classId): JsonResponse
+    public function addSupplyItem(Request $request): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -391,6 +447,10 @@ class ClassManagementController extends BaseController
             'quantity' => ['nullable', 'integer', 'min:1'],
             'due_date' => ['nullable', 'date'],
         ]);
+
+        $schoolId = $this->resolveSchoolId();
+        $class = $this->resolveClass($schoolId);
+        $classId = $class?->id;
 
         try {
             DB::beginTransaction();
@@ -431,7 +491,7 @@ class ClassManagementController extends BaseController
     /**
      * İhtiyaç kalemi güncelle
      */
-    public function updateSupplyItem(Request $request, int $schoolId, int $classId, int $materialId): JsonResponse
+    public function updateSupplyItem(Request $request, string $schoolId, string $classId, int $materialId): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -440,10 +500,14 @@ class ClassManagementController extends BaseController
             'due_date' => ['nullable', 'date'],
         ]);
 
+        $resolvedSchoolId = $this->resolveSchoolId();
+        $class = $this->resolveClass($resolvedSchoolId);
+        $resolvedClassId = $class?->id;
+
         try {
             $material = \App\Models\Activity\Material::where('id', $materialId)
-                ->where('school_id', $schoolId)
-                ->where('class_id', $classId)
+                ->where('school_id', $resolvedSchoolId)
+                ->where('class_id', $resolvedClassId)
                 ->firstOrFail();
 
             $material->update([
@@ -473,12 +537,16 @@ class ClassManagementController extends BaseController
     /**
      * İhtiyaç kalemi sil
      */
-    public function deleteSupplyItem(int $schoolId, int $classId, int $materialId): JsonResponse
+    public function deleteSupplyItem(string $schoolId, string $classId, int $materialId): JsonResponse
     {
+        $resolvedSchoolId = $this->resolveSchoolId();
+        $class = $this->resolveClass($resolvedSchoolId);
+        $resolvedClassId = $class?->id;
+
         try {
             $material = \App\Models\Activity\Material::where('id', $materialId)
-                ->where('school_id', $schoolId)
-                ->where('class_id', $classId)
+                ->where('school_id', $resolvedSchoolId)
+                ->where('class_id', $resolvedClassId)
                 ->firstOrFail();
 
             $material->delete();
@@ -491,5 +559,48 @@ class ClassManagementController extends BaseController
 
             return $this->errorResponse('Silme başarısız.', 500);
         }
+    }
+
+    /**
+     * Route parametresinden okul ID'sini çöz (integer veya ULID destekler).
+     * Tenant sahipliği doğrulanır.
+     */
+    private function resolveSchoolId(): ?int
+    {
+        $param = request()->route('school_id');
+        if (! $param) {
+            return null;
+        }
+
+        $query = \App\Models\School\School::where('tenant_id', $this->user()->tenant_id);
+
+        $school = is_numeric($param)
+            ? $query->where('id', (int) $param)->first()
+            : $query->where('ulid', $param)->first();
+
+        return $school?->id;
+    }
+
+    /**
+     * Route parametresinden sınıf modelini çöz (integer veya ULID destekler).
+     * Okul ID belirtilmezse resolveSchoolId() ile otomatik çözülür.
+     */
+    private function resolveClass(?int $schoolId = null): ?SchoolClass
+    {
+        $schoolId ??= $this->resolveSchoolId();
+        if (! $schoolId) {
+            return null;
+        }
+
+        $param = request()->route('class_id');
+        if (! $param) {
+            return null;
+        }
+
+        $query = SchoolClass::where('school_id', $schoolId);
+
+        return is_numeric($param)
+            ? $query->where('id', (int) $param)->first()
+            : $query->where('ulid', $param)->first();
     }
 }

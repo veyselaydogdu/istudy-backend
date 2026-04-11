@@ -13,6 +13,7 @@ class TeacherTenantMembership extends Model
     protected $fillable = [
         'teacher_profile_id',
         'tenant_id',
+        'school_id',
         'status',
         'invite_type',
         'invited_by_user_id',
@@ -43,6 +44,11 @@ class TeacherTenantMembership extends Model
     public function invitedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by_user_id');
+    }
+
+    public function school(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(School::class, 'school_id');
     }
 
     /*

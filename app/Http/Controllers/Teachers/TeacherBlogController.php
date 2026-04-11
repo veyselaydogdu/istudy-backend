@@ -56,18 +56,18 @@ class TeacherBlogController extends BaseTeacherController
                 return $profile;
             }
 
-            $imagePath = null;
-            if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store("teacher-blogs/{$profile->id}", 'local');
-            }
-
             $post = TeacherBlogPost::create([
                 'teacher_profile_id' => $profile->id,
                 'title' => $request->title,
                 'description' => $request->description,
-                'image' => $imagePath,
+                'image' => null,
                 'published_at' => $request->published_at,
             ]);
+
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store("teachers/{$profile->id}/blogs/{$post->id}", 'local');
+                $post->update(['image' => $imagePath]);
+            }
 
             return $this->successResponse($this->formatPost($post), 'Blog yazısı oluşturuldu.', 201);
         } catch (\Throwable $e) {
@@ -103,7 +103,7 @@ class TeacherBlogController extends BaseTeacherController
                 if ($post->image) {
                     Storage::disk('local')->delete($post->image);
                 }
-                $data['image'] = $request->file('image')->store("teacher-blogs/{$profile->id}", 'local');
+                $data['image'] = $request->file('image')->store("teachers/{$profile->id}/blogs/{$post->id}", 'local');
             }
 
             $post->update($data);

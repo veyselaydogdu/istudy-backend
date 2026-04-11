@@ -1062,24 +1062,44 @@ $pivotMap = DB::table('school_teacher_assignments')
 - Özel (auth-protected) dosyalar için `Storage::disk('local')` kullan
 - `public` disk = `storage/app/public/` — `storage:link` ile web'e açılır
 
-**Signed URL Pattern (auth-protected dosya sunma):**
+**Signed URL Pattern — Auth + Signed kombinasyonu (2026-04-10 güncel):**
+
+> **KRİTİK:** Tüm medya serve route'ları `['auth:sanctum', 'signed']` middleware kombinasyonu kullanır.
+> Sadece `signed` yeterli değil — Google/bot'lar URL'yi ele geçirse dahi erişemez.
+
 ```php
-// 1. Dosyayı local diske kaydet (private klasör)
-$path = $request->file('photo')->store('children/photos', 'local');
+// 1. Dosyayı local diske kaydet (tenant/user bazlı klasör yapısında)
+$path = $request->file('photo')->store("parents/{$parentId}/children/{$childId}", 'local');
 
-// 2. Signed URL üret (1 saatlik)
-$signedUrl = URL::signedRoute('parent.child.photo', ['child' => $id], now()->addHours(1));
+// 2. Geçici imzalı URL üret
+$signedUrl = URL::temporarySignedRoute('parent.child.photo', now()->addHours(2), ['child' => $childModel->id]);
 
-// 3. Route: signed middleware, auth:sanctum OLMADAN (Image component header gönderemez)
-Route::get('/parent/children/{child}/photo', [ParentChildController::class, 'servePhoto'])
-    ->name('parent.child.photo')
-    ->middleware('signed');
+// 3. Route: auth:sanctum + signed — login olmadan 401, imza geçersizse 403
+Route::middleware(['auth:sanctum', 'signed'])->group(function () {
+    Route::get('/parent/children/{child}/photo', [ParentChildController::class, 'servePhoto'])
+        ->name('parent.child.photo');
+    // ... diğer tüm medya route'ları
+});
 
 // 4. Controller: stream et
 return Storage::disk('local')->response($childModel->profile_photo);
 ```
 
-**Avantaj:** Mobil `<Image source={{ uri: signedUrl }}>` — özel Authorization header gerekmez. URL'yi ele geçiren biri imzayı taklit edemez ve URL 1 saat sonra geçersiz olur. Her API çağrısında `ParentChildResource` taze signed URL üretir.
+**ÖNEMLİ — `BaseSchoolController` extends eden controller'lar için:**
+`serveLogo`, `serveImage` gibi auth dışı serve metodları BaseSchoolController'ı extend eden controller'da OLAMAZ.
+BaseSchoolController constructor'da `validateSchoolAccess()` çalışır → `$this->user()` → unauthenticated context'te 500 atar.
+**Çözüm:** `app/Http/Controllers/Media/` altında `Controller`'ı extend eden bağımsız controller oluştur.
+
+```php
+// YANLIŞ — ClassController BaseSchoolController'dan türüyor:
+public function serveLogo(SchoolClass $class) { ... } // 500 verir
+
+// DOĞRU — Bağımsız controller:
+namespace App\Http\Controllers\Media;
+class ClassLogoController extends Controller {
+    public function serve(SchoolClass $class): StreamedResponse { ... }
+}
+```
 
 ### 10.1g Docker PHP Opcache (KRİTİK)
 
@@ -2089,21 +2109,23 @@ $table->unique(['activity_class_id', 'child_id'], 'ace_unique_enrollment');
 
 **Kural:** Yeni pivot/junction tablo migration'ında FK/unique constraint isimlerini explicit kısa isimle yaz, özellikle tablo adı 25+ karakter olduğunda.
 
-### 18.6 Galeri — Private Storage + Signed URL
+### 18.6 Galeri — Private Storage + Auth:Sanctum + Signed URL
 
-Etkinlik sınıfı galeri fotoğrafları private storage'da saklanır, signed URL ile serve edilir:
+Etkinlik sınıfı galeri fotoğrafları private storage'da saklanır, **auth:sanctum + signed** kombinasyonu ile korunur:
 
 ```php
-// Kaydetme:
-$path = $request->file('image')->store("activity-classes/{$activityClass->id}/gallery", 'local');
+// Kaydetme (tenant bazlı klasör):
+$tenantId = $this->user()->tenant_id;
+$path = $request->file('image')->store("tenants/{$tenantId}/activity-classes/{$activityClass->id}/gallery", 'local');
 
 // Signed URL üretme (2 saatlik):
-URL::signedRoute('activity-class-gallery.serve', ['galleryItem' => $item->id], now()->addHours(2))
+URL::temporarySignedRoute('activity-class-gallery.serve', now()->addHours(2), ['galleryItem' => $item->id])
 
-// Route (auth header gerektirmez — signed middleware yeterli):
-Route::get('/activity-class-gallery/{galleryItem}/serve', [ActivityClassGalleryController::class, 'serve'])
-    ->name('activity-class-gallery.serve')
-    ->middleware('signed');
+// Route (auth:sanctum + signed — login zorunlu):
+Route::middleware(['auth:sanctum', 'signed'])->group(function () {
+    Route::get('/activity-class-gallery/{galleryItem}/serve', [ActivityClassGalleryController::class, 'serve'])
+        ->name('activity-class-gallery.serve');
+});
 ```
 
 ### 18.6 Etkinlik Fatura Sistemi (2026-03-27)
@@ -2310,5 +2332,168 @@ in_array(env('APP_ENV'), ['local', 'testing']) ? 'http://localhost:3002' : null,
 - Test factory'lerinde: `'ulid' => (string) Str::ulid()`
 - Controller'larda direkt `$model->id` kullanımı hâlâ geçerli (INT PK)
 - `ActivityClassEnrollment` plain `Model`'dan türer — `HasUlid` eklenmedi (pivot niteliğinde)
+
+---
+
+## 19. Private Storage Klasör Yapısı & Medya Güvenliği (2026-04-10)
+
+### 19.1 Klasör Yapısı
+
+Tüm yüklenen dosyalar `Storage::disk('local')` = `storage/app/private/` altına **kullanıcı/tenant bazlı** klasörlenmiş şekilde kaydedilir. Hiçbir medya doğrudan web'e açık değildir.
+
+```
+storage/app/private/
+├── tenants/{tenantId}/
+│   ├── class-logos/                        ← Sınıf logoları
+│   │   └── {uuid}.jpg
+│   ├── activities/{activityId}/
+│   │   └── gallery/                        ← Etkinlik galerisi
+│   │       └── {uuid}.jpg
+│   └── activity-classes/{actClassId}/
+│       └── gallery/                        ← Etkinlik sınıfı galerisi
+│           └── {uuid}.jpg
+│
+├── parents/{parentId}/
+│   └── children/{childId}/                 ← Çocuk profil fotoğrafları
+│       └── {uuid}.jpg
+│
+└── teachers/{teacherId}/
+    ├── blogs/{blogId}/                     ← Öğretmen blog görselleri
+    │   └── {uuid}.jpg
+    └── pickups/{childId}/                  ← Teslim fotoğrafları
+        └── {uuid}.jpg
+
+storage/app/public/
+└── (artık medya yok — sosyal postlar da local'e taşındı)
+```
+
+**Sosyal post medyaları** da `storage/app/private/` altında:
+```
+storage/app/private/{tenantId}/social/{schoolId}/{postId}/{uuid}.jpg
+```
+
+### 19.2 Upload Kod Patternleri
+
+```php
+// Sınıf logosu (ClassController)
+$tenantId = $this->user()->tenant_id;
+$path = $request->file('logo')->store("tenants/{$tenantId}/class-logos", 'local');
+
+// Etkinlik galerisi (ActivityController)
+$tenantId = $this->user()->tenant_id;
+$path = $file->store("tenants/{$tenantId}/activities/{$activity->id}/gallery", 'local');
+
+// Etkinlik sınıfı galerisi (ActivityClassGalleryController, TenantActivityClassController)
+$tenantId = $this->user()->tenant_id;
+$path = $file->store("tenants/{$tenantId}/activity-classes/{$activityClass->id}/gallery", 'local');
+
+// Çocuk profil fotoğrafı (ParentChildController)
+$parentId = $this->user()->id;
+$path = $request->file('photo')->store("parents/{$parentId}/children/{$childModel->id}", 'local');
+
+// Öğretmen blog görseli (TeacherBlogController)
+// NOT: store() sırasında post ID yok → önce post oluştur, sonra kaydet
+$post = TeacherBlogPost::create([...]); // image=null
+$imagePath = $request->file('image')->store("teachers/{$profile->id}/blogs/{$post->id}", 'local');
+$post->update(['image' => $imagePath]);
+
+// Teslim fotoğrafı (TeacherPickupController)
+$photoPath = $request->file('picked_by_photo')
+    ->store("teachers/{$profile->id}/pickups/{$childId}", 'local');
+
+// Sosyal post medyası (SocialPostService)
+$tenantId = $post->tenant_id;
+$path = Storage::disk('local')->putFile("{$tenantId}/social/{$post->school_id}/{$post->id}", $file);
+```
+
+### 19.3 Medya Serve Route'ları
+
+Tüm medya route'ları `['auth:sanctum', 'signed']` middleware kombinasyonu ile korunur:
+
+```php
+Route::middleware(['auth:sanctum', 'signed'])->group(function () {
+    Route::get('/parent/children/{child}/photo', [..., 'servePhoto'])
+        ->name('parent.child.photo');
+
+    Route::get('/activity-class-gallery/{galleryItem}/serve', [..., 'serve'])
+        ->name('activity-class-gallery.serve');
+
+    Route::get('/activity-gallery/{galleryItem}/serve', [..., 'serveGalleryItem'])
+        ->name('activity-gallery.serve');
+
+    Route::get('/parent/activity-gallery/{galleryItem}/serve', [..., 'serveGalleryItem'])
+        ->name('parent.activity-gallery.serve');
+
+    Route::get('/teacher/blogs/{id}/image', [..., 'serveImage'])
+        ->name('teacher.blog.image');
+
+    Route::get('/class-logo/{class}', [\App\Http\Controllers\Media\ClassLogoController::class, 'serve'])
+        ->name('class.logo');
+
+    Route::get('/social-media/{media}/serve', [\App\Http\Controllers\Media\SocialMediaController::class, 'serve'])
+        ->name('social-media.serve');
+});
+```
+
+### 19.4 Signed URL Üretimi (Resource'larda)
+
+```php
+// SchoolClassResource
+'logo_url' => $this->logo
+    ? URL::temporarySignedRoute('class.logo', now()->addHours(2), ['class' => $this->ulid])
+    : null,
+
+// ActivityClassGalleryController::formatGalleryItem()
+'url' => URL::temporarySignedRoute('activity-class-gallery.serve', now()->addHour(), ['galleryItem' => $item->id]),
+
+// SocialPostMediaResource
+'url' => URL::temporarySignedRoute('social-media.serve', now()->addHours(2), ['media' => $this->id]),
+```
+
+### 19.5 Frontend (Next.js) — AuthImg Bileşeni
+
+Signed URL'ler `auth:sanctum` gerektirdiğinden `<img src={url}>` ÇALIŞMAZ (auth header göndermez).
+
+**Çözüm:** `components/AuthImg.tsx` + `hooks/useAuthImage.ts`:
+
+```tsx
+// AuthImg: apiClient (Bearer token) ile blob URL çeker
+<AuthImg
+    src={cls.logo_url}
+    alt="logo"
+    className="h-10 w-10 rounded-xl object-cover"
+    fallback={<span>...</span>}
+/>
+```
+
+```ts
+// useAuthImage hook — manuel kullanım için
+const blobSrc = useAuthImage(signedUrl) // → blob: URL veya null
+```
+
+**apiClient (lib/apiClient.ts) otomatik Content-Type temizleme:**
+```ts
+// FormData gönderimlerinde Content-Type: application/json silinir
+// Aksi hâlde multipart boundary eksik → PHP dosyayı parse edemez → 422
+if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+}
+```
+
+### 19.6 Medya Controller'ı Bağımsızlık Kuralı
+
+`BaseSchoolController` extend eden controller'larda **auth dışı** serve metodu yazılamaz:
+- Constructor'da `validateSchoolAccess()` → `$this->user()` çağırır → unauthenticated → 500
+
+**Çözüm:** `app/Http/Controllers/Media/` altında `Controller`'ı extend eden bağımsız controller yaz:
+- `ClassLogoController` — sınıf logosu
+- `SocialMediaController` — sosyal post medyası
+
+### 19.7 Mobil Uygulama (React Native)
+
+React Native `<Image>` komponenti auth header gönderemez. Çözüm:
+- `expo-image` kullan + `headers={{ Authorization: 'Bearer ...' }}` prop'unu geç
+- VEYA mobil için ayrı unsigned endpoint (risk: URL paylaşılabilir)
+- Mevcut durumda mobil için signed URL `auth:sanctum` **gerektirmez** — sonraki adım
 
 > 📝 **Not:** Bu dosya proje geliştikçe güncellenmelidir. Her yeni modül, migration veya mimari değişiklikte bu dosyanın güncellenmesi önerilir.

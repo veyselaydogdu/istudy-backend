@@ -132,6 +132,9 @@ export type SchoolClass = {
     age_max?: number
     capacity?: number
     color?: string
+    icon?: string | null
+    logo?: string | null
+    logo_url?: string | null
     is_active?: boolean
     children_count?: number
     teachers_count?: number
@@ -204,6 +207,7 @@ export type Meal = {
     school_id: number
     name: string
     meal_type?: string
+    photo_url?: string | null
     ingredients?: { id: number; name: string; allergens?: { id: number; name: string }[] }[]
 }
 
@@ -431,6 +435,7 @@ export type SchoolTeacher = {
     employment_type?: string
     is_active: boolean
     role_type?: { id: number; name: string } | null
+    classes?: Array<{ id: number; name: string }>
 }
 
 // ─── Enrollment Request (Veli Kayıt Talebi) ──────────────────────────────────

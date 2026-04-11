@@ -24,10 +24,15 @@ class SchoolParentController extends BaseController
      * Okuldaki velileri ve çocuklarını listele
      * GET /schools/{school_id}/parents
      */
-    public function index(int $schoolId): JsonResponse
+    public function index(): JsonResponse
     {
         try {
-            $parents = $this->service->parentsForSchool($schoolId);
+            $school = $this->resolveSchool();
+            if (! $school) {
+                return $this->errorResponse('Okul bulunamadı.', 404);
+            }
+
+            $parents = $this->service->parentsForSchool($school->id);
 
             $result = $parents->through(fn ($fp) => [
                 'id' => $fp->id,
@@ -56,12 +61,13 @@ class SchoolParentController extends BaseController
      * Okul davet bilgisini getir (kayıt kodu + davet linki)
      * GET /schools/{school_id}/invite-info
      */
-    public function inviteInfo(int $schoolId): JsonResponse
+    public function inviteInfo(): JsonResponse
     {
         try {
-            $school = School::where('id', $schoolId)
-                ->where('tenant_id', $this->user()->tenant_id)
-                ->firstOrFail();
+            $school = $this->resolveSchool();
+            if (! $school) {
+                return $this->errorResponse('Okul bulunamadı.', 404);
+            }
 
             // invite_token yoksa oluştur
             if (! $school->invite_token) {
@@ -79,8 +85,6 @@ class SchoolParentController extends BaseController
                 'registration_code' => $school->registration_code,
                 'invite_token' => $school->invite_token,
             ], 'Davet bilgisi.');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
-            return $this->errorResponse('Okul bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('SchoolParentController::inviteInfo Error: '.$e->getMessage());
 
@@ -92,12 +96,13 @@ class SchoolParentController extends BaseController
      * Davet tokenini yenile (eski link geçersiz olur)
      * POST /schools/{school_id}/invite/regenerate
      */
-    public function regenerateInvite(int $schoolId): JsonResponse
+    public function regenerateInvite(): JsonResponse
     {
         try {
-            $school = School::where('id', $schoolId)
-                ->where('tenant_id', $this->user()->tenant_id)
-                ->firstOrFail();
+            $school = $this->resolveSchool();
+            if (! $school) {
+                return $this->errorResponse('Okul bulunamadı.', 404);
+            }
 
             $newToken = $school->regenerateInviteToken();
 
@@ -105,12 +110,24 @@ class SchoolParentController extends BaseController
                 'registration_code' => $school->registration_code,
                 'invite_token' => $newToken,
             ], 'Davet linki yenilendi.');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
-            return $this->errorResponse('Okul bulunamadı.', 404);
         } catch (\Throwable $e) {
             Log::error('SchoolParentController::regenerateInvite Error: '.$e->getMessage());
 
             return $this->errorResponse('Davet yenilenirken hata oluştu.', 500);
         }
+    }
+
+    private function resolveSchool(): ?School
+    {
+        $param = request()->route('school_id');
+        if (! $param) {
+            return null;
+        }
+
+        $query = School::where('tenant_id', $this->user()->tenant_id);
+
+        return is_numeric($param)
+            ? $query->where('id', (int) $param)->first()
+            : $query->where('ulid', $param)->first();
     }
 }

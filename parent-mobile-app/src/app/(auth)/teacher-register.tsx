@@ -267,12 +267,21 @@ export default function TeacherRegisterScreen() {
       Alert.alert('Hata', 'Geçerli bir telefon numarası giriniz.');
       return;
     }
-    if (password.length < 8) {
+    const strength = calcStrength(password);
+    if (!strength.hasLength) {
       Alert.alert('Hata', 'Şifre en az 8 karakter olmalıdır.');
       return;
     }
+    if (!strength.hasUpper) {
+      Alert.alert('Hata', 'Şifre en az 1 büyük harf içermelidir.');
+      return;
+    }
+    if (!strength.hasSpecial) {
+      Alert.alert('Hata', 'Şifre en az 1 özel karakter içermelidir (!@#$%...).');
+      return;
+    }
     if (password !== passwordConfirmation) {
-      Alert.alert('Hata', 'Şifreler eşleşmiyor.');
+      Alert.alert('Hata', 'Şifre tekrarı eşleşmiyor.');
       return;
     }
 
@@ -407,6 +416,7 @@ export default function TeacherRegisterScreen() {
             <View style={styles.inputWrap}>
               <Text style={styles.label}>Şifre *</Text>
               <View style={styles.passwordWrap}>
+                <Ionicons name="lock-closed-outline" size={17} color="#9CA3AF" style={styles.inputIcon} />
                 <TextInput
                   style={styles.passwordInput}
                   placeholder="En az 8 karakter"
@@ -419,28 +429,45 @@ export default function TeacherRegisterScreen() {
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
+                    size={17}
                     color="#9CA3AF"
                   />
                 </TouchableOpacity>
               </View>
+              <PasswordStrengthBar password={password} />
             </View>
 
             {/* Şifre Tekrar */}
             <View style={styles.inputWrap}>
               <Text style={styles.label}>Şifre Tekrar *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Şifrenizi tekrar girin"
-                placeholderTextColor="#9CA3AF"
-                value={passwordConfirmation}
-                onChangeText={setPasswordConfirmation}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
+              <View style={[
+                styles.passwordWrap,
+                passwordConfirmation.length > 0 && {
+                  borderColor: password === passwordConfirmation ? '#10B981' : '#EF4444',
+                },
+              ]}>
+                <Ionicons name="lock-closed-outline" size={17} color="#9CA3AF" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Şifrenizi tekrar girin"
+                  placeholderTextColor="#9CA3AF"
+                  value={passwordConfirmation}
+                  onChangeText={setPasswordConfirmation}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                {passwordConfirmation.length > 0 && (
+                  <Ionicons
+                    name={password === passwordConfirmation ? 'checkmark-circle' : 'close-circle'}
+                    size={17}
+                    color={password === passwordConfirmation ? '#10B981' : '#EF4444'}
+                  />
+                )}
+              </View>
             </View>
 
             <TouchableOpacity
@@ -521,15 +548,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    gap: 9,
   },
+  inputIcon: { flexShrink: 0 },
   passwordInput: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
     fontSize: 15,
     color: '#1F2937',
+    padding: 0,
   },
-  eyeBtn: { paddingHorizontal: 14 },
+  eyeBtn: {},
   phoneRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   countryBtn: {
     flexDirection: 'row',

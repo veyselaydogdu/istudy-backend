@@ -25,6 +25,7 @@ class SchoolClass extends BaseModel
         'age_max',
         'color',
         'logo',
+        'icon',
         'capacity',
         'is_active',
         'created_by',
@@ -35,6 +36,23 @@ class SchoolClass extends BaseModel
         'is_active' => 'boolean',
         'ulid' => 'string',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Route Model Binding
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Hybrid ULID + integer ID binding: frontend ULID geçerse ULID'ye,
+     * eski integer ID geçerse integer'a göre bulur.
+     */
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        return $this->where('ulid', $value)
+            ->when(is_numeric($value), fn ($q) => $q->orWhere('id', (int) $value))
+            ->first();
+    }
 
     /*
     |--------------------------------------------------------------------------

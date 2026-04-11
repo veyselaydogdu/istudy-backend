@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Schools;
 use App\Http\Requests\Activity\StoreActivityRequest;
 use App\Http\Requests\Activity\UpdateActivityRequest;
 use App\Http\Resources\ActivityResource;
+use App\Models\Academic\SchoolClass;
 use App\Models\Activity\Activity;
 use App\Models\Activity\ActivityEnrollment;
 use App\Models\Activity\ActivityGalleryItem;
@@ -63,7 +64,7 @@ class ActivityController extends BaseSchoolController
             $activity = $this->service->create($request->validated());
 
             if ($request->has('class_ids')) {
-                $activity->classes()->sync($request->class_ids ?? []);
+                $activity->classes()->sync($this->resolveClassIds($request->class_ids ?? []));
             }
 
             DB::commit();
@@ -130,7 +131,7 @@ class ActivityController extends BaseSchoolController
             $updatedActivity = $this->service->update($activity, $validated);
 
             if ($request->has('class_ids')) {
-                $updatedActivity->classes()->sync($request->class_ids ?? []);
+                $updatedActivity->classes()->sync($this->resolveClassIds($request->class_ids ?? []));
             }
 
             // Ücretli → ücretsiz geçişinde tüm aktif faturaları işle
@@ -282,7 +283,8 @@ class ActivityController extends BaseSchoolController
                 default => 'document',
             };
 
-            $path = $file->store("activities/{$activity->id}/gallery", 'local');
+            $tenantId = $this->user()->tenant_id;
+            $path = $file->store("tenants/{$tenantId}/activities/{$activity->id}/gallery", 'local');
 
             $item = $activity->gallery()->create([
                 'file_path' => $path,
@@ -337,5 +339,24 @@ class ActivityController extends BaseSchoolController
             'url' => URL::signedRoute('activity-gallery.serve', ['galleryItem' => $item->id], now()->addHours(2)),
             'created_at' => $item->created_at,
         ];
+    }
+
+    /**
+     * ULID veya integer class ID listesini integer PK listesine çevirir.
+     *
+     * @param  array<int|string>  $rawIds
+     * @return array<int>
+     */
+    private function resolveClassIds(array $rawIds): array
+    {
+        $ulids = array_filter($rawIds, fn ($id) => ! is_numeric($id));
+        $integers = array_values(array_filter($rawIds, fn ($id) => is_numeric($id)));
+
+        if (! empty($ulids)) {
+            $resolved = SchoolClass::whereIn('ulid', $ulids)->pluck('id')->toArray();
+            $integers = array_merge($integers, $resolved);
+        }
+
+        return array_map('intval', $integers);
     }
 }

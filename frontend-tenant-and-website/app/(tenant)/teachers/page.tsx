@@ -34,6 +34,7 @@ type JoinRequest = {
     teacher_profile_id: number;
     name: string;
     email: string;
+    phone: string | null;
     specialization: string | null;
     experience_years: number | null;
     sent_at: string;
@@ -90,12 +91,6 @@ export default function TeachersPage() {
     const [updateForm, setUpdateForm] = useState<UpdateForm>(emptyUpdate);
     const [saving, setSaving] = useState(false);
 
-    const [assignTeacher, setAssignTeacher] = useState<TeacherWithMembership | null>(null);
-    const [schools, setSchools] = useState<School[]>([]);
-    const [assignedSchools, setAssignedSchools] = useState<{ id: number; name: string; is_active: boolean; role_type?: { id: number; name: string } | null }[]>([]);
-    const [assignSchoolId, setAssignSchoolId] = useState('');
-    const [assignRoleTypeId, setAssignRoleTypeId] = useState('');
-    const [assigningSchool, setAssigningSchool] = useState(false);
 
     const [countries, setCountries] = useState<Country[]>([]);
 
@@ -107,7 +102,6 @@ export default function TeachersPage() {
     // ── Katılma Talepleri ─────────────────────────────────────
     const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
     const [loadingRequests, setLoadingRequests] = useState(false);
-    const [requestsFetched, setRequestsFetched] = useState(false);
 
     // ── Görev Türleri ─────────────────────────────────────────
     const [roleTypes, setRoleTypes] = useState<TeacherRoleType[]>([]);
@@ -134,7 +128,6 @@ export default function TeachersPage() {
         try {
             const res = await apiClient.get('/teachers/join-requests');
             setJoinRequests(res.data?.data ?? []);
-            setRequestsFetched(true);
         } catch { toast.error('Katılma talepleri yüklenemedi.'); }
         finally { setLoadingRequests(false); }
     }, []);
@@ -148,12 +141,6 @@ export default function TeachersPage() {
         finally { setLoadingRoleTypes(false); }
     }, []);
 
-    const fetchSchools = useCallback(async () => {
-        try {
-            const res = await apiClient.get('/schools');
-            setSchools(res.data?.data ?? []);
-        } catch { /* sessiz */ }
-    }, []);
 
     const fetchCountries = useCallback(async () => {
         try {
@@ -163,14 +150,9 @@ export default function TeachersPage() {
     }, []);
 
     useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
+    useEffect(() => { fetchJoinRequests(); }, [fetchJoinRequests]);
     useEffect(() => { fetchRoleTypes(); }, [fetchRoleTypes]);
     useEffect(() => { fetchCountries(); }, [fetchCountries]);
-
-    useEffect(() => {
-        if (activeTab === 'join-requests' && !requestsFetched) {
-            fetchJoinRequests();
-        }
-    }, [activeTab, requestsFetched, fetchJoinRequests]);
 
     // ── Davet ─────────────────────────────────────────────────
     const handleInvite = async (e: React.FormEvent) => {
@@ -294,47 +276,6 @@ export default function TeachersPage() {
         }
     };
 
-    // ── Okul Atama ────────────────────────────────────────────
-    const openAssign = async (t: TeacherWithMembership) => {
-        setAssignTeacher(t);
-        setAssignSchoolId('');
-        setAssignRoleTypeId('');
-        fetchSchools();
-        try {
-            const res = await apiClient.get(`/teachers/${t.id}/schools`);
-            setAssignedSchools(res.data?.data ?? []);
-        } catch { setAssignedSchools([]); }
-    };
-
-    const handleAssignSchool = async () => {
-        if (!assignTeacher || !assignSchoolId) { toast.error('Lütfen bir okul seçin.'); return; }
-        setAssigningSchool(true);
-        try {
-            await apiClient.post(`/teachers/${assignTeacher.id}/schools`, {
-                school_id: Number(assignSchoolId),
-            });
-            toast.success('Öğretmen okula atandı.');
-            const res = await apiClient.get(`/teachers/${assignTeacher.id}/schools`);
-            setAssignedSchools(res.data?.data ?? []);
-            setAssignSchoolId('');
-            fetchTeachers();
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Atama başarısız.');
-        } finally { setAssigningSchool(false); }
-    };
-
-    const handleRemoveSchool = async (schoolId: number) => {
-        if (!assignTeacher) { return; }
-        try {
-            await apiClient.delete(`/teachers/${assignTeacher.id}/schools/${schoolId}`);
-            toast.success('Öğretmen okuldan çıkarıldı.');
-            setAssignedSchools(prev => prev.filter(s => s.id !== schoolId));
-            fetchTeachers();
-        } catch { toast.error('İşlem başarısız.'); }
-    };
-
-    const availableSchools = schools.filter(s => !assignedSchools.some(a => a.id === s.id));
 
     // ── Katılma Talepleri ─────────────────────────────────────
     const handleApproveRequest = async (req: JoinRequest) => {
@@ -459,7 +400,7 @@ export default function TeachersPage() {
                     onClick={() => setActiveTab('join-requests')}
                 >
                     <UserCheck className="h-4 w-4" />Katılma Talepleri
-                    {requestsFetched && joinRequests.length > 0 && (
+                    {joinRequests.length > 0 && (
                         <span className="ml-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs text-warning">{joinRequests.length}</span>
                     )}
                 </button>
@@ -514,9 +455,18 @@ export default function TeachersPage() {
                                     {teachers.map(t => (
                                         <tr key={t.id}>
                                             <td>
-                                                <div>
+                                                <div className="flex flex-col gap-0.5">
                                                     <p className="font-semibold text-dark dark:text-white">{t.name}</p>
-                                                    <p className="text-xs text-[#888ea8]">{t.email}</p>
+                                                    {t.email && (
+                                                        <span className="flex items-center gap-1 text-xs text-[#888ea8]">
+                                                            <Mail className="h-3 w-3 shrink-0" />{t.email}
+                                                        </span>
+                                                    )}
+                                                    {t.phone && (
+                                                        <span className="flex items-center gap-1 text-xs text-[#888ea8]">
+                                                            <Phone className="h-3 w-3 shrink-0" />{t.phone}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td>
@@ -555,9 +505,6 @@ export default function TeachersPage() {
                                                 <div className="flex gap-1">
                                                     <button type="button" title="Görüntüle" className="btn btn-sm btn-outline-primary p-2" onClick={() => openDetail(t)}>
                                                         <Eye className="h-4 w-4" />
-                                                    </button>
-                                                    <button type="button" title="Okul Ata" className="btn btn-sm btn-outline-info p-2" onClick={() => openAssign(t)}>
-                                                        <Building2 className="h-4 w-4" />
                                                     </button>
                                                     {t.membership_status === 'inactive' ? (
                                                         <button type="button" title="Aktif Et" className="btn btn-sm btn-outline-success p-2" onClick={() => handleActivate(t)}>
@@ -609,6 +556,7 @@ export default function TeachersPage() {
                                 <thead>
                                     <tr>
                                         <th>Ad Soyad</th>
+                                        <th>İletişim</th>
                                         <th>Uzmanlık</th>
                                         <th>Tecrübe</th>
                                         <th>Talep Tarihi</th>
@@ -619,9 +567,18 @@ export default function TeachersPage() {
                                     {joinRequests.map(req => (
                                         <tr key={req.id}>
                                             <td>
-                                                <div>
-                                                    <p className="font-semibold text-dark dark:text-white">{req.name}</p>
-                                                    <p className="text-xs text-[#888ea8]">{req.email}</p>
+                                                <p className="font-semibold text-dark dark:text-white">{req.name}</p>
+                                            </td>
+                                            <td>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="flex items-center gap-1 text-sm text-[#506690]">
+                                                        <Mail className="h-3.5 w-3.5 shrink-0" />{req.email}
+                                                    </span>
+                                                    {req.phone && (
+                                                        <span className="flex items-center gap-1 text-sm text-[#506690]">
+                                                            <Phone className="h-3.5 w-3.5 shrink-0" />{req.phone}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="text-sm">{req.specialization ?? '—'}</td>
@@ -838,66 +795,6 @@ export default function TeachersPage() {
                 </div>
             )}
 
-            {/* ── Okul Atama Modal ─────────────────────────────────── */}
-            {assignTeacher && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">
-                                Okul Atamaları — {assignTeacher.name}
-                            </h2>
-                            <button type="button" onClick={() => setAssignTeacher(null)} className="text-[#888ea8] hover:text-danger">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="mb-4">
-                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Atanmış Okullar</p>
-                            {assignedSchools.length === 0 ? (
-                                <p className="text-sm text-[#888ea8]">Henüz okul atanmamış.</p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {assignedSchools.map(s => (
-                                        <div key={s.id} className="flex items-center justify-between rounded border border-[#ebedf2] p-2 dark:border-[#1b2e4b]">
-                                            <div className="flex items-center gap-2">
-                                                <BookOpen className="h-4 w-4 text-primary" />
-                                                <div>
-                                                    <span className="text-sm font-medium">{s.name}</span>
-                                                    {s.role_type && <span className="ml-2 rounded-full bg-info/10 px-2 py-0.5 text-xs text-info">{s.role_type.name}</span>}
-                                                </div>
-                                            </div>
-                                            <button type="button" className="btn btn-sm btn-outline-danger p-1" onClick={() => handleRemoveSchool(s.id)}>
-                                                <X className="h-3.5 w-3.5" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {availableSchools.length > 0 && (
-                            <div className="space-y-3">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Okul Ekle</p>
-                                <select className="form-select w-full" value={assignSchoolId} onChange={e => setAssignSchoolId(e.target.value)}>
-                                    <option value="">— Okul seçin —</option>
-                                    {availableSchools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
-                                <button type="button" className="btn btn-primary w-full" disabled={!assignSchoolId || assigningSchool} onClick={handleAssignSchool}>
-                                    {assigningSchool ? 'Atanıyor...' : 'Okula Ata'}
-                                </button>
-                            </div>
-                        )}
-
-                        {availableSchools.length === 0 && assignedSchools.length > 0 && (
-                            <p className="text-xs text-[#888ea8]">Tüm okullar atanmış durumda.</p>
-                        )}
-
-                        <div className="mt-4">
-                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setAssignTeacher(null)}>Kapat</button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* ── Görev Türü Oluştur Modal ──────────────────────────── */}
             {showCreateRole && (

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Schools;
 
 use App\Http\Resources\MealMenuScheduleResource;
+use App\Models\Academic\SchoolClass;
 use App\Services\MealMenuService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class MealMenuController extends BaseSchoolController
                 MealMenuScheduleResource::collection($schedules)->resource
             );
         } catch (\Throwable $e) {
-            Log::error('Yemek menüsü listeleme hatası: ' . $e->getMessage());
+            Log::error('Yemek menüsü listeleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Menü listelenirken bir hata oluştu.', 500);
         }
@@ -47,17 +48,17 @@ class MealMenuController extends BaseSchoolController
      */
     public function daily(Request $request): JsonResponse
     {
-        try {
-            $request->validate([
-                'school_id' => 'required|exists:schools,id',
-                'date' => 'required|date',
-                'class_id' => 'nullable|exists:classes,id',
-            ]);
+        $request->validate([
+            'school_id' => 'required|string',
+            'date' => 'required|date',
+            'class_id' => 'nullable|string',
+        ]);
 
+        try {
             $menu = $this->service->getMenuForDate(
-                $request->school_id,
+                $this->school->id,
                 $request->date,
-                $request->class_id
+                $this->resolveClassId($request->class_id)
             );
 
             return $this->successResponse(
@@ -65,7 +66,7 @@ class MealMenuController extends BaseSchoolController
                 'Günlük menü getirildi.'
             );
         } catch (\Throwable $e) {
-            Log::error('Günlük menü hatası: ' . $e->getMessage());
+            Log::error('Günlük menü hatası: '.$e->getMessage());
 
             return $this->errorResponse('Menü getirilirken bir hata oluştu.', 500);
         }
@@ -76,22 +77,22 @@ class MealMenuController extends BaseSchoolController
      */
     public function weekly(Request $request): JsonResponse
     {
-        try {
-            $request->validate([
-                'school_id' => 'required|exists:schools,id',
-                'start_date' => 'required|date',
-                'class_id' => 'nullable|exists:classes,id',
-            ]);
+        $request->validate([
+            'school_id' => 'required|string',
+            'start_date' => 'required|date',
+            'class_id' => 'nullable|string',
+        ]);
 
+        try {
             $menu = $this->service->getWeeklyMenu(
-                $request->school_id,
+                $this->school->id,
                 $request->start_date,
-                $request->class_id
+                $this->resolveClassId($request->class_id)
             );
 
             return $this->successResponse($menu, 'Haftalık menü getirildi.');
         } catch (\Throwable $e) {
-            Log::error('Haftalık menü hatası: ' . $e->getMessage());
+            Log::error('Haftalık menü hatası: '.$e->getMessage());
 
             return $this->errorResponse('Menü getirilirken bir hata oluştu.', 500);
         }
@@ -102,24 +103,28 @@ class MealMenuController extends BaseSchoolController
      */
     public function monthly(Request $request): JsonResponse
     {
-        try {
-            $request->validate([
-                'school_id' => 'required|exists:schools,id',
-                'year' => 'required|integer|min:2020',
-                'month' => 'required|integer|min:1|max:12',
-                'class_id' => 'nullable|exists:classes,id',
-            ]);
+        $request->validate([
+            'school_id' => 'required|string',
+            'year' => 'required|integer|min:2020',
+            'month' => 'required|integer|min:1|max:12',
+            'class_id' => 'nullable|string',
+        ]);
 
+        try {
             $menu = $this->service->getMonthlyMenu(
-                $request->school_id,
+                $this->school->id,
                 $request->year,
                 $request->month,
-                $request->class_id
+                $this->resolveClassId($request->class_id)
             );
 
-            return $this->successResponse($menu, 'Aylık menü getirildi.');
+            // Return flat array (frontend filters by menu_date client-side)
+            return $this->successResponse(
+                MealMenuScheduleResource::collection($menu->flatten()->values()),
+                'Aylık menü getirildi.'
+            );
         } catch (\Throwable $e) {
-            Log::error('Aylık menü hatası: ' . $e->getMessage());
+            Log::error('Aylık menü hatası: '.$e->getMessage());
 
             return $this->errorResponse('Menü getirilirken bir hata oluştu.', 500);
         }
@@ -130,20 +135,23 @@ class MealMenuController extends BaseSchoolController
      */
     public function store(Request $request): JsonResponse
     {
+        $request->validate([
+            'school_id' => 'required|string',
+            'class_id' => 'nullable|string',
+            'meal_id' => 'required|exists:meals,id',
+            'menu_date' => 'required|date',
+            'schedule_type' => 'required|in:daily,weekly,monthly',
+        ]);
+
         DB::beginTransaction();
         try {
-            $request->validate([
-                'school_id' => 'required|exists:schools,id',
-                'class_id' => 'nullable|exists:classes,id',
-                'meal_id' => 'required|exists:meals,id',
-                'menu_date' => 'required|date',
-                'schedule_type' => 'required|in:daily,weekly,monthly',
-            ]);
-
-            $data = $request->all();
+            $data = $request->only(['meal_id', 'menu_date', 'schedule_type']);
+            $data['school_id'] = $this->school->id;
+            $data['class_id'] = $this->resolveClassId($request->class_id);
             $data['created_by'] = $this->user()->id;
 
             $schedule = $this->service->create($data);
+            $schedule->load('meal.ingredients.allergens');
 
             DB::commit();
 
@@ -154,7 +162,7 @@ class MealMenuController extends BaseSchoolController
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Menü ekleme hatası: ' . $e->getMessage());
+            Log::error('Menü ekleme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Menü eklenirken bir hata oluştu.', 500);
         }
@@ -165,18 +173,22 @@ class MealMenuController extends BaseSchoolController
      */
     public function bulkStore(Request $request): JsonResponse
     {
+        $request->validate([
+            'schedules' => 'required|array|min:1',
+            'schedules.*.school_id' => 'required|string',
+            'schedules.*.class_id' => 'nullable|string',
+            'schedules.*.meal_id' => 'required|exists:meals,id',
+            'schedules.*.menu_date' => 'required|date',
+            'schedules.*.schedule_type' => 'required|in:daily,weekly,monthly',
+        ]);
+
         DB::beginTransaction();
         try {
-            $request->validate([
-                'schedules' => 'required|array|min:1',
-                'schedules.*.school_id' => 'required|exists:schools,id',
-                'schedules.*.class_id' => 'nullable|exists:classes,id',
-                'schedules.*.meal_id' => 'required|exists:meals,id',
-                'schedules.*.menu_date' => 'required|date',
-                'schedules.*.schedule_type' => 'required|in:daily,weekly,monthly',
-            ]);
+            $resolvedSchoolId = $this->school->id;
 
-            $schedules = array_map(function ($schedule) {
+            $schedules = array_map(function ($schedule) use ($resolvedSchoolId) {
+                $schedule['school_id'] = $resolvedSchoolId;
+                $schedule['class_id'] = $this->resolveClassId($schedule['class_id'] ?? null);
                 $schedule['created_by'] = $this->user()->id;
 
                 return $schedule;
@@ -188,15 +200,31 @@ class MealMenuController extends BaseSchoolController
 
             return $this->successResponse(
                 MealMenuScheduleResource::collection($created),
-                count($created) . ' menü başarıyla oluşturuldu.',
+                count($created).' menü başarıyla oluşturuldu.',
                 201
             );
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Toplu menü oluşturma hatası: ' . $e->getMessage());
+            Log::error('Toplu menü oluşturma hatası: '.$e->getMessage());
 
             return $this->errorResponse('Menüler oluşturulurken bir hata oluştu.', 500);
         }
+    }
+
+    /**
+     * ULID veya integer class_id'yi integer PK'ya çözümler.
+     */
+    private function resolveClassId(?string $rawClassId): ?int
+    {
+        if (! $rawClassId) {
+            return null;
+        }
+
+        if (is_numeric($rawClassId)) {
+            return (int) $rawClassId;
+        }
+
+        return SchoolClass::where('ulid', $rawClassId)->value('id');
     }
 
     /**
@@ -214,7 +242,7 @@ class MealMenuController extends BaseSchoolController
             return $this->successResponse(null, 'Menü başarıyla silindi.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Menü silme hatası: ' . $e->getMessage());
+            Log::error('Menü silme hatası: '.$e->getMessage());
 
             return $this->errorResponse('Menü silinirken bir hata oluştu.', 500);
         }
