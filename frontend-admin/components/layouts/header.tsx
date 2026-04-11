@@ -99,15 +99,14 @@ const Header = () => {
                                     placement={isRtl ? 'bottom-start' : 'bottom-end'}
                                     btnClassName="relative group block"
                                     button={
-                                        <button
-                                            type="button"
+                                        <span
                                             className="flex items-center gap-1.5 rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-dark/40 dark:hover:bg-dark/60"
                                         >
                                             <Languages className="h-5 w-5" />
                                             <span className="hidden text-xs font-semibold uppercase sm:inline">
                                                 {locale}
                                             </span>
-                                        </button>
+                                        </span>
                                     }
                                 >
                                     <ul className="w-[160px] !py-0 font-semibold text-dark dark:text-white-dark dark:text-white-light/90">
