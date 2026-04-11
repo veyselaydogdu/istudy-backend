@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Schools;
 
-use App\Http\Resources\AttendanceResource;
+use App\Models\Academic\SchoolClass;
 use App\Models\Activity\Attendance;
 use App\Models\Child\Child;
 use Illuminate\Http\JsonResponse;
@@ -18,17 +18,19 @@ class AttendanceController extends BaseSchoolController
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'class_id' => 'required|exists:classes,id',
+            'class_id' => 'required|string',
             'date' => 'required|date',
         ]);
 
+        $classId = $this->resolveClassId($request->class_id);
+
         // Sınıftaki tüm çocukları getir
-        $children = Child::whereHas('classes', function ($q) use ($request) {
-            $q->where('school_classes.id', $request->class_id);
+        $children = Child::whereHas('classes', function ($q) use ($classId) {
+            $q->where('classes.id', $classId);
         })->active()->get();
 
         // O günkü yoklamaları getir
-        $attendances = Attendance::where('class_id', $request->class_id)
+        $attendances = Attendance::where('class_id', $classId)
             ->where('attendance_date', $request->date)
             ->get()
             ->keyBy('child_id');
@@ -36,6 +38,7 @@ class AttendanceController extends BaseSchoolController
         // Çocuk listesi ile yoklamayı birleştir
         $result = $children->map(function ($child) use ($attendances) {
             $attendance = $attendances->get($child->id);
+
             return [
                 'child_id' => $child->id,
                 'child_name' => $child->full_name,
@@ -55,7 +58,7 @@ class AttendanceController extends BaseSchoolController
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'class_id' => 'required|exists:classes,id',
+            'class_id' => 'required|string',
             'date' => 'required|date',
             'attendances' => 'required|array',
             'attendances.*.child_id' => 'required|exists:children,id',
@@ -63,13 +66,15 @@ class AttendanceController extends BaseSchoolController
             'attendances.*.notes' => 'nullable|string',
         ]);
 
+        $classId = $this->resolveClassId($request->class_id);
+
         DB::beginTransaction();
         try {
             foreach ($request->attendances as $item) {
                 Attendance::updateOrCreate(
                     [
                         'child_id' => $item['child_id'],
-                        'class_id' => $request->class_id,
+                        'class_id' => $classId,
                         'attendance_date' => $request->date,
                     ],
                     [
@@ -82,11 +87,26 @@ class AttendanceController extends BaseSchoolController
             }
 
             DB::commit();
+
             return $this->successResponse(null, 'Yoklama başarıyla kaydedildi.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Yoklama kayıt hatası: ' . $e->getMessage());
+            Log::error('Yoklama kayıt hatası: '.$e->getMessage());
+
             return $this->errorResponse('Yoklama kaydedilirken bir hata oluştu.', 500);
         }
+    }
+
+    private function resolveClassId(?string $rawClassId): ?int
+    {
+        if (! $rawClassId) {
+            return null;
+        }
+
+        if (is_numeric($rawClassId)) {
+            return (int) $rawClassId;
+        }
+
+        return SchoolClass::where('ulid', $rawClassId)->value('id');
     }
 }

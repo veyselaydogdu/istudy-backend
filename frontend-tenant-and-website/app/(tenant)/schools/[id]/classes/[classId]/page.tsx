@@ -249,12 +249,10 @@ export default function ClassDetailPage() {
         setSavingAttendance(true);
         const records = children.map(child => ({
             child_id: child.id,
-            class_id: Number(classId),
-            attendance_date: attendanceDate,
             status: attendanceStatuses[child.id] ?? 'present',
         }));
         try {
-            await apiClient.post(`/schools/${schoolId}/attendances`, { attendances: records });
+            await apiClient.post(`/schools/${schoolId}/attendances`, { class_id: classId, date: attendanceDate, attendances: records });
             toast.success('Yoklama kaydedildi.');
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };

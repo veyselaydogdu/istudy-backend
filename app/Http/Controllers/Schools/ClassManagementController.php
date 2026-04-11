@@ -33,7 +33,7 @@ class ClassManagementController extends BaseController
                 return $this->errorResponse('Sınıf bulunamadı.', 404);
             }
 
-            $teacherList = $class->teachers()->with('user')->get();
+            $teacherList = $class->teachers()->withoutGlobalScope('tenant')->with('user')->get();
             $roleTypeIds = $teacherList->pluck('pivot.teacher_role_type_id')->filter()->unique();
             $roleTypeMap = $roleTypeIds->isNotEmpty()
                 ? TeacherRoleType::whereIn('id', $roleTypeIds)->get()->keyBy('id')
@@ -407,8 +407,12 @@ class ClassManagementController extends BaseController
     /**
      * Sınıfın ihtiyaç listesini getir
      */
-    public function supplyList(int $schoolId, int $classId): JsonResponse
+    public function supplyList(): JsonResponse
     {
+        $schoolId = $this->resolveSchoolId();
+        $class = $this->resolveClass($schoolId);
+        $classId = $class?->id;
+
         try {
             $materials = \App\Models\Activity\Material::where('school_id', $schoolId)
                 ->where('class_id', $classId)
@@ -435,7 +439,7 @@ class ClassManagementController extends BaseController
     /**
      * İhtiyaç listesine yeni kalem ekle
      */
-    public function addSupplyItem(Request $request, int $schoolId, int $classId): JsonResponse
+    public function addSupplyItem(Request $request): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -443,6 +447,10 @@ class ClassManagementController extends BaseController
             'quantity' => ['nullable', 'integer', 'min:1'],
             'due_date' => ['nullable', 'date'],
         ]);
+
+        $schoolId = $this->resolveSchoolId();
+        $class = $this->resolveClass($schoolId);
+        $classId = $class?->id;
 
         try {
             DB::beginTransaction();
@@ -483,7 +491,7 @@ class ClassManagementController extends BaseController
     /**
      * İhtiyaç kalemi güncelle
      */
-    public function updateSupplyItem(Request $request, int $schoolId, int $classId, int $materialId): JsonResponse
+    public function updateSupplyItem(Request $request, string $schoolId, string $classId, int $materialId): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -492,10 +500,14 @@ class ClassManagementController extends BaseController
             'due_date' => ['nullable', 'date'],
         ]);
 
+        $resolvedSchoolId = $this->resolveSchoolId();
+        $class = $this->resolveClass($resolvedSchoolId);
+        $resolvedClassId = $class?->id;
+
         try {
             $material = \App\Models\Activity\Material::where('id', $materialId)
-                ->where('school_id', $schoolId)
-                ->where('class_id', $classId)
+                ->where('school_id', $resolvedSchoolId)
+                ->where('class_id', $resolvedClassId)
                 ->firstOrFail();
 
             $material->update([
@@ -525,12 +537,16 @@ class ClassManagementController extends BaseController
     /**
      * İhtiyaç kalemi sil
      */
-    public function deleteSupplyItem(int $schoolId, int $classId, int $materialId): JsonResponse
+    public function deleteSupplyItem(string $schoolId, string $classId, int $materialId): JsonResponse
     {
+        $resolvedSchoolId = $this->resolveSchoolId();
+        $class = $this->resolveClass($resolvedSchoolId);
+        $resolvedClassId = $class?->id;
+
         try {
             $material = \App\Models\Activity\Material::where('id', $materialId)
-                ->where('school_id', $schoolId)
-                ->where('class_id', $classId)
+                ->where('school_id', $resolvedSchoolId)
+                ->where('class_id', $resolvedClassId)
                 ->firstOrFail();
 
             $material->delete();
