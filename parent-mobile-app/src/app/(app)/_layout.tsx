@@ -4,6 +4,7 @@ import React from 'react';
 import { Platform } from 'react-native';
 
 import { AppColors } from '@/constants/theme';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -18,6 +19,8 @@ function tabIcon(focused: boolean, active: IoniconsName, inactive: IoniconsName)
 }
 
 export default function AppLayout() {
+  const { t } = useTranslation();
+
   return (
     <Tabs
       screenOptions={{
@@ -50,14 +53,14 @@ export default function AppLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Akış',
+          title: t('tabs.home'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'home', 'home-outline'),
         }}
       />
       <Tabs.Screen
         name="meal-menu"
         options={{
-          title: 'Yemek Listesi',
+          title: t('mealMenu.title'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'restaurant', 'restaurant-outline'),
           tabBarLabelStyle: {
             fontSize: 8,
@@ -71,21 +74,21 @@ export default function AppLayout() {
       <Tabs.Screen
         name="activities"
         options={{
-          title: 'Etkinlikler',
+          title: t('activities.title'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'flame', 'flame-outline'),
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
-          title: 'İstatistikler',
+          title: t('stats.title'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'bar-chart', 'bar-chart-outline'),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: t('profile.title'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'person', 'person-outline'),
         }}
       />

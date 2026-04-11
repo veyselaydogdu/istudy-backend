@@ -11,6 +11,7 @@ const initialState = {
     animation: themeConfig.animation,
     navbar: themeConfig.navbar,
     semidark: themeConfig.semidark,
+    locale: 'tr' as 'tr' | 'en',
 };
 
 const themeConfigSlice = createSlice({
@@ -75,6 +76,11 @@ const themeConfigSlice = createSlice({
         resetToggleSidebar(state) {
             state.sidebar = false;
         },
+        toggleLocale(state, { payload }) {
+            const locale = payload || (state.locale === 'tr' ? 'en' : 'tr');
+            localStorage.setItem('locale', locale);
+            state.locale = locale;
+        },
     },
 });
 
@@ -88,6 +94,7 @@ export const {
     toggleSemidark,
     toggleSidebar,
     resetToggleSidebar,
+    toggleLocale,
 } = themeConfigSlice.actions;
 
 export default themeConfigSlice.reducer;

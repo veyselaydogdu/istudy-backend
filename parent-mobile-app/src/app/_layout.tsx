@@ -2,6 +2,8 @@ import { Stack, router, useSegments } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { I18nProvider } from '@/hooks/useTranslation';
+
 import { authEvent } from '../lib/authEvent';
 import { AppColors } from '@/constants/theme';
 import {
@@ -167,26 +169,28 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        token,
-        user,
-        isLoading,
-        teacherToken,
-        teacherUser,
-        signIn,
-        signOut,
-        refreshUser,
-        signInAsTeacher,
-        signOutTeacher,
-      }}
-    >
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(app)" />
-        <Stack.Screen name="(teacher-app)" />
-      </Stack>
-      <AuthGuard token={token} teacherToken={teacherToken} isLoading={isLoading} />
-    </AuthContext.Provider>
+    <I18nProvider>
+      <AuthContext.Provider
+        value={{
+          token,
+          user,
+          isLoading,
+          teacherToken,
+          teacherUser,
+          signIn,
+          signOut,
+          refreshUser,
+          signInAsTeacher,
+          signOutTeacher,
+        }}
+      >
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(app)" />
+          <Stack.Screen name="(teacher-app)" />
+        </Stack>
+        <AuthGuard token={token} teacherToken={teacherToken} isLoading={isLoading} />
+      </AuthContext.Provider>
+    </I18nProvider>
   );
 }

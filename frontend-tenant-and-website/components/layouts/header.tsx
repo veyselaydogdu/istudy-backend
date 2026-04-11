@@ -8,6 +8,8 @@ import { toggleTheme, toggleSidebar } from '@/store/themeConfigSlice';
 import Dropdown from '@/components/dropdown';
 import apiClient from '@/lib/apiClient';
 import { User as UserType } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
+import { availableLocales } from '@/i18n';
 import {
     Menu,
     Sun,
@@ -16,43 +18,11 @@ import {
     Bell,
     LogOut,
     LayoutDashboard,
+    Languages,
 } from 'lucide-react';
 
-const pageTitles: Record<string, string> = {
-    '/dashboard': 'Dashboard',
-    '/schools': 'Okullarım',
-    '/academic-years': 'Eğitim Yılları',
-    '/meals': 'Yemek Yönetimi',
-    '/activities': 'Etkinlikler',
-    '/social': 'Sosyal Ağ',
-    '/subscription': 'Aboneliğim',
-    '/invoices': 'Faturalar',
-    '/notifications': 'Bildirimler',
-    '/profile': 'Profil',
-};
-
-function getPageTitle(pathname: string): string {
-    if (pageTitles[pathname]) {
-        return pageTitles[pathname];
-    }
-    for (const [key, value] of Object.entries(pageTitles)) {
-        if (pathname.startsWith(key + '/')) {
-            return value;
-        }
-    }
-    return 'iStudy';
-}
-
-function getInitials(name: string): string {
-    return name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
-}
-
 const Header = () => {
+    const { t, locale, switchLocale } = useTranslation();
     const pathname = usePathname();
     const dispatch = useDispatch();
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -74,6 +44,39 @@ const Header = () => {
             }
         }).catch(() => {});
     }, []);
+
+    const pageTitles: Record<string, string> = {
+        '/dashboard': t('sidebar.dashboard'),
+        '/schools': t('schools.title'),
+        '/academic-years': t('academicYears.title'),
+        '/meals': t('meals.title'),
+        '/activities': t('activities.title'),
+        '/activity-classes': t('sidebar.activityClasses'),
+        '/social': t('sidebar.socialNetwork'),
+        '/approvals': t('sidebar.approvals'),
+        '/subscription': t('subscription.title'),
+        '/invoices': t('invoices.title'),
+        '/notifications': t('notifications.title'),
+        '/profile': t('profile.title'),
+        '/teachers': t('teachers.title'),
+    };
+
+    function getPageTitle(p: string): string {
+        if (pageTitles[p]) return pageTitles[p];
+        for (const [key, value] of Object.entries(pageTitles)) {
+            if (p.startsWith(key + '/')) return value;
+        }
+        return 'iStudy';
+    }
+
+    function getInitials(name: string): string {
+        return name
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+    }
 
     const pageTitle = getPageTitle(pathname);
     const initials = user ? getInitials(user.name) : '?';
@@ -113,6 +116,43 @@ const Header = () => {
 
                     {/* Right side */}
                     <div className="flex items-center space-x-1.5 ltr:ml-auto rtl:mr-auto rtl:space-x-reverse dark:text-[#d0d2d6] lg:space-x-2">
+                        {/* Language switcher */}
+                        {mounted && (
+                            <div className="dropdown flex shrink-0">
+                                <Dropdown
+                                    offset={[0, 8]}
+                                    placement={isRtl ? 'bottom-start' : 'bottom-end'}
+                                    btnClassName="relative group block"
+                                    button={
+                                        <button
+                                            type="button"
+                                            className="flex items-center gap-1.5 rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-dark/40 dark:hover:bg-dark/60"
+                                        >
+                                            <Languages className="h-5 w-5" />
+                                            <span className="hidden text-xs font-semibold uppercase sm:inline">
+                                                {locale}
+                                            </span>
+                                        </button>
+                                    }
+                                >
+                                    <ul className="w-[160px] !py-0 font-semibold text-dark dark:text-white-dark dark:text-white-light/90">
+                                        {availableLocales.map((loc) => (
+                                            <li key={loc.code}>
+                                                <button
+                                                    type="button"
+                                                    className={`flex w-full items-center gap-2 px-4 py-2.5 hover:text-primary ${locale === loc.code ? 'text-primary bg-primary/5' : ''}`}
+                                                    onClick={() => switchLocale(loc.code)}
+                                                >
+                                                    <span className="text-base">{loc.flag}</span>
+                                                    <span className="text-sm">{loc.label}</span>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </Dropdown>
+                            </div>
+                        )}
+
                         {/* Theme toggle */}
                         {mounted && (
                             <div>
@@ -120,7 +160,7 @@ const Header = () => {
                                     <button
                                         className="flex items-center rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-dark/40 dark:hover:bg-dark/60"
                                         onClick={() => dispatch(toggleTheme('dark'))}
-                                        title="Koyu Temaya Geç"
+                                        title={t('theme.switchToDark')}
                                     >
                                         <Sun className="h-5 w-5" />
                                     </button>
@@ -129,7 +169,7 @@ const Header = () => {
                                     <button
                                         className="flex items-center rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-dark/40 dark:hover:bg-dark/60"
                                         onClick={() => dispatch(toggleTheme('system'))}
-                                        title="Sistem Temasına Geç"
+                                        title={t('theme.switchToSystem')}
                                     >
                                         <Moon className="h-5 w-5" />
                                     </button>
@@ -138,7 +178,7 @@ const Header = () => {
                                     <button
                                         className="flex items-center rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-dark/40 dark:hover:bg-dark/60"
                                         onClick={() => dispatch(toggleTheme('light'))}
-                                        title="Açık Temaya Geç"
+                                        title={t('theme.switchToLight')}
                                     >
                                         <Monitor className="h-5 w-5" />
                                     </button>
@@ -178,7 +218,7 @@ const Header = () => {
                                                 {initials}
                                             </div>
                                             <div className="truncate ltr:pl-4 rtl:pr-4">
-                                                <h4 className="text-sm text-black dark:text-white">{user?.name ?? 'Kullanıcı'}</h4>
+                                                <h4 className="text-sm text-black dark:text-white">{user?.name ?? ''}</h4>
                                                 <span className="text-xs text-black/60 dark:text-dark-light/60">
                                                     {user?.email ?? ''}
                                                 </span>
@@ -192,7 +232,7 @@ const Header = () => {
                                             onClick={handleLogout}
                                         >
                                             <LogOut className="h-4 w-4 shrink-0 rotate-90 ltr:mr-2 rtl:ml-2" />
-                                            Çıkış Yap
+                                            {t('common.logout')}
                                         </button>
                                     </li>
                                 </ul>

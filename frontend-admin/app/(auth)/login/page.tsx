@@ -9,17 +9,22 @@ import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
-
-const loginSchema = z.object({
-    email: z.string().email('Geçerli bir e-posta adresi giriniz.'),
-    password: z.string().min(6, 'Şifre en az 6 karakter olmalıdır.'),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+import { useTranslation } from '@/hooks/useTranslation';
+import { availableLocales, type Locale } from '@/i18n';
+import { useDispatch } from 'react-redux';
+import { toggleLocale } from '@/store/themeConfigSlice';
 
 export default function LoginPage() {
+    const { t, locale, switchLocale } = useTranslation();
     const router = useRouter();
     const [isLoading, setIsLoading] = React.useState(false);
+
+    const loginSchema = z.object({
+        email: z.string().email(t('validation.emailRequired')),
+        password: z.string().min(6, t('validation.passwordMin')),
+    });
+
+    type LoginFormValues = z.infer<typeof loginSchema>;
 
     const {
         register,
@@ -34,14 +39,14 @@ export default function LoginPage() {
         try {
             const response = await apiClient.post('/auth/login', data);
             const token = response.data?.data?.token;
-            if (!token) throw new Error('Token alınamadı.');
+            if (!token) throw new Error(t('auth.tokenError'));
             localStorage.setItem('admin_token', token);
-            toast.success('Giriş başarılı!');
+            toast.success(t('auth.loginSuccess'));
             router.push('/');
         } catch (error: unknown) {
             const axiosError = error as { response?: { data?: { message?: string } } };
-            const message = axiosError.response?.data?.message || 'E-posta veya şifre hatalı.';
-            toast.error('Giriş Başarısız', { description: message });
+            const message = axiosError.response?.data?.message || t('auth.loginError');
+            toast.error(t('auth.loginFailed'), { description: message });
         } finally {
             setIsLoading(false);
         }
@@ -59,21 +64,39 @@ export default function LoginPage() {
                 <Image src="/assets/images/auth/coming-soon-object3.png" alt="" width={300} height={300} className="absolute right-0 top-0 h-[300px] w-auto object-contain" />
                 <Image src="/assets/images/auth/polygon-object.svg" alt="" width={120} height={120} className="absolute bottom-0 end-[28%]" />
 
+                {/* Language switcher on login page */}
+                <div className="absolute right-4 top-4 z-10 flex gap-1">
+                    {availableLocales.map((loc) => (
+                        <button
+                            key={loc.code}
+                            type="button"
+                            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                                locale === loc.code
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'bg-white/60 text-dark hover:bg-white/80 dark:bg-black/40 dark:text-white dark:hover:bg-black/60'
+                            }`}
+                            onClick={() => switchLocale(loc.code)}
+                        >
+                            {loc.flag} {loc.label}
+                        </button>
+                    ))}
+                </div>
+
                 <div className="relative w-full max-w-[870px] rounded-md bg-[linear-gradient(45deg,#fff9f9_0%,rgba(255,255,255,0)_25%,rgba(255,255,255,0)_75%,_#fff9f9_100%)] p-2 dark:bg-[linear-gradient(52.22deg,#0E1726_0%,rgba(14,23,38,0)_18.66%,rgba(14,23,38,0)_51.04%,rgba(14,23,38,0)_80.07%,#0E1726_100%)]">
                     <div className="relative flex flex-col justify-center rounded-md bg-white/60 px-6 py-20 backdrop-blur-lg dark:bg-black/50 lg:min-h-[758px]">
                         <div className="mx-auto w-full max-w-[440px]">
                             <div className="mb-10">
-                                <h1 className="text-3xl font-extrabold uppercase !leading-snug text-primary md:text-4xl">Giriş Yap</h1>
-                                <p className="text-base font-bold leading-normal text-white-dark">Yönetici hesabınızla devam edin</p>
+                                <h1 className="text-3xl font-extrabold uppercase !leading-snug text-primary md:text-4xl">{t('auth.loginTitle')}</h1>
+                                <p className="text-base font-bold leading-normal text-white-dark">{t('auth.loginSubtitle')}</p>
                             </div>
 
                             <form className="space-y-5 dark:text-white" onSubmit={handleSubmit(onSubmit)}>
                                 <div className={errors.email ? 'has-error' : ''}>
-                                    <label htmlFor="email">E-posta</label>
+                                    <label htmlFor="email">{t('auth.email')}</label>
                                     <input
                                         id="email"
                                         type="email"
-                                        placeholder="admin@istudy.com"
+                                        placeholder={t('auth.emailPlaceholder')}
                                         className="form-input"
                                         {...register('email')}
                                         disabled={isLoading}
@@ -84,7 +107,7 @@ export default function LoginPage() {
                                 </div>
 
                                 <div className={errors.password ? 'has-error' : ''}>
-                                    <label htmlFor="password">Şifre</label>
+                                    <label htmlFor="password">{t('auth.password')}</label>
                                     <input
                                         id="password"
                                         type="password"
@@ -106,10 +129,10 @@ export default function LoginPage() {
                                     {isLoading ? (
                                         <span className="flex items-center justify-center gap-2">
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                            Giriş Yapılıyor...
+                                            {t('auth.loggingIn')}
                                         </span>
                                     ) : (
-                                        'Giriş Yap'
+                                        t('auth.login')
                                     )}
                                 </button>
                             </form>

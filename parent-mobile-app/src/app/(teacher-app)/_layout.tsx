@@ -5,6 +5,7 @@ import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { useAuth } from '../_layout';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -20,6 +21,7 @@ function tabIcon(focused: boolean, active: IoniconsName, inactive: IoniconsName)
 
 export default function TeacherAppLayout() {
   const { teacherToken } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!teacherToken) {
@@ -56,35 +58,35 @@ export default function TeacherAppLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Anasayfa',
+          title: t('teacher.dashboard'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'home', 'home-outline'),
         }}
       />
       <Tabs.Screen
         name="classes"
         options={{
-          title: 'Sınıflarım',
+          title: t('teacher.myClasses'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'book', 'book-outline'),
         }}
       />
       <Tabs.Screen
         name="daily"
         options={{
-          title: 'Günlük',
+          title: t('tabs.daily'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'clipboard', 'clipboard-outline'),
         }}
       />
       <Tabs.Screen
         name="meal-menu"
         options={{
-          title: 'Yemek',
+          title: t('tabs.meals'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'restaurant', 'restaurant-outline'),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: t('profile.title'),
           tabBarIcon: ({ focused }) => tabIcon(focused, 'person', 'person-outline'),
         }}
       />

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { toggleSidebar } from '@/store/themeConfigSlice';
 import { IRootState } from '@/store';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
     LayoutDashboard,
     School,
@@ -24,51 +25,52 @@ import {
 } from 'lucide-react';
 
 type NavItem = {
-    title: string;
+    titleKey: string;
     href: string;
     icon: React.ElementType;
 };
 
 type NavGroup = {
-    label: string;
+    labelKey: string;
     items: NavItem[];
 };
 
 const navGroups: NavGroup[] = [
     {
-        label: 'ANA MENÜ',
-        items: [{ title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }],
+        labelKey: 'nav.mainMenu',
+        items: [{ titleKey: 'sidebar.dashboard', href: '/dashboard', icon: LayoutDashboard }],
     },
     {
-        label: 'YÖNETİM',
+        labelKey: 'nav.management',
         items: [
-            { title: 'Okullarım', href: '/schools', icon: School },
-            { title: 'Öğretmenler', href: '/teachers', icon: Users },
-            { title: 'Eğitim Yılları', href: '/academic-years', icon: GraduationCap },
-            { title: 'Yemekler', href: '/meals', icon: Utensils },
-            { title: 'Etkinlikler', href: '/activities', icon: Calendar },
-            { title: 'Etkinlik Sınıfları', href: '/activity-classes', icon: Star },
-            { title: 'Sosyal Ağ', href: '/social', icon: MessageSquare },
-            { title: 'Bekleyen Onaylar', href: '/approvals', icon: ClipboardCheck },
+            { titleKey: 'sidebar.schools', href: '/schools', icon: School },
+            { titleKey: 'sidebar.teachers', href: '/teachers', icon: Users },
+            { titleKey: 'sidebar.academicYears', href: '/academic-years', icon: GraduationCap },
+            { titleKey: 'sidebar.meals', href: '/meals', icon: Utensils },
+            { titleKey: 'sidebar.activities', href: '/activities', icon: Calendar },
+            { titleKey: 'sidebar.activityClasses', href: '/activity-classes', icon: Star },
+            { titleKey: 'sidebar.socialNetwork', href: '/social', icon: MessageSquare },
+            { titleKey: 'sidebar.approvals', href: '/approvals', icon: ClipboardCheck },
         ],
     },
     {
-        label: 'HESAP',
+        labelKey: 'nav.account',
         items: [
-            { title: 'Aboneliğim', href: '/subscription', icon: CreditCard },
-            { title: 'Faturalar', href: '/invoices', icon: FileText },
+            { titleKey: 'sidebar.subscription', href: '/subscription', icon: CreditCard },
+            { titleKey: 'sidebar.invoices', href: '/invoices', icon: FileText },
         ],
     },
     {
-        label: 'SİSTEM',
+        labelKey: 'nav.system',
         items: [
-            { title: 'Bildirimler', href: '/notifications', icon: Bell },
-            { title: 'Profil', href: '/profile', icon: User },
+            { titleKey: 'sidebar.notifications', href: '/notifications', icon: Bell },
+            { titleKey: 'sidebar.profile', href: '/profile', icon: User },
         ],
     },
 ];
 
 const Sidebar = () => {
+    const { t } = useTranslation();
     const pathname = usePathname();
     const dispatch = useDispatch();
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -105,13 +107,13 @@ const Sidebar = () => {
                     <PerfectScrollbar className="relative h-[calc(100vh-60px)]">
                         <ul className="relative space-y-0.5 p-4 py-0 font-semibold">
                             {navGroups.map((group) => (
-                                <li key={group.label} className="menu nav-item">
+                                <li key={group.labelKey} className="menu nav-item">
                                     <h2 className="mb-1 mt-4 flex items-center px-7 py-3">
                                         <span className="collapse-icon hidden h-5 min-w-[20px] rotate-90 dark:text-white-dark">
                                             <ChevronDown className="h-4 w-4" />
                                         </span>
                                         <span className="text-xs font-bold uppercase tracking-widest text-white-dark dark:text-white-dark">
-                                            {group.label}
+                                            {t(group.labelKey)}
                                         </span>
                                     </h2>
                                     <ul>
@@ -132,7 +134,7 @@ const Sidebar = () => {
                                                         <div className="flex items-center">
                                                             <Icon className="h-5 w-5 shrink-0 group-hover:!text-primary" />
                                                             <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
-                                                                {item.title}
+                                                                {t(item.titleKey)}
                                                             </span>
                                                         </div>
                                                     </Link>
@@ -155,7 +157,7 @@ const Sidebar = () => {
                                 >
                                     <div className="flex items-center">
                                         <LogOut className="h-5 w-5 text-danger/70 group-hover:!text-danger" />
-                                        <span className="ltr:pl-3 rtl:pr-3 text-danger/70 group-hover:text-danger">Çıkış Yap</span>
+                                        <span className="ltr:pl-3 rtl:pr-3 text-danger/70 group-hover:text-danger">{t('common.logout')}</span>
                                     </div>
                                 </button>
                             </li>
