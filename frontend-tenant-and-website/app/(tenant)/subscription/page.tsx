@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { TenantSubscription, SubscriptionUsage, Package } from '@/types';
 import { Check, Loader2 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type SubscriptionHistory = {
     id: number;
@@ -17,6 +17,7 @@ type SubscriptionHistory = {
 };
 
 export default function SubscriptionPage() {
+    const { t } = useTranslation();
     const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
     const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
     const [history, setHistory] = useState<SubscriptionHistory[]>([]);
@@ -35,28 +36,28 @@ export default function SubscriptionPage() {
                 apiClient.get('/tenant/subscription/history').catch(() => ({ data: { data: [] } })),
                 apiClient.get('/packages').catch(() => ({ data: { data: [] } })),
             ]);
-            if (subRes.data?.data) setSubscription(subRes.data.data);
-            if (usageRes.data?.data) setUsage(usageRes.data.data);
-            if (historyRes.data?.data) setHistory(historyRes.data.data);
-            if (pkgRes.data?.data) setPackages(pkgRes.data.data);
+            if (subRes.data?.data) { setSubscription(subRes.data.data); }
+            if (usageRes.data?.data) { setUsage(usageRes.data.data); }
+            if (historyRes.data?.data) { setHistory(historyRes.data.data); }
+            if (pkgRes.data?.data) { setPackages(pkgRes.data.data); }
         } catch {
-            toast.error('Veriler yüklenemedi.');
+            toast.error(t('subscription.loadError'));
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSubscribe = async (packageId: number) => {
         setSubscribing(packageId);
         try {
             await apiClient.post('/tenant/subscribe', { package_id: packageId, billing_cycle: billingCycle });
-            toast.success('Abonelik oluşturuldu!');
+            toast.success(t('subscription.subscribeSuccess'));
             fetchData();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(error.response?.data?.message ?? t('subscription.subscribeError'));
         } finally {
             setSubscribing(null);
         }
@@ -64,35 +65,45 @@ export default function SubscriptionPage() {
 
     const handleCancel = async () => {
         const result = await Swal.fire({
-            title: 'Aboneliği İptal Et',
-            text: 'Aboneliğinizi iptal etmek istediğinize emin misiniz?',
+            title: t('subscription.cancelTitle'),
+            text: t('subscription.cancelText'),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, İptal Et',
-            cancelButtonText: 'Geri',
+            confirmButtonText: t('subscription.cancelConfirm'),
+            cancelButtonText: t('common.back'),
             confirmButtonColor: '#e7515a',
         });
-        if (!result.isConfirmed) return;
+        if (!result.isConfirmed) { return; }
         setCancelling(true);
         try {
             await apiClient.post('/tenant/subscription/cancel');
-            toast.success('Abonelik iptal edildi.');
+            toast.success(t('subscription.cancelSuccess'));
             fetchData();
         } catch {
-            toast.error('İptal işlemi başarısız.');
+            toast.error(t('subscription.cancelError'));
         } finally {
             setCancelling(false);
         }
     };
 
-    const formatLimit = (val: number) => (val === 0 ? 'Sınırsız' : val.toString());
+    const formatLimit = (val: number) => (val === 0 ? t('subscription.unlimited') : val.toString());
     const getPrice = (pkg: Package) => billingCycle === 'monthly' ? pkg.monthly_price : pkg.yearly_price;
     const getStatusLabel = (status: string) => {
-        const map: Record<string, string> = { active: 'Aktif', cancelled: 'İptal', expired: 'Dolmuş', trial: 'Deneme' };
+        const map: Record<string, string> = {
+            active: t('subscription.activeStatus'),
+            cancelled: t('subscription.cancelledStatus'),
+            expired: t('subscription.expiredStatus'),
+            trial: t('subscription.trialStatus'),
+        };
         return map[status] ?? status;
     };
     const getStatusClass = (status: string) => {
-        const map: Record<string, string> = { active: 'badge-outline-success', cancelled: 'badge-outline-danger', expired: 'badge-outline-secondary', trial: 'badge-outline-info' };
+        const map: Record<string, string> = {
+            active: 'badge-outline-success',
+            cancelled: 'badge-outline-danger',
+            expired: 'badge-outline-secondary',
+            trial: 'badge-outline-info',
+        };
         return map[status] ?? 'badge-outline-secondary';
     };
 
@@ -106,7 +117,7 @@ export default function SubscriptionPage() {
 
     return (
         <div className="p-6">
-            <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">Aboneliğim</h1>
+            <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">{t('subscription.title')}</h1>
 
             {subscription ? (
                 <>
@@ -115,14 +126,14 @@ export default function SubscriptionPage() {
                         <div className="mb-4 flex items-start justify-between">
                             <div>
                                 <h2 className="text-xl font-bold text-dark dark:text-white">
-                                    {subscription.package?.name ?? 'Mevcut Plan'}
+                                    {subscription.package?.name ?? t('subscription.currentPlan')}
                                 </h2>
                                 <div className="mt-1 flex items-center gap-2">
                                     <span className={`badge ${getStatusClass(subscription.status)}`}>
                                         {getStatusLabel(subscription.status)}
                                     </span>
                                     <span className="text-sm text-[#515365] dark:text-[#888ea8]">
-                                        {subscription.billing_cycle === 'monthly' ? 'Aylık' : 'Yıllık'} faturalama
+                                        {subscription.billing_cycle === 'monthly' ? t('subscription.billingMonthly') : t('subscription.billingYearly')}
                                     </span>
                                 </div>
                             </div>
@@ -133,19 +144,19 @@ export default function SubscriptionPage() {
                                     onClick={handleCancel}
                                     disabled={cancelling}
                                 >
-                                    {cancelling ? 'İptal Ediliyor...' : 'Aboneliği İptal Et'}
+                                    {cancelling ? t('subscription.cancellingBtn') : t('subscription.cancelBtn')}
                                 </button>
                             )}
                         </div>
                         <div className="grid gap-4 text-sm sm:grid-cols-2">
                             <div>
-                                <p className="text-[#888ea8]">Başlangıç</p>
+                                <p className="text-[#888ea8]">{t('subscription.startDate')}</p>
                                 <p className="font-medium text-dark dark:text-white">
                                     {new Date(subscription.starts_at).toLocaleDateString('tr-TR')}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-[#888ea8]">Bitiş</p>
+                                <p className="text-[#888ea8]">{t('subscription.endDate')}</p>
                                 <p className="font-medium text-dark dark:text-white">
                                     {new Date(subscription.ends_at).toLocaleDateString('tr-TR')}
                                 </p>
@@ -156,12 +167,12 @@ export default function SubscriptionPage() {
                     {/* Usage bars */}
                     {usage && (
                         <div className="panel mb-6">
-                            <h2 className="mb-4 font-semibold text-dark dark:text-white">Kullanım</h2>
+                            <h2 className="mb-4 font-semibold text-dark dark:text-white">{t('subscription.usageTitle')}</h2>
                             <div className="space-y-4">
                                 {[
-                                    { label: 'Okullar', ...usage.schools },
-                                    { label: 'Öğrenciler', ...usage.students },
-                                    { label: 'Sınıflar', ...usage.classes },
+                                    { label: t('subscription.usageSchools'), ...usage.schools },
+                                    { label: t('subscription.usageStudents'), ...usage.students },
+                                    { label: t('subscription.usageClasses'), ...usage.classes },
                                 ].map((item) => (
                                     <div key={item.label}>
                                         <div className="mb-1 flex justify-between text-sm">
@@ -178,7 +189,7 @@ export default function SubscriptionPage() {
                                                 />
                                             </div>
                                         ) : (
-                                            <p className="text-xs text-success">Sınırsız</p>
+                                            <p className="text-xs text-success">{t('subscription.unlimited')}</p>
                                         )}
                                     </div>
                                 ))}
@@ -190,7 +201,7 @@ export default function SubscriptionPage() {
                     {packages.length > 0 && (
                         <div className="panel mb-6">
                             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <h2 className="font-semibold text-dark dark:text-white">Planı Değiştir / Yükselt</h2>
+                                <h2 className="font-semibold text-dark dark:text-white">{t('subscription.changePlanTitle')}</h2>
                                 <div className="inline-flex items-center gap-1 rounded-full bg-[#f1f2f3] p-1 dark:bg-[#1b2e4b]">
                                     {(['monthly', 'yearly'] as const).map((cycle) => (
                                         <button
@@ -199,7 +210,7 @@ export default function SubscriptionPage() {
                                             className={`rounded-full px-4 py-1 text-sm font-semibold transition-colors ${billingCycle === cycle ? 'bg-white text-primary shadow dark:bg-[#0e1726]' : 'text-[#515365] dark:text-[#888ea8]'}`}
                                             onClick={() => setBillingCycle(cycle)}
                                         >
-                                            {cycle === 'monthly' ? 'Aylık' : 'Yıllık'}
+                                            {cycle === 'monthly' ? t('subscription.monthly') : t('subscription.yearly')}
                                         </button>
                                     ))}
                                 </div>
@@ -211,21 +222,21 @@ export default function SubscriptionPage() {
                                         <div key={pkg.id} className={`rounded border p-4 ${isCurrent ? 'border-primary bg-primary/5' : 'border-[#ebedf2] dark:border-[#1b2e4b]'}`}>
                                             <div className="mb-2 flex items-start justify-between">
                                                 <h3 className="font-bold text-dark dark:text-white">{pkg.name}</h3>
-                                                {isCurrent && <span className="badge badge-outline-primary text-xs">Mevcut</span>}
-                                                {idx === 1 && !isCurrent && <span className="badge badge-outline-success text-xs">Popüler</span>}
+                                                {isCurrent && <span className="badge badge-outline-primary text-xs">{t('subscription.currentBadge')}</span>}
+                                                {idx === 1 && !isCurrent && <span className="badge badge-outline-success text-xs">{t('subscription.popularBadge')}</span>}
                                             </div>
                                             <div className="mb-3">
                                                 <span className="text-2xl font-extrabold text-primary">₺{getPrice(pkg)}</span>
-                                                <span className="text-xs text-[#515365] dark:text-[#888ea8]">/{billingCycle === 'monthly' ? 'ay' : 'yıl'}</span>
+                                                <span className="text-xs text-[#515365] dark:text-[#888ea8]">{billingCycle === 'monthly' ? t('subscription.perMonth') : t('subscription.perYear')}</span>
                                             </div>
                                             <ul className="mb-4 space-y-1 text-sm">
                                                 <li className="flex items-center gap-2 text-[#515365] dark:text-[#888ea8]">
                                                     <Check className="h-3.5 w-3.5 shrink-0 text-success" />
-                                                    {formatLimit(pkg.max_schools)} Okul
+                                                    {formatLimit(pkg.max_schools)} {t('subscription.schoolUnit')}
                                                 </li>
                                                 <li className="flex items-center gap-2 text-[#515365] dark:text-[#888ea8]">
                                                     <Check className="h-3.5 w-3.5 shrink-0 text-success" />
-                                                    {formatLimit(pkg.max_students)} Öğrenci
+                                                    {formatLimit(pkg.max_students)} {t('subscription.studentUnit')}
                                                 </li>
                                             </ul>
                                             <button
@@ -234,7 +245,7 @@ export default function SubscriptionPage() {
                                                 onClick={() => !isCurrent && handleSubscribe(pkg.id)}
                                                 disabled={isCurrent || subscribing === pkg.id}
                                             >
-                                                {subscribing === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent ? 'Mevcut Plan' : 'Bu Plana Geç'}
+                                                {subscribing === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent ? t('subscription.currentPlanBtn') : t('subscription.switchPlanBtn')}
                                             </button>
                                         </div>
                                     );
@@ -246,23 +257,23 @@ export default function SubscriptionPage() {
                     {/* History */}
                     {history.length > 0 && (
                         <div className="panel">
-                            <h2 className="mb-4 font-semibold text-dark dark:text-white">Abonelik Geçmişi</h2>
+                            <h2 className="mb-4 font-semibold text-dark dark:text-white">{t('subscription.historyTitle')}</h2>
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Plan</th>
-                                            <th>Dönem</th>
-                                            <th>Başlangıç</th>
-                                            <th>Bitiş</th>
-                                            <th>Durum</th>
+                                            <th>{t('subscription.planCol')}</th>
+                                            <th>{t('subscription.periodCol')}</th>
+                                            <th>{t('subscription.startCol')}</th>
+                                            <th>{t('subscription.endCol')}</th>
+                                            <th>{t('subscription.statusCol')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {history.map((h) => (
                                             <tr key={h.id}>
                                                 <td>{h.package?.name ?? '—'}</td>
-                                                <td>{h.billing_cycle === 'monthly' ? 'Aylık' : 'Yıllık'}</td>
+                                                <td>{h.billing_cycle === 'monthly' ? t('subscription.monthly') : t('subscription.yearly')}</td>
                                                 <td>{new Date(h.starts_at).toLocaleDateString('tr-TR')}</td>
                                                 <td>{new Date(h.ends_at).toLocaleDateString('tr-TR')}</td>
                                                 <td>
@@ -282,7 +293,7 @@ export default function SubscriptionPage() {
                 /* No subscription — show packages */
                 <>
                     <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4 text-warning">
-                        Aktif bir aboneliğiniz bulunmuyor. Bir paket seçerek sistemi kullanmaya başlayabilirsiniz.
+                        {t('subscription.noSubscriptionMsg')}
                     </div>
 
                     <div className="mb-6 inline-flex items-center gap-3 rounded-full bg-[#f1f2f3] p-1 dark:bg-[#1b2e4b]">
@@ -297,7 +308,7 @@ export default function SubscriptionPage() {
                                 }`}
                                 onClick={() => setBillingCycle(cycle)}
                             >
-                                {cycle === 'monthly' ? 'Aylık' : 'Yıllık'}
+                                {cycle === 'monthly' ? t('subscription.monthly') : t('subscription.yearly')}
                             </button>
                         ))}
                     </div>
@@ -309,17 +320,17 @@ export default function SubscriptionPage() {
                                 <div className="mb-4">
                                     <span className="text-3xl font-extrabold text-primary">₺{getPrice(pkg)}</span>
                                     <span className="text-sm text-[#515365] dark:text-[#888ea8]">
-                                        /{billingCycle === 'monthly' ? 'ay' : 'yıl'}
+                                        {billingCycle === 'monthly' ? t('subscription.perMonth') : t('subscription.perYear')}
                                     </span>
                                 </div>
                                 <ul className="mb-6 flex-1 space-y-2 text-sm">
                                     <li className="flex items-center gap-2">
                                         <Check className="h-4 w-4 flex-shrink-0 text-success" />
-                                        <span className="text-[#515365] dark:text-[#888ea8]">{formatLimit(pkg.max_schools)} Okul</span>
+                                        <span className="text-[#515365] dark:text-[#888ea8]">{formatLimit(pkg.max_schools)} {t('subscription.schoolUnit')}</span>
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <Check className="h-4 w-4 flex-shrink-0 text-success" />
-                                        <span className="text-[#515365] dark:text-[#888ea8]">{formatLimit(pkg.max_students)} Öğrenci</span>
+                                        <span className="text-[#515365] dark:text-[#888ea8]">{formatLimit(pkg.max_students)} {t('subscription.studentUnit')}</span>
                                     </li>
                                 </ul>
                                 <button
@@ -328,7 +339,7 @@ export default function SubscriptionPage() {
                                     onClick={() => handleSubscribe(pkg.id)}
                                     disabled={subscribing === pkg.id}
                                 >
-                                    {subscribing === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Seç'}
+                                    {subscribing === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : t('subscription.selectBtn')}
                                 </button>
                             </div>
                         ))}

@@ -4,8 +4,10 @@ import Link from 'next/link';
 import apiClient from '@/lib/apiClient';
 import { User, TenantSubscription, SubscriptionUsage, School } from '@/types';
 import { Building2, Users, BookOpen, CreditCard, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function DashboardPage() {
+    const { t } = useTranslation();
     const [user, setUser] = useState<User | null>(null);
     const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
     const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
@@ -39,7 +41,7 @@ export default function DashboardPage() {
         return Math.min((used / limit) * 100, 100);
     };
 
-    const formatLimit = (val: number) => (val === 0 ? 'Sınırsız' : val.toString());
+    const formatLimit = (val: number) => (val === 0 ? t('dashboard.unlimited') : val.toString());
 
     if (loading) {
         return (
@@ -53,10 +55,10 @@ export default function DashboardPage() {
         <div className="p-6">
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-dark dark:text-white">
-                    Hoş geldin{user ? `, ${user.name}` : ''}!
+                    {t('dashboard.welcome')}{user ? `, ${user.name}` : ''}!
                 </h1>
                 <p className="text-[#515365] dark:text-[#888ea8]">
-                    {user?.tenant?.name ?? 'Kurum'} yönetim paneli
+                    {user?.tenant?.name ?? ''} {t('dashboard.managementPanel')}
                 </p>
             </div>
 
@@ -65,12 +67,12 @@ export default function DashboardPage() {
                 <div className="mb-6 flex items-start gap-4 rounded-lg border border-warning/30 bg-warning/10 p-4">
                     <AlertTriangle className="h-5 w-5 flex-shrink-0 text-warning mt-0.5" />
                     <div>
-                        <p className="font-semibold text-warning">Aktif aboneliğiniz bulunmuyor</p>
+                        <p className="font-semibold text-warning">{t('dashboard.noSubWarning')}</p>
                         <p className="mt-1 text-sm text-[#515365] dark:text-[#888ea8]">
-                            Okul ve öğrenci yönetimini kullanmak için bir paket seçmelisiniz.
+                            {t('dashboard.noSubDesc')}
                         </p>
                         <Link href="/subscription" className="btn btn-warning btn-sm mt-3">
-                            Paket Seç
+                            {t('dashboard.selectPlanBtn')}
                         </Link>
                     </div>
                 </div>
@@ -84,9 +86,9 @@ export default function DashboardPage() {
                             <CreditCard className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                            <p className="text-sm text-[#515365] dark:text-[#888ea8]">Abonelik</p>
+                            <p className="text-sm text-[#515365] dark:text-[#888ea8]">{t('dashboard.subscriptionCard')}</p>
                             <p className="text-lg font-bold text-dark dark:text-white">
-                                {subscription ? subscription.package?.name ?? 'Aktif' : 'Yok'}
+                                {subscription ? subscription.package?.name ?? t('dashboard.subscriptionActive') : t('dashboard.subscriptionNone')}
                             </p>
                         </div>
                     </div>
@@ -98,7 +100,7 @@ export default function DashboardPage() {
                             <Building2 className="h-6 w-6 text-info" />
                         </div>
                         <div>
-                            <p className="text-sm text-[#515365] dark:text-[#888ea8]">Okullar</p>
+                            <p className="text-sm text-[#515365] dark:text-[#888ea8]">{t('dashboard.schoolsCard')}</p>
                             <p className="text-lg font-bold text-dark dark:text-white">
                                 {usage?.schools ? `${usage.schools.used} / ${formatLimit(usage.schools.limit)}` : schools.length}
                             </p>
@@ -112,7 +114,7 @@ export default function DashboardPage() {
                             <Users className="h-6 w-6 text-success" />
                         </div>
                         <div>
-                            <p className="text-sm text-[#515365] dark:text-[#888ea8]">Öğrenciler</p>
+                            <p className="text-sm text-[#515365] dark:text-[#888ea8]">{t('dashboard.studentsCard')}</p>
                             <p className="text-lg font-bold text-dark dark:text-white">
                                 {usage?.students ? `${usage.students.used} / ${formatLimit(usage.students.limit)}` : '—'}
                             </p>
@@ -126,7 +128,7 @@ export default function DashboardPage() {
                             <BookOpen className="h-6 w-6 text-warning" />
                         </div>
                         <div>
-                            <p className="text-sm text-[#515365] dark:text-[#888ea8]">Sınıflar</p>
+                            <p className="text-sm text-[#515365] dark:text-[#888ea8]">{t('dashboard.classesCard')}</p>
                             <p className="text-lg font-bold text-dark dark:text-white">
                                 {usage?.classes ? `${usage.classes.used} / ${formatLimit(usage.classes.limit)}` : '—'}
                             </p>
@@ -138,12 +140,12 @@ export default function DashboardPage() {
             {/* Usage progress bars */}
             {usage?.schools && (
                 <div className="panel mb-6">
-                    <h2 className="mb-4 font-semibold text-dark dark:text-white">Kullanım Durumu</h2>
+                    <h2 className="mb-4 font-semibold text-dark dark:text-white">{t('dashboard.usageTitle')}</h2>
                     <div className="space-y-4">
                         {[
-                            { label: 'Okullar', ...usage.schools },
-                            { label: 'Öğrenciler', ...usage.students },
-                            { label: 'Sınıflar', ...usage.classes },
+                            { label: t('dashboard.schoolsCard'), ...usage.schools },
+                            { label: t('dashboard.studentsCard'), ...usage.students },
+                            { label: t('dashboard.classesCard'), ...usage.classes },
                         ].map((item) => (
                             <div key={item.label}>
                                 <div className="mb-1 flex justify-between text-sm">
@@ -160,7 +162,7 @@ export default function DashboardPage() {
                                         />
                                     </div>
                                 ) : (
-                                    <p className="text-xs text-success">Sınırsız</p>
+                                    <p className="text-xs text-success">{t('dashboard.unlimited')}</p>
                                 )}
                             </div>
                         ))}
@@ -172,19 +174,19 @@ export default function DashboardPage() {
             {schools.length > 0 && (
                 <div className="panel">
                     <div className="mb-4 flex items-center justify-between">
-                        <h2 className="font-semibold text-dark dark:text-white">Son Okullar</h2>
+                        <h2 className="font-semibold text-dark dark:text-white">{t('dashboard.recentSchoolsTitle')}</h2>
                         <Link href="/schools" className="text-sm font-semibold text-primary hover:underline">
-                            Tümünü Gör
+                            {t('dashboard.viewAll')}
                         </Link>
                     </div>
                     <div className="table-responsive">
                         <table className="table-hover">
                             <thead>
                                 <tr>
-                                    <th>Okul Adı</th>
-                                    <th>Sınıf</th>
-                                    <th>Öğrenci</th>
-                                    <th>Durum</th>
+                                    <th>{t('dashboard.schoolNameCol')}</th>
+                                    <th>{t('dashboard.classCol')}</th>
+                                    <th>{t('dashboard.studentCol')}</th>
+                                    <th>{t('dashboard.statusCol')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -199,7 +201,7 @@ export default function DashboardPage() {
                                         <td>{school.children_count ?? 0}</td>
                                         <td>
                                             <span className={`badge ${school.status === 'active' ? 'badge-outline-success' : 'badge-outline-danger'}`}>
-                                                {school.status === 'active' ? 'Aktif' : 'Pasif'}
+                                                {school.status === 'active' ? t('common.active') : t('common.inactive')}
                                             </span>
                                         </td>
                                     </tr>

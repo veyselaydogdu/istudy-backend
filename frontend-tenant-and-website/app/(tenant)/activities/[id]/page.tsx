@@ -9,6 +9,7 @@ import {
     ArrowLeft, Calendar, DollarSign, Edit2, ImagePlus,
     Mail, PackagePlus, Phone, Trash2, Upload, User, Users, X,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,7 @@ function ParticipantModal({ enrollment, onClose }: { enrollment: Enrollment; onC
 export default function ActivityDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
+    const { t } = useTranslation();
 
     const [activity, setActivity] = useState<Activity | null>(null);
     const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -210,12 +212,12 @@ export default function ActivityDetailPage() {
     const handleDeleteGallery = async (item: ActivityGalleryItem) => {
         if (!schoolId) return;
         const result = await Swal.fire({
-            title: 'Dosyayı Sil',
+            title: t('common.delete'),
             text: 'Bu dosyayı silmek istediğinize emin misiniz?',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sil',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
@@ -301,7 +303,7 @@ export default function ActivityDetailPage() {
                             onClick={() => router.push(`/activities`)}
                         >
                             <Edit2 className="h-3.5 w-3.5" />
-                            Düzenle
+                            {t('common.edit')}
                         </button>
                     </div>
 
@@ -500,7 +502,7 @@ export default function ActivityDetailPage() {
                                         type="button"
                                         className="absolute right-1 top-1 hidden rounded-full bg-danger p-1 text-white group-hover:flex"
                                         onClick={() => handleDeleteGallery(item)}
-                                        title="Sil"
+                                        title={t('common.delete')}
                                     >
                                         <X className="h-3 w-3" />
                                     </button>

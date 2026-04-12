@@ -15,14 +15,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import type { Currency } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Meta = { current_page: number; last_page: number; per_page: number; total: number };
 
 const schema = z.object({
-    code: z.string().min(3).max(3, 'Para birimi kodu 3 karakter olmalıdır'),
-    name: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
+    code: z.string().min(3).max(3),
+    name: z.string().min(2),
     name_tr: z.string().optional(),
-    symbol: z.string().min(1, 'Sembol gereklidir'),
+    symbol: z.string().min(1),
     symbol_position: z.enum(['before', 'after']).optional(),
     decimal_places: z.string().optional(),
     thousands_separator: z.string().optional(),
@@ -32,6 +33,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function CurrenciesPage() {
+    const { t } = useTranslation();
     const [items, setItems] = useState<Currency[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -54,11 +56,11 @@ export default function CurrenciesPage() {
                 setMeta(res.data.meta ?? null);
             }
         } catch {
-            toast.error('Para birimleri yüklenirken hata oluştu.');
+            toast.error(t('global.currencies.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [page, search]);
+    }, [page, search, t]);
 
     useEffect(() => { setPage(1); }, [search]);
     useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -66,13 +68,13 @@ export default function CurrenciesPage() {
     const onAdd = async (data: FormValues) => {
         try {
             await apiClient.post('/admin/currencies', data);
-            toast.success('Para birimi eklendi.');
+            toast.success(t('global.currencies.addSuccess'));
             setIsAddOpen(false);
             reset();
             fetchItems();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Para birimi eklenemedi.');
+            toast.error(e.response?.data?.message ?? t('global.currencies.addError'));
         }
     };
 
@@ -80,23 +82,23 @@ export default function CurrenciesPage() {
         if (!editItem) { return; }
         try {
             await apiClient.put(`/admin/currencies/${editItem.id}`, data);
-            toast.success('Para birimi güncellendi.');
+            toast.success(t('global.currencies.updateSuccess'));
             setEditItem(null);
             fetchItems();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Güncelleme başarısız.');
+            toast.error(e.response?.data?.message ?? t('global.currencies.updateError'));
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Bu para birimini silmek istediğinizden emin misiniz?')) { return; }
+        if (!confirm(t('global.currencies.deleteConfirm'))) { return; }
         try {
             await apiClient.delete(`/admin/currencies/${id}`);
-            toast.success('Para birimi silindi.');
+            toast.success(t('global.currencies.deleteSuccess'));
             setItems((prev) => prev.filter((i) => i.id !== id));
         } catch {
-            toast.error('Silinemedi.');
+            toast.error(t('global.currencies.deleteError'));
         }
     };
 
@@ -105,18 +107,18 @@ export default function CurrenciesPage() {
             await apiClient.patch(`/admin/currencies/${id}/toggle-status`);
             setItems((prev) => prev.map((i) => (i.id === id ? { ...i, is_active: !i.is_active } : i)));
         } catch {
-            toast.error('Durum güncellenemedi.');
+            toast.error(t('global.currencies.toggleError'));
         }
     };
 
     const handleSetBase = async (id: number) => {
-        if (!confirm('Bu para birimini temel para birimi olarak ayarlamak istediğinizden emin misiniz?')) { return; }
+        if (!confirm(t('global.currencies.setBaseConfirm'))) { return; }
         try {
             await apiClient.patch(`/admin/currencies/${id}/set-base`);
-            toast.success('Temel para birimi güncellendi.');
+            toast.success(t('global.currencies.setBaseSuccess'));
             fetchItems();
         } catch {
-            toast.error('Güncelleme başarısız.');
+            toast.error(t('global.currencies.setBaseError'));
         }
     };
 
@@ -134,47 +136,47 @@ export default function CurrenciesPage() {
         <div className="grid gap-3 py-2">
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                    <Label>Para Birimi Kodu *</Label>
+                    <Label>{t('global.currencies.codeLabel')}</Label>
                     <Input {...reg('code')} maxLength={3} placeholder="TRY" />
                     {errs.code && <p className="text-xs text-red-500">{errs.code.message}</p>}
                 </div>
                 <div className="space-y-1">
-                    <Label>Sembol *</Label>
+                    <Label>{t('global.currencies.symbolLabel')}</Label>
                     <Input {...reg('symbol')} placeholder="₺" />
                     {errs.symbol && <p className="text-xs text-red-500">{errs.symbol.message}</p>}
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                    <Label>Ad (İngilizce) *</Label>
+                    <Label>{t('global.currencies.nameEnLabel')}</Label>
                     <Input {...reg('name')} placeholder="Turkish Lira" />
                     {errs.name && <p className="text-xs text-red-500">{errs.name.message}</p>}
                 </div>
                 <div className="space-y-1">
-                    <Label>Ad (Türkçe)</Label>
+                    <Label>{t('global.currencies.nameTrLabel')}</Label>
                     <Input {...reg('name_tr')} placeholder="Türk Lirası" />
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                    <Label>Sembol Pozisyonu</Label>
+                    <Label>{t('global.currencies.symbolPositionLabel')}</Label>
                     <select {...reg('symbol_position')} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-                        <option value="before">Önde (₺ 100)</option>
-                        <option value="after">Sonda (100 ₺)</option>
+                        <option value="before">{t('global.currencies.symbolBefore')}</option>
+                        <option value="after">{t('global.currencies.symbolAfter')}</option>
                     </select>
                 </div>
                 <div className="space-y-1">
-                    <Label>Ondalık Basamak</Label>
+                    <Label>{t('global.currencies.decimalPlacesLabel')}</Label>
                     <Input type="number" min={0} max={4} {...reg('decimal_places')} placeholder="2" />
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                    <Label>Binler Ayıracı</Label>
+                    <Label>{t('global.currencies.thousandsSepLabel')}</Label>
                     <Input {...reg('thousands_separator')} placeholder="." maxLength={1} />
                 </div>
                 <div className="space-y-1">
-                    <Label>Ondalık Ayıracı</Label>
+                    <Label>{t('global.currencies.decimalSepLabel')}</Label>
                     <Input {...reg('decimal_separator')} placeholder="," maxLength={1} />
                 </div>
             </div>
@@ -185,25 +187,27 @@ export default function CurrenciesPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Para Birimleri</h1>
-                    <p className="text-muted-foreground">Sistemde kullanılan para birimleri ve döviz kuru yönetimi.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('global.currencies.title')}</h1>
+                    <p className="text-muted-foreground">{t('global.currencies.subtitle')}</p>
                 </div>
                 <Button onClick={() => setIsAddOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Para Birimi Ekle
+                    <Plus className="mr-2 h-4 w-4" /> {t('global.currencies.addBtn')}
                 </Button>
             </div>
 
             <div className="relative max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-8" placeholder="Kod veya ad ile ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input className="pl-8" placeholder={t('global.currencies.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
 
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Coins className="h-5 w-5 text-yellow-500" /> Para Birimi Listesi
+                        <Coins className="h-5 w-5 text-yellow-500" /> {t('global.currencies.listTitle')}
                     </CardTitle>
-                    <CardDescription>{meta ? `Toplam ${meta.total} para birimi` : 'Yükleniyor...'}</CardDescription>
+                    <CardDescription>
+                        {meta ? t('global.currencies.totalCount', { count: meta.total }) : t('common.loading')}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -215,12 +219,12 @@ export default function CurrenciesPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Kod</TableHead>
-                                        <TableHead>Ad</TableHead>
-                                        <TableHead>Sembol</TableHead>
-                                        <TableHead>Ondalık</TableHead>
-                                        <TableHead>Durum</TableHead>
-                                        <TableHead>Temel</TableHead>
+                                        <TableHead>{t('global.currencies.codeCol')}</TableHead>
+                                        <TableHead>{t('global.currencies.nameCol')}</TableHead>
+                                        <TableHead>{t('global.currencies.symbolCol')}</TableHead>
+                                        <TableHead>{t('global.currencies.decimalCol')}</TableHead>
+                                        <TableHead>{t('common.status')}</TableHead>
+                                        <TableHead>{t('global.currencies.baseCol')}</TableHead>
                                         <TableHead className="w-28" />
                                     </TableRow>
                                 </TableHeader>
@@ -235,13 +239,13 @@ export default function CurrenciesPage() {
                                             <TableCell className="text-sm text-muted-foreground">{item.decimal_places}</TableCell>
                                             <TableCell>
                                                 <Badge variant={item.is_active ? 'success' : 'secondary'}>
-                                                    {item.is_active ? 'Aktif' : 'Pasif'}
+                                                    {item.is_active ? t('common.active') : t('common.inactive')}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
                                                 {item.is_base ? (
                                                     <Badge variant="warning" className="flex items-center gap-1 w-fit">
-                                                        <Star className="h-3 w-3" /> Temel
+                                                        <Star className="h-3 w-3" /> {t('global.currencies.baseBadge')}
                                                     </Badge>
                                                 ) : (
                                                     <span className="text-muted-foreground text-sm">—</span>
@@ -250,11 +254,11 @@ export default function CurrenciesPage() {
                                             <TableCell>
                                                 <div className="flex items-center gap-1">
                                                     {!item.is_base && (
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Temel Para Birimi Yap" onClick={() => handleSetBase(item.id)}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleSetBase(item.id)}>
                                                             <Star className="h-4 w-4 text-yellow-500" />
                                                         </Button>
                                                     )}
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" title={item.is_active ? 'Pasife Al' : 'Aktife Al'} onClick={() => handleToggleStatus(item.id)}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleStatus(item.id)}>
                                                         {item.is_active ? <ToggleRight className="h-4 w-4 text-success" /> : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
                                                     </Button>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
@@ -269,14 +273,16 @@ export default function CurrenciesPage() {
                                     ))}
                                     {items.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Para birimi bulunamadı.</TableCell>
+                                            <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">{t('global.currencies.noRecord')}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
                             </Table>
                             {meta && meta.last_page > 1 && (
                                 <div className="mt-4 flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">Sayfa {meta.current_page} / {meta.last_page} — {meta.total} kayıt</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('global.currencies.pageInfo', { current: meta.current_page, total: meta.last_page, count: meta.total })}
+                                    </p>
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="sm" disabled={meta.current_page === 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
                                         <Button variant="outline" size="sm" disabled={meta.current_page === meta.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
@@ -291,15 +297,15 @@ export default function CurrenciesPage() {
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Para Birimi Ekle</DialogTitle>
-                        <DialogDescription>Sisteme yeni para birimi ekleyin.</DialogDescription>
+                        <DialogTitle>{t('global.currencies.addTitle')}</DialogTitle>
+                        <DialogDescription>{t('global.currencies.addDescription')}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit(onAdd)}>
                         <CurrencyFormFields reg={register} errs={errors} />
                         <DialogFooter className="mt-4">
-                            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); reset(); }}>İptal</Button>
+                            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); reset(); }}>{t('common.cancel')}</Button>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ekle
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('common.add')}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -309,14 +315,14 @@ export default function CurrenciesPage() {
             <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); } }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Para Birimi Düzenle</DialogTitle>
+                        <DialogTitle>{t('global.currencies.editTitle')}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleEdit(onEdit)}>
                         <CurrencyFormFields reg={regEdit} errs={errEdit} />
                         <DialogFooter className="mt-4">
-                            <Button type="button" variant="outline" onClick={() => setEditItem(null)}>İptal</Button>
+                            <Button type="button" variant="outline" onClick={() => setEditItem(null)}>{t('common.cancel')}</Button>
                             <Button type="submit" disabled={isEditSubmitting}>
-                                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Kaydet
+                                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('common.save')}
                             </Button>
                         </DialogFooter>
                     </form>

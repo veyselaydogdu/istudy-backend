@@ -23,31 +23,13 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import type { User } from "@/types"
+import { useTranslation } from "@/hooks/useTranslation"
 
 const ROLE_FILTERS: Record<string, string> = {
     teachers: "teacher",
     parents: "parent",
     students: "student",
 }
-
-const ROLE_LABELS: Record<string, string> = {
-    teacher: "Öğretmen",
-    parent: "Veli",
-    student: "Öğrenci",
-    tenant_owner: "Kurum Sahibi",
-    school_admin: "Okul Yöneticisi",
-    super_admin: "Süper Admin",
-}
-
-const userSchema = z.object({
-    name: z.string().min(2, "Ad en az 2 karakter olmalıdır"),
-    surname: z.string().optional(),
-    email: z.string().email("Geçerli bir e-posta giriniz"),
-    password: z.string().min(6, "Şifre en az 6 karakter olmalıdır"),
-    role: z.string().min(1, "Rol seçiniz"),
-})
-
-type UserFormValues = z.infer<typeof userSchema>
 
 type Meta = {
     current_page: number
@@ -57,6 +39,26 @@ type Meta = {
 }
 
 export default function UsersPage() {
+    const { t } = useTranslation()
+
+    const ROLE_LABELS: Record<string, string> = {
+        teacher: t('users.roles.teacher'),
+        parent: t('users.roles.parent'),
+        student: t('users.roles.student'),
+        tenant_owner: t('users.roles.tenantOwner'),
+        school_admin: t('users.roles.schoolAdmin'),
+        super_admin: t('users.roles.superAdmin'),
+    }
+
+    const userSchema = z.object({
+        name: z.string().min(2, t('users.form.nameMin')),
+        surname: z.string().optional(),
+        email: z.string().email(t('validation.emailRequired')),
+        password: z.string().min(6, t('validation.passwordMin')),
+        role: z.string().min(1, t('users.form.roleRequired')),
+    })
+    type UserFormValues = z.infer<typeof userSchema>
+
     const [users, setUsers] = useState<User[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
     const [loading, setLoading] = useState(true)
@@ -69,7 +71,7 @@ export default function UsersPage() {
 
     const fetchUsers = useCallback(async () => {
         setLoading(true)
-        setUsers([]) // Önceki veriyi temizle
+        setUsers([])
         try {
             const role = ROLE_FILTERS[activeTab]
             const params: Record<string, string | number> = { page, per_page: 15 }
@@ -85,13 +87,13 @@ export default function UsersPage() {
                 setMeta(null)
             }
         } catch {
-            toast.error("Kullanıcılar yüklenirken hata oluştu.")
+            toast.error(t('users.loadError'))
             setUsers([])
             setMeta(null)
         } finally {
             setLoading(false)
         }
-    }, [activeTab, search, page])
+    }, [activeTab, search, page, t])
 
     useEffect(() => {
         setPage(1)
@@ -110,25 +112,25 @@ export default function UsersPage() {
         try {
             const res = await apiClient.post("/admin/users", data)
             if (res.data?.success) {
-                toast.success("Kullanıcı başarıyla oluşturuldu.")
+                toast.success(t('users.createSuccess'))
                 setIsDialogOpen(false)
                 reset()
                 fetchUsers()
             }
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } }
-            toast.error(error.response?.data?.message || "Kullanıcı oluşturulurken hata oluştu.")
+            toast.error(error.response?.data?.message || t('users.createError'))
         }
     }
 
     const handleDelete = async (userId: number) => {
-        if (!confirm("Bu kullanıcıyı silmek istediğinizden emin misiniz?")) { return }
+        if (!confirm(t('swal.deleteTitle'))) { return }
         try {
             await apiClient.delete(`/admin/users/${userId}`)
-            toast.success("Kullanıcı silindi.")
+            toast.success(t('users.deleteSuccess'))
             fetchUsers()
         } catch {
-            toast.error("Kullanıcı silinirken hata oluştu.")
+            toast.error(t('users.deleteError'))
         }
     }
 
@@ -150,65 +152,72 @@ export default function UsersPage() {
         all: activeTab === "all" ? meta?.total : undefined,
     }
 
+    const getTabListTitle = (tab: string) => {
+        if (tab === "teachers") { return t('users.listTitles.teachers') }
+        if (tab === "parents") { return t('users.listTitles.parents') }
+        if (tab === "students") { return t('users.listTitles.students') }
+        return t('users.listTitles.all')
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Kullanıcı Havuzu</h1>
-                    <p className="text-muted-foreground">Tüm kullanıcıları görüntüleyin ve yönetin.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('users.title')}</h1>
+                    <p className="text-muted-foreground">{t('users.subtitle')}</p>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><Plus className="mr-2 h-4 w-4" /> Yeni Kullanıcı</Button>
+                        <Button><Plus className="mr-2 h-4 w-4" /> {t('users.addUser')}</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Yeni Kullanıcı Oluştur</DialogTitle>
-                            <DialogDescription>Sisteme yeni bir kullanıcı ekleyin.</DialogDescription>
+                            <DialogTitle>{t('users.createTitle')}</DialogTitle>
+                            <DialogDescription>{t('users.createDescription')}</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSubmit(onSubmit)}>
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Ad</Label>
-                                        <Input placeholder="Ad" {...register("name")} />
+                                        <Label>{t('users.form.firstName')}</Label>
+                                        <Input placeholder={t('users.form.firstName')} {...register("name")} />
                                         {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Soyad</Label>
-                                        <Input placeholder="Soyad" {...register("surname")} />
+                                        <Label>{t('users.form.lastName')}</Label>
+                                        <Input placeholder={t('users.form.lastName')} {...register("surname")} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>E-posta</Label>
+                                    <Label>{t('common.email')}</Label>
                                     <Input type="email" placeholder="kullanici@ornek.com" {...register("email")} />
                                     {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Şifre</Label>
+                                    <Label>{t('auth.password')}</Label>
                                     <Input type="password" {...register("password")} />
                                     {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Rol</Label>
+                                    <Label>{t('users.role')}</Label>
                                     <select
                                         {...register("role")}
                                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                                     >
-                                        <option value="">Rol seçin...</option>
-                                        <option value="teacher">Öğretmen</option>
-                                        <option value="parent">Veli</option>
-                                        <option value="school_admin">Okul Yöneticisi</option>
-                                        <option value="tenant_owner">Kurum Sahibi</option>
+                                        <option value="">{t('users.form.selectRole')}</option>
+                                        <option value="teacher">{t('users.roles.teacher')}</option>
+                                        <option value="parent">{t('users.roles.parent')}</option>
+                                        <option value="school_admin">{t('users.roles.schoolAdmin')}</option>
+                                        <option value="tenant_owner">{t('users.roles.tenantOwner')}</option>
                                     </select>
                                     {errors.role && <p className="text-xs text-red-500">{errors.role.message}</p>}
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>İptal</Button>
+                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>{t('common.cancel')}</Button>
                                 <Button type="submit" disabled={isSubmitting}>
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Oluştur
+                                    {t('common.create')}
                                 </Button>
                             </DialogFooter>
                         </form>
@@ -216,13 +225,12 @@ export default function UsersPage() {
                 </Dialog>
             </div>
 
-            {/* Arama */}
             <div className="flex items-center gap-2 max-w-md">
                 <div className="relative flex-1">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         className="pl-8"
-                        placeholder="Ad, soyad veya e-posta ile ara..."
+                        placeholder={t('users.searchPlaceholder')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -232,29 +240,24 @@ export default function UsersPage() {
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
                     <TabsTrigger value="teachers">
-                        Öğretmenler {tabCounts.teachers !== undefined && `(${tabCounts.teachers})`}
+                        {t('users.tabs.teachers')} {tabCounts.teachers !== undefined && `(${tabCounts.teachers})`}
                     </TabsTrigger>
                     <TabsTrigger value="parents">
-                        Veliler {tabCounts.parents !== undefined && `(${tabCounts.parents})`}
+                        {t('users.tabs.parents')} {tabCounts.parents !== undefined && `(${tabCounts.parents})`}
                     </TabsTrigger>
                     <TabsTrigger value="students">
-                        Öğrenciler {tabCounts.students !== undefined && `(${tabCounts.students})`}
+                        {t('users.tabs.students')} {tabCounts.students !== undefined && `(${tabCounts.students})`}
                     </TabsTrigger>
-                    <TabsTrigger value="all">Tümü</TabsTrigger>
+                    <TabsTrigger value="all">{t('users.tabs.all')}</TabsTrigger>
                 </TabsList>
 
                 {["teachers", "parents", "students", "all"].map((tab) => (
                     <TabsContent key={tab} value={tab}>
                         <Card>
                             <CardHeader>
-                                <CardTitle>
-                                    {tab === "teachers" && "Öğretmen Listesi"}
-                                    {tab === "parents" && "Veli Listesi"}
-                                    {tab === "students" && "Öğrenci Listesi"}
-                                    {tab === "all" && "Tüm Kullanıcılar"}
-                                </CardTitle>
+                                <CardTitle>{getTabListTitle(tab)}</CardTitle>
                                 <CardDescription>
-                                    {meta ? `Toplam ${meta.total} kullanıcı` : "Yükleniyor..."}
+                                    {meta ? t('users.totalCount', { count: meta.total }) : t('common.loading')}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -267,12 +270,12 @@ export default function UsersPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead>Kullanıcı</TableHead>
-                                                    <TableHead>E-posta</TableHead>
-                                                    <TableHead>Rol</TableHead>
-                                                    <TableHead>Kurum</TableHead>
-                                                    <TableHead>Kayıt</TableHead>
-                                                    <TableHead className="text-right">İşlem</TableHead>
+                                                    <TableHead>{t('users.userName')}</TableHead>
+                                                    <TableHead>{t('common.email')}</TableHead>
+                                                    <TableHead>{t('users.role')}</TableHead>
+                                                    <TableHead>{t('users.tenant')}</TableHead>
+                                                    <TableHead>{t('tenants.createdAt')}</TableHead>
+                                                    <TableHead className="text-right">{t('common.actions')}</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -306,15 +309,15 @@ export default function UsersPage() {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end">
-                                                                    <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
+                                                                    <DropdownMenuLabel>{t('common.actions')}</DropdownMenuLabel>
                                                                     <DropdownMenuItem onClick={() => { setProfileUser(user); setIsProfileOpen(true) }}>
-                                                                        <UserCircle className="mr-2 h-4 w-4" /> Profili Gör
+                                                                        <UserCircle className="mr-2 h-4 w-4" /> {t('users.viewProfile')}
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
                                                                         className="text-red-600"
                                                                         onClick={() => handleDelete(user.id)}
                                                                     >
-                                                                        Sil
+                                                                        {t('common.delete')}
                                                                     </DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
@@ -324,18 +327,17 @@ export default function UsersPage() {
                                                 {users.length === 0 && (
                                                     <TableRow>
                                                         <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                                            Kullanıcı bulunamadı.
+                                                            {t('users.noRecord')}
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
                                             </TableBody>
                                         </Table>
 
-                                        {/* Pagination */}
                                         {meta && meta.last_page > 1 && (
                                             <div className="flex items-center justify-between mt-4">
                                                 <p className="text-sm text-muted-foreground">
-                                                    Sayfa {meta.current_page} / {meta.last_page}
+                                                    {t('subscriptions.pageOf', { current: meta.current_page, total: meta.last_page })}
                                                 </p>
                                                 <div className="flex gap-2">
                                                     <Button
@@ -363,12 +365,11 @@ export default function UsersPage() {
                 ))}
             </Tabs>
 
-            {/* Kullanıcı Profili Dialog */}
             <Dialog open={isProfileOpen} onOpenChange={(o) => { if (!o) { setIsProfileOpen(false); setProfileUser(null) } }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Kullanıcı Profili</DialogTitle>
-                        <DialogDescription>Kullanıcı detay bilgileri</DialogDescription>
+                        <DialogTitle>{t('users.profileTitle')}</DialogTitle>
+                        <DialogDescription>{t('users.profileDescription')}</DialogDescription>
                     </DialogHeader>
                     {profileUser && (
                         <div className="space-y-4 py-2">
@@ -400,13 +401,13 @@ export default function UsersPage() {
                                 )}
                                 <div className="flex items-center gap-3 text-sm">
                                     <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span>Kayıt: {new Date(profileUser.created_at).toLocaleDateString("tr-TR")}</span>
+                                    <span>{t('users.registeredAt')}: {new Date(profileUser.created_at).toLocaleDateString("tr-TR")}</span>
                                 </div>
                             </div>
                         </div>
                     )}
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { setIsProfileOpen(false); setProfileUser(null) }}>Kapat</Button>
+                        <Button variant="outline" onClick={() => { setIsProfileOpen(false); setProfileUser(null) }}>{t('common.close')}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

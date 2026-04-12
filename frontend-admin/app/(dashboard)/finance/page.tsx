@@ -16,17 +16,9 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Invoice, Transaction, TransactionStats } from "@/types"
+import { useTranslation } from "@/hooks/useTranslation"
 
 type Meta = { current_page: number; last_page: number; per_page: number; total: number }
-
-const INVOICE_STATUS_LABELS: Record<string, string> = {
-    draft: "Taslak", pending: "Bekliyor", paid: "Ödendi",
-    cancelled: "İptal", overdue: "Gecikmiş",
-}
-
-const TRANSACTION_STATUS_LABELS: Record<string, string> = {
-    pending: "Bekliyor", success: "Başarılı", failed: "Başarısız", refunded: "İade",
-}
 
 function getInvoiceBadgeVariant(status: string): "default" | "success" | "warning" | "danger" | "secondary" {
     const map: Record<string, "default" | "success" | "warning" | "danger" | "secondary"> = {
@@ -47,6 +39,7 @@ const formatCurrency = (val: number, currency = "TRY") =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(val)
 
 export default function FinancePage() {
+    const { t } = useTranslation()
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [invoiceMeta, setInvoiceMeta] = useState<Meta | null>(null)
     const [invoicePage, setInvoicePage] = useState(1)
@@ -60,6 +53,21 @@ export default function FinancePage() {
     const [txLoading, setTxLoading] = useState(false)
     const [search, setSearch] = useState("")
 
+    const INVOICE_STATUS_LABELS: Record<string, string> = {
+        draft: t('finance.invoiceStatus.draft'),
+        pending: t('finance.invoiceStatus.pending'),
+        paid: t('finance.invoiceStatus.paid'),
+        cancelled: t('finance.invoiceStatus.cancelled'),
+        overdue: t('finance.invoiceStatus.overdue'),
+    }
+
+    const TRANSACTION_STATUS_LABELS: Record<string, string> = {
+        pending: t('finance.txStatus.pending'),
+        success: t('finance.txStatus.success'),
+        failed: t('finance.txStatus.failed'),
+        refunded: t('finance.txStatus.refunded'),
+    }
+
     const fetchInvoices = useCallback(async () => {
         setLoading(true)
         try {
@@ -71,11 +79,11 @@ export default function FinancePage() {
                 setInvoiceMeta(res.data.meta ?? null)
             }
         } catch {
-            toast.error("Faturalar yüklenirken hata oluştu.")
+            toast.error(t('finance.invoiceLoadError'))
         } finally {
             setLoading(false)
         }
-    }, [invoicePage, search])
+    }, [invoicePage, search, t])
 
     const fetchTransactions = useCallback(async () => {
         setTxLoading(true)
@@ -88,11 +96,11 @@ export default function FinancePage() {
                 setTransactionMeta(res.data.meta ?? null)
             }
         } catch {
-            toast.error("İşlemler yüklenirken hata oluştu.")
+            toast.error(t('finance.transactionLoadError'))
         } finally {
             setTxLoading(false)
         }
-    }, [transactionPage])
+    }, [transactionPage, t])
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -100,7 +108,7 @@ export default function FinancePage() {
                 const res = await apiClient.get("/admin/transactions/stats")
                 if (res.data?.data) { setStats(res.data.data) }
             } catch {
-                // İstatistik yüklenemedi
+                // silent
             }
         }
         fetchStats()
@@ -110,23 +118,23 @@ export default function FinancePage() {
 
     const statCards = [
         {
-            title: "Bu Ay Tahsilat",
+            title: t('finance.thisMonthCollection'),
             value: stats ? formatCurrency(stats.this_month_amount) : "—",
-            sub: `Bugün: ${stats ? formatCurrency(stats.today_amount) : "—"}`,
+            sub: `${t('finance.today')}: ${stats ? formatCurrency(stats.today_amount) : "—"}`,
             icon: ArrowDownLeft,
             color: "text-green-500",
         },
         {
-            title: "Toplam İşlem",
+            title: t('finance.totalTransactions'),
             value: stats?.total_count ?? "—",
-            sub: `${stats?.success_count ?? 0} başarılı`,
+            sub: `${stats?.success_count ?? 0} ${t('finance.successful')}`,
             icon: CreditCard,
             color: "text-indigo-500",
         },
         {
-            title: "Başarılı Tutar",
+            title: t('finance.successfulAmount'),
             value: stats ? formatCurrency(stats.success_amount) : "—",
-            sub: "Onaylanmış ödemeler",
+            sub: t('finance.approvedPayments'),
             icon: TrendingUp,
             color: "text-emerald-500",
         },
@@ -135,11 +143,10 @@ export default function FinancePage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Finans & Ödemeler</h1>
-                <p className="text-muted-foreground">B2B fatura takibi, sanal POS işlemleri ve finansal raporlar.</p>
+                <h1 className="text-3xl font-bold tracking-tight">{t('finance.title')}</h1>
+                <p className="text-muted-foreground">{t('finance.subtitle')}</p>
             </div>
 
-            {/* İstatistik Kartları */}
             <div className="grid gap-4 md:grid-cols-3">
                 {statCards.map((card) => (
                     <Card key={card.title}>
@@ -158,22 +165,23 @@ export default function FinancePage() {
             <Tabs defaultValue="invoices">
                 <TabsList>
                     <TabsTrigger value="invoices">
-                        <ReceiptText className="mr-2 h-4 w-4" /> Faturalar
+                        <ReceiptText className="mr-2 h-4 w-4" /> {t('finance.invoiceList')}
                     </TabsTrigger>
                     <TabsTrigger value="transactions">
-                        <CreditCard className="mr-2 h-4 w-4" /> POS İşlemleri
+                        <CreditCard className="mr-2 h-4 w-4" /> {t('finance.posTab')}
                     </TabsTrigger>
                 </TabsList>
 
-                {/* Faturalar */}
                 <TabsContent value="invoices">
                     <Card>
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle>Fatura Listesi</CardTitle>
+                                    <CardTitle>{t('finance.invoiceList')}</CardTitle>
                                     <CardDescription>
-                                        {invoiceMeta ? `Toplam ${invoiceMeta.total} fatura` : "Yükleniyor..."}
+                                        {invoiceMeta
+                                            ? t('finance.totalInvoicesCount', { count: invoiceMeta.total })
+                                            : t('common.loading')}
                                     </CardDescription>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -181,7 +189,7 @@ export default function FinancePage() {
                                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             className="pl-8 w-48"
-                                            placeholder="Ara..."
+                                            placeholder={t('common.search')}
                                             value={search}
                                             onChange={(e) => setSearch(e.target.value)}
                                         />
@@ -202,14 +210,14 @@ export default function FinancePage() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Fatura No</TableHead>
-                                                <TableHead>Kurum</TableHead>
-                                                <TableHead>Tip</TableHead>
-                                                <TableHead>Tutar</TableHead>
-                                                <TableHead>Para Birimi</TableHead>
-                                                <TableHead>Durum</TableHead>
-                                                <TableHead>Vade</TableHead>
-                                                <TableHead>Tarih</TableHead>
+                                                <TableHead>{t('finance.invoiceNumber')}</TableHead>
+                                                <TableHead>{t('finance.tenantCol')}</TableHead>
+                                                <TableHead>{t('finance.typeCol')}</TableHead>
+                                                <TableHead>{t('finance.amount')}</TableHead>
+                                                <TableHead>{t('finance.currency')}</TableHead>
+                                                <TableHead>{t('common.status')}</TableHead>
+                                                <TableHead>{t('finance.dueDateCol')}</TableHead>
+                                                <TableHead>{t('common.date')}</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -246,7 +254,7 @@ export default function FinancePage() {
                                             {invoices.length === 0 && (
                                                 <TableRow>
                                                     <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                                                        Fatura bulunamadı.
+                                                        {t('finance.noInvoice')}
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -255,7 +263,7 @@ export default function FinancePage() {
                                     {invoiceMeta && invoiceMeta.last_page > 1 && (
                                         <div className="flex items-center justify-between mt-4">
                                             <p className="text-sm text-muted-foreground">
-                                                Sayfa {invoiceMeta.current_page} / {invoiceMeta.last_page}
+                                                {t('finance.pageOf', { current: invoiceMeta.current_page, total: invoiceMeta.last_page })}
                                             </p>
                                             <div className="flex gap-2">
                                                 <Button
@@ -281,15 +289,16 @@ export default function FinancePage() {
                     </Card>
                 </TabsContent>
 
-                {/* POS İşlemleri */}
                 <TabsContent value="transactions">
                     <Card>
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle>Sanal POS İşlemleri</CardTitle>
+                                    <CardTitle>{t('finance.posTransactions')}</CardTitle>
                                     <CardDescription>
-                                        {transactionMeta ? `Toplam ${transactionMeta.total} işlem` : "Yükleniyor..."}
+                                        {transactionMeta
+                                            ? t('finance.totalTransactionCount', { count: transactionMeta.total })
+                                            : t('common.loading')}
                                     </CardDescription>
                                 </div>
                                 <Button variant="outline" size="icon" onClick={fetchTransactions}>
@@ -307,12 +316,12 @@ export default function FinancePage() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>İşlem ID</TableHead>
-                                                <TableHead>Gateway ID</TableHead>
-                                                <TableHead>Tutar</TableHead>
-                                                <TableHead>Gateway</TableHead>
-                                                <TableHead>Durum</TableHead>
-                                                <TableHead>Tarih</TableHead>
+                                                <TableHead>{t('finance.transactionIdCol')}</TableHead>
+                                                <TableHead>{t('finance.gatewayIdCol')}</TableHead>
+                                                <TableHead>{t('finance.amount')}</TableHead>
+                                                <TableHead>{t('finance.gatewayCol')}</TableHead>
+                                                <TableHead>{t('common.status')}</TableHead>
+                                                <TableHead>{t('common.date')}</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -344,7 +353,7 @@ export default function FinancePage() {
                                             {transactions.length === 0 && (
                                                 <TableRow>
                                                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                                        İşlem bulunamadı.
+                                                        {t('finance.noTransaction')}
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -353,7 +362,7 @@ export default function FinancePage() {
                                     {transactionMeta && transactionMeta.last_page > 1 && (
                                         <div className="flex items-center justify-between mt-4">
                                             <p className="text-sm text-muted-foreground">
-                                                Sayfa {transactionMeta.current_page} / {transactionMeta.last_page}
+                                                {t('finance.pageOf', { current: transactionMeta.current_page, total: transactionMeta.last_page })}
                                             </p>
                                             <div className="flex gap-2">
                                                 <Button

@@ -16,18 +16,19 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import type { FoodIngredient, Allergen } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Meta = { current_page: number; last_page: number; per_page: number; total: number };
 
 const schema = z.object({
-    name: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
+    name: z.string().min(2),
     allergen_info: z.string().optional(),
     allergen_ids: z.array(z.number()).optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-function AllergenPicker({ allergens, selected, onChange }: { allergens: Allergen[]; selected: number[]; onChange: (ids: number[]) => void }) {
+function AllergenPicker({ allergens, selected, onChange, noAllergensLabel }: { allergens: Allergen[]; selected: number[]; onChange: (ids: number[]) => void; noAllergensLabel: string }) {
     const toggle = (id: number) => {
         if (selected.includes(id)) {
             onChange(selected.filter((x) => x !== id));
@@ -39,7 +40,7 @@ function AllergenPicker({ allergens, selected, onChange }: { allergens: Allergen
     return (
         <div className="rounded-md border p-3 max-h-44 overflow-y-auto">
             {allergens.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Alerjen bulunamadı</p>
+                <p className="text-sm text-muted-foreground">{noAllergensLabel}</p>
             ) : (
                 <div className="grid grid-cols-2 gap-2">
                     {allergens.map((a) => (
@@ -55,6 +56,7 @@ function AllergenPicker({ allergens, selected, onChange }: { allergens: Allergen
 }
 
 export default function FoodIngredientsPage() {
+    const { t } = useTranslation();
     const [items, setItems] = useState<FoodIngredient[]>([]);
     const [allergens, setAllergens] = useState<Allergen[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
@@ -80,11 +82,11 @@ export default function FoodIngredientsPage() {
                 setMeta(res.data.meta ?? null);
             }
         } catch {
-            toast.error('Besin içerikleri yüklenirken hata oluştu.');
+            toast.error(t('global.foodIngredients.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [page, search]);
+    }, [page, search, t]);
 
     const fetchAllergens = useCallback(async () => {
         try {
@@ -100,14 +102,14 @@ export default function FoodIngredientsPage() {
     const onAdd = async (data: FormValues) => {
         try {
             await apiClient.post('/admin/food-ingredients', { ...data, allergen_ids: addSelected });
-            toast.success('Besin içeriği eklendi.');
+            toast.success(t('global.foodIngredients.addSuccess'));
             setIsAddOpen(false);
             reset();
             setAddSelected([]);
             fetchItems();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Besin eklenemedi.');
+            toast.error(e.response?.data?.message ?? t('global.foodIngredients.addError'));
         }
     };
 
@@ -115,23 +117,23 @@ export default function FoodIngredientsPage() {
         if (!editItem) { return; }
         try {
             await apiClient.put(`/admin/food-ingredients/${editItem.id}`, { ...data, allergen_ids: editSelected });
-            toast.success('Besin içeriği güncellendi.');
+            toast.success(t('global.foodIngredients.updateSuccess'));
             setEditItem(null);
             fetchItems();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Güncelleme başarısız.');
+            toast.error(e.response?.data?.message ?? t('global.foodIngredients.updateError'));
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Bu besin içeriğini silmek istediğinizden emin misiniz?')) { return; }
+        if (!confirm(t('global.foodIngredients.deleteConfirm'))) { return; }
         try {
             await apiClient.delete(`/admin/food-ingredients/${id}`);
-            toast.success('Besin içeriği silindi.');
+            toast.success(t('global.foodIngredients.deleteSuccess'));
             setItems((prev) => prev.filter((i) => i.id !== id));
         } catch {
-            toast.error('Silinemedi.');
+            toast.error(t('global.foodIngredients.deleteError'));
         }
     };
 
@@ -145,25 +147,27 @@ export default function FoodIngredientsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Besin İçerikleri</h1>
-                    <p className="text-muted-foreground">Yemek menülerinde kullanılan standart besin tanımları.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('global.foodIngredients.title')}</h1>
+                    <p className="text-muted-foreground">{t('global.foodIngredients.subtitle')}</p>
                 </div>
                 <Button onClick={() => setIsAddOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Besin Ekle
+                    <Plus className="mr-2 h-4 w-4" /> {t('global.foodIngredients.addBtn')}
                 </Button>
             </div>
 
             <div className="relative max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-8" placeholder="Besin adı ile ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input className="pl-8" placeholder={t('global.foodIngredients.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
 
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Apple className="h-5 w-5 text-green-500" /> Besin İçerikleri Listesi
+                        <Apple className="h-5 w-5 text-green-500" /> {t('global.foodIngredients.listTitle')}
                     </CardTitle>
-                    <CardDescription>{meta ? `Toplam ${meta.total} besin tanımı` : 'Yükleniyor...'}</CardDescription>
+                    <CardDescription>
+                        {meta ? t('global.foodIngredients.totalCount', { count: meta.total }) : t('common.loading')}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -175,10 +179,10 @@ export default function FoodIngredientsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Besin Adı</TableHead>
-                                        <TableHead>Alerjenler</TableHead>
-                                        <TableHead>Alerjen Notu</TableHead>
-                                        <TableHead>Eklenme</TableHead>
+                                        <TableHead>{t('global.foodIngredients.nameCol')}</TableHead>
+                                        <TableHead>{t('global.foodIngredients.allergensCol')}</TableHead>
+                                        <TableHead>{t('global.foodIngredients.allergenNoteCol')}</TableHead>
+                                        <TableHead>{t('global.foodIngredients.addedCol')}</TableHead>
                                         <TableHead className="w-20" />
                                     </TableRow>
                                 </TableHeader>
@@ -215,14 +219,16 @@ export default function FoodIngredientsPage() {
                                     ))}
                                     {items.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Besin içeriği bulunamadı.</TableCell>
+                                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">{t('global.foodIngredients.noRecord')}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
                             </Table>
                             {meta && meta.last_page > 1 && (
                                 <div className="mt-4 flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">Sayfa {meta.current_page} / {meta.last_page} — {meta.total} kayıt</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('global.foodIngredients.pageInfo', { current: meta.current_page, total: meta.last_page, count: meta.total })}
+                                    </p>
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="sm" disabled={meta.current_page === 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
                                         <Button variant="outline" size="sm" disabled={meta.current_page === meta.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
@@ -234,67 +240,65 @@ export default function FoodIngredientsPage() {
                 </CardContent>
             </Card>
 
-            {/* Add Dialog */}
             <Dialog open={isAddOpen} onOpenChange={(o) => { if (!o) { setIsAddOpen(false); reset(); setAddSelected([]); } else { setIsAddOpen(true); } }}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Besin Ekle</DialogTitle>
-                        <DialogDescription>Global besin havuzuna yeni içerik ekleyin.</DialogDescription>
+                        <DialogTitle>{t('global.foodIngredients.addTitle')}</DialogTitle>
+                        <DialogDescription>{t('global.foodIngredients.addDescription')}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit(onAdd)}>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-2">
-                                <Label>Besin Adı *</Label>
+                                <Label>{t('global.foodIngredients.nameLabel')}</Label>
                                 <Input {...register('name')} />
                                 {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label>Alerjen Notu</Label>
+                                <Label>{t('global.foodIngredients.allergenNoteLabel')}</Label>
                                 <Textarea rows={2} {...register('allergen_info')} />
                             </div>
                             <div className="space-y-2">
-                                <Label>İçerdiği Alerjenler</Label>
-                                <AllergenPicker allergens={allergens} selected={addSelected} onChange={setAddSelected} />
-                                <p className="text-xs text-muted-foreground">{addSelected.length} alerjen seçildi</p>
+                                <Label>{t('global.foodIngredients.allergensLabel')}</Label>
+                                <AllergenPicker allergens={allergens} selected={addSelected} onChange={setAddSelected} noAllergensLabel={t('global.foodIngredients.noAllergens')} />
+                                <p className="text-xs text-muted-foreground">{t('global.foodIngredients.allergensSelectedCount', { count: addSelected.length })}</p>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); reset(); setAddSelected([]); }}>İptal</Button>
+                            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); reset(); setAddSelected([]); }}>{t('common.cancel')}</Button>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ekle
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('common.add')}
                             </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
 
-            {/* Edit Dialog */}
             <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); } }}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Besin Düzenle</DialogTitle>
+                        <DialogTitle>{t('global.foodIngredients.editTitle')}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleEdit(onEdit)}>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-2">
-                                <Label>Besin Adı *</Label>
+                                <Label>{t('global.foodIngredients.nameLabel')}</Label>
                                 <Input {...regEdit('name')} />
                                 {errEdit.name && <p className="text-xs text-red-500">{errEdit.name.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label>Alerjen Notu</Label>
+                                <Label>{t('global.foodIngredients.allergenNoteLabel')}</Label>
                                 <Textarea rows={2} {...regEdit('allergen_info')} />
                             </div>
                             <div className="space-y-2">
-                                <Label>İçerdiği Alerjenler</Label>
-                                <AllergenPicker allergens={allergens} selected={editSelected} onChange={setEditSelected} />
-                                <p className="text-xs text-muted-foreground">{editSelected.length} alerjen seçildi</p>
+                                <Label>{t('global.foodIngredients.allergensLabel')}</Label>
+                                <AllergenPicker allergens={allergens} selected={editSelected} onChange={setEditSelected} noAllergensLabel={t('global.foodIngredients.noAllergens')} />
+                                <p className="text-xs text-muted-foreground">{t('global.foodIngredients.allergensSelectedCount', { count: editSelected.length })}</p>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setEditItem(null)}>İptal</Button>
+                            <Button type="button" variant="outline" onClick={() => setEditItem(null)}>{t('common.cancel')}</Button>
                             <Button type="submit" disabled={isEditSubmitting}>
-                                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Kaydet
+                                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('common.save')}
                             </Button>
                         </DialogFooter>
                     </form>

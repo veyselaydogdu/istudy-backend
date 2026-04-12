@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { School, Country } from '@/types';
 import { Plus, Search, Trash2, ChevronLeft, ChevronRight, Edit2, X, ToggleLeft, ToggleRight, ChevronDown } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // ─── Phone Code Types ───────────────────────────────────────────────────────
 
@@ -34,9 +35,11 @@ interface PhoneInputFieldProps {
     onCodeChange: (code: PhoneCode) => void;
     disabled?: boolean;
     placeholder?: string;
+    searchPlaceholder: string;
+    noResultLabel: string;
 }
 
-function PhoneInputField({ digits, selectedCode, phoneCodes, onDigitsChange, onCodeChange, disabled, placeholder }: PhoneInputFieldProps) {
+function PhoneInputField({ digits, selectedCode, phoneCodes, onDigitsChange, onCodeChange, disabled, placeholder, searchPlaceholder, noResultLabel }: PhoneInputFieldProps) {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [search, setSearch] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,7 +80,7 @@ function PhoneInputField({ digits, selectedCode, phoneCodes, onDigitsChange, onC
                             <input
                                 type="text"
                                 className="w-full rounded border border-white-light px-2 py-1 text-sm focus:outline-none dark:border-[#253b5e] dark:bg-[#0e1726] dark:text-white"
-                                placeholder="Ülke ara..."
+                                placeholder={searchPlaceholder}
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 autoFocus
@@ -85,7 +88,7 @@ function PhoneInputField({ digits, selectedCode, phoneCodes, onDigitsChange, onC
                         </div>
                         <ul className="max-h-52 overflow-y-auto">
                             {filtered.length === 0 && (
-                                <li className="px-3 py-2 text-sm text-[#888ea8]">Sonuç bulunamadı</li>
+                                <li className="px-3 py-2 text-sm text-[#888ea8]">{noResultLabel}</li>
                             )}
                             {filtered.map(c => (
                                 <li key={c.id}>
@@ -177,6 +180,7 @@ const emptyPhoneStates = (): Record<PhoneFieldKey, PhoneState> => ({
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function SchoolsPage() {
+    const { t } = useTranslation();
     const [schools, setSchools] = useState<School[]>([]);
     const [countries, setCountries] = useState<Country[]>([]);
     const [phoneCodes, setPhoneCodes] = useState<PhoneCode[]>([]);
@@ -199,18 +203,18 @@ export default function SchoolsPage() {
                 setLastPage(res.data.meta?.last_page ?? 1);
             }
         } catch {
-            toast.error('Okullar yüklenirken hata oluştu.');
+            toast.error(t('schools.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [page, search]);
+    }, [page, search, t]);
 
     const fetchCountries = useCallback(async () => {
         try {
             const res = await apiClient.get('/countries');
             if (res.data?.data) { setCountries(res.data.data); }
         } catch {
-            // sessizce geç
+            // silent
         }
     }, []);
 
@@ -274,7 +278,7 @@ export default function SchoolsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.name.trim()) { toast.error('Okul adı zorunludur.'); return; }
+        if (!form.name.trim()) { toast.error(t('schools.nameRequired')); return; }
         setSaving(true);
         const payload = {
             ...form,
@@ -287,10 +291,10 @@ export default function SchoolsPage() {
         try {
             if (editingSchool) {
                 await apiClient.put(`/schools/${editingSchool.id}`, payload);
-                toast.success('Okul güncellendi!');
+                toast.success(t('schools.updateSuccess'));
             } else {
                 await apiClient.post('/schools', payload);
-                toast.success('Okul oluşturuldu!');
+                toast.success(t('schools.createSuccess'));
             }
             setShowModal(false);
             setForm(emptyForm);
@@ -298,50 +302,51 @@ export default function SchoolsPage() {
             fetchSchools();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(error.response?.data?.message ?? t('common.error'));
         } finally {
             setSaving(false);
         }
     };
 
     const handleToggleStatus = async (school: School) => {
-        const action = school.is_active ? 'pasif' : 'aktif';
+        const isActive = school.is_active !== false;
+        const action = isActive ? t('schools.makeInactive') : t('schools.makeActive');
         const result = await Swal.fire({
-            title: `Okulu ${action === 'aktif' ? 'Aktif' : 'Pasif'} Yap`,
-            text: `"${school.name}" okulu ${action} yapılacak. Devam?`,
+            title: action,
+            text: `"${school.name}" ${action.toLowerCase()}. ${t('common.confirm')}?`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Evet',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('common.yes'),
+            cancelButtonText: t('common.cancel'),
         });
         if (!result.isConfirmed) { return; }
         try {
             await apiClient.patch(`/schools/${school.id}/toggle-status`);
-            toast.success(`Okul ${action} yapıldı.`);
+            toast.success(`${school.name} ${isActive ? t('schools.toggleDeactivate') : t('schools.toggleActivate')}`);
             fetchSchools();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Durum değiştirilemedi.');
+            toast.error(error.response?.data?.message ?? t('schools.toggleStatusError'));
         }
     };
 
     const handleDelete = async (school: School) => {
         const result = await Swal.fire({
-            title: 'Okulu Sil',
-            text: `"${school.name}" okulunu silmek istediğinize emin misiniz?`,
+            title: t('schools.deleteSchoolTitle'),
+            text: t('schools.deleteSchoolText', { name: school.name }),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Sil',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'),
+            cancelButtonText: t('swal.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) { return; }
         try {
             await apiClient.delete(`/schools/${school.id}`);
-            toast.success('Okul silindi.');
+            toast.success(t('schools.deleteSuccess'));
             fetchSchools();
         } catch {
-            toast.error('Silme işlemi başarısız.');
+            toast.error(t('schools.deleteFailed'));
         }
     };
 
@@ -351,10 +356,10 @@ export default function SchoolsPage() {
     return (
         <div className="p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="text-2xl font-bold text-dark dark:text-white">Okullarım</h1>
+                <h1 className="text-2xl font-bold text-dark dark:text-white">{t('schools.title')}</h1>
                 <button type="button" className="btn btn-primary gap-2" onClick={openCreate}>
                     <Plus className="h-4 w-4" />
-                    Yeni Okul
+                    {t('schools.newSchool')}
                 </button>
             </div>
 
@@ -365,7 +370,7 @@ export default function SchoolsPage() {
                         <input
                             type="text"
                             className="form-input pl-9"
-                            placeholder="Okul ara..."
+                            placeholder={t('schools.searchPlaceholderFull')}
                             value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                         />
@@ -378,7 +383,7 @@ export default function SchoolsPage() {
                     </div>
                 ) : schools.length === 0 ? (
                     <div className="py-12 text-center text-[#515365] dark:text-[#888ea8]">
-                        Henüz okul eklenmemiş.
+                        {t('schools.noSchool')}
                     </div>
                 ) : (
                     <>
@@ -386,14 +391,14 @@ export default function SchoolsPage() {
                             <table className="table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Okul Adı</th>
-                                        <th>Şehir</th>
-                                        <th>E-posta</th>
-                                        <th>Telefon</th>
-                                        <th>Sınıf</th>
-                                        <th>Öğrenci</th>
-                                        <th>Durum</th>
-                                        <th>İşlemler</th>
+                                        <th>{t('schools.schoolName')}</th>
+                                        <th>{t('schools.cityCol')}</th>
+                                        <th>{t('schools.emailCol')}</th>
+                                        <th>{t('schools.phoneCol')}</th>
+                                        <th>{t('schools.classCol')}</th>
+                                        <th>{t('schools.studentCol')}</th>
+                                        <th>{t('common.status')}</th>
+                                        <th>{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -411,9 +416,9 @@ export default function SchoolsPage() {
                                             <td>{school.children_count ?? 0}</td>
                                             <td>
                                                 {school.is_active !== false ? (
-                                                    <span className="badge badge-outline-success">Aktif</span>
+                                                    <span className="badge badge-outline-success">{t('schools.statusActive')}</span>
                                                 ) : (
-                                                    <span className="badge badge-outline-secondary">Pasif</span>
+                                                    <span className="badge badge-outline-secondary">{t('schools.statusInactive')}</span>
                                                 )}
                                             </td>
                                             <td>
@@ -422,7 +427,7 @@ export default function SchoolsPage() {
                                                         type="button"
                                                         className={`btn btn-sm p-2 ${school.is_active !== false ? 'btn-outline-warning' : 'btn-outline-success'}`}
                                                         onClick={() => handleToggleStatus(school)}
-                                                        title={school.is_active !== false ? 'Pasif Yap' : 'Aktif Yap'}
+                                                        title={school.is_active !== false ? t('schools.makeInactive') : t('schools.makeActive')}
                                                     >
                                                         {school.is_active !== false
                                                             ? <ToggleRight className="h-4 w-4" />
@@ -433,7 +438,7 @@ export default function SchoolsPage() {
                                                         type="button"
                                                         className="btn btn-sm btn-outline-primary p-2"
                                                         onClick={() => openEdit(school)}
-                                                        title="Düzenle"
+                                                        title={t('schools.editTitle')}
                                                     >
                                                         <Edit2 className="h-4 w-4" />
                                                     </button>
@@ -441,7 +446,7 @@ export default function SchoolsPage() {
                                                         type="button"
                                                         className="btn btn-sm btn-outline-danger p-2"
                                                         onClick={() => handleDelete(school)}
-                                                        title="Sil"
+                                                        title={t('schools.deleteTitle')}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
@@ -474,7 +479,7 @@ export default function SchoolsPage() {
                     <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
-                                {editingSchool ? 'Okul Düzenle' : 'Yeni Okul Ekle'}
+                                {editingSchool ? t('schools.editSchoolTitle') : t('schools.addSchoolTitle')}
                             </h2>
                             <button type="button" onClick={() => setShowModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
@@ -482,44 +487,41 @@ export default function SchoolsPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Temel Bilgiler */}
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Okul Adı *</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.schoolNameLabel')}</label>
                                     <input type="text" className="form-input mt-1" value={form.name} onChange={f('name')} required />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Okul Kodu *</label>
-                                    <input type="text" className="form-input mt-1" placeholder="Örn: OKUL-001" value={form.code} onChange={f('code')} required={!editingSchool} />
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.schoolCodeLabel')}</label>
+                                    <input type="text" className="form-input mt-1" placeholder={t('schools.schoolCodePlaceholder')} value={form.code} onChange={f('code')} required={!editingSchool} />
                                 </div>
                             </div>
 
-                            {/* Konum */}
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Ülke</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.countryLabel')}</label>
                                     <select className="form-select mt-1" value={form.country_id} onChange={f('country_id')}>
-                                        <option value="">Ülke seçin</option>
+                                        <option value="">{t('schools.selectCountry')}</option>
                                         {countries.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Şehir</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.cityLabel')}</label>
                                     <input type="text" className="form-input mt-1" value={form.city} onChange={f('city')} />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Adres</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.addressLabel')}</label>
                                 <textarea className="form-input mt-1" rows={2} value={form.address} onChange={f('address')} />
                             </div>
 
-                            {/* İletişim — Telefon alanları */}
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Telefon</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.phoneLabel')}</label>
                                     <div className="mt-1">
                                         <PhoneInputField
                                             digits={phoneStates.phone.digits}
@@ -528,11 +530,13 @@ export default function SchoolsPage() {
                                             onDigitsChange={digits => setPhoneField('phone', { digits })}
                                             onCodeChange={code => setPhoneField('phone', { code })}
                                             disabled={saving}
+                                            searchPlaceholder={t('schools.countrySearch')}
+                                            noResultLabel={t('schools.noCountryResult')}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Faks</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.faxLabel')}</label>
                                     <div className="mt-1">
                                         <PhoneInputField
                                             digits={phoneStates.fax.digits}
@@ -541,11 +545,13 @@ export default function SchoolsPage() {
                                             onDigitsChange={digits => setPhoneField('fax', { digits })}
                                             onCodeChange={code => setPhoneField('fax', { code })}
                                             disabled={saving}
+                                            searchPlaceholder={t('schools.countrySearch')}
+                                            noResultLabel={t('schools.noCountryResult')}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">GSM (Cep)</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.gsmLabel')}</label>
                                     <div className="mt-1">
                                         <PhoneInputField
                                             digits={phoneStates.gsm.digits}
@@ -554,11 +560,13 @@ export default function SchoolsPage() {
                                             onDigitsChange={digits => setPhoneField('gsm', { digits })}
                                             onCodeChange={code => setPhoneField('gsm', { code })}
                                             disabled={saving}
+                                            searchPlaceholder={t('schools.countrySearch')}
+                                            noResultLabel={t('schools.noCountryResult')}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">WhatsApp</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.whatsappLabel')}</label>
                                     <div className="mt-1">
                                         <PhoneInputField
                                             digits={phoneStates.whatsapp.digits}
@@ -567,30 +575,32 @@ export default function SchoolsPage() {
                                             onDigitsChange={digits => setPhoneField('whatsapp', { digits })}
                                             onCodeChange={code => setPhoneField('whatsapp', { code })}
                                             disabled={saving}
+                                            searchPlaceholder={t('schools.countrySearch')}
+                                            noResultLabel={t('schools.noCountryResult')}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">E-posta</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.emailLabel')}</label>
                                     <input type="email" className="form-input mt-1" value={form.email} onChange={f('email')} />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Web Sitesi</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.websiteLabel')}</label>
                                     <input type="text" className="form-input mt-1" placeholder="https://" value={form.website} onChange={f('website')} />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Açıklama</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.descriptionLabel')}</label>
                                 <textarea className="form-input mt-1" rows={2} value={form.description} onChange={f('description')} />
                             </div>
 
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={saving}>
-                                    {saving ? 'Kaydediliyor...' : (editingSchool ? 'Güncelle' : 'Kaydet')}
+                                    {saving ? t('schools.saving') : (editingSchool ? t('common.update') : t('common.save'))}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowModal(false)}>
-                                    İptal
+                                    {t('common.cancel')}
                                 </button>
                             </div>
                         </form>

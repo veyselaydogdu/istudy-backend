@@ -36,6 +36,7 @@ type CurrencyFormValues = z.infer<typeof currencySchema>
 // ─── Countries Tab ─────────────────────────────────────────────────────────
 
 function CountriesTab() {
+    const { t } = useTranslation();
     const [countries, setCountries] = useState<Country[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
     const [loading, setLoading] = useState(true)
@@ -64,7 +65,7 @@ function CountriesTab() {
     useEffect(() => { fetchCountries() }, [fetchCountries])
 
     const handleSync = async () => {
-        if (!confirm("Tüm ülkeler RestCountries API'den senkronize edilecek. Devam edilsin mi?")) { return }
+        if (!confirm(t('settings.syncConfirm') || 'Tüm ülkeler senkronize edilecek. Devam edilsin mi?')) { return }
         setSyncing(true)
         try {
             const res = await apiClient.post("/admin/countries/sync")
@@ -200,6 +201,7 @@ function CountriesTab() {
 // ─── Currencies Tab ────────────────────────────────────────────────────────
 
 function CurrenciesTab() {
+    const { t } = useTranslation();
     const [currencies, setCurrencies] = useState<Currency[]>([])
     const [loading, setLoading] = useState(true)
     const [fetchingRates, setFetchingRates] = useState(false)
@@ -316,7 +318,7 @@ function CurrenciesTab() {
             toast.error("Baz para birimi silinemez.")
             return
         }
-        if (!confirm(`"${currency.code}" para birimini silmek istediğinizden emin misiniz?`)) { return }
+        if (!confirm(t('swal.deleteTitle') || 'Silmek istediğinizden emin misiniz?')) { return }
         try {
             await apiClient.delete(`/admin/currencies/${currency.id}`)
             toast.success("Para birimi silindi.")
@@ -379,11 +381,8 @@ function CurrenciesTab() {
                                         </div>
                                     </div>
                                     <DialogFooter>
-                                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>İptal</Button>
-                                        <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            Ekle
-                                        </Button>
+                                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>{t('common.cancel')}</Button>
+                                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className=\"mr-2 h-4 w-4 animate-spin\" />} {t('common.add')}</Button>
                                     </DialogFooter>
                                 </form>
                             </DialogContent>
@@ -507,7 +506,7 @@ function CurrenciesTab() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditCurrency(null) }}>İptal</Button>
+                            <Button type="button" variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditCurrency(null) }}>{t('common.cancel')}</Button>
                             <Button type="submit" disabled={isEditSubmitting}>
                                 {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Kaydet
@@ -523,6 +522,7 @@ function CurrenciesTab() {
 // ─── Ana Sayfa ─────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+    const { t } = useTranslation();
     return (
         <div className="space-y-6">
             <div>

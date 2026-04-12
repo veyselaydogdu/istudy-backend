@@ -16,8 +16,10 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Tenant, School, TenantSubscription } from "@/types"
+import { useTranslation } from "@/hooks/useTranslation"
 
 export default function TenantDetailPage() {
+    const { t } = useTranslation()
     const { id } = useParams<{ id: string }>()
     const router = useRouter()
     const [tenant, setTenant] = useState<Tenant | null>(null)
@@ -34,7 +36,6 @@ export default function TenantDetailPage() {
                     apiClient.get(`/admin/tenants/${id}/schools`).catch(() => ({ data: { data: [] } })),
                     apiClient.get(`/admin/tenants/${id}/subscriptions`).catch(() => ({ data: { data: [] } })),
                 ])
-                // Backend show() { tenant: {...}, stats: {...} } nested döndürür
                 const rawData = tenantRes.data?.data
                 if (rawData?.tenant) {
                     setTenant(rawData.tenant as Tenant)
@@ -44,14 +45,14 @@ export default function TenantDetailPage() {
                 if (Array.isArray(schoolsRes.data?.data)) setSchools(schoolsRes.data.data)
                 if (Array.isArray(subsRes.data?.data)) setSubscriptions(subsRes.data.data)
             } catch {
-                toast.error("Kurum bilgileri yüklenemedi.")
+                toast.error(t('tenants.loadError2'))
                 router.push("/tenants")
             } finally {
                 setLoading(false)
             }
         }
         fetchAll()
-    }, [id, router])
+    }, [id, router, t])
 
     if (loading) {
         return (
@@ -65,20 +66,25 @@ export default function TenantDetailPage() {
 
     const activeSub = subscriptions.find((s) => s.status === "active")
 
+    const getSubStatusLabel = (status: string) => {
+        if (status === "active") { return t('tenants.detail.activeStatus') }
+        if (status === "trial") { return t('tenants.detail.trialStatus') }
+        if (status === "cancelled") { return t('tenants.detail.cancelledStatus') }
+        return t('tenants.detail.expiredStatus')
+    }
+
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-4">
                 <Button variant="outline" size="sm" onClick={() => router.push("/tenants")}>
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Geri
+                    <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.back')}
                 </Button>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{tenant.name}</h1>
-                    <p className="text-muted-foreground">Kurum detayları ve yönetim</p>
+                    <p className="text-muted-foreground">{t('tenants.detail.managementSubtitle')}</p>
                 </div>
             </div>
 
-            {/* Info Cards */}
             <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardContent className="pt-6">
@@ -87,9 +93,9 @@ export default function TenantDetailPage() {
                                 {tenant.name[0]?.toUpperCase()}
                             </div>
                             <div>
-                                <p className="text-sm font-medium">Durum</p>
+                                <p className="text-sm font-medium">{t('tenants.detail.statusCard')}</p>
                                 <Badge variant={tenant.status === "active" || !tenant.status ? "success" : "secondary"}>
-                                    {tenant.status === "active" || !tenant.status ? "Aktif" : "Pasif"}
+                                    {tenant.status === "active" || !tenant.status ? t('tenants.detail.activeStatus') : t('tenants.detail.inactiveStatus')}
                                 </Badge>
                             </div>
                         </div>
@@ -100,7 +106,7 @@ export default function TenantDetailPage() {
                         <div className="flex items-center gap-3">
                             <GraduationCap className="h-8 w-8 text-blue-500" />
                             <div>
-                                <p className="text-xs text-muted-foreground">Okul Sayısı</p>
+                                <p className="text-xs text-muted-foreground">{t('tenants.detail.schoolCountCard')}</p>
                                 <p className="text-2xl font-bold">{schools.length}</p>
                             </div>
                         </div>
@@ -111,7 +117,7 @@ export default function TenantDetailPage() {
                         <div className="flex items-center gap-3">
                             <Package className="h-8 w-8 text-purple-500" />
                             <div>
-                                <p className="text-xs text-muted-foreground">Aktif Paket</p>
+                                <p className="text-xs text-muted-foreground">{t('tenants.detail.activePackageCard')}</p>
                                 <p className="text-sm font-semibold">{activeSub?.package?.name ?? "—"}</p>
                             </div>
                         </div>
@@ -122,7 +128,7 @@ export default function TenantDetailPage() {
                         <div className="flex items-center gap-3">
                             <Calendar className="h-8 w-8 text-green-500" />
                             <div>
-                                <p className="text-xs text-muted-foreground">Kayıt Tarihi</p>
+                                <p className="text-xs text-muted-foreground">{t('tenants.detail.registrationDateCard')}</p>
                                 <p className="text-sm font-semibold">{new Date(tenant.created_at).toLocaleDateString("tr-TR")}</p>
                             </div>
                         </div>
@@ -130,12 +136,11 @@ export default function TenantDetailPage() {
                 </Card>
             </div>
 
-            {/* Owner Info */}
             {tenant.owner && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
-                            <Users className="h-4 w-4" /> Kurum Sahibi
+                            <Users className="h-4 w-4" /> {t('tenants.detail.ownerTitle')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -154,33 +159,32 @@ export default function TenantDetailPage() {
                 </Card>
             )}
 
-            {/* Tabs */}
             <Tabs defaultValue="schools">
                 <TabsList>
-                    <TabsTrigger value="schools">Okullar ({schools.length})</TabsTrigger>
-                    <TabsTrigger value="subscriptions">Abonelik Geçmişi ({subscriptions.length})</TabsTrigger>
+                    <TabsTrigger value="schools">{t('tenants.detail.schoolsTitle')} ({schools.length})</TabsTrigger>
+                    <TabsTrigger value="subscriptions">{t('tenants.detail.subscriptionTitle')} ({subscriptions.length})</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="schools" className="mt-4">
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <GraduationCap className="h-5 w-5 text-blue-500" /> Okullar
+                                <GraduationCap className="h-5 w-5 text-blue-500" /> {t('tenants.detail.schoolsTitle')}
                             </CardTitle>
-                            <CardDescription>Bu kuruma bağlı okullar</CardDescription>
+                            <CardDescription>{t('tenants.detail.schoolsSubtitle')}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {schools.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">Henüz okul eklenmemiş.</p>
+                                <p className="text-center text-muted-foreground py-8">{t('tenants.detail.noSchool')}</p>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Okul Adı</TableHead>
-                                            <TableHead>Durum</TableHead>
-                                            <TableHead>Sınıf Sayısı</TableHead>
-                                            <TableHead>Öğrenci Sayısı</TableHead>
-                                            <TableHead>Kayıt Tarihi</TableHead>
+                                            <TableHead>{t('tenants.detail.schoolNameCol')}</TableHead>
+                                            <TableHead>{t('common.status')}</TableHead>
+                                            <TableHead>{t('tenants.detail.classCountCol')}</TableHead>
+                                            <TableHead>{t('tenants.detail.studentCountCol')}</TableHead>
+                                            <TableHead>{t('tenants.detail.registrationDateCol')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -193,7 +197,7 @@ export default function TenantDetailPage() {
                                                 <TableCell className="font-medium">{school.name}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={school.status === "active" || !school.status ? "success" : "secondary"}>
-                                                        {school.status === "active" || !school.status ? "Aktif" : "Pasif"}
+                                                        {school.status === "active" || !school.status ? t('tenants.detail.activeStatus') : t('tenants.detail.inactiveStatus')}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>{school.classes_count ?? "—"}</TableCell>
@@ -214,22 +218,22 @@ export default function TenantDetailPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <CreditCard className="h-5 w-5 text-purple-500" /> Abonelik Geçmişi
+                                <CreditCard className="h-5 w-5 text-purple-500" /> {t('tenants.detail.subscriptionTitle')}
                             </CardTitle>
-                            <CardDescription>Bu kurumun tüm abonelik kayıtları</CardDescription>
+                            <CardDescription>{t('tenants.detail.subscriptionSubtitle')}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {subscriptions.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">Abonelik kaydı bulunamadı.</p>
+                                <p className="text-center text-muted-foreground py-8">{t('tenants.detail.noSubscription')}</p>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Paket</TableHead>
-                                            <TableHead>Durum</TableHead>
-                                            <TableHead>Döngü</TableHead>
-                                            <TableHead>Başlangıç</TableHead>
-                                            <TableHead>Bitiş</TableHead>
+                                            <TableHead>{t('tenants.detail.packageCol')}</TableHead>
+                                            <TableHead>{t('common.status')}</TableHead>
+                                            <TableHead>{t('tenants.detail.billingCycleCol')}</TableHead>
+                                            <TableHead>{t('tenants.detail.startCol')}</TableHead>
+                                            <TableHead>{t('tenants.detail.endCol')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -242,13 +246,11 @@ export default function TenantDetailPage() {
                                                         sub.status === "trial" ? "warning" :
                                                         sub.status === "cancelled" ? "danger" : "secondary"
                                                     }>
-                                                        {sub.status === "active" ? "Aktif" :
-                                                         sub.status === "trial" ? "Deneme" :
-                                                         sub.status === "cancelled" ? "İptal" : "Süresi Dolmuş"}
+                                                        {getSubStatusLabel(sub.status)}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-sm">
-                                                    {sub.billing_cycle === "monthly" ? "Aylık" : "Yıllık"}
+                                                    {sub.billing_cycle === "monthly" ? t('subscriptions.monthly') : t('subscriptions.yearly')}
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
                                                     {new Date(sub.starts_at).toLocaleDateString("tr-TR")}

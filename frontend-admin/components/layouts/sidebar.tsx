@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { toggleSidebar } from '@/store/themeConfigSlice';
 import { IRootState } from '@/store';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
     LayoutDashboard,
     Building2,
@@ -30,67 +31,68 @@ import {
 import { useState } from 'react';
 
 type NavItem = {
-    title: string;
+    titleKey: string;
     href: string;
     icon: React.ElementType;
 };
 
 type NavGroup = {
-    label: string;
+    labelKey: string;
     items: NavItem[];
     collapsible?: boolean;
 };
 
 const navGroups: NavGroup[] = [
     {
-        label: 'GENEL BAKIŞ',
-        items: [{ title: 'Dashboard', href: '/', icon: LayoutDashboard }],
+        labelKey: 'nav.overview',
+        items: [{ titleKey: 'sidebar.dashboard', href: '/', icon: LayoutDashboard }],
     },
     {
-        label: 'YÖNETİM',
+        labelKey: 'nav.management',
         items: [
-            { title: 'Kurumlar', href: '/tenants', icon: Building2 },
-            { title: 'Okullar & Şubeler', href: '/schools', icon: GraduationCap },
-            { title: 'Kullanıcılar', href: '/users', icon: Users },
+            { titleKey: 'sidebar.tenants', href: '/tenants', icon: Building2 },
+            { titleKey: 'sidebar.schools', href: '/schools', icon: GraduationCap },
+            { titleKey: 'sidebar.users', href: '/users', icon: Users },
         ],
     },
     {
-        label: 'PAKET & SATIŞ',
+        labelKey: 'nav.packageSales',
         items: [
-            { title: 'Paket Yönetimi', href: '/packages', icon: Package },
-            { title: 'Abonelikler', href: '/subscriptions', icon: ClipboardList },
-            { title: 'Finans & Ödemeler', href: '/finance', icon: CreditCard },
+            { titleKey: 'sidebar.packages', href: '/packages', icon: Package },
+            { titleKey: 'sidebar.subscriptions', href: '/subscriptions', icon: ClipboardList },
+            { titleKey: 'sidebar.finance', href: '/finance', icon: CreditCard },
         ],
     },
     {
-        label: 'GLOBAL VERİLER',
+        labelKey: 'nav.globalData',
         collapsible: true,
         items: [
-            { title: 'Alerjenler', href: '/global/allergens', icon: AlertTriangle },
-            { title: 'Tıbbi Durumlar', href: '/global/medical-conditions', icon: Stethoscope },
-            { title: 'İlaçlar', href: '/global/medications', icon: Pill },
-            { title: 'Besin İçerikleri', href: '/global/food-ingredients', icon: Apple },
-            { title: 'Ülkeler', href: '/global/countries', icon: Globe },
-            { title: 'Para Birimleri', href: '/global/currencies', icon: Coins },
+            { titleKey: 'sidebar.allergens', href: '/global/allergens', icon: AlertTriangle },
+            { titleKey: 'sidebar.medicalConditions', href: '/global/medical-conditions', icon: Stethoscope },
+            { titleKey: 'sidebar.medications', href: '/global/medications', icon: Pill },
+            { titleKey: 'sidebar.foodIngredients', href: '/global/food-ingredients', icon: Apple },
+            { titleKey: 'sidebar.countries', href: '/global/countries', icon: Globe },
+            { titleKey: 'sidebar.currencies', href: '/global/currencies', icon: Coins },
         ],
     },
     {
-        label: 'DESTEK',
+        labelKey: 'nav.support',
         items: [
-            { title: 'İletişim Talepleri', href: '/contact-requests', icon: MessageSquare },
+            { titleKey: 'sidebar.contactRequests', href: '/contact-requests', icon: MessageSquare },
         ],
     },
     {
-        label: 'SİSTEM',
+        labelKey: 'nav.system',
         items: [
-            { title: 'Aktivite Kayıtları', href: '/activity-logs', icon: Activity },
-            { title: 'Bildirimler', href: '/notifications', icon: Bell },
-            { title: 'Ayarlar', href: '/settings', icon: Settings },
+            { titleKey: 'sidebar.activityLogs', href: '/activity-logs', icon: Activity },
+            { titleKey: 'sidebar.notifications', href: '/notifications', icon: Bell },
+            { titleKey: 'sidebar.settings', href: '/settings', icon: Settings },
         ],
     },
 ];
 
 const Sidebar = () => {
+    const { t } = useTranslation();
     const pathname = usePathname();
     const dispatch = useDispatch();
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -129,7 +131,7 @@ const Sidebar = () => {
                     <PerfectScrollbar className="relative h-[calc(100vh-60px)]">
                         <ul className="relative space-y-0.5 p-4 py-0 font-semibold">
                             {navGroups.map((group) => (
-                                <li key={group.label} className="menu nav-item">
+                                <li key={group.labelKey} className="menu nav-item">
                                     {group.collapsible ? (
                                         <button
                                             type="button"
@@ -137,7 +139,7 @@ const Sidebar = () => {
                                             onClick={() => setGlobalOpen((o) => !o)}
                                         >
                                             <span className="text-xs font-bold uppercase tracking-widest text-white-dark dark:text-white-dark">
-                                                {group.label}
+                                                {t(group.labelKey)}
                                             </span>
                                             <ChevronRight
                                                 className={`h-3 w-3 text-white-dark transition-transform duration-200 ${globalOpen ? 'rotate-90' : ''}`}
@@ -146,7 +148,7 @@ const Sidebar = () => {
                                     ) : (
                                         <h2 className="mb-1 mt-4 flex items-center px-7 py-3">
                                             <span className="text-xs font-bold uppercase tracking-widest text-white-dark dark:text-white-dark">
-                                                {group.label}
+                                                {t(group.labelKey)}
                                             </span>
                                         </h2>
                                     )}
@@ -170,7 +172,7 @@ const Sidebar = () => {
                                                             <div className="flex items-center">
                                                                 <Icon className="h-5 w-5 shrink-0 group-hover:!text-primary" />
                                                                 <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
-                                                                    {item.title}
+                                                                    {t(item.titleKey)}
                                                                 </span>
                                                             </div>
                                                         </Link>
@@ -193,7 +195,7 @@ const Sidebar = () => {
                                 >
                                     <div className="flex items-center">
                                         <LogOut className="h-5 w-5 text-danger/70 group-hover:!text-danger" />
-                                        <span className="ltr:pl-3 rtl:pr-3 text-danger/70 group-hover:text-danger">Çıkış Yap</span>
+                                        <span className="ltr:pl-3 rtl:pr-3 text-danger/70 group-hover:text-danger">{t('common.logout')}</span>
                                     </div>
                                 </button>
                             </li>

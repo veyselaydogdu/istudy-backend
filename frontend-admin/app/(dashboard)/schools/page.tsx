@@ -18,10 +18,12 @@ import {
 import { toast } from "sonner"
 import type { School as SchoolType } from "@/types"
 import { exportToCsv } from "@/lib/exportUtils"
+import { useTranslation } from "@/hooks/useTranslation"
 
 type Meta = { current_page: number; last_page: number; per_page: number; total: number }
 
 export default function SchoolsPage() {
+    const { t } = useTranslation()
     const [schools, setSchools] = useState<SchoolType[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
     const [loading, setLoading] = useState(true)
@@ -42,11 +44,11 @@ export default function SchoolsPage() {
                 setMeta(res.data.meta ?? null)
             }
         } catch {
-            toast.error("Okullar yüklenirken hata oluştu.")
+            toast.error(t('schools.loadError'))
         } finally {
             setLoading(false)
         }
-    }, [search, page, statusFilter])
+    }, [search, page, statusFilter, t])
 
     useEffect(() => {
         setPage(1)
@@ -59,21 +61,21 @@ export default function SchoolsPage() {
     const handleToggleStatus = async (schoolId: number) => {
         try {
             await apiClient.patch(`/admin/schools/${schoolId}/toggle-status`)
-            toast.success("Okul durumu güncellendi.")
+            toast.success(t('schools.toggleSuccess'))
             fetchSchools()
         } catch {
-            toast.error("Durum güncellenirken hata oluştu.")
+            toast.error(t('schools.toggleError'))
         }
     }
 
     const handleDelete = async (schoolId: number) => {
-        if (!confirm("Bu okulu silmek istediğinizden emin misiniz?")) { return }
+        if (!confirm(t('swal.deleteTitle'))) { return }
         try {
             await apiClient.delete(`/admin/schools/${schoolId}`)
-            toast.success("Okul silindi.")
+            toast.success(t('schools.deleteSuccess'))
             fetchSchools()
         } catch {
-            toast.error("Okul silinirken hata oluştu.")
+            toast.error(t('schools.deleteError'))
         }
     }
 
@@ -81,8 +83,8 @@ export default function SchoolsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Okullar & Şubeler</h1>
-                    <p className="text-muted-foreground">Tüm tenant'lardaki okulların global listesi.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('schools.title')}</h1>
+                    <p className="text-muted-foreground">{t('schools.subtitle')}</p>
                 </div>
                 <Button
                     variant="outline"
@@ -90,25 +92,24 @@ export default function SchoolsPage() {
                     onClick={() =>
                         exportToCsv("okullar", schools, [
                             { key: "id", label: "ID" },
-                            { key: "name", label: "Okul Adı" },
-                            { key: "tenant", label: "Kurum", format: (r) => (r.tenant as SchoolType["tenant"])?.name ?? "" },
-                            { key: "status", label: "Durum", format: (r) => (r.status === "active" || !r.status ? "Aktif" : "Pasif") },
-                            { key: "classes_count", label: "Sınıf Sayısı", format: (r) => String(r.classes_count ?? "") },
-                            { key: "created_at", label: "Kayıt Tarihi", format: (r) => new Date(r.created_at as string).toLocaleDateString("tr-TR") },
+                            { key: "name", label: t('schools.schoolName') },
+                            { key: "tenant", label: t('schools.tenant'), format: (r) => (r.tenant as SchoolType["tenant"])?.name ?? "" },
+                            { key: "status", label: t('common.status'), format: (r) => (r.status === "active" || !r.status ? t('common.active') : t('common.inactive')) },
+                            { key: "classes_count", label: t('schools.classCount'), format: (r) => String(r.classes_count ?? "") },
+                            { key: "created_at", label: t('tenants.createdAt'), format: (r) => new Date(r.created_at as string).toLocaleDateString("tr-TR") },
                         ])
                     }
                 >
-                    <Download className="mr-2 h-4 w-4" /> CSV İndir
+                    <Download className="mr-2 h-4 w-4" /> {t('common.csvExport')}
                 </Button>
             </div>
 
-            {/* Filtreler */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         className="pl-8"
-                        placeholder="Okul adı veya e-posta ile ara..."
+                        placeholder={t('schools.searchPlaceholder')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -120,9 +121,9 @@ export default function SchoolsPage() {
                         onChange={(e) => setStatusFilter(e.target.value)}
                         className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     >
-                        <option value="">Tüm Durumlar</option>
-                        <option value="active">Aktif</option>
-                        <option value="inactive">Pasif</option>
+                        <option value="">{t('schools.allStatuses')}</option>
+                        <option value="active">{t('common.active')}</option>
+                        <option value="inactive">{t('common.inactive')}</option>
                     </select>
                 </div>
             </div>
@@ -131,10 +132,10 @@ export default function SchoolsPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <School className="h-5 w-5 text-indigo-500" />
-                        Okul Listesi
+                        {t('schools.listTitle')}
                     </CardTitle>
                     <CardDescription>
-                        {meta ? `Toplam ${meta.total} okul` : "Yükleniyor..."}
+                        {meta ? t('schools.totalCount', { count: meta.total }) : t('common.loading')}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -147,14 +148,14 @@ export default function SchoolsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Okul Adı</TableHead>
-                                        <TableHead>Kurum</TableHead>
-                                        <TableHead>E-posta</TableHead>
-                                        <TableHead>Sınıf</TableHead>
-                                        <TableHead>Öğrenci</TableHead>
-                                        <TableHead>Durum</TableHead>
-                                        <TableHead>Kayıt</TableHead>
-                                        <TableHead className="text-right">İşlem</TableHead>
+                                        <TableHead>{t('schools.schoolName')}</TableHead>
+                                        <TableHead>{t('schools.tenant')}</TableHead>
+                                        <TableHead>{t('common.email')}</TableHead>
+                                        <TableHead>{t('schools.classCount')}</TableHead>
+                                        <TableHead>{t('schools.studentCount')}</TableHead>
+                                        <TableHead>{t('common.status')}</TableHead>
+                                        <TableHead>{t('tenants.createdAt')}</TableHead>
+                                        <TableHead className="text-right">{t('common.actions')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -174,7 +175,7 @@ export default function SchoolsPage() {
                                             <TableCell className="text-sm">{school.children_count ?? "—"}</TableCell>
                                             <TableCell>
                                                 <Badge variant={school.status === "active" || !school.status ? "success" : "secondary"}>
-                                                    {school.status === "active" || !school.status ? "Aktif" : "Pasif"}
+                                                    {school.status === "active" || !school.status ? t('common.active') : t('common.inactive')}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-sm text-muted-foreground">
@@ -188,15 +189,15 @@ export default function SchoolsPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
+                                                        <DropdownMenuLabel>{t('common.actions')}</DropdownMenuLabel>
                                                         <DropdownMenuItem onClick={() => handleToggleStatus(school.id)}>
-                                                            Durumu Değiştir
+                                                            {t('schools.toggleStatus')}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
                                                             className="text-red-600"
                                                             onClick={() => handleDelete(school.id)}
                                                         >
-                                                            Sil
+                                                            {t('common.delete')}
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -206,18 +207,17 @@ export default function SchoolsPage() {
                                     {schools.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                                                Okul bulunamadı.
+                                                {t('schools.noRecord')}
                                             </TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
                             </Table>
 
-                            {/* Pagination */}
                             {meta && meta.last_page > 1 && (
                                 <div className="flex items-center justify-between mt-4">
                                     <p className="text-sm text-muted-foreground">
-                                        Sayfa {meta.current_page} / {meta.last_page} — Toplam {meta.total} kayıt
+                                        {t('subscriptions.pageOf', { current: meta.current_page, total: meta.last_page })}
                                     </p>
                                     <div className="flex gap-2">
                                         <Button

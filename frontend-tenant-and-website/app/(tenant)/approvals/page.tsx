@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { CheckCircle, XCircle, Clock, Users, UserMinus, Edit3, RefreshCw } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type EnrollmentRequest = {
     id: number;
@@ -55,6 +56,7 @@ type ApprovalsData = {
 type ActiveTab = 'enrollment' | 'removal' | 'field_change';
 
 export default function ApprovalsPage() {
+    const { t } = useTranslation();
     const [data, setData] = useState<ApprovalsData | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<ActiveTab>('enrollment');
@@ -68,7 +70,7 @@ export default function ApprovalsPage() {
             const res = await apiClient.get('/pending-approvals');
             setData(res.data?.data ?? null);
         } catch {
-            toast.error('Onaylar yüklenirken hata oluştu.');
+            toast.error(t('approvals.loadError'));
         } finally {
             setLoading(false);
         }
@@ -80,22 +82,22 @@ export default function ApprovalsPage() {
 
     const handleApproveEnrollment = async (req: EnrollmentRequest) => {
         const result = await Swal.fire({
-            title: 'Kaydı onayla?',
-            text: `${req.child_name ?? 'Çocuk'} adlı öğrencinin ${req.school_name ?? 'okul'} kaydı onaylanacak.`,
+            title: t('approvals.approveEnrollmentTitle'),
+            text: t('approvals.approveEnrollmentText', { child: req.child_name ?? '-', school: req.school_name ?? '-' }),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Onayla',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('approvals.approveBtn'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#16a34a',
         });
         if (!result.isConfirmed) return;
         setProcessing(true);
         try {
             await apiClient.patch(`/schools/${req.school_id}/child-enrollment-requests/${req.id}/approve`);
-            toast.success('Kayıt talebi onaylandı.');
+            toast.success(t('approvals.approveEnrollmentSuccess'));
             fetchApprovals();
         } catch (err: unknown) {
-            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Hata oluştu.');
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('approvals.approveError'));
         } finally {
             setProcessing(false);
         }
@@ -103,22 +105,22 @@ export default function ApprovalsPage() {
 
     const handleApproveRemoval = async (req: RemovalRequest) => {
         const result = await Swal.fire({
-            title: 'Silme talebini onayla?',
-            text: `${req.child_name ?? 'Çocuk'} adlı öğrenci okuldan silinecek. Bu işlem geri alınamaz.`,
+            title: t('approvals.approveRemovalTitle'),
+            text: t('approvals.approveRemovalText', { child: req.child_name ?? '-' }),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Onayla',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('approvals.approveBtn'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#dc2626',
         });
         if (!result.isConfirmed) return;
         setProcessing(true);
         try {
             await apiClient.patch(`/schools/${req.school_id}/child-removal-requests/${req.id}/approve`);
-            toast.success('Silme talebi onaylandı.');
+            toast.success(t('approvals.approveRemovalSuccess'));
             fetchApprovals();
         } catch (err: unknown) {
-            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Hata oluştu.');
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('approvals.approveError'));
         } finally {
             setProcessing(false);
         }
@@ -126,22 +128,22 @@ export default function ApprovalsPage() {
 
     const handleApproveFieldChange = async (req: FieldChangeRequest) => {
         const result = await Swal.fire({
-            title: 'Değişikliği onayla?',
-            text: `${req.child_name ?? 'Çocuk'} için ${req.field_label}: "${req.old_value ?? '-'}" → "${req.new_value}"`,
+            title: t('approvals.approveFieldChangeTitle'),
+            text: t('approvals.approveFieldChangeText', { child: req.child_name ?? '-', field: req.field_label, old: req.old_value ?? '-', new: req.new_value }),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Onayla',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('approvals.approveBtn'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#16a34a',
         });
         if (!result.isConfirmed) return;
         setProcessing(true);
         try {
             await apiClient.patch(`/schools/${req.school_id}/child-field-change-requests/${req.id}/approve`);
-            toast.success('Değişiklik onaylandı ve güncellendi.');
+            toast.success(t('approvals.approveFieldChangeSuccess'));
             fetchApprovals();
         } catch (err: unknown) {
-            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Hata oluştu.');
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('approvals.approveError'));
         } finally {
             setProcessing(false);
         }
@@ -155,7 +157,7 @@ export default function ApprovalsPage() {
     const handleReject = async () => {
         if (!rejectModal) return;
         if (!rejectReason.trim() || rejectReason.trim().length < 5) {
-            toast.error('Reddetme sebebi en az 5 karakter olmalıdır.');
+            toast.error(t('approvals.rejectReasonRequired'));
             return;
         }
         setProcessing(true);
@@ -167,11 +169,11 @@ export default function ApprovalsPage() {
                     : `/schools/${rejectModal.schoolId}/child-field-change-requests/${rejectModal.id}/reject`;
 
             await apiClient.patch(endpoint, { rejection_reason: rejectReason });
-            toast.success('Talep reddedildi.');
+            toast.success(t('approvals.rejectSuccess'));
             setRejectModal(null);
             fetchApprovals();
         } catch (err: unknown) {
-            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Hata oluştu.');
+            toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('approvals.rejectError'));
         } finally {
             setProcessing(false);
         }
@@ -180,21 +182,21 @@ export default function ApprovalsPage() {
     const tabs: { key: ActiveTab; label: string; icon: React.ReactNode; count: number; color: string }[] = [
         {
             key: 'enrollment',
-            label: 'Kayıt Talepleri',
+            label: t('approvals.enrollmentTab'),
             icon: <Users size={16} />,
             count: data?.counts.enrollment ?? 0,
             color: 'text-blue-600',
         },
         {
             key: 'removal',
-            label: 'Silme Talepleri',
+            label: t('approvals.removalTab'),
             icon: <UserMinus size={16} />,
             count: data?.counts.removal ?? 0,
             color: 'text-red-600',
         },
         {
             key: 'field_change',
-            label: 'Alan Değişikliği',
+            label: t('approvals.fieldChangeTab'),
             icon: <Edit3 size={16} />,
             count: data?.counts.field_change ?? 0,
             color: 'text-orange-600',
@@ -205,10 +207,10 @@ export default function ApprovalsPage() {
         <div className="p-6">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Bekleyen Onaylar</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">{t('approvals.title')}</h1>
                     {data && (
                         <p className="text-sm text-gray-500 mt-1">
-                            Toplam <span className="font-semibold text-gray-700">{data.counts.total}</span> bekleyen onay
+                            {t('approvals.pendingCount', { count: data.counts.total })}
                         </p>
                     )}
                 </div>
@@ -218,7 +220,7 @@ export default function ApprovalsPage() {
                     className="btn btn-outline-primary flex items-center gap-2"
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    Yenile
+                    {t('approvals.refreshBtn')}
                 </button>
             </div>
 
@@ -262,18 +264,18 @@ export default function ApprovalsPage() {
                                     {(data?.child_enrollment_requests ?? []).length === 0 ? (
                                         <div className="text-center py-12 text-gray-500">
                                             <Users size={40} className="mx-auto mb-2 text-gray-300" />
-                                            <p>Bekleyen kayıt talebi yok.</p>
+                                            <p>{t('approvals.noEnrollment')}</p>
                                         </div>
                                     ) : (
                                         <div className="table-responsive">
                                             <table className="table-hover">
                                                 <thead>
                                                     <tr>
-                                                        <th>Çocuk</th>
-                                                        <th>Veli</th>
-                                                        <th>Okul</th>
-                                                        <th>Tarih</th>
-                                                        <th className="text-center">İşlem</th>
+                                                        <th>{t('approvals.childCol')}</th>
+                                                        <th>{t('approvals.parentCol')}</th>
+                                                        <th>{t('approvals.schoolCol')}</th>
+                                                        <th>{t('approvals.dateCol')}</th>
+                                                        <th className="text-center">{t('approvals.actionsCol')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -293,7 +295,7 @@ export default function ApprovalsPage() {
                                                                         className="btn btn-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
                                                                     >
                                                                         <CheckCircle size={14} />
-                                                                        Onayla
+                                                                        {t('approvals.approveBtn')}
                                                                     </button>
                                                                     <button
                                                                         onClick={() => openRejectModal('enrollment', req.id, req.school_id)}
@@ -301,7 +303,7 @@ export default function ApprovalsPage() {
                                                                         className="btn btn-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
                                                                     >
                                                                         <XCircle size={14} />
-                                                                        Reddet
+                                                                        {t('approvals.rejectBtn')}
                                                                     </button>
                                                                 </div>
                                                             </td>
@@ -320,19 +322,19 @@ export default function ApprovalsPage() {
                                     {(data?.child_removal_requests ?? []).length === 0 ? (
                                         <div className="text-center py-12 text-gray-500">
                                             <UserMinus size={40} className="mx-auto mb-2 text-gray-300" />
-                                            <p>Bekleyen silme talebi yok.</p>
+                                            <p>{t('approvals.noRemoval')}</p>
                                         </div>
                                     ) : (
                                         <div className="table-responsive">
                                             <table className="table-hover">
                                                 <thead>
                                                     <tr>
-                                                        <th>Çocuk</th>
-                                                        <th>Veli</th>
-                                                        <th>Okul</th>
-                                                        <th>Sebep</th>
-                                                        <th>Tarih</th>
-                                                        <th className="text-center">İşlem</th>
+                                                        <th>{t('approvals.childCol')}</th>
+                                                        <th>{t('approvals.parentCol')}</th>
+                                                        <th>{t('approvals.schoolCol')}</th>
+                                                        <th>{t('approvals.reasonCol')}</th>
+                                                        <th>{t('approvals.dateCol')}</th>
+                                                        <th className="text-center">{t('approvals.actionsCol')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -355,7 +357,7 @@ export default function ApprovalsPage() {
                                                                         className="btn btn-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
                                                                     >
                                                                         <CheckCircle size={14} />
-                                                                        Onayla
+                                                                        {t('approvals.approveBtn')}
                                                                     </button>
                                                                     <button
                                                                         onClick={() => openRejectModal('removal', req.id, req.school_id)}
@@ -363,7 +365,7 @@ export default function ApprovalsPage() {
                                                                         className="btn btn-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
                                                                     >
                                                                         <XCircle size={14} />
-                                                                        Reddet
+                                                                        {t('approvals.rejectBtn')}
                                                                     </button>
                                                                 </div>
                                                             </td>
@@ -382,21 +384,21 @@ export default function ApprovalsPage() {
                                     {(data?.child_field_change_requests ?? []).length === 0 ? (
                                         <div className="text-center py-12 text-gray-500">
                                             <Edit3 size={40} className="mx-auto mb-2 text-gray-300" />
-                                            <p>Bekleyen alan değişikliği talebi yok.</p>
+                                            <p>{t('approvals.noFieldChange')}</p>
                                         </div>
                                     ) : (
                                         <div className="table-responsive">
                                             <table className="table-hover">
                                                 <thead>
                                                     <tr>
-                                                        <th>Çocuk</th>
-                                                        <th>Okul</th>
-                                                        <th>Alan</th>
-                                                        <th>Mevcut Değer</th>
-                                                        <th>Yeni Değer</th>
-                                                        <th>Talep Eden</th>
-                                                        <th>Tarih</th>
-                                                        <th className="text-center">İşlem</th>
+                                                        <th>{t('approvals.childCol')}</th>
+                                                        <th>{t('approvals.schoolCol')}</th>
+                                                        <th>{t('approvals.fieldCol')}</th>
+                                                        <th>{t('approvals.oldValueCol')}</th>
+                                                        <th>{t('approvals.newValueCol')}</th>
+                                                        <th>{t('approvals.requestedByCol')}</th>
+                                                        <th>{t('approvals.dateCol')}</th>
+                                                        <th className="text-center">{t('approvals.actionsCol')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -421,7 +423,7 @@ export default function ApprovalsPage() {
                                                                         className="btn btn-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
                                                                     >
                                                                         <CheckCircle size={14} />
-                                                                        Onayla
+                                                                        {t('approvals.approveBtn')}
                                                                     </button>
                                                                     <button
                                                                         onClick={() => openRejectModal('field_change', req.id, req.school_id)}
@@ -429,7 +431,7 @@ export default function ApprovalsPage() {
                                                                         className="btn btn-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
                                                                     >
                                                                         <XCircle size={14} />
-                                                                        Reddet
+                                                                        {t('approvals.rejectBtn')}
                                                                     </button>
                                                                 </div>
                                                             </td>
@@ -450,11 +452,11 @@ export default function ApprovalsPage() {
             <div className="flex items-center gap-4 text-sm text-gray-500">
                 <span className="flex items-center gap-1">
                     <Clock size={14} className="text-yellow-500" />
-                    Bekleyen onaylar gösteriliyor
+                    {t('approvals.statusLegend1')}
                 </span>
                 <span className="flex items-center gap-1">
                     <CheckCircle size={14} className="text-green-500" />
-                    Onaylandıktan sonra otomatik uygulanır
+                    {t('approvals.statusLegend2')}
                 </span>
             </div>
 
@@ -462,17 +464,17 @@ export default function ApprovalsPage() {
             {rejectModal?.open && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Talebi Reddet</h3>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('approvals.rejectModalTitle')}</h3>
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Reddetme Sebebi <span className="text-red-500">*</span>
+                                {t('approvals.rejectReasonLabel')} <span className="text-red-500">*</span>
                             </label>
                             <textarea
                                 value={rejectReason}
                                 onChange={e => setRejectReason(e.target.value)}
                                 rows={4}
                                 className="form-input w-full resize-none"
-                                placeholder="Reddetme sebebini açıklayın... (min 5 karakter)"
+                                placeholder={t('approvals.rejectReasonPlaceholder')}
                             />
                             <p className="text-xs text-gray-400 mt-1">{rejectReason.length} / 500</p>
                         </div>
@@ -482,7 +484,7 @@ export default function ApprovalsPage() {
                                 disabled={processing}
                                 className="btn btn-outline-secondary"
                             >
-                                İptal
+                                {t('common.cancel')}
                             </button>
                             <button
                                 onClick={handleReject}
@@ -490,7 +492,7 @@ export default function ApprovalsPage() {
                                 className="btn bg-red-600 text-white hover:bg-red-700 flex items-center gap-2"
                             >
                                 {processing ? <div className="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent" /> : <XCircle size={16} />}
-                                Reddet
+                                {t('approvals.rejectConfirm')}
                             </button>
                         </div>
                     </div>

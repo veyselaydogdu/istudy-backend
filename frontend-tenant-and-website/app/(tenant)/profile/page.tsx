@@ -6,30 +6,41 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
 import { User } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 
-const profileSchema = z.object({
-    name: z.string().min(2, 'Ad en az 2 karakter olmalıdır.'),
-    email: z.string().email('Geçerli bir e-posta giriniz.'),
-    phone: z.string().optional(),
-});
+type ProfileFormValues = {
+    name: string;
+    email: string;
+    phone?: string;
+};
 
-const passwordSchema = z
-    .object({
-        current_password: z.string().min(1, 'Mevcut şifrenizi girin.'),
-        password: z.string().min(8, 'Yeni şifre en az 8 karakter olmalıdır.'),
-        password_confirmation: z.string(),
-    })
-    .refine((d) => d.password === d.password_confirmation, {
-        message: 'Şifreler eşleşmiyor.',
-        path: ['password_confirmation'],
-    });
-
-type ProfileFormValues = z.infer<typeof profileSchema>;
-type PasswordFormValues = z.infer<typeof passwordSchema>;
+type PasswordFormValues = {
+    current_password: string;
+    password: string;
+    password_confirmation: string;
+};
 
 export default function ProfilePage() {
+    const { t } = useTranslation();
     const [user, setUser] = useState<User | null>(null);
     const [loadingProfile, setLoadingProfile] = useState(true);
+
+    const profileSchema = z.object({
+        name: z.string().min(2, t('profile.validation.nameMin')),
+        email: z.string().email(t('profile.validation.emailInvalid')),
+        phone: z.string().optional(),
+    });
+
+    const passwordSchema = z
+        .object({
+            current_password: z.string().min(1, t('profile.validation.currentPasswordRequired')),
+            password: z.string().min(8, t('profile.validation.passwordMin')),
+            password_confirmation: z.string(),
+        })
+        .refine((d) => d.password === d.password_confirmation, {
+            message: t('profile.validation.passwordsMismatch'),
+            path: ['password_confirmation'],
+        });
 
     const profileForm = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema),
@@ -51,7 +62,7 @@ export default function ProfilePage() {
                 });
             }
         }).catch(() => {
-            toast.error('Profil bilgileri yüklenemedi.');
+            toast.error(t('profile.loadError'));
         }).finally(() => setLoadingProfile(false));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -61,21 +72,21 @@ export default function ProfilePage() {
             if (res.data?.data) {
                 setUser(res.data.data);
             }
-            toast.success('Profil güncellendi!');
+            toast.success(t('profile.updateSuccess'));
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Güncelleme başarısız.');
+            toast.error(error.response?.data?.message ?? t('profile.updateError'));
         }
     };
 
     const onPasswordSubmit = async (data: PasswordFormValues) => {
         try {
             await apiClient.post('/auth/change-password', data);
-            toast.success('Şifre başarıyla değiştirildi!');
+            toast.success(t('profile.passwordChangeSuccess'));
             passwordForm.reset();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Şifre değiştirme başarısız.');
+            toast.error(error.response?.data?.message ?? t('profile.passwordChangeError'));
         }
     };
 
@@ -89,15 +100,15 @@ export default function ProfilePage() {
 
     return (
         <div className="p-6">
-            <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">Profil</h1>
+            <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">{t('profile.title')}</h1>
 
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Profile form */}
                 <div className="panel">
-                    <h2 className="mb-4 text-lg font-semibold text-dark dark:text-white">Profil Bilgileri</h2>
+                    <h2 className="mb-4 text-lg font-semibold text-dark dark:text-white">{t('profile.personalInfoTitle')}</h2>
                     <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">Ad Soyad</label>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('profile.fullNameLabel')}</label>
                             <input
                                 type="text"
                                 className="form-input mt-1"
@@ -109,7 +120,7 @@ export default function ProfilePage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">E-posta</label>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('profile.emailLabel')}</label>
                             <input
                                 type="email"
                                 className="form-input mt-1"
@@ -121,7 +132,7 @@ export default function ProfilePage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">Telefon</label>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('profile.phoneLabel')}</label>
                             <input
                                 type="text"
                                 className="form-input mt-1"
@@ -131,7 +142,7 @@ export default function ProfilePage() {
 
                         {user?.tenant && (
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Kurum</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('profile.institutionLabel')}</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1 bg-[#f1f2f3] dark:bg-[#1b2e4b]"
@@ -146,17 +157,17 @@ export default function ProfilePage() {
                             className="btn btn-primary"
                             disabled={profileForm.formState.isSubmitting}
                         >
-                            {profileForm.formState.isSubmitting ? 'Kaydediliyor...' : 'Kaydet'}
+                            {profileForm.formState.isSubmitting ? t('profile.savingBtn') : t('profile.saveBtn')}
                         </button>
                     </form>
                 </div>
 
                 {/* Password form */}
                 <div className="panel">
-                    <h2 className="mb-4 text-lg font-semibold text-dark dark:text-white">Şifre Değiştir</h2>
+                    <h2 className="mb-4 text-lg font-semibold text-dark dark:text-white">{t('profile.passwordTitle')}</h2>
                     <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">Mevcut Şifre</label>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('profile.currentPassword')}</label>
                             <input
                                 type="password"
                                 className="form-input mt-1"
@@ -168,7 +179,7 @@ export default function ProfilePage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">Yeni Şifre</label>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('profile.newPassword')}</label>
                             <input
                                 type="password"
                                 className="form-input mt-1"
@@ -180,7 +191,7 @@ export default function ProfilePage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">Yeni Şifre Tekrar</label>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('profile.confirmPassword')}</label>
                             <input
                                 type="password"
                                 className="form-input mt-1"
@@ -196,7 +207,7 @@ export default function ProfilePage() {
                             className="btn btn-primary"
                             disabled={passwordForm.formState.isSubmitting}
                         >
-                            {passwordForm.formState.isSubmitting ? 'Değiştiriliyor...' : 'Şifreyi Değiştir'}
+                            {passwordForm.formState.isSubmitting ? t('profile.changingBtn') : t('profile.changePasswordBtn')}
                         </button>
                     </form>
                 </div>

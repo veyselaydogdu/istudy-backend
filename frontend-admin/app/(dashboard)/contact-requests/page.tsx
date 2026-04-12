@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import Swal from "sweetalert2"
+import { useTranslation } from "@/hooks/useTranslation"
 
 type ContactRequest = {
     id: number
@@ -40,13 +41,15 @@ type ContactRequest = {
 type Meta = { current_page: number; last_page: number; per_page: number; total: number }
 type Stats = { total: number; pending: number; read: number; replied: number }
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-    pending: { label: "Bekliyor", color: "bg-warning/20 text-warning" },
-    read: { label: "Okundu", color: "bg-info/20 text-info" },
-    replied: { label: "Yanıtlandı", color: "bg-success/20 text-success" },
-}
-
 export default function ContactRequestsPage() {
+    const { t } = useTranslation()
+
+    const statusConfig: Record<string, { label: string; color: string }> = {
+        pending: { label: t('contacts.pending'), color: "bg-warning/20 text-warning" },
+        read: { label: t('contacts.read'), color: "bg-info/20 text-info" },
+        replied: { label: t('contacts.replied'), color: "bg-success/20 text-success" },
+    }
+
     const [requests, setRequests] = useState<ContactRequest[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
     const [stats, setStats] = useState<Stats | null>(null)
@@ -55,7 +58,6 @@ export default function ContactRequestsPage() {
     const [statusFilter, setStatusFilter] = useState("")
     const [page, setPage] = useState(1)
 
-    // Detail modal
     const [selected, setSelected] = useState<ContactRequest | null>(null)
     const [detailOpen, setDetailOpen] = useState(false)
     const [adminNote, setAdminNote] = useState("")
@@ -64,7 +66,7 @@ export default function ContactRequestsPage() {
     const fetchStats = async () => {
         try {
             const res = await apiClient.get("/admin/contact-requests/stats")
-            if (res.data?.data) setStats(res.data.data)
+            if (res.data?.data) { setStats(res.data.data) }
         } catch { /* ignore */ }
     }
 
@@ -72,19 +74,19 @@ export default function ContactRequestsPage() {
         setLoading(true)
         try {
             const params: Record<string, string | number> = { page, per_page: 15 }
-            if (search) params.search = search
-            if (statusFilter) params.status = statusFilter
+            if (search) { params.search = search }
+            if (statusFilter) { params.status = statusFilter }
             const res = await apiClient.get("/admin/contact-requests", { params })
             if (res.data?.data) {
                 setRequests(res.data.data)
                 setMeta(res.data.meta ?? null)
             }
         } catch {
-            toast.error("İletişim talepleri yüklenirken hata oluştu.")
+            toast.error(t('contacts.loadError'))
         } finally {
             setLoading(false)
         }
-    }, [page, search, statusFilter])
+    }, [page, search, statusFilter, t])
 
     useEffect(() => { setPage(1) }, [search, statusFilter])
     useEffect(() => { fetchRequests() }, [fetchRequests])
@@ -94,7 +96,6 @@ export default function ContactRequestsPage() {
         setSelected(item)
         setAdminNote(item.admin_note || "")
         setDetailOpen(true)
-        // Show as read if pending
         if (item.status === "pending") {
             try {
                 await apiClient.patch(`/admin/contact-requests/${item.id}/status`, { status: "read" })
@@ -108,7 +109,7 @@ export default function ContactRequestsPage() {
     }
 
     const updateStatus = async (status: "read" | "replied") => {
-        if (!selected) return
+        if (!selected) { return }
         setUpdatingStatus(true)
         try {
             const res = await apiClient.patch(`/admin/contact-requests/${selected.id}/status`, {
@@ -119,11 +120,11 @@ export default function ContactRequestsPage() {
             if (updated) {
                 setSelected(updated)
                 setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
-                toast.success("Durum güncellendi.")
+                toast.success(t('contacts.statusUpdated'))
                 fetchStats()
             }
         } catch {
-            toast.error("Durum güncellenirken hata oluştu.")
+            toast.error(t('contacts.statusError'))
         } finally {
             setUpdatingStatus(false)
         }
@@ -131,24 +132,24 @@ export default function ContactRequestsPage() {
 
     const deleteRequest = async (id: number) => {
         const result = await Swal.fire({
-            title: "Talebi sil",
-            text: "Bu iletişim talebi kalıcı olarak silinecek. Emin misiniz?",
+            title: t('contacts.deleteTitle'),
+            text: t('contacts.deleteText'),
             icon: "warning",
             showCancelButton: true,
             confirmButtonColor: "#e7515a",
             cancelButtonColor: "#64748b",
-            confirmButtonText: "Evet, Sil",
-            cancelButtonText: "İptal",
+            confirmButtonText: t('swal.confirmDelete'),
+            cancelButtonText: t('swal.cancel'),
         })
-        if (!result.isConfirmed) return
+        if (!result.isConfirmed) { return }
         try {
             await apiClient.delete(`/admin/contact-requests/${id}`)
             setRequests((prev) => prev.filter((r) => r.id !== id))
-            if (selected?.id === id) setDetailOpen(false)
-            toast.success("Talep silindi.")
+            if (selected?.id === id) { setDetailOpen(false) }
+            toast.success(t('contacts.deleteSuccess'))
             fetchStats()
         } catch {
-            toast.error("Silme işlemi başarısız.")
+            toast.error(t('contacts.deleteError'))
         }
     }
 
@@ -159,21 +160,19 @@ export default function ContactRequestsPage() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-dark dark:text-white">İletişim Talepleri</h1>
-                    <p className="mt-1 text-sm text-[#888ea8]">Web sitesi iletişim formundan gelen mesajlar</p>
+                    <h1 className="text-2xl font-bold text-dark dark:text-white">{t('contacts.title')}</h1>
+                    <p className="mt-1 text-sm text-[#888ea8]">{t('contacts.subtitle')}</p>
                 </div>
             </div>
 
-            {/* İstatistik kartları */}
             {stats && (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-sm font-medium text-[#888ea8]">
-                                <Mail className="h-4 w-4" /> Toplam
+                                <Mail className="h-4 w-4" /> {t('contacts.total')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -183,7 +182,7 @@ export default function ContactRequestsPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-sm font-medium text-[#888ea8]">
-                                <Clock className="h-4 w-4 text-warning" /> Bekliyor
+                                <Clock className="h-4 w-4 text-warning" /> {t('contacts.pending')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -193,7 +192,7 @@ export default function ContactRequestsPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-sm font-medium text-[#888ea8]">
-                                <MailOpen className="h-4 w-4 text-info" /> Okundu
+                                <MailOpen className="h-4 w-4 text-info" /> {t('contacts.read')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -203,7 +202,7 @@ export default function ContactRequestsPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-sm font-medium text-[#888ea8]">
-                                <CheckCircle className="h-4 w-4 text-success" /> Yanıtlandı
+                                <CheckCircle className="h-4 w-4 text-success" /> {t('contacts.replied')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -213,12 +212,11 @@ export default function ContactRequestsPage() {
                 </div>
             )}
 
-            {/* Filtreler */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888ea8]" />
                     <Input
-                        placeholder="Ad, e-posta veya konu ara..."
+                        placeholder={t('contacts.searchPlaceholder')}
                         className="pl-9"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -236,21 +234,20 @@ export default function ContactRequestsPage() {
                             }`}
                             onClick={() => setStatusFilter(s)}
                         >
-                            {s === "" ? "Tümü" : statusConfig[s]?.label || s}
+                            {s === "" ? t('contacts.allFilter') : statusConfig[s]?.label || s}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Tablo */}
             <div className="panel overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Gönderen</TableHead>
-                            <TableHead>Konu</TableHead>
-                            <TableHead>Durum</TableHead>
-                            <TableHead>Tarih</TableHead>
+                            <TableHead>{t('contacts.senderCol')}</TableHead>
+                            <TableHead>{t('contacts.subjectCol')}</TableHead>
+                            <TableHead>{t('common.status')}</TableHead>
+                            <TableHead>{t('contacts.dateCol')}</TableHead>
                             <TableHead className="w-12" />
                         </TableRow>
                     </TableHeader>
@@ -258,13 +255,13 @@ export default function ContactRequestsPage() {
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="py-16 text-center text-[#888ea8]">
-                                    Yükleniyor...
+                                    {t('common.loading')}
                                 </TableCell>
                             </TableRow>
                         ) : requests.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="py-16 text-center text-[#888ea8]">
-                                    İletişim talebi bulunamadı.
+                                    {t('contacts.noRecord')}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -308,14 +305,14 @@ export default function ContactRequestsPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => openDetail(item)}>
-                                                    <Eye className="mr-2 h-4 w-4" /> Görüntüle
+                                                    <Eye className="mr-2 h-4 w-4" /> {t('contacts.view')}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
                                                     className="text-danger focus:text-danger"
                                                     onClick={() => deleteRequest(item.id)}
                                                 >
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Sil
+                                                    <Trash2 className="mr-2 h-4 w-4" /> {t('common.delete')}
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -326,11 +323,10 @@ export default function ContactRequestsPage() {
                     </TableBody>
                 </Table>
 
-                {/* Sayfalama */}
                 {meta && meta.last_page > 1 && (
                     <div className="flex items-center justify-between border-t border-white-light/40 px-4 py-3 dark:border-[#1b2e4b]">
                         <p className="text-sm text-[#888ea8]">
-                            Toplam {meta.total} talep — Sayfa {meta.current_page} / {meta.last_page}
+                            {t('contacts.pageInfo', { total: meta.total, current: meta.current_page, last: meta.last_page })}
                         </p>
                         <div className="flex gap-2">
                             <Button
@@ -354,13 +350,12 @@ export default function ContactRequestsPage() {
                 )}
             </div>
 
-            {/* Detay Modal */}
             <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <MessageSquare className="h-5 w-5 text-primary" />
-                            İletişim Talebi
+                            {t('contacts.detailTitle')}
                         </DialogTitle>
                         <DialogDescription>
                             {selected && `${selected.name} — ${formatDate(selected.created_at)}`}
@@ -369,14 +364,13 @@ export default function ContactRequestsPage() {
 
                     {selected && (
                         <div className="space-y-4">
-                            {/* Gönderen bilgileri */}
                             <div className="grid grid-cols-2 gap-3 rounded-lg bg-[#f1f2f3] p-3 dark:bg-[#1b2e4b]">
                                 <div>
-                                    <p className="text-xs text-[#888ea8]">Ad Soyad</p>
+                                    <p className="text-xs text-[#888ea8]">{t('contacts.fullName')}</p>
                                     <p className="text-sm font-semibold text-dark dark:text-white">{selected.name}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-[#888ea8]">E-posta</p>
+                                    <p className="text-xs text-[#888ea8]">{t('contacts.email')}</p>
                                     <a
                                         href={`mailto:${selected.email}`}
                                         className="text-sm font-semibold text-primary hover:underline"
@@ -385,37 +379,34 @@ export default function ContactRequestsPage() {
                                     </a>
                                 </div>
                                 <div className="col-span-2">
-                                    <p className="text-xs text-[#888ea8]">Konu</p>
+                                    <p className="text-xs text-[#888ea8]">{t('contacts.subject')}</p>
                                     <p className="text-sm font-semibold text-dark dark:text-white">{selected.subject}</p>
                                 </div>
                             </div>
 
-                            {/* Mesaj */}
                             <div>
-                                <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[#888ea8]">Mesaj</p>
+                                <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[#888ea8]">{t('contacts.message')}</p>
                                 <div className="rounded-lg border border-white-light p-3 text-sm leading-relaxed text-dark dark:border-[#1b2e4b] dark:text-white">
                                     {selected.message}
                                 </div>
                             </div>
 
-                            {/* Admin notu */}
                             <div>
                                 <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-[#888ea8]">
-                                    Admin Notu
+                                    {t('contacts.adminNote')}
                                 </label>
                                 <textarea
                                     className="w-full rounded-lg border border-white-light bg-transparent p-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-[#1b2e4b] dark:text-white"
                                     rows={3}
-                                    placeholder="Dahili notunuzu buraya yazın..."
+                                    placeholder={t('contacts.adminNotePlaceholder')}
                                     value={adminNote}
                                     onChange={(e) => setAdminNote(e.target.value)}
                                 />
                             </div>
 
-                            {/* Yanıtlandı bilgisi */}
                             {selected.replied_at && (
                                 <p className="text-xs text-[#888ea8]">
-                                    Yanıtlandı: {formatDate(selected.replied_at)}
+                                    {t('contacts.repliedAt')}: {formatDate(selected.replied_at)}
                                     {selected.replied_by ? ` — ${selected.replied_by.name}` : ""}
                                 </p>
                             )}
@@ -424,7 +415,7 @@ export default function ContactRequestsPage() {
 
                     <DialogFooter className="gap-2">
                         <Button variant="outline" onClick={() => setDetailOpen(false)}>
-                            Kapat
+                            {t('common.close')}
                         </Button>
                         <Button
                             variant="outline"
@@ -433,7 +424,7 @@ export default function ContactRequestsPage() {
                             onClick={() => updateStatus("read")}
                         >
                             <MailOpen className="mr-2 h-4 w-4" />
-                            Okundu İşaretle
+                            {t('contacts.markRead')}
                         </Button>
                         <Button
                             className="bg-success hover:bg-success/90"
@@ -441,7 +432,7 @@ export default function ContactRequestsPage() {
                             onClick={() => updateStatus("replied")}
                         >
                             <CheckCircle className="mr-2 h-4 w-4" />
-                            {updatingStatus ? "Güncelleniyor..." : "Yanıtlandı İşaretle"}
+                            {updatingStatus ? t('contacts.updating') : t('contacts.markReplied')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -15,14 +15,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import type { Country } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Meta = { current_page: number; last_page: number; per_page: number; total: number };
 
 const schema = z.object({
-    name: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
+    name: z.string().min(2),
     official_name: z.string().optional(),
     native_name: z.string().optional(),
-    iso2: z.string().length(2, 'ISO2 kodu 2 karakter olmalıdır'),
+    iso2: z.string().length(2),
     iso3: z.string().optional(),
     phone_code: z.string().optional(),
     currency_code: z.string().optional(),
@@ -34,6 +35,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function CountriesPage() {
+    const { t } = useTranslation();
     const [items, setItems] = useState<Country[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -56,11 +58,11 @@ export default function CountriesPage() {
                 setMeta(res.data.meta ?? null);
             }
         } catch {
-            toast.error('Ülkeler yüklenirken hata oluştu.');
+            toast.error(t('global.countries.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [page, search]);
+    }, [page, search, t]);
 
     useEffect(() => { setPage(1); }, [search]);
     useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -68,13 +70,13 @@ export default function CountriesPage() {
     const onAdd = async (data: FormValues) => {
         try {
             await apiClient.post('/admin/countries', data);
-            toast.success('Ülke eklendi.');
+            toast.success(t('global.countries.addSuccess'));
             setIsAddOpen(false);
             reset();
             fetchItems();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Ülke eklenemedi.');
+            toast.error(e.response?.data?.message ?? t('global.countries.addError'));
         }
     };
 
@@ -82,23 +84,23 @@ export default function CountriesPage() {
         if (!editItem) { return; }
         try {
             await apiClient.put(`/admin/countries/${editItem.id}`, data);
-            toast.success('Ülke güncellendi.');
+            toast.success(t('global.countries.updateSuccess'));
             setEditItem(null);
             fetchItems();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Güncelleme başarısız.');
+            toast.error(e.response?.data?.message ?? t('global.countries.updateError'));
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Bu ülkeyi silmek istediğinizden emin misiniz?')) { return; }
+        if (!confirm(t('global.countries.deleteConfirm'))) { return; }
         try {
             await apiClient.delete(`/admin/countries/${id}`);
-            toast.success('Ülke silindi.');
+            toast.success(t('global.countries.deleteSuccess'));
             setItems((prev) => prev.filter((i) => i.id !== id));
         } catch {
-            toast.error('Silinemedi.');
+            toast.error(t('global.countries.deleteError'));
         }
     };
 
@@ -107,7 +109,7 @@ export default function CountriesPage() {
             await apiClient.patch(`/admin/countries/${id}/toggle-active`);
             setItems((prev) => prev.map((i) => (i.id === id ? { ...i, is_active: !i.is_active } : i)));
         } catch {
-            toast.error('Durum güncellenemedi.');
+            toast.error(t('global.countries.toggleError'));
         }
     };
 
@@ -129,43 +131,43 @@ export default function CountriesPage() {
         <div className="grid gap-3 py-2">
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                    <Label>Ülke Adı *</Label>
+                    <Label>{t('global.countries.nameLabel')}</Label>
                     <Input {...reg('name')} />
                     {errs.name && <p className="text-xs text-red-500">{errs.name.message}</p>}
                 </div>
                 <div className="space-y-1">
-                    <Label>ISO2 Kodu *</Label>
+                    <Label>{t('global.countries.iso2Label')}</Label>
                     <Input {...reg('iso2')} maxLength={2} placeholder="TR" />
                     {errs.iso2 && <p className="text-xs text-red-500">{errs.iso2.message}</p>}
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                    <Label>ISO3 Kodu</Label>
+                    <Label>{t('global.countries.iso3Label')}</Label>
                     <Input {...reg('iso3')} maxLength={3} placeholder="TUR" />
                 </div>
                 <div className="space-y-1">
-                    <Label>Telefon Kodu</Label>
+                    <Label>{t('global.countries.phoneCodeLabel')}</Label>
                     <Input {...reg('phone_code')} placeholder="+90" />
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                    <Label>Para Birimi Kodu</Label>
+                    <Label>{t('global.countries.currencyCodeLabel')}</Label>
                     <Input {...reg('currency_code')} maxLength={3} placeholder="TRY" />
                 </div>
                 <div className="space-y-1">
-                    <Label>Başkent</Label>
+                    <Label>{t('global.countries.capitalLabel')}</Label>
                     <Input {...reg('capital')} placeholder="Ankara" />
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                    <Label>Bölge</Label>
+                    <Label>{t('global.countries.regionLabel')}</Label>
                     <Input {...reg('region')} placeholder="Asia" />
                 </div>
                 <div className="space-y-1">
-                    <Label>Bayrak Emojisi</Label>
+                    <Label>{t('global.countries.flagLabel')}</Label>
                     <Input {...reg('flag_emoji')} placeholder="🇹🇷" />
                 </div>
             </div>
@@ -176,25 +178,27 @@ export default function CountriesPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Ülkeler</h1>
-                    <p className="text-muted-foreground">Sistemde tanımlı ülke listesi — kayıt, telefon kodu ve para birimi bilgileri.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('global.countries.title')}</h1>
+                    <p className="text-muted-foreground">{t('global.countries.subtitle')}</p>
                 </div>
                 <Button onClick={() => setIsAddOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Ülke Ekle
+                    <Plus className="mr-2 h-4 w-4" /> {t('global.countries.addBtn')}
                 </Button>
             </div>
 
             <div className="relative max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-8" placeholder="Ülke adı veya kodu ile ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input className="pl-8" placeholder={t('global.countries.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
 
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Globe className="h-5 w-5 text-blue-500" /> Ülke Listesi
+                        <Globe className="h-5 w-5 text-blue-500" /> {t('global.countries.listTitle')}
                     </CardTitle>
-                    <CardDescription>{meta ? `Toplam ${meta.total} ülke` : 'Yükleniyor...'}</CardDescription>
+                    <CardDescription>
+                        {meta ? t('global.countries.totalCount', { count: meta.total }) : t('common.loading')}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -206,12 +210,12 @@ export default function CountriesPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Ülke</TableHead>
-                                        <TableHead>ISO2</TableHead>
-                                        <TableHead>Telefon</TableHead>
-                                        <TableHead>Para Birimi</TableHead>
-                                        <TableHead>Bölge</TableHead>
-                                        <TableHead>Durum</TableHead>
+                                        <TableHead>{t('global.countries.nameCol')}</TableHead>
+                                        <TableHead>{t('global.countries.iso2Col')}</TableHead>
+                                        <TableHead>{t('global.countries.phoneCol')}</TableHead>
+                                        <TableHead>{t('global.countries.currencyCol')}</TableHead>
+                                        <TableHead>{t('global.countries.regionCol')}</TableHead>
+                                        <TableHead>{t('common.status')}</TableHead>
                                         <TableHead className="w-24" />
                                     </TableRow>
                                 </TableHeader>
@@ -230,12 +234,12 @@ export default function CountriesPage() {
                                             <TableCell className="text-sm text-muted-foreground">{item.region ?? '—'}</TableCell>
                                             <TableCell>
                                                 <Badge variant={item.is_active ? 'success' : 'secondary'}>
-                                                    {item.is_active ? 'Aktif' : 'Pasif'}
+                                                    {item.is_active ? t('common.active') : t('common.inactive')}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" title={item.is_active ? 'Pasife Al' : 'Aktife Al'} onClick={() => handleToggleActive(item.id)}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleActive(item.id)}>
                                                         {item.is_active ? <ToggleRight className="h-4 w-4 text-success" /> : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
                                                     </Button>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
@@ -250,14 +254,16 @@ export default function CountriesPage() {
                                     ))}
                                     {items.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Ülke bulunamadı.</TableCell>
+                                            <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">{t('global.countries.noRecord')}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
                             </Table>
                             {meta && meta.last_page > 1 && (
                                 <div className="mt-4 flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">Sayfa {meta.current_page} / {meta.last_page} — {meta.total} kayıt</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('global.countries.pageInfo', { current: meta.current_page, total: meta.last_page, count: meta.total })}
+                                    </p>
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="sm" disabled={meta.current_page === 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
                                         <Button variant="outline" size="sm" disabled={meta.current_page === meta.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
@@ -272,15 +278,15 @@ export default function CountriesPage() {
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Ülke Ekle</DialogTitle>
-                        <DialogDescription>Sisteme yeni ülke ekleyin.</DialogDescription>
+                        <DialogTitle>{t('global.countries.addTitle')}</DialogTitle>
+                        <DialogDescription>{t('global.countries.addDescription')}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit(onAdd)}>
                         <CountryFormFields reg={register} errs={errors} />
                         <DialogFooter className="mt-4">
-                            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); reset(); }}>İptal</Button>
+                            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); reset(); }}>{t('common.cancel')}</Button>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ekle
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('common.add')}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -290,14 +296,14 @@ export default function CountriesPage() {
             <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); } }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Ülke Düzenle</DialogTitle>
+                        <DialogTitle>{t('global.countries.editTitle')}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleEdit(onEdit)}>
                         <CountryFormFields reg={regEdit} errs={errEdit} />
                         <DialogFooter className="mt-4">
-                            <Button type="button" variant="outline" onClick={() => setEditItem(null)}>İptal</Button>
+                            <Button type="button" variant="outline" onClick={() => setEditItem(null)}>{t('common.cancel')}</Button>
                             <Button type="submit" disabled={isEditSubmitting}>
-                                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Kaydet
+                                {isEditSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('common.save')}
                             </Button>
                         </DialogFooter>
                     </form>

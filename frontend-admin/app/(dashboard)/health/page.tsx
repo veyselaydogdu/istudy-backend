@@ -48,6 +48,7 @@ type CrudTabProps<T extends { id: number; name: string; created_at: string }> = 
 function CrudTab<T extends { id: number; name: string; created_at: string }>({
     endpoint, columns, formFields, schema, title, description, icon, addLabel,
 }: CrudTabProps<T>) {
+    const { t } = useTranslation();
     const [items, setItems] = useState<T[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
     const [loading, setLoading] = useState(true)
@@ -96,7 +97,7 @@ function CrudTab<T extends { id: number; name: string; created_at: string }>({
     }
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Bu kaydı silmek istediğinizden emin misiniz?")) { return }
+        if (!confirm(t('swal.deleteTitle') || 'Silmek istediğinize emin misiniz?')) { return }
         try {
             await apiClient.delete(`/admin/${endpoint}/${id}`)
             toast.success("Kayıt silindi.")
@@ -163,10 +164,8 @@ function CrudTab<T extends { id: number; name: string; created_at: string }>({
                                         ))}
                                     </div>
                                     <DialogFooter>
-                                        <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); reset() }}>İptal</Button>
-                                        <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ekle
-                                        </Button>
+                                        <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); reset() }}>{t('common.cancel')}</Button>
+                                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className=\"mr-2 h-4 w-4 animate-spin\" />} {t('common.add')}</Button>
                                     </DialogFooter>
                                 </form>
                             </DialogContent>
@@ -239,6 +238,7 @@ function CrudTab<T extends { id: number; name: string; created_at: string }>({
 // ─── Ingredient Tab with Allergen Support ────────────────────────────────────
 
 function IngredientTab() {
+    const { t } = useTranslation();
     const [items, setItems] = useState<FoodIngredient[]>([])
     const [allergens, setAllergens] = useState<Allergen[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
@@ -312,7 +312,7 @@ function IngredientTab() {
     }
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Bu kaydı silmek istediğinizden emin misiniz?")) { return }
+        if (!confirm(t('swal.deleteTitle') || 'Silmek istediğinize emin misiniz?')) { return }
         try {
             await apiClient.delete(`/admin/food-ingredients/${id}`)
             toast.success("Besin silindi.")
@@ -442,9 +442,7 @@ function IngredientTab() {
                                         <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); reset() }}>
                                             İptal
                                         </Button>
-                                        <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ekle
-                                        </Button>
+                                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className=\"mr-2 h-4 w-4 animate-spin\" />} {t('common.add')}</Button>
                                     </DialogFooter>
                                 </form>
                             </DialogContent>
@@ -628,6 +626,7 @@ const medicationSchema = z.object({
 })
 
 export default function HealthPage() {
+    const { t } = useTranslation();
     return (
         <div className="space-y-6">
             <div>

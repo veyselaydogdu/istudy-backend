@@ -8,18 +8,11 @@ import {
     ChevronLeft, ChevronRight, FileText, TrendingUp, Clock, AlertCircle,
     Search, Filter, X, Eye, Calendar, Building2, User,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type ModuleTab = 'all' | 'activity_class' | 'subscription' | 'manual';
 type StatusFilter = '' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'draft' | 'refunded';
 
-const MODULE_LABELS: Record<string, string> = {
-    subscription: 'Abonelik', activity_class: 'Etkinlik Sınıfı', manual: 'Manuel',
-    event: 'Etkinlik', activity: 'Aktivite',
-};
-const STATUS_LABELS: Record<string, string> = {
-    draft: 'Taslak', pending: 'Bekliyor', paid: 'Ödendi',
-    cancelled: 'İptal', overdue: 'Gecikmiş', refunded: 'İade',
-};
 const STATUS_BADGE: Record<string, string> = {
     paid: 'badge-outline-success', pending: 'badge-outline-warning',
     overdue: 'badge-outline-danger', cancelled: 'badge-outline-secondary',
@@ -32,6 +25,7 @@ const MODULE_BADGE: Record<string, string> = {
 
 export default function InvoicesPage() {
     const router = useRouter();
+    const { t } = useTranslation();
 
     // Stats
     const [stats, setStats] = useState<InvoiceStats | null>(null);
@@ -52,6 +46,22 @@ export default function InvoicesPage() {
     const [dateTo, setDateTo] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const searchTimer = useRef<NodeJS.Timeout | null>(null);
+
+    const MODULE_LABELS: Record<string, string> = {
+        subscription: t('invoices.moduleSubscription'),
+        activity_class: t('invoices.moduleActivityClass'),
+        manual: t('invoices.moduleManual'),
+        event: t('invoices.moduleEvent'),
+        activity: t('invoices.moduleActivity'),
+    };
+    const STATUS_LABELS: Record<string, string> = {
+        draft: t('invoices.statusDraft'),
+        pending: t('invoices.statusPending'),
+        paid: t('invoices.statusPaid'),
+        cancelled: t('invoices.statusCancelled'),
+        overdue: t('invoices.statusOverdue'),
+        refunded: t('invoices.statusRefunded'),
+    };
 
     const fetchStats = useCallback(async () => {
         try {
@@ -75,11 +85,11 @@ export default function InvoicesPage() {
             setLastPage(res.data?.meta?.last_page ?? 1);
             setTotal(res.data?.meta?.total ?? 0);
         } catch {
-            toast.error('Faturalar yüklenemedi.');
+            toast.error(t('invoices.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [page, moduleTab, statusFilter, search, dateFrom, dateTo]);
+    }, [page, moduleTab, statusFilter, search, dateFrom, dateTo]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { fetchStats(); }, [fetchStats]);
     useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
@@ -117,8 +127,8 @@ export default function InvoicesPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-[#3b3f5c] dark:text-white">Faturalar</h1>
-                    <p className="mt-1 text-sm text-[#888ea8]">Tüm ödeme ve fatura kayıtları</p>
+                    <h1 className="text-2xl font-bold text-[#3b3f5c] dark:text-white">{t('invoices.title')}</h1>
+                    <p className="mt-1 text-sm text-[#888ea8]">{t('invoices.subtitle')}</p>
                 </div>
             </div>
 
@@ -130,7 +140,7 @@ export default function InvoicesPage() {
                             <TrendingUp className="h-6 w-6 text-success" />
                         </div>
                         <div>
-                            <p className="text-xs text-[#888ea8]">Toplam Gelir</p>
+                            <p className="text-xs text-[#888ea8]">{t('invoices.totalRevenue')}</p>
                             <p className="text-lg font-bold text-[#3b3f5c] dark:text-white">
                                 {formatCurrency(stats.total_revenue)}
                             </p>
@@ -141,11 +151,11 @@ export default function InvoicesPage() {
                             <Clock className="h-6 w-6 text-warning" />
                         </div>
                         <div>
-                            <p className="text-xs text-[#888ea8]">Bekleyen</p>
+                            <p className="text-xs text-[#888ea8]">{t('invoices.pending')}</p>
                             <p className="text-lg font-bold text-[#3b3f5c] dark:text-white">
                                 {formatCurrency(stats.pending_revenue)}
                             </p>
-                            <p className="text-xs text-[#888ea8]">{stats.pending_count} fatura</p>
+                            <p className="text-xs text-[#888ea8]">{t('invoices.totalCount', { count: stats.pending_count })}</p>
                         </div>
                     </div>
                     <div className="panel flex items-center gap-4 !p-4">
@@ -153,11 +163,11 @@ export default function InvoicesPage() {
                             <FileText className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                            <p className="text-xs text-[#888ea8]">Bu Ay</p>
+                            <p className="text-xs text-[#888ea8]">{t('invoices.thisMonth')}</p>
                             <p className="text-lg font-bold text-[#3b3f5c] dark:text-white">
                                 {formatCurrency(stats.this_month_revenue)}
                             </p>
-                            <p className="text-xs text-[#888ea8]">{stats.this_month_invoices} fatura</p>
+                            <p className="text-xs text-[#888ea8]">{t('invoices.totalCount', { count: stats.this_month_invoices })}</p>
                         </div>
                     </div>
                     <div className="panel flex items-center gap-4 !p-4">
@@ -165,9 +175,9 @@ export default function InvoicesPage() {
                             <AlertCircle className="h-6 w-6 text-danger" />
                         </div>
                         <div>
-                            <p className="text-xs text-[#888ea8]">Gecikmiş</p>
+                            <p className="text-xs text-[#888ea8]">{t('invoices.overdue')}</p>
                             <p className="text-lg font-bold text-[#3b3f5c] dark:text-white">{stats.overdue_count}</p>
-                            <p className="text-xs text-[#888ea8]">fatura</p>
+                            <p className="text-xs text-[#888ea8]">{t('invoices.invoiceUnit')}</p>
                         </div>
                     </div>
                 </div>
@@ -177,18 +187,18 @@ export default function InvoicesPage() {
             {stats && (
                 <div className="panel !p-4">
                     <div className="flex flex-wrap items-center gap-4 text-sm">
-                        <span className="font-medium text-[#3b3f5c] dark:text-white">Modüle Göre:</span>
+                        <span className="font-medium text-[#3b3f5c] dark:text-white">{t('invoices.byModule')}</span>
                         <span className="text-[#888ea8]">
-                            Abonelik: <strong className="text-[#3b3f5c] dark:text-white">{stats.by_module.subscription}</strong>
+                            {t('invoices.moduleSubscription')}: <strong className="text-[#3b3f5c] dark:text-white">{stats.by_module.subscription}</strong>
                         </span>
                         <span className="text-[#888ea8]">
-                            Etkinlik Sınıfı: <strong className="text-[#3b3f5c] dark:text-white">{stats.by_module.activity_class}</strong>
+                            {t('invoices.moduleActivityClass')}: <strong className="text-[#3b3f5c] dark:text-white">{stats.by_module.activity_class}</strong>
                         </span>
                         <span className="text-[#888ea8]">
-                            Manuel: <strong className="text-[#3b3f5c] dark:text-white">{stats.by_module.manual}</strong>
+                            {t('invoices.moduleManual')}: <strong className="text-[#3b3f5c] dark:text-white">{stats.by_module.manual}</strong>
                         </span>
                         <span className="ml-auto text-[#888ea8]">
-                            Toplam: <strong className="text-[#3b3f5c] dark:text-white">{stats.total_invoices}</strong> fatura
+                            {t('invoices.totalCount', { count: stats.total_invoices })}
                         </span>
                     </div>
                 </div>
@@ -198,10 +208,10 @@ export default function InvoicesPage() {
                 {/* Module Tabs */}
                 <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-[#e0e6ed] pb-4 dark:border-[#1b2e4b]">
                     {([
-                        { key: 'all', label: 'Tümü' },
-                        { key: 'activity_class', label: 'Etkinlik Sınıfı' },
-                        { key: 'subscription', label: 'Abonelik' },
-                        { key: 'manual', label: 'Manuel' },
+                        { key: 'all', label: t('invoices.allModules') },
+                        { key: 'activity_class', label: t('invoices.moduleActivityClass') },
+                        { key: 'subscription', label: t('invoices.moduleSubscription') },
+                        { key: 'manual', label: t('invoices.moduleManual') },
                     ] as { key: ModuleTab; label: string }[]).map(tab => (
                         <button
                             key={tab.key}
@@ -228,7 +238,7 @@ export default function InvoicesPage() {
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888ea8]" />
                             <input
                                 type="text"
-                                placeholder="Fatura no, isim ara..."
+                                placeholder={t('invoices.searchPlaceholder')}
                                 value={searchInput}
                                 onChange={e => handleSearchChange(e.target.value)}
                                 className="form-input !py-2 !pl-9 !pr-4 text-sm"
@@ -242,7 +252,7 @@ export default function InvoicesPage() {
                             className={`btn btn-sm flex items-center gap-1.5 ${hasActiveFilters ? 'btn-warning' : 'btn-outline-secondary'}`}
                         >
                             <Filter className="h-3.5 w-3.5" />
-                            Filtre
+                            {t('invoices.filtersTitle')}
                             {hasActiveFilters && <span className="ml-1 h-2 w-2 rounded-full bg-white" />}
                         </button>
                     </div>
@@ -252,29 +262,29 @@ export default function InvoicesPage() {
                 {showFilters && (
                     <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg bg-[#f8f9fa] p-4 dark:bg-[#1b2e4b]">
                         <div>
-                            <label className="mb-1 block text-xs font-medium text-[#515365] dark:text-[#888ea8]">Durum</label>
+                            <label className="mb-1 block text-xs font-medium text-[#515365] dark:text-[#888ea8]">{t('invoices.statusLabel')}</label>
                             <select
                                 className="form-select text-sm"
                                 value={statusFilter}
                                 onChange={e => setStatusFilter(e.target.value as StatusFilter)}
                             >
-                                <option value="">Tüm Durumlar</option>
+                                <option value="">{t('invoices.allStatuses')}</option>
                                 {Object.entries(STATUS_LABELS).map(([k, v]) => (
                                     <option key={k} value={k}>{v}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="mb-1 block text-xs font-medium text-[#515365] dark:text-[#888ea8]">Başlangıç Tarihi</label>
+                            <label className="mb-1 block text-xs font-medium text-[#515365] dark:text-[#888ea8]">{t('invoices.dateFromLabel')}</label>
                             <input type="date" className="form-input text-sm" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
                         </div>
                         <div>
-                            <label className="mb-1 block text-xs font-medium text-[#515365] dark:text-[#888ea8]">Bitiş Tarihi</label>
+                            <label className="mb-1 block text-xs font-medium text-[#515365] dark:text-[#888ea8]">{t('invoices.dateToLabel')}</label>
                             <input type="date" className="form-input text-sm" value={dateTo} onChange={e => setDateTo(e.target.value)} />
                         </div>
                         {hasActiveFilters && (
                             <button type="button" onClick={clearFilters} className="btn btn-sm btn-outline-danger flex items-center gap-1">
-                                <X className="h-3.5 w-3.5" /> Temizle
+                                <X className="h-3.5 w-3.5" /> {t('common.clear')}
                             </button>
                         )}
                     </div>
@@ -288,10 +298,10 @@ export default function InvoicesPage() {
                 ) : invoices.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-[#888ea8]">
                         <FileText className="mb-3 h-12 w-12 opacity-30" />
-                        <p className="text-sm">Fatura bulunamadı.</p>
+                        <p className="text-sm">{t('invoices.noInvoice')}</p>
                         {hasActiveFilters && (
                             <button type="button" onClick={clearFilters} className="mt-2 text-sm text-primary underline">
-                                Filtreleri temizle
+                                {t('invoices.clearFilters')}
                             </button>
                         )}
                     </div>
@@ -301,14 +311,14 @@ export default function InvoicesPage() {
                             <table className="table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Fatura No</th>
-                                        <th>Modül</th>
-                                        <th>Müşteri / Öğrenci</th>
-                                        <th>Okul</th>
-                                        <th>Tutar</th>
-                                        <th>Durum</th>
-                                        <th>Tarih</th>
-                                        <th>Vade</th>
+                                        <th>{t('invoices.colInvoiceNo')}</th>
+                                        <th>{t('invoices.moduleLabel')}</th>
+                                        <th>{t('invoices.colClient')}</th>
+                                        <th>{t('invoices.colSchool')}</th>
+                                        <th>{t('invoices.amount')}</th>
+                                        <th>{t('invoices.status')}</th>
+                                        <th>{t('invoices.colDate')}</th>
+                                        <th>{t('invoices.colDue')}</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -325,7 +335,7 @@ export default function InvoicesPage() {
                                                         {inv.invoice_no ?? `#${inv.id}`}
                                                     </span>
                                                     {inv.invoice_type === 'refund' && (
-                                                        <span className="text-xs text-danger">İade Faturası</span>
+                                                        <span className="text-xs text-danger">{t('invoices.refundInvoice')}</span>
                                                     )}
                                                 </div>
                                             </td>
@@ -376,7 +386,7 @@ export default function InvoicesPage() {
                                                     type="button"
                                                     onClick={() => router.push(`/invoices/${inv.id}`)}
                                                     className="btn btn-sm btn-outline-primary p-1.5"
-                                                    title="Detayı Gör"
+                                                    title={t('common.view')}
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </button>
@@ -389,7 +399,7 @@ export default function InvoicesPage() {
 
                         {/* Pagination */}
                         <div className="mt-4 flex items-center justify-between text-sm text-[#888ea8]">
-                            <span>Toplam {total} fatura</span>
+                            <span>{t('invoices.totalCount', { count: total })}</span>
                             {lastPage > 1 && (
                                 <div className="flex items-center gap-2">
                                     <button

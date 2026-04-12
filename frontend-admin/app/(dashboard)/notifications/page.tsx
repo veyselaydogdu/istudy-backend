@@ -13,16 +13,7 @@ import { toast } from "sonner"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-
-const notificationSchema = z.object({
-    title: z.string().min(3, "Başlık en az 3 karakter olmalıdır"),
-    body: z.string().min(10, "Mesaj en az 10 karakter olmalıdır"),
-    type: z.enum(["general", "maintenance", "update", "announcement"]),
-    priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
-    target_roles: z.array(z.string()).optional(),
-})
-
-type NotificationFormValues = z.infer<typeof notificationSchema>
+import { useTranslation } from "@/hooks/useTranslation"
 
 type SentNotification = {
     id: number
@@ -35,27 +26,6 @@ type SentNotification = {
     recipient_count?: number
 }
 
-const TARGET_OPTIONS = [
-    { value: "tenant_owner", label: "Kurum Sahipleri" },
-    { value: "school_admin", label: "Okul Yöneticileri" },
-    { value: "teacher", label: "Öğretmenler" },
-    { value: "parent", label: "Veliler" },
-]
-
-const TYPE_OPTIONS = [
-    { value: "general", label: "Genel" },
-    { value: "maintenance", label: "Bakım" },
-    { value: "update", label: "Güncelleme" },
-    { value: "announcement", label: "Duyuru" },
-]
-
-const PRIORITY_OPTIONS = [
-    { value: "low", label: "Düşük" },
-    { value: "normal", label: "Normal" },
-    { value: "high", label: "Yüksek" },
-    { value: "urgent", label: "Acil" },
-]
-
 const TYPE_VARIANT_MAP: Record<string, "default" | "warning" | "success" | "danger" | "secondary"> = {
     general: "default",
     maintenance: "warning",
@@ -64,6 +34,39 @@ const TYPE_VARIANT_MAP: Record<string, "default" | "warning" | "success" | "dang
 }
 
 export default function NotificationsPage() {
+    const { t } = useTranslation()
+
+    const notificationSchema = z.object({
+        title: z.string().min(3, t('notifications.titleLabel')),
+        body: z.string().min(10, t('notifications.messageLabel')),
+        type: z.enum(["general", "maintenance", "update", "announcement"]),
+        priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+        target_roles: z.array(z.string()).optional(),
+    })
+
+    type NotificationFormValues = z.infer<typeof notificationSchema>
+
+    const TARGET_OPTIONS = [
+        { value: "tenant_owner", label: t('notifications.targetTenantOwners') },
+        { value: "school_admin", label: t('notifications.targetSchoolAdmins') },
+        { value: "teacher", label: t('notifications.targetTeachers') },
+        { value: "parent", label: t('notifications.targetParents') },
+    ]
+
+    const TYPE_OPTIONS = [
+        { value: "general", label: t('notifications.typeGeneral') },
+        { value: "maintenance", label: t('notifications.typeMaintenance') },
+        { value: "update", label: t('notifications.typeUpdate') },
+        { value: "announcement", label: t('notifications.typeAnnouncement') },
+    ]
+
+    const PRIORITY_OPTIONS = [
+        { value: "low", label: t('notifications.priorityLow') },
+        { value: "normal", label: t('notifications.priorityNormal') },
+        { value: "high", label: t('notifications.priorityHigh') },
+        { value: "urgent", label: t('notifications.priorityUrgent') },
+    ]
+
     const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([])
     const [loading, setLoading] = useState(true)
     const [sent, setSent] = useState(false)
@@ -82,7 +85,7 @@ export default function NotificationsPage() {
                 const res = await apiClient.get("/admin/system/notifications")
                 if (res.data?.data) { setSentNotifications(res.data.data) }
             } catch {
-                // Geçmiş yüklenemedi
+                // silent
             } finally {
                 setLoading(false)
             }
@@ -94,7 +97,7 @@ export default function NotificationsPage() {
         try {
             const res = await apiClient.post("/admin/system/notifications", data)
             if (res.data?.success !== false) {
-                toast.success("Bildirim başarıyla gönderildi.")
+                toast.success(t('notifications.sendSuccess'))
                 setSent(true)
                 reset()
                 setSentNotifications((prev) => [
@@ -113,10 +116,10 @@ export default function NotificationsPage() {
             }
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
-            const errorMsg = error.response?.data?.message ?? "Bildirim gönderilemedi."
-            const errors = error.response?.data?.errors
-            if (errors) {
-                toast.error(errorMsg, { description: Object.values(errors).flat().join(", ") })
+            const errorMsg = error.response?.data?.message ?? t('notifications.sendError')
+            const errs = error.response?.data?.errors
+            if (errs) {
+                toast.error(errorMsg, { description: Object.values(errs).flat().join(", ") })
             } else {
                 toast.error(errorMsg)
             }
@@ -126,29 +129,24 @@ export default function NotificationsPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Bildirim Merkezi</h1>
-                <p className="text-muted-foreground">
-                    Kullanıcı gruplarına toplu sistem bildirimi gönderin.
-                </p>
+                <h1 className="text-3xl font-bold tracking-tight">{t('notifications.center')}</h1>
+                <p className="text-muted-foreground">{t('notifications.centerSubtitle')}</p>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-                {/* Bildirim Gönderme Formu */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Send className="h-5 w-5 text-indigo-500" />
-                            Yeni Bildirim Gönder
+                            {t('notifications.sendFormTitle')}
                         </CardTitle>
-                        <CardDescription>
-                            Seçilen kullanıcı grubuna anlık bildirim gönderin.
-                        </CardDescription>
+                        <CardDescription>{t('notifications.sendFormSubtitle')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Bildirim Tipi</Label>
+                                    <Label>{t('notifications.notificationType')}</Label>
                                     <select
                                         {...register("type")}
                                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -160,7 +158,7 @@ export default function NotificationsPage() {
                                     {errors.type && <p className="text-xs text-red-500">{errors.type.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Öncelik</Label>
+                                    <Label>{t('notifications.priority')}</Label>
                                     <select
                                         {...register("priority")}
                                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -173,7 +171,7 @@ export default function NotificationsPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Hedef Roller (Opsiyonel, çoklu seçim)</Label>
+                                <Label>{t('notifications.targetRoles')}</Label>
                                 <select
                                     multiple
                                     {...register("target_roles")}
@@ -183,19 +181,19 @@ export default function NotificationsPage() {
                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-muted-foreground">Boş bırakılırsa tüm kullanıcılara gönderilir. Ctrl/Cmd tuşuyla çoklu seçim yapabilirsiniz.</p>
+                                <p className="text-xs text-muted-foreground">{t('notifications.targetRolesHint')}</p>
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Başlık</Label>
-                                <Input placeholder="Bildirim başlığı..." {...register("title")} />
+                                <Label>{t('notifications.titleLabel')}</Label>
+                                <Input placeholder={t('notifications.titlePlaceholder')} {...register("title")} />
                                 {errors.title && <p className="text-xs text-red-500">{errors.title.message}</p>}
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Mesaj</Label>
+                                <Label>{t('notifications.messageLabel')}</Label>
                                 <Textarea
-                                    placeholder="Bildirim içeriğini yazın..."
+                                    placeholder={t('notifications.messagePlaceholder')}
                                     rows={5}
                                     {...register("body")}
                                 />
@@ -204,25 +202,24 @@ export default function NotificationsPage() {
 
                             <Button type="submit" className="w-full" disabled={isSubmitting}>
                                 {isSubmitting ? (
-                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gönderiliyor...</>
+                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('notifications.sending')}</>
                                 ) : sent ? (
-                                    <><CheckCircle className="mr-2 h-4 w-4" /> Gönderildi!</>
+                                    <><CheckCircle className="mr-2 h-4 w-4" /> {t('notifications.sent')}</>
                                 ) : (
-                                    <><Send className="mr-2 h-4 w-4" /> Bildirimi Gönder</>
+                                    <><Send className="mr-2 h-4 w-4" /> {t('notifications.sendBtn')}</>
                                 )}
                             </Button>
                         </form>
                     </CardContent>
                 </Card>
 
-                {/* Geçmiş */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Bell className="h-5 w-5 text-indigo-500" />
-                            Gönderim Geçmişi
+                            {t('notifications.historyTitle')}
                         </CardTitle>
-                        <CardDescription>Son gönderilen sistem bildirimleri.</CardDescription>
+                        <CardDescription>{t('notifications.historySubtitle')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? (
@@ -232,9 +229,7 @@ export default function NotificationsPage() {
                         ) : sentNotifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
                                 <Bell className="h-8 w-8 text-muted-foreground mb-3" />
-                                <p className="text-sm text-muted-foreground">
-                                    Henüz bildirim gönderilmemiş.
-                                </p>
+                                <p className="text-sm text-muted-foreground">{t('notifications.noHistory')}</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -254,7 +249,7 @@ export default function NotificationsPage() {
                                             <span>
                                                 {notif.target_roles && notif.target_roles.length > 0
                                                     ? notif.target_roles.map(r => TARGET_OPTIONS.find(t => t.value === r)?.label ?? r).join(", ")
-                                                    : "Tüm kullanıcılar"}
+                                                    : t('notifications.allUsersLabel')}
                                                 {notif.recipient_count !== undefined && ` • ${notif.recipient_count} alıcı`}
                                             </span>
                                             <span>

@@ -1,5 +1,6 @@
 import trLocale from '@/locales/tr.json';
 import enLocale from '@/locales/en.json';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type Locale = 'tr' | 'en';
 export type TranslationKey = keyof typeof trLocale;
@@ -14,6 +15,8 @@ export const availableLocales: { code: Locale; label: string; flag: string }[] =
     { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
     { code: 'en', label: 'English', flag: '🇬🇧' },
 ];
+
+const LOCALE_STORAGE_KEY = 'locale';
 
 /**
  * Get translation for a given key.
@@ -31,32 +34,21 @@ export function translate(locale: Locale, key: string, params?: Record<string, s
 }
 
 /**
- * Get stored locale from localStorage (client-side only).
+ * Get stored locale from AsyncStorage.
  */
-export function getStoredLocale(): Locale {
-    if (typeof window === 'undefined') return defaultLocale;
-    const stored = localStorage.getItem('locale');
-    if (stored === 'en' || stored === 'tr') return stored;
+export async function getStoredLocale(): Promise<Locale> {
+    try {
+        const stored = await AsyncStorage.getItem(LOCALE_STORAGE_KEY);
+        if (stored === 'en' || stored === 'tr') return stored;
+    } catch {}
     return defaultLocale;
 }
 
 /**
- * Save locale to localStorage.
+ * Save locale to AsyncStorage.
  */
-export function setStoredLocale(locale: Locale): void {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('locale', locale);
-    }
+export async function setStoredLocale(locale: Locale): Promise<void> {
+    try {
+        await AsyncStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    } catch {}
 }
-
-// Backward compatibility — keep getTranslation export for existing imports
-export const getTranslation = () => ({
-    initLocale: (_locale: string) => {},
-    t: (key: string) => translate(getStoredLocale(), key),
-    i18n: {
-        language: getStoredLocale(),
-        changeLanguage: async (lang: string) => {
-            setStoredLocale(lang as Locale);
-        },
-    },
-});

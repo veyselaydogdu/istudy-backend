@@ -24,11 +24,12 @@ import {
 import {
     CreditCard, Loader2, Search, ChevronLeft, ChevronRight,
     MoreHorizontal, CheckCircle, XCircle, Clock, AlertTriangle,
-    TrendingUp, Users, BarChart3, Download,
+    Download,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { TenantSubscription } from "@/types"
 import { exportToCsv } from "@/lib/exportUtils"
+import { useTranslation } from "@/hooks/useTranslation"
 
 type Meta = { current_page: number; last_page: number; per_page: number; total: number }
 
@@ -43,14 +44,16 @@ type SubscriptionStats = {
     total_yearly_revenue: number
 }
 
-const statusConfig: Record<string, { label: string; variant: "success" | "warning" | "danger" | "secondary" }> = {
-    active: { label: "Aktif", variant: "success" },
-    trial: { label: "Deneme", variant: "warning" },
-    cancelled: { label: "İptal", variant: "danger" },
-    expired: { label: "Süresi Dolmuş", variant: "secondary" },
-}
-
 export default function SubscriptionsPage() {
+    const { t } = useTranslation()
+
+    const statusConfig: Record<string, { label: string; variant: "success" | "warning" | "danger" | "secondary" }> = {
+        active: { label: t('subscriptions.statActive'), variant: "success" },
+        trial: { label: t('subscriptions.trialStatus'), variant: "warning" },
+        cancelled: { label: t('subscriptions.cancelledStatus'), variant: "danger" },
+        expired: { label: t('subscriptions.expiredStatus'), variant: "secondary" },
+    }
+
     const [subscriptions, setSubscriptions] = useState<TenantSubscription[]>([])
     const [meta, setMeta] = useState<Meta | null>(null)
     const [stats, setStats] = useState<SubscriptionStats | null>(null)
@@ -68,7 +71,7 @@ export default function SubscriptionsPage() {
             const res = await apiClient.get("/admin/subscriptions/stats")
             if (res.data?.data) setStats(res.data.data)
         } catch {
-            // sessiz hata
+            // silent
         }
     }, [])
 
@@ -76,19 +79,19 @@ export default function SubscriptionsPage() {
         setLoading(true)
         try {
             const params: Record<string, string | number> = { page, per_page: 15 }
-            if (search) params.search = search
-            if (statusFilter !== "all") params.status = statusFilter
+            if (search) { params.search = search }
+            if (statusFilter !== "all") { params.status = statusFilter }
             const res = await apiClient.get("/admin/subscriptions", { params })
             if (res.data?.data) {
                 setSubscriptions(res.data.data)
                 setMeta(res.data.meta ?? null)
             }
         } catch {
-            toast.error("Abonelikler yüklenirken hata oluştu.")
+            toast.error(t('subscriptions.loadError'))
         } finally {
             setLoading(false)
         }
-    }, [page, search, statusFilter])
+    }, [page, search, statusFilter, t])
 
     useEffect(() => { setPage(1) }, [search, statusFilter])
     useEffect(() => { fetchSubscriptions() }, [fetchSubscriptions])
@@ -97,26 +100,26 @@ export default function SubscriptionsPage() {
     const handleStatusChange = async (id: number, newStatus: string) => {
         try {
             await apiClient.patch(`/admin/subscriptions/${id}/status`, { status: newStatus })
-            toast.success("Abonelik durumu güncellendi.")
+            toast.success(t('subscriptions.statusUpdateSuccess'))
             fetchSubscriptions()
             fetchStats()
         } catch {
-            toast.error("Durum güncellenemedi.")
+            toast.error(t('common.error'))
         }
     }
 
     const handleExtend = async () => {
-        if (!extendDialog.subscription) return
+        if (!extendDialog.subscription) { return }
         setExtendLoading(true)
         try {
             await apiClient.patch(`/admin/subscriptions/${extendDialog.subscription.id}/extend`, {
                 days: parseInt(extendDays),
             })
-            toast.success(`Abonelik ${extendDays} gün uzatıldı.`)
+            toast.success(t('subscriptions.extendSuccess'))
             setExtendDialog({ open: false, subscription: null })
             fetchSubscriptions()
         } catch {
-            toast.error("Abonelik uzatılamadı.")
+            toast.error(t('common.error'))
         } finally {
             setExtendLoading(false)
         }
@@ -126,58 +129,57 @@ export default function SubscriptionsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Abonelikler</h1>
-                    <p className="text-muted-foreground">Kurum aboneliklerini ve paket durumlarını yönetin.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('subscriptions.title')}</h1>
+                    <p className="text-muted-foreground">{t('subscriptions.subtitle')}</p>
                 </div>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={() =>
                         exportToCsv("abonelikler", subscriptions, [
-                            { key: "tenant", label: "Kurum", format: (r) => r.tenant?.name ?? `Tenant #${r.tenant_id}` },
-                            { key: "package", label: "Paket", format: (r) => r.package?.name ?? `Paket #${r.package_id}` },
-                            { key: "status", label: "Durum", format: (r) => statusConfig[r.status]?.label ?? r.status },
-                            { key: "billing_cycle", label: "Fatura Döngüsü", format: (r) => (r.billing_cycle === "monthly" ? "Aylık" : "Yıllık") },
-                            { key: "starts_at", label: "Başlangıç", format: (r) => new Date(r.starts_at).toLocaleDateString("tr-TR") },
-                            { key: "ends_at", label: "Bitiş", format: (r) => new Date(r.ends_at).toLocaleDateString("tr-TR") },
+                            { key: "tenant", label: t('subscriptions.subscriber'), format: (r) => r.tenant?.name ?? `Tenant #${r.tenant_id}` },
+                            { key: "package", label: t('subscriptions.package'), format: (r) => r.package?.name ?? `Paket #${r.package_id}` },
+                            { key: "status", label: t('common.status'), format: (r) => statusConfig[r.status]?.label ?? r.status },
+                            { key: "billing_cycle", label: t('subscriptions.billingCycle'), format: (r) => (r.billing_cycle === "monthly" ? t('subscriptions.monthly') : t('subscriptions.yearly')) },
+                            { key: "starts_at", label: t('subscriptions.startDate'), format: (r) => new Date(r.starts_at).toLocaleDateString("tr-TR") },
+                            { key: "ends_at", label: t('subscriptions.endDate'), format: (r) => new Date(r.ends_at).toLocaleDateString("tr-TR") },
                         ])
                     }
                 >
-                    <Download className="mr-2 h-4 w-4" /> CSV İndir
+                    <Download className="mr-2 h-4 w-4" /> {t('common.csvExport')}
                 </Button>
             </div>
 
-            {/* Stats */}
             {stats && (
                 <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                     <Card>
                         <CardContent className="pt-6">
                             <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Aktif</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('subscriptions.statActive')}</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="pt-6">
                             <div className="text-2xl font-bold text-yellow-600">{stats.suspended}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Askıda</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('subscriptions.statSuspended')}</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="pt-6">
                             <div className="text-2xl font-bold text-red-600">{stats.cancelled}</div>
-                            <p className="text-xs text-muted-foreground mt-1">İptal</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('subscriptions.statCancelled')}</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="pt-6">
                             <div className="text-2xl font-bold text-slate-500">{stats.expired}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Süresi Dolmuş</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('subscriptions.statExpired')}</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="pt-6">
                             <div className="text-2xl font-bold">{stats.total}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Toplam</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('subscriptions.statTotal')}</p>
                         </CardContent>
                     </Card>
                     <Card>
@@ -185,39 +187,37 @@ export default function SubscriptionsPage() {
                             <div className="text-2xl font-bold text-indigo-600">
                                 ₺{stats.total_monthly_revenue?.toLocaleString("tr-TR") ?? "0"}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">Aylık Gelir</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('subscriptions.statMonthlyRevenue')}</p>
                         </CardContent>
                     </Card>
                 </div>
             )}
 
-            {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input className="pl-8" placeholder="Kurum adı ile ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                    <Input className="pl-8" placeholder={t('subscriptions.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-44">
-                        <SelectValue placeholder="Durum filtrele" />
+                        <SelectValue placeholder={t('subscriptions.filterStatus')} />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">Tüm Durumlar</SelectItem>
-                        <SelectItem value="active">Aktif</SelectItem>
-                        <SelectItem value="trial">Deneme</SelectItem>
-                        <SelectItem value="cancelled">İptal</SelectItem>
-                        <SelectItem value="expired">Süresi Dolmuş</SelectItem>
+                        <SelectItem value="all">{t('subscriptions.allStatuses')}</SelectItem>
+                        <SelectItem value="active">{t('subscriptions.statActive')}</SelectItem>
+                        <SelectItem value="trial">{t('subscriptions.trial')}</SelectItem>
+                        <SelectItem value="cancelled">{t('subscriptions.statCancelled')}</SelectItem>
+                        <SelectItem value="expired">{t('subscriptions.statExpired')}</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
 
-            {/* Table */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-indigo-500" /> Abonelik Listesi
+                        <CreditCard className="h-5 w-5 text-indigo-500" /> {t('subscriptions.listTitle')}
                     </CardTitle>
-                    <CardDescription>{meta ? `Toplam ${meta.total} abonelik` : "Yükleniyor..."}</CardDescription>
+                    <CardDescription>{meta ? t('subscriptions.totalCount', { count: meta.total }) : t('common.loading')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -229,13 +229,13 @@ export default function SubscriptionsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Kurum</TableHead>
-                                        <TableHead>Paket</TableHead>
-                                        <TableHead>Durum</TableHead>
-                                        <TableHead>Fatura Döngüsü</TableHead>
-                                        <TableHead>Başlangıç</TableHead>
-                                        <TableHead>Bitiş</TableHead>
-                                        <TableHead className="text-right">İşlemler</TableHead>
+                                        <TableHead>{t('subscriptions.subscriber')}</TableHead>
+                                        <TableHead>{t('subscriptions.packageCol')}</TableHead>
+                                        <TableHead>{t('common.status')}</TableHead>
+                                        <TableHead>{t('subscriptions.billingCycleCol')}</TableHead>
+                                        <TableHead>{t('subscriptions.startCol')}</TableHead>
+                                        <TableHead>{t('subscriptions.endCol')}</TableHead>
+                                        <TableHead className="text-right">{t('subscriptions.actionsCol')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -254,7 +254,7 @@ export default function SubscriptionsPage() {
                                                     <Badge variant={cfg.variant}>{cfg.label}</Badge>
                                                 </TableCell>
                                                 <TableCell className="text-sm">
-                                                    {sub.billing_cycle === "monthly" ? "Aylık" : "Yıllık"}
+                                                    {sub.billing_cycle === "monthly" ? t('subscriptions.monthly') : t('subscriptions.yearly')}
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
                                                     {new Date(sub.starts_at).toLocaleDateString("tr-TR")}
@@ -275,19 +275,19 @@ export default function SubscriptionsPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
+                                                            <DropdownMenuLabel>{t('common.actions')}</DropdownMenuLabel>
                                                             <DropdownMenuItem onClick={() => setExtendDialog({ open: true, subscription: sub })}>
-                                                                <Clock className="mr-2 h-4 w-4" /> Uzat
+                                                                <Clock className="mr-2 h-4 w-4" /> {t('subscriptions.extendAction')}
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
                                                             {sub.status !== "active" && (
                                                                 <DropdownMenuItem onClick={() => handleStatusChange(sub.id, "active")}>
-                                                                    <CheckCircle className="mr-2 h-4 w-4 text-green-600" /> Aktif Yap
+                                                                    <CheckCircle className="mr-2 h-4 w-4 text-green-600" /> {t('subscriptions.activate')}
                                                                 </DropdownMenuItem>
                                                             )}
                                                             {sub.status === "active" && (
                                                                 <DropdownMenuItem className="text-red-600" onClick={() => handleStatusChange(sub.id, "cancelled")}>
-                                                                    <XCircle className="mr-2 h-4 w-4" /> İptal Et
+                                                                    <XCircle className="mr-2 h-4 w-4" /> {t('subscriptions.cancel')}
                                                                 </DropdownMenuItem>
                                                             )}
                                                         </DropdownMenuContent>
@@ -299,7 +299,7 @@ export default function SubscriptionsPage() {
                                     {subscriptions.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                                                Kayıtlı abonelik bulunamadı.
+                                                {t('subscriptions.noRecord')}
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -307,7 +307,7 @@ export default function SubscriptionsPage() {
                             </Table>
                             {meta && meta.last_page > 1 && (
                                 <div className="flex items-center justify-between mt-4">
-                                    <p className="text-sm text-muted-foreground">Sayfa {meta.current_page} / {meta.last_page}</p>
+                                    <p className="text-sm text-muted-foreground">{t('subscriptions.pageOf', { current: meta.current_page, total: meta.last_page })}</p>
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="sm" disabled={meta.current_page === 1} onClick={() => setPage((p) => p - 1)}>
                                             <ChevronLeft className="h-4 w-4" />
@@ -323,37 +323,36 @@ export default function SubscriptionsPage() {
                 </CardContent>
             </Card>
 
-            {/* Extend Dialog */}
             <Dialog open={extendDialog.open} onOpenChange={(o) => !o && setExtendDialog({ open: false, subscription: null })}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Aboneliği Uzat</DialogTitle>
+                        <DialogTitle>{t('subscriptions.extendTitle')}</DialogTitle>
                         <DialogDescription>
-                            {extendDialog.subscription?.tenant?.name} kurumunun aboneliğini uzatın.
+                            {extendDialog.subscription?.tenant?.name}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>Uzatma Süresi (Gün)</Label>
+                            <Label>{t('subscriptions.extendDays')}</Label>
                             <Select value={extendDays} onValueChange={setExtendDays}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="7">7 gün</SelectItem>
-                                    <SelectItem value="14">14 gün</SelectItem>
-                                    <SelectItem value="30">30 gün (1 ay)</SelectItem>
-                                    <SelectItem value="90">90 gün (3 ay)</SelectItem>
-                                    <SelectItem value="180">180 gün (6 ay)</SelectItem>
-                                    <SelectItem value="365">365 gün (1 yıl)</SelectItem>
+                                    <SelectItem value="7">7</SelectItem>
+                                    <SelectItem value="14">14</SelectItem>
+                                    <SelectItem value="30">30</SelectItem>
+                                    <SelectItem value="90">90</SelectItem>
+                                    <SelectItem value="180">180</SelectItem>
+                                    <SelectItem value="365">365</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setExtendDialog({ open: false, subscription: null })}>İptal</Button>
+                        <Button variant="outline" onClick={() => setExtendDialog({ open: false, subscription: null })}>{t('common.cancel')}</Button>
                         <Button onClick={handleExtend} disabled={extendLoading}>
-                            {extendLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Uzat
+                            {extendLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('subscriptions.extendAction')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

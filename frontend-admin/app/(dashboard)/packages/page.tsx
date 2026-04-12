@@ -25,21 +25,22 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import type { Package, PackageFeature } from "@/types"
+import { useTranslation } from "@/hooks/useTranslation"
 
 const packageSchema = z.object({
     name: z.string().min(2, "Paket adı gereklidir"),
     description: z.string().optional(),
-    max_schools: z.coerce.number().min(0, "Okul sayısı 0 veya üzeri olmalıdır"),
-    max_classes_per_school: z.coerce.number().min(0, "Sınıf sayısı 0 veya üzeri olmalıdır"),
-    max_students: z.coerce.number().min(0, "Öğrenci sayısı 0 veya üzeri olmalıdır"),
-    monthly_price: z.coerce.number().min(0.01, "Aylık fiyat giriniz"),
-    yearly_price: z.coerce.number().min(0.01, "Yıllık fiyat giriniz"),
+    max_schools: z.coerce.number().min(0),
+    max_classes_per_school: z.coerce.number().min(0),
+    max_students: z.coerce.number().min(0),
+    monthly_price: z.coerce.number().min(0.01),
+    yearly_price: z.coerce.number().min(0.01),
     sort_order: z.coerce.number().min(0).optional(),
 })
 
 const featureSchema = z.object({
-    key: z.string().min(2, "Anahtar gereklidir").regex(/^[a-z0-9_]+$/, "Sadece küçük harf, rakam ve alt çizgi"),
-    label: z.string().min(2, "Etiket gereklidir"),
+    key: z.string().min(2).regex(/^[a-z0-9_]+$/),
+    label: z.string().min(2),
     value_type: z.enum(["bool", "text"]),
     description: z.string().optional(),
     display_order: z.coerce.number().min(0).optional(),
@@ -49,6 +50,7 @@ type PackageFormValues = z.infer<typeof packageSchema>
 type FeatureFormValues = z.infer<typeof featureSchema>
 
 export default function PackagesPage() {
+    const { t } = useTranslation()
     const [packages, setPackages] = useState<Package[]>([])
     const [availableFeatures, setAvailableFeatures] = useState<PackageFeature[]>([])
     const [selectedFeatures, setSelectedFeatures] = useState<Record<number, string>>({}) // feature_id => value
@@ -86,7 +88,7 @@ export default function PackagesPage() {
             }
         } catch (error) {
             console.error(error)
-            toast.error("Paketler yüklenirken hata oluştu.")
+            toast.error(t('packages.loadError'))
         } finally {
             setLoading(false)
         }
@@ -165,7 +167,7 @@ export default function PackagesPage() {
             }
 
             if (response.status === 200 || response.status === 201 || response.data.success) {
-                toast.success(`Paket başarıyla ${editingPackage ? 'güncellendi' : 'oluşturuldu'}.`)
+                toast.success(editingPackage ? t('packages.updateSuccess') : t('packages.createSuccess'))
                 setIsDialogOpen(false)
                 setEditingPackage(null)
                 setSelectedFeatures({})
@@ -173,30 +175,30 @@ export default function PackagesPage() {
             }
         } catch (error: any) {
             console.error(error)
-            const message = error.response?.data?.message || "İşlem sırasında hata oluştu."
-            toast.error("Hata", { description: message })
+            const message = error.response?.data?.message || t('common.error')
+            toast.error(t('common.error'), { description: message })
         }
     }
 
-    const formatLimit = (val: number) => val === 0 ? "Sınırsız" : val;
+    const formatLimit = (val: number) => val === 0 ? t('packages.unlimited') : val;
     const formatCurrency = (val: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val);
 
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Paket Yönetimi</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('packages.title')}</h1>
                 <p className="text-muted-foreground">
-                    SaaS abonelik paketlerini ve özelliklerini yönetin.
+                    {t('packages.subtitle')}
                 </p>
             </div>
 
             <Tabs defaultValue="packages" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="packages">
-                        <PackageIcon className="mr-1.5 h-4 w-4" />Paketler
+                        <PackageIcon className="mr-1.5 h-4 w-4" />{t('packages.packagesTab')}
                     </TabsTrigger>
                     <TabsTrigger value="features">
-                        <Settings className="mr-1.5 h-4 w-4" />Özellikler
+                        <Settings className="mr-1.5 h-4 w-4" />{t('packages.featuresTab')}
                     </TabsTrigger>
                 </TabsList>
 
@@ -208,14 +210,14 @@ export default function PackagesPage() {
                         }}>
                             <DialogTrigger asChild>
                                 <Button onClick={() => setEditingPackage(null)}>
-                                    <Plus className="mr-2 h-4 w-4" /> Yeni Paket
+                                    <Plus className="mr-2 h-4 w-4" /> {t('packages.addPackage')}
                                 </Button>
                             </DialogTrigger>
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                            <DialogTitle>{editingPackage ? 'Paketi Düzenle' : 'Yeni Paket Oluştur'}</DialogTitle>
+                            <DialogTitle>{editingPackage ? t('packages.editPackage') : t('packages.createPackage')}</DialogTitle>
                             <DialogDescription>
-                                Paket limitlerini ve fiyatlandırmasını belirleyin. "0" sınırsız anlamına gelir.
+                                {t('packages.limitDescription')}
                             </DialogDescription>
                         </DialogHeader>
                         {/* @ts-ignore */}
@@ -223,44 +225,44 @@ export default function PackagesPage() {
                             <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">Paket Adı</Label>
+                                        <Label htmlFor="name">{t('packages.packageName')}</Label>
                                         <Input id="name" placeholder="Örn: Başlangıç" {...register("name")} />
                                         {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="sort_order">Sıralama</Label>
+                                        <Label htmlFor="sort_order">{t('packages.sortOrder')}</Label>
                                         <Input id="sort_order" type="number" {...register("sort_order")} />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="description">Açıklama</Label>
+                                    <Label htmlFor="description">{t('common.description')}</Label>
                                     <Textarea id="description" rows={2} {...register("description")} />
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="max_schools">Max Okul</Label>
+                                        <Label htmlFor="max_schools">{t('packages.maxSchools')}</Label>
                                         <Input id="max_schools" type="number" {...register("max_schools")} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="max_classes">Max Sınıf (Okul Başı)</Label>
+                                        <Label htmlFor="max_classes">{t('packages.maxClassPerSchool')}</Label>
                                         <Input id="max_classes" type="number" {...register("max_classes_per_school")} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="max_students">Max Öğrenci</Label>
+                                        <Label htmlFor="max_students">{t('packages.maxStudents')}</Label>
                                         <Input id="max_students" type="number" {...register("max_students")} />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2 relative">
-                                        <Label htmlFor="monthly_price">Aylık Fiyat (₺)</Label>
+                                        <Label htmlFor="monthly_price">{t('packages.monthlyPriceTL')}</Label>
                                         <Input id="monthly_price" type="number" step="0.01" {...register("monthly_price")} />
                                         {errors.monthly_price && <p className="text-xs text-red-500">{errors.monthly_price.message}</p>}
                                     </div>
                                     <div className="space-y-2 relative">
-                                        <Label htmlFor="yearly_price">Yıllık Fiyat (₺)</Label>
+                                        <Label htmlFor="yearly_price">{t('packages.yearlyPriceTL')}</Label>
                                         <Input id="yearly_price" type="number" step="0.01" {...register("yearly_price")} />
                                         {errors.yearly_price && <p className="text-xs text-red-500">{errors.yearly_price.message}</p>}
                                     </div>
@@ -269,7 +271,7 @@ export default function PackagesPage() {
                                 {/* Package Features */}
                                 {availableFeatures.length > 0 && (
                                     <div className="space-y-2">
-                                        <Label>Paket Özellikleri</Label>
+                                        <Label>{t('packages.packageFeatures')}</Label>
                                         <div className="border rounded-md p-3 space-y-2">
                                             {availableFeatures.map((feature) => (
                                                 <div key={feature.id} className="flex items-center gap-3">
@@ -296,7 +298,7 @@ export default function PackagesPage() {
                                                                     ...prev,
                                                                     [feature.id]: e.target.value
                                                                 }))}
-                                                                placeholder="Değer giriniz"
+                                                                placeholder={t('packages.valuePlaceholder')}
                                                                 className="flex-1"
                                                             />
                                                         </div>
@@ -308,10 +310,10 @@ export default function PackagesPage() {
                                 )}
                             </div>
                             <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>İptal</Button>
+                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>{t('common.cancel')}</Button>
                                 <Button type="submit" disabled={isSubmitting}>
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Kaydet
+                                    {t('common.save')}
                                 </Button>
                             </DialogFooter>
                         </form>
@@ -345,24 +347,24 @@ export default function PackagesPage() {
                             <ul className="space-y-2 text-sm">
                                 <li className="flex items-center gap-2">
                                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span className="font-semibold">{formatLimit(pkg.max_schools)}</span> Okul
+                                    <span className="font-semibold">{formatLimit(pkg.max_schools)}</span> {t('packages.schoolUnit')}
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span className="font-semibold">{formatLimit(pkg.max_classes_per_school)}</span> Sınıf (Okul başı)
+                                    <span className="font-semibold">{formatLimit(pkg.max_classes_per_school)}</span> {t('packages.classPerSchool')}
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span className="font-semibold">{formatLimit(pkg.max_students)}</span> Öğrenci
+                                    <span className="font-semibold">{formatLimit(pkg.max_students)}</span> {t('packages.studentUnit')}
                                 </li>
                                 <li className="flex items-center gap-2 text-slate-500">
                                     <div className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-                                    Yıllık {formatCurrency(pkg.yearly_price)}
+                                    {t('packages.yearlyLabel')} {formatCurrency(pkg.yearly_price)}
                                 </li>
                             </ul>
                             {pkg.package_features && pkg.package_features.length > 0 && (
                                 <div className="border-t pt-3 mt-3">
-                                    <p className="text-xs font-semibold text-muted-foreground mb-2">Özellikler:</p>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-2">{t('packages.features')}:</p>
                                     <ul className="space-y-1">
                                         {pkg.package_features.map((f) => (
                                             <li key={f.id} className="text-xs flex items-center gap-1.5">
@@ -379,7 +381,7 @@ export default function PackagesPage() {
                 ))}
                 {!loading && packages.length === 0 && (
                     <div className="col-span-full text-center py-12 text-slate-500">
-                        Henüz paket tanımlanmamış.
+                        {t('packages.noPackage')}
                     </div>
                 )}
             </div>
@@ -405,6 +407,7 @@ function FeaturesManagement({
     availableFeatures: PackageFeature[]
     onUpdate: () => void
 }) {
+    const { t } = useTranslation()
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingFeature, setEditingFeature] = useState<PackageFeature | null>(null)
 
@@ -445,28 +448,28 @@ function FeaturesManagement({
         try {
             if (editingFeature) {
                 await apiClient.put(`/admin/package-features/${editingFeature.id}`, data)
-                toast.success("Özellik güncellendi.")
+                toast.success(t('packages.featureUpdated'))
             } else {
                 await apiClient.post("/admin/package-features", data)
-                toast.success("Özellik oluşturuldu.")
+                toast.success(t('packages.featureCreated'))
             }
             setIsDialogOpen(false)
             setEditingFeature(null)
             onUpdate()
         } catch (error: any) {
-            const message = error.response?.data?.message || "İşlem başarısız."
+            const message = error.response?.data?.message || t('common.error')
             toast.error(message)
         }
     }
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Bu özelliği silmek istediğinizden emin misiniz?")) return
+        if (!confirm(t('swal.deleteTitle'))) { return }
         try {
             await apiClient.delete(`/admin/package-features/${id}`)
-            toast.success("Özellik silindi.")
+            toast.success(t('packages.featureDeleted'))
             onUpdate()
         } catch (error: any) {
-            const message = error.response?.data?.message || "Özellik silinemedi."
+            const message = error.response?.data?.message || t('common.error')
             toast.error(message)
         }
     }
@@ -478,10 +481,10 @@ function FeaturesManagement({
                     <div>
                         <CardTitle className="flex items-center gap-2">
                             <Settings className="h-5 w-5 text-indigo-500" />
-                            Paket Özellikleri
+                            {t('packages.featuresTitle')}
                         </CardTitle>
                         <CardDescription>
-                            Paketlere eklenebilecek özellikleri tanımlayın (checkbox veya text input).
+                            {t('packages.featuresSubtitle')}
                         </CardDescription>
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -490,51 +493,51 @@ function FeaturesManagement({
                     }}>
                         <DialogTrigger asChild>
                             <Button onClick={() => setEditingFeature(null)}>
-                                <Plus className="mr-2 h-4 w-4" /> Yeni Özellik
+                                <Plus className="mr-2 h-4 w-4" /> {t('packages.addFeatureBtn')}
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>{editingFeature ? "Özelliği Düzenle" : "Yeni Özellik Ekle"}</DialogTitle>
+                                <DialogTitle>{editingFeature ? t('packages.editFeature') : t('packages.addFeatureTitle')}</DialogTitle>
                                 <DialogDescription>
-                                    Paketlere eklenebilecek bir özellik tanımlayın.
+                                    {t('packages.featureSubtitle')}
                                 </DialogDescription>
                             </DialogHeader>
                             {/* @ts-ignore */}
                             <form onSubmit={handleSubmit(onSubmit)}>
                                 <div className="grid gap-4 py-4">
                                     <div className="space-y-2">
-                                        <Label>Anahtar (key)</Label>
+                                        <Label>{t('packages.featureKeyLabel')}</Label>
                                         <Input placeholder="unlimited_users" {...register("key")} />
-                                        <p className="text-xs text-muted-foreground">Küçük harf, rakam ve alt çizgi</p>
+                                        <p className="text-xs text-muted-foreground">{t('packages.featureKeyHint')}</p>
                                         {errors.key && <p className="text-xs text-red-500">{errors.key.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Etiket</Label>
+                                        <Label>{t('packages.featureLabelLabel')}</Label>
                                         <Input placeholder="Sınırsız Kullanıcı" {...register("label")} />
                                         {errors.label && <p className="text-xs text-red-500">{errors.label.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Değer Tipi</Label>
+                                        <Label>{t('packages.featureValueType')}</Label>
                                         <select {...register("value_type")} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                                            <option value="bool">Checkbox (Evet/Hayır)</option>
-                                            <option value="text">Text Input (Özel değer)</option>
+                                            <option value="bool">{t('packages.featureTypeCheckbox')}</option>
+                                            <option value="text">{t('packages.featureTypeText')}</option>
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Açıklama (Opsiyonel)</Label>
+                                        <Label>{t('packages.featureDescriptionLabel')}</Label>
                                         <Textarea rows={2} {...register("description")} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Sıralama</Label>
+                                        <Label>{t('packages.featureSortOrder')}</Label>
                                         <Input type="number" {...register("display_order")} />
                                     </div>
                                 </div>
                                 <DialogFooter>
-                                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>İptal</Button>
+                                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>{t('common.cancel')}</Button>
                                     <Button type="submit" disabled={isSubmitting}>
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Kaydet
+                                        {t('common.save')}
                                     </Button>
                                 </DialogFooter>
                             </form>
@@ -546,10 +549,10 @@ function FeaturesManagement({
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Anahtar</TableHead>
-                            <TableHead>Etiket</TableHead>
-                            <TableHead>Tip</TableHead>
-                            <TableHead>Sıra</TableHead>
+                            <TableHead>{t('packages.featureKeyCol')}</TableHead>
+                            <TableHead>{t('packages.featureLabelCol')}</TableHead>
+                            <TableHead>{t('packages.featureTypeCol')}</TableHead>
+                            <TableHead>{t('packages.featureOrderCol')}</TableHead>
                             <TableHead className="w-12"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -589,7 +592,7 @@ function FeaturesManagement({
                         {availableFeatures.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                    Henüz özellik tanımlanmamış.
+                                    {t('packages.noFeature')}
                                 </TableCell>
                             </TableRow>
                         )}

@@ -2,36 +2,24 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { Invoice, Transaction } from '@/types';
 import {
     ArrowLeft, FileText, CheckCircle, Clock, XCircle, AlertCircle,
     User, Building2, Calendar, CreditCard, RefreshCcw, Tag, Hash,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
-const MODULE_LABELS: Record<string, string> = {
-    subscription: 'Abonelik', activity_class: 'Etkinlik Sınıfı',
-    manual: 'Manuel', event: 'Etkinlik', activity: 'Aktivite',
-};
-const STATUS_LABELS: Record<string, string> = {
-    draft: 'Taslak', pending: 'Bekliyor', paid: 'Ödendi',
-    cancelled: 'İptal', overdue: 'Gecikmiş', refunded: 'İade Edildi',
-};
 const STATUS_BADGE: Record<string, string> = {
     paid: 'badge-outline-success', pending: 'badge-outline-warning',
     overdue: 'badge-outline-danger', cancelled: 'badge-outline-secondary',
     draft: 'badge-outline-info', refunded: 'badge-outline-warning',
 };
-const TX_STATUS: Record<number, { label: string; cls: string }> = {
-    0: { label: 'Bekliyor', cls: 'badge-outline-warning' },
-    1: { label: 'Başarılı', cls: 'badge-outline-success' },
-    2: { label: 'Başarısız', cls: 'badge-outline-danger' },
-};
 
 export default function InvoiceDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const { t } = useTranslation();
     const id = params.id as string;
 
     const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -39,13 +27,34 @@ export default function InvoiceDetailPage() {
     const [loading, setLoading] = useState(true);
     const [txLoading, setTxLoading] = useState(false);
 
+    const MODULE_LABELS: Record<string, string> = {
+        subscription: t('invoices.moduleSubscription'),
+        activity_class: t('invoices.moduleActivityClass'),
+        manual: t('invoices.moduleManual'),
+        event: t('invoices.moduleEvent'),
+        activity: t('invoices.moduleActivity'),
+    };
+    const STATUS_LABELS: Record<string, string> = {
+        draft: t('invoices.statusDraft'),
+        pending: t('invoices.statusPending'),
+        paid: t('invoices.statusPaid'),
+        cancelled: t('invoices.statusCancelled'),
+        overdue: t('invoices.statusOverdue'),
+        refunded: t('invoices.statusRefundedDetail'),
+    };
+    const TX_STATUS: Record<number, { label: string; cls: string }> = {
+        0: { label: t('invoices.txPending'), cls: 'badge-outline-warning' },
+        1: { label: t('invoices.txSuccess'), cls: 'badge-outline-success' },
+        2: { label: t('invoices.txFailed'), cls: 'badge-outline-danger' },
+    };
+
     const loadInvoice = async () => {
         setLoading(true);
         try {
             const res = await apiClient.get(`/invoices/${id}`);
             setInvoice(res.data?.data ?? null);
         } catch {
-            toast.error('Fatura bulunamadı.');
+            toast.error(t('invoices.notFound'));
             router.push('/invoices');
         } finally {
             setLoading(false);
@@ -101,7 +110,7 @@ export default function InvoiceDetailPage() {
                 </button>
                 <div>
                     <h1 className="text-xl font-bold text-[#3b3f5c] dark:text-white">
-                        Fatura Detayı
+                        {t('invoices.detailTitle')}
                     </h1>
                     <p className="text-sm text-[#888ea8]">{invoice.invoice_no ?? `#${invoice.id}`}</p>
                 </div>
@@ -131,7 +140,7 @@ export default function InvoiceDetailPage() {
                                         </span>
                                         {invoice.invoice_type === 'refund' && (
                                             <span className="badge badge-outline-danger">
-                                                <RefreshCcw className="mr-1 h-3 w-3" /> İade Faturası
+                                                <RefreshCcw className="mr-1 h-3 w-3" /> {t('invoices.refundInvoice')}
                                             </span>
                                         )}
                                     </div>
@@ -140,7 +149,7 @@ export default function InvoiceDetailPage() {
 
                             {/* Total amount */}
                             <div className="text-right">
-                                <p className="text-sm text-[#888ea8]">Toplam Tutar</p>
+                                <p className="text-sm text-[#888ea8]">{t('invoices.totalAmount')}</p>
                                 <p className="text-2xl font-bold text-[#3b3f5c] dark:text-white">
                                     {formatCurrency(invoice.total_amount, invoice.currency)}
                                 </p>
@@ -151,7 +160,7 @@ export default function InvoiceDetailPage() {
                         <div className="grid grid-cols-2 gap-4 border-t border-[#e0e6ed] pt-4 dark:border-[#1b2e4b] sm:grid-cols-3">
                             <div>
                                 <p className="flex items-center gap-1 text-xs text-[#888ea8]">
-                                    <Calendar className="h-3.5 w-3.5" /> Düzenleme Tarihi
+                                    <Calendar className="h-3.5 w-3.5" /> {t('invoices.issueDate')}
                                 </p>
                                 <p className="mt-0.5 text-sm font-medium text-[#3b3f5c] dark:text-white">
                                     {invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString('tr-TR') : new Date(invoice.created_at).toLocaleDateString('tr-TR')}
@@ -160,7 +169,7 @@ export default function InvoiceDetailPage() {
                             {invoice.due_date && (
                                 <div>
                                     <p className="flex items-center gap-1 text-xs text-[#888ea8]">
-                                        <Clock className="h-3.5 w-3.5" /> Son Ödeme
+                                        <Clock className="h-3.5 w-3.5" /> {t('invoices.dueDate')}
                                     </p>
                                     <p className={`mt-0.5 text-sm font-medium ${invoice.is_overdue ? 'text-danger' : 'text-[#3b3f5c] dark:text-white'}`}>
                                         {new Date(invoice.due_date).toLocaleDateString('tr-TR')}
@@ -170,7 +179,7 @@ export default function InvoiceDetailPage() {
                             {invoice.paid_at && (
                                 <div>
                                     <p className="flex items-center gap-1 text-xs text-[#888ea8]">
-                                        <CheckCircle className="h-3.5 w-3.5" /> Ödeme Tarihi
+                                        <CheckCircle className="h-3.5 w-3.5" /> {t('invoices.paidDate')}
                                     </p>
                                     <p className="mt-0.5 text-sm font-medium text-success">
                                         {new Date(invoice.paid_at).toLocaleDateString('tr-TR')}
@@ -184,16 +193,16 @@ export default function InvoiceDetailPage() {
                     {invoice.items && invoice.items.length > 0 && (
                         <div className="panel">
                             <h3 className="mb-4 flex items-center gap-2 font-semibold text-[#3b3f5c] dark:text-white">
-                                <Tag className="h-4 w-4" /> Fatura Kalemleri
+                                <Tag className="h-4 w-4" /> {t('invoices.itemsTitle')}
                             </h3>
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Açıklama</th>
-                                            <th className="text-right">Adet</th>
-                                            <th className="text-right">Birim Fiyat</th>
-                                            <th className="text-right">Toplam</th>
+                                            <th>{t('invoices.colDescription')}</th>
+                                            <th className="text-right">{t('invoices.colQty')}</th>
+                                            <th className="text-right">{t('invoices.colUnitPrice')}</th>
+                                            <th className="text-right">{t('invoices.colTotal')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -220,23 +229,23 @@ export default function InvoiceDetailPage() {
                             <div className="mt-4 flex justify-end">
                                 <div className="w-64 space-y-1.5 text-sm">
                                     <div className="flex justify-between text-[#515365] dark:text-[#888ea8]">
-                                        <span>Ara Toplam</span>
+                                        <span>{t('invoices.subtotal')}</span>
                                         <span>{formatCurrency(invoice.subtotal, invoice.currency)}</span>
                                     </div>
                                     {invoice.tax_rate > 0 && (
                                         <div className="flex justify-between text-[#515365] dark:text-[#888ea8]">
-                                            <span>KDV ({invoice.tax_rate}%)</span>
+                                            <span>{t('invoices.vat')} ({invoice.tax_rate}%)</span>
                                             <span>{formatCurrency(invoice.tax_amount, invoice.currency)}</span>
                                         </div>
                                     )}
                                     {invoice.discount_amount > 0 && (
                                         <div className="flex justify-between text-success">
-                                            <span>İndirim</span>
+                                            <span>{t('invoices.discount')}</span>
                                             <span>-{formatCurrency(invoice.discount_amount, invoice.currency)}</span>
                                         </div>
                                     )}
                                     <div className="flex justify-between border-t border-[#e0e6ed] pt-1.5 font-bold text-[#3b3f5c] dark:border-[#1b2e4b] dark:text-white">
-                                        <span>Genel Toplam</span>
+                                        <span>{t('invoices.grandTotal')}</span>
                                         <span>{formatCurrency(invoice.total_amount, invoice.currency)}</span>
                                     </div>
                                 </div>
@@ -247,14 +256,14 @@ export default function InvoiceDetailPage() {
                     {/* Transaction History */}
                     <div className="panel">
                         <h3 className="mb-4 flex items-center gap-2 font-semibold text-[#3b3f5c] dark:text-white">
-                            <CreditCard className="h-4 w-4" /> Ödeme Geçmişi
+                            <CreditCard className="h-4 w-4" /> {t('invoices.paymentHistory')}
                         </h3>
                         {txLoading ? (
                             <div className="flex h-20 items-center justify-center">
                                 <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
                             </div>
                         ) : transactions.length === 0 ? (
-                            <p className="py-6 text-center text-sm text-[#888ea8]">Ödeme işlemi bulunamadı.</p>
+                            <p className="py-6 text-center text-sm text-[#888ea8]">{t('invoices.noTransactions')}</p>
                         ) : (
                             <div className="space-y-3">
                                 {transactions.map(tx => (
@@ -289,7 +298,7 @@ export default function InvoiceDetailPage() {
                     {/* Client info */}
                     <div className="panel">
                         <h3 className="mb-4 flex items-center gap-2 font-semibold text-[#3b3f5c] dark:text-white">
-                            <User className="h-4 w-4" /> Müşteri Bilgisi
+                            <User className="h-4 w-4" /> {t('invoices.clientInfo')}
                         </h3>
                         <div className="space-y-3 text-sm">
                             <div className="flex items-center gap-2">
@@ -314,7 +323,7 @@ export default function InvoiceDetailPage() {
                     {/* Notes */}
                     {invoice.notes && (
                         <div className="panel">
-                            <h3 className="mb-2 font-semibold text-[#3b3f5c] dark:text-white">Notlar</h3>
+                            <h3 className="mb-2 font-semibold text-[#3b3f5c] dark:text-white">{t('invoices.notes')}</h3>
                             <p className="text-sm text-[#515365] dark:text-[#888ea8]">{invoice.notes}</p>
                         </div>
                     )}
@@ -323,7 +332,7 @@ export default function InvoiceDetailPage() {
                     {invoice.invoice_type === 'refund' && invoice.refund_reason && (
                         <div className="panel border-l-4 border-danger">
                             <h3 className="mb-2 flex items-center gap-2 font-semibold text-danger">
-                                <RefreshCcw className="h-4 w-4" /> İade Nedeni
+                                <RefreshCcw className="h-4 w-4" /> {t('invoices.refundReason')}
                             </h3>
                             <p className="text-sm text-[#515365] dark:text-[#888ea8]">{invoice.refund_reason}</p>
                             {invoice.original_invoice_id && (
@@ -332,7 +341,7 @@ export default function InvoiceDetailPage() {
                                     onClick={() => router.push(`/invoices/${invoice.original_invoice_id}`)}
                                     className="mt-3 text-sm text-primary underline"
                                 >
-                                    Orijinal Faturayı Gör →
+                                    {t('invoices.viewOriginal')} →
                                 </button>
                             )}
                         </div>
@@ -341,15 +350,15 @@ export default function InvoiceDetailPage() {
                     {/* Activity class detail */}
                     {invoice.activity_class_invoice && (
                         <div className="panel">
-                            <h3 className="mb-3 font-semibold text-[#3b3f5c] dark:text-white">Etkinlik Detayı</h3>
+                            <h3 className="mb-3 font-semibold text-[#3b3f5c] dark:text-white">{t('invoices.activityDetail')}</h3>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-[#888ea8]">Fatura No</span>
+                                    <span className="text-[#888ea8]">{t('invoices.colInvoiceNo')}</span>
                                     <span className="font-mono font-medium">{invoice.activity_class_invoice.invoice_number}</span>
                                 </div>
                                 {invoice.activity_class_invoice.child && (
                                     <div className="flex justify-between">
-                                        <span className="text-[#888ea8]">Öğrenci</span>
+                                        <span className="text-[#888ea8]">{t('invoices.student')}</span>
                                         <span className="font-medium">{invoice.activity_class_invoice.child.full_name}</span>
                                     </div>
                                 )}
@@ -359,19 +368,19 @@ export default function InvoiceDetailPage() {
 
                     {/* Quick stats */}
                     <div className="panel">
-                        <h3 className="mb-3 font-semibold text-[#3b3f5c] dark:text-white">Özet</h3>
+                        <h3 className="mb-3 font-semibold text-[#3b3f5c] dark:text-white">{t('invoices.summary')}</h3>
                         <div className="space-y-2 text-sm">
                             {[
-                                { label: 'Ara Toplam', value: formatCurrency(invoice.subtotal, invoice.currency) },
-                                ...(invoice.tax_rate > 0 ? [{ label: `KDV (${invoice.tax_rate}%)`, value: formatCurrency(invoice.tax_amount, invoice.currency) }] : []),
-                                ...(invoice.discount_amount > 0 ? [{ label: 'İndirim', value: `-${formatCurrency(invoice.discount_amount, invoice.currency)}` }] : []),
+                                { label: t('invoices.subtotal'), value: formatCurrency(invoice.subtotal, invoice.currency) },
+                                ...(invoice.tax_rate > 0 ? [{ label: `${t('invoices.vat')} (${invoice.tax_rate}%)`, value: formatCurrency(invoice.tax_amount, invoice.currency) }] : []),
+                                ...(invoice.discount_amount > 0 ? [{ label: t('invoices.discount'), value: `-${formatCurrency(invoice.discount_amount, invoice.currency)}` }] : []),
                             ].map(row => (
                                 <div key={row.label} className="flex justify-between text-[#515365] dark:text-[#888ea8]">
                                     <span>{row.label}</span><span>{row.value}</span>
                                 </div>
                             ))}
                             <div className="flex justify-between border-t border-[#e0e6ed] pt-2 font-bold text-[#3b3f5c] dark:border-[#1b2e4b] dark:text-white">
-                                <span>Toplam</span>
+                                <span>{t('invoices.grandTotal')}</span>
                                 <span>{formatCurrency(invoice.total_amount, invoice.currency)}</span>
                             </div>
                         </div>
