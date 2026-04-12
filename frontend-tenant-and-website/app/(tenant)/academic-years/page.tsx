@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { AcademicYear, School } from '@/types';
 import { Plus, Trash2, X, GraduationCap, CheckCircle, XCircle } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type GlobalYear = {
     name: string;
@@ -24,6 +25,7 @@ type YearForm = {
 const emptyForm: YearForm = { global_year_name: '', start_date: '', end_date: '', description: '' };
 
 export default function AcademicYearsPage() {
+    const { t } = useTranslation();
     const [schools, setSchools] = useState<School[]>([]);
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
 
@@ -61,7 +63,7 @@ export default function AcademicYearsPage() {
             const res = await apiClient.get('/academic-years', { params: { school_id: selectedSchoolId } });
             setYears(res.data?.data ?? []);
         } catch {
-            toast.error('Eğitim yılları yüklenirken hata oluştu.');
+            toast.error(t('academicYears.loadError'));
         } finally {
             setLoading(false);
         }
@@ -102,15 +104,15 @@ export default function AcademicYearsPage() {
 
         // Frontend validation
         if (!form.global_year_name && !editingYear) {
-            toast.error('Lütfen bir eğitim yılı seçin.');
+            toast.error(t('academicYears.yearRequired'));
             return;
         }
         if (!form.start_date || !form.end_date) {
-            toast.error('Başlangıç ve bitiş tarihleri zorunludur.');
+            toast.error(t('academicYears.datesRequired'));
             return;
         }
         if (!selectedSchoolId) {
-            toast.error('Lütfen bir okul seçin.');
+            toast.error(t('academicYears.schoolRequired'));
             return;
         }
 
@@ -125,16 +127,16 @@ export default function AcademicYearsPage() {
         try {
             if (editingYear) {
                 await apiClient.put(`/academic-years/${editingYear.id}`, payload);
-                toast.success('Eğitim yılı güncellendi.');
+                toast.success(t('academicYears.editYear'));
             } else {
                 await apiClient.post('/academic-years', payload);
-                toast.success('Eğitim yılı oluşturuldu.');
+                toast.success(t('academicYears.addYear'));
             }
             setShowModal(false);
             fetchYears();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(error.response?.data?.message ?? t('academicYears.createError'));
         } finally {
             setSaving(false);
         }
@@ -142,70 +144,70 @@ export default function AcademicYearsPage() {
 
     const handleSetCurrent = async (year: AcademicYear) => {
         const result = await Swal.fire({
-            title: 'Aktif Yıl Yap',
-            text: `"${year.name}" eğitim yılı aktif yapılacak. Devam?`,
+            title: t('academicYears.setActiveTitle'),
+            text: t('academicYears.setActiveText', { name: year.name }),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Evet',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('common.yes'),
+            cancelButtonText: t('common.cancel'),
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.patch(`/academic-years/${year.id}/set-current`);
-            toast.success('Aktif eğitim yılı güncellendi.');
+            toast.success(t('academicYears.setActiveSuccess'));
             fetchYears();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'İşlem başarısız.');
+            toast.error(error.response?.data?.message ?? t('academicYears.setActiveError'));
         }
     };
 
     const handleClose = async (year: AcademicYear) => {
         const result = await Swal.fire({
-            title: 'Yılı Kapat',
-            text: `"${year.name}" eğitim yılı kapatılacak. Bu işlem geri alınamaz.`,
+            title: t('academicYears.closeTitle'),
+            text: t('academicYears.closeText', { name: year.name }),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Kapat',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('academicYears.closeConfirm'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.patch(`/academic-years/${year.id}/close`);
-            toast.success('Eğitim yılı kapatıldı.');
+            toast.success(t('academicYears.closeSuccess'));
             fetchYears();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'İşlem başarısız.');
+            toast.error(error.response?.data?.message ?? t('academicYears.closeError'));
         }
     };
 
     const handleDelete = async (year: AcademicYear) => {
         const result = await Swal.fire({
-            title: 'Eğitim Yılını Sil',
-            text: `"${year.name}" silinecek. Bu işlem geri alınamaz.`,
+            title: t('academicYears.deleteTitle'),
+            text: t('academicYears.deleteText', { name: year.name }),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Sil',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'),
+            cancelButtonText: t('swal.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/academic-years/${year.id}`);
-            toast.success('Eğitim yılı silindi.');
+            toast.success(t('academicYears.deleteSuccess'));
             fetchYears();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Silme başarısız.');
+            toast.error(error.response?.data?.message ?? t('academicYears.deleteError'));
         }
     };
 
     return (
         <div className="p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="text-2xl font-bold text-dark dark:text-white">Eğitim Yılları</h1>
+                <h1 className="text-2xl font-bold text-dark dark:text-white">{t('academicYears.title')}</h1>
                 <button
                     type="button"
                     className="btn btn-primary gap-2"
@@ -213,20 +215,19 @@ export default function AcademicYearsPage() {
                     disabled={!selectedSchoolId}
                 >
                     <Plus className="h-4 w-4" />
-                    Eğitim Yılı Ekle
+                    {t('academicYears.addBtn')}
                 </button>
             </div>
 
             <div className="panel">
-                {/* Okul seçici */}
                 <div className="mb-6">
-                    <label className="block text-sm font-medium text-dark dark:text-white-light">Okul</label>
+                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('academicYears.schoolLabel')}</label>
                     <select
                         className="form-select mt-1 max-w-xs"
                         value={selectedSchoolId}
                         onChange={e => setSelectedSchoolId(e.target.value)}
                     >
-                        {schools.length === 0 && <option value="">Okul yok</option>}
+                        {schools.length === 0 && <option value="">{t('academicYears.noSchool')}</option>}
                         {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                 </div>
@@ -236,22 +237,22 @@ export default function AcademicYearsPage() {
                         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                     </div>
                 ) : !selectedSchoolId ? (
-                    <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Lütfen bir okul seçin.</p>
+                    <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('academicYears.selectSchoolFirst')}</p>
                 ) : years.length === 0 ? (
                     <div className="py-12 text-center">
                         <GraduationCap className="mx-auto mb-3 h-12 w-12 text-[#888ea8]" />
-                        <p className="text-[#515365] dark:text-[#888ea8]">Henüz eğitim yılı eklenmemiş.</p>
+                        <p className="text-[#515365] dark:text-[#888ea8]">{t('academicYears.noYear')}</p>
                     </div>
                 ) : (
                     <div className="table-responsive">
                         <table className="table-hover">
                             <thead>
                                 <tr>
-                                    <th>Eğitim Yılı</th>
-                                    <th>Başlangıç</th>
-                                    <th>Bitiş</th>
-                                    <th>Durum</th>
-                                    <th>İşlemler</th>
+                                    <th>{t('academicYears.yearCol')}</th>
+                                    <th>{t('academicYears.startCol')}</th>
+                                    <th>{t('academicYears.endCol')}</th>
+                                    <th>{t('academicYears.statusCol')}</th>
+                                    <th>{t('academicYears.actionsCol')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -266,9 +267,9 @@ export default function AcademicYearsPage() {
                                         </td>
                                         <td>
                                             {year.is_active ? (
-                                                <span className="badge badge-outline-success">Aktif</span>
+                                                <span className="badge badge-outline-success">{t('academicYears.statusActive')}</span>
                                             ) : (
-                                                <span className="badge badge-outline-secondary">Pasif</span>
+                                                <span className="badge badge-outline-secondary">{t('academicYears.statusInactive')}</span>
                                             )}
                                         </td>
                                         <td>
@@ -278,10 +279,9 @@ export default function AcademicYearsPage() {
                                                         type="button"
                                                         className="btn btn-sm btn-outline-success gap-1"
                                                         onClick={() => handleSetCurrent(year)}
-                                                        title="Aktif Yıl Yap"
                                                     >
                                                         <CheckCircle className="h-3.5 w-3.5" />
-                                                        Aktif Yap
+                                                        {t('academicYears.setActiveBtn')}
                                                     </button>
                                                 )}
                                                 {year.is_active && (
@@ -289,17 +289,16 @@ export default function AcademicYearsPage() {
                                                         type="button"
                                                         className="btn btn-sm btn-outline-warning gap-1"
                                                         onClick={() => handleClose(year)}
-                                                        title="Yılı Kapat"
                                                     >
                                                         <XCircle className="h-3.5 w-3.5" />
-                                                        Kapat
+                                                        {t('academicYears.closeBtn')}
                                                     </button>
                                                 )}
                                                 <button
                                                     type="button"
                                                     className="btn btn-sm btn-outline-danger p-2"
                                                     onClick={() => handleDelete(year)}
-                                                    title="Sil"
+                                                    title={t('common.delete')}
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
@@ -320,7 +319,7 @@ export default function AcademicYearsPage() {
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="flex items-center gap-2 text-lg font-bold text-dark dark:text-white">
                                 <GraduationCap className="h-5 w-5 text-primary" />
-                                {editingYear ? 'Eğitim Yılı Düzenle' : 'Yeni Eğitim Yılı'}
+                                {editingYear ? t('academicYears.editModalTitle') : t('academicYears.addModalTitle')}
                             </h2>
                             <button
                                 type="button"
@@ -334,27 +333,27 @@ export default function AcademicYearsPage() {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                    Eğitim Yılı *
+                                    {t('academicYears.globalYearLabel')}
                                 </label>
                                 <select
                                     className="form-select mt-1"
                                     value={form.global_year_name}
                                     onChange={e => handleGlobalYearChange(e.target.value)}
                                 >
-                                    <option value="">— Yıl Seçin —</option>
+                                    <option value="">{t('academicYears.selectYear')}</option>
                                     {globalYears.map(gy => (
                                         <option key={gy.name} value={gy.name}>{gy.name}</option>
                                     ))}
                                 </select>
                                 <p className="mt-1 text-xs text-[#888ea8]">
-                                    Seçilen yıla göre tarihler otomatik doldurulur.
+                                    {t('academicYears.globalYearHint')}
                                 </p>
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                        Başlangıç Tarihi *
+                                        {t('academicYears.startDateLabel')}
                                     </label>
                                     <input
                                         type="date"
@@ -365,7 +364,7 @@ export default function AcademicYearsPage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                        Bitiş Tarihi *
+                                        {t('academicYears.endDateLabel')}
                                     </label>
                                     <input
                                         type="date"
@@ -378,14 +377,14 @@ export default function AcademicYearsPage() {
 
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                    Açıklama
+                                    {t('academicYears.descriptionLabel')}
                                 </label>
                                 <textarea
                                     className="form-input mt-1"
                                     rows={2}
                                     value={form.description}
                                     onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-                                    placeholder="İsteğe bağlı açıklama..."
+                                    placeholder={t('academicYears.descriptionPlaceholder')}
                                 />
                             </div>
 
@@ -395,14 +394,14 @@ export default function AcademicYearsPage() {
                                     className="btn btn-primary flex-1"
                                     disabled={saving}
                                 >
-                                    {saving ? 'Kaydediliyor...' : (editingYear ? 'Güncelle' : 'Kaydet')}
+                                    {saving ? t('common.loading') : (editingYear ? t('common.update') : t('common.save'))}
                                 </button>
                                 <button
                                     type="button"
                                     className="btn btn-outline-secondary flex-1"
                                     onClick={() => setShowModal(false)}
                                 >
-                                    İptal
+                                    {t('common.cancel')}
                                 </button>
                             </div>
                         </form>

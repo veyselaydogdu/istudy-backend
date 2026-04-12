@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import type { School } from "@/types"
+import { useTranslation } from "@/hooks/useTranslation"
 
 type ClassItem = {
     id: number
@@ -37,6 +38,7 @@ type ChildItem = {
 }
 
 export default function SchoolDetailPage() {
+    const { t } = useTranslation()
     const { id } = useParams<{ id: string }>()
     const router = useRouter()
     const [school, setSchool] = useState<School | null>(null)
@@ -57,14 +59,14 @@ export default function SchoolDetailPage() {
                 if (classesRes.data?.data) setClasses(classesRes.data.data)
                 if (childrenRes.data?.data) setChildren(childrenRes.data.data)
             } catch {
-                toast.error("Okul bilgileri yüklenemedi.")
+                toast.error(t('schools.loadError2'))
                 router.push("/schools")
             } finally {
                 setLoading(false)
             }
         }
         fetchAll()
-    }, [id, router])
+    }, [id, router, t])
 
     if (loading) {
         return (
@@ -78,29 +80,27 @@ export default function SchoolDetailPage() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-4">
                 <Button variant="outline" size="sm" onClick={() => router.back()}>
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Geri
+                    <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.back')}
                 </Button>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{school.name}</h1>
                     {school.tenant && (
-                        <p className="text-muted-foreground">{school.tenant.name} kurumuna bağlı</p>
+                        <p className="text-muted-foreground">{school.tenant.name}</p>
                     )}
                 </div>
             </div>
 
-            {/* Info Cards */}
             <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
                             <GraduationCap className="h-8 w-8 text-indigo-500" />
                             <div>
-                                <p className="text-xs text-muted-foreground">Durum</p>
+                                <p className="text-xs text-muted-foreground">{t('schools.detail.statusCard')}</p>
                                 <Badge variant={school.status === "active" || !school.status ? "success" : "secondary"}>
-                                    {school.status === "active" || !school.status ? "Aktif" : "Pasif"}
+                                    {school.status === "active" || !school.status ? t('common.active') : t('common.inactive')}
                                 </Badge>
                             </div>
                         </div>
@@ -111,7 +111,7 @@ export default function SchoolDetailPage() {
                         <div className="flex items-center gap-3">
                             <BookOpen className="h-8 w-8 text-blue-500" />
                             <div>
-                                <p className="text-xs text-muted-foreground">Sınıf Sayısı</p>
+                                <p className="text-xs text-muted-foreground">{t('schools.detail.classCountCard')}</p>
                                 <p className="text-2xl font-bold">{classes.length}</p>
                             </div>
                         </div>
@@ -122,7 +122,7 @@ export default function SchoolDetailPage() {
                         <div className="flex items-center gap-3">
                             <Users className="h-8 w-8 text-green-500" />
                             <div>
-                                <p className="text-xs text-muted-foreground">Öğrenci Sayısı</p>
+                                <p className="text-xs text-muted-foreground">{t('schools.detail.studentCountCard')}</p>
                                 <p className="text-2xl font-bold">{children.length}</p>
                             </div>
                         </div>
@@ -133,7 +133,7 @@ export default function SchoolDetailPage() {
                         <div className="flex items-center gap-3">
                             <Users className="h-8 w-8 text-purple-500" />
                             <div>
-                                <p className="text-xs text-muted-foreground">Maks. Öğrenci</p>
+                                <p className="text-xs text-muted-foreground">{t('schools.detail.maxStudentCard')}</p>
                                 <p className="text-2xl font-bold">{school.max_students ?? "—"}</p>
                             </div>
                         </div>
@@ -141,11 +141,10 @@ export default function SchoolDetailPage() {
                 </Card>
             </div>
 
-            {/* Contact Info */}
             {(school.email || school.phone || school.address) && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-base">İletişim Bilgileri</CardTitle>
+                        <CardTitle className="text-base">{t('schools.detail.contactInfo')}</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-2">
                         {school.email && (
@@ -167,32 +166,31 @@ export default function SchoolDetailPage() {
                 </Card>
             )}
 
-            {/* Tabs */}
             <Tabs defaultValue="classes">
                 <TabsList>
-                    <TabsTrigger value="classes">Sınıflar ({classes.length})</TabsTrigger>
-                    <TabsTrigger value="children">Öğrenciler ({children.length})</TabsTrigger>
+                    <TabsTrigger value="classes">{t('schools.detail.classesTitle')} ({classes.length})</TabsTrigger>
+                    <TabsTrigger value="children">{t('schools.detail.studentsTitle')} ({children.length})</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="classes" className="mt-4">
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <BookOpen className="h-5 w-5 text-blue-500" /> Sınıflar
+                                <BookOpen className="h-5 w-5 text-blue-500" /> {t('schools.detail.classesTitle')}
                             </CardTitle>
-                            <CardDescription>Bu okuldaki sınıflar ve öğretmenler</CardDescription>
+                            <CardDescription>{t('schools.detail.classesSubtitle')}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {classes.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">Henüz sınıf oluşturulmamış.</p>
+                                <p className="text-center text-muted-foreground py-8">{t('schools.detail.noClass')}</p>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Sınıf Adı</TableHead>
-                                            <TableHead>Öğretmen</TableHead>
-                                            <TableHead>Kapasite</TableHead>
-                                            <TableHead>Öğrenci Sayısı</TableHead>
+                                            <TableHead>{t('schools.detail.classNameCol')}</TableHead>
+                                            <TableHead>{t('schools.detail.teacherCol')}</TableHead>
+                                            <TableHead>{t('schools.detail.capacityCol')}</TableHead>
+                                            <TableHead>{t('schools.detail.studentCountCol')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -205,7 +203,7 @@ export default function SchoolDetailPage() {
                                                             <div>{cls.teacher.name}</div>
                                                             <div className="text-xs text-muted-foreground">{cls.teacher.email}</div>
                                                         </div>
-                                                    ) : <span className="text-muted-foreground italic">Atanmamış</span>}
+                                                    ) : <span className="text-muted-foreground italic">{t('schools.detail.unassigned')}</span>}
                                                 </TableCell>
                                                 <TableCell>{cls.capacity ?? "—"}</TableCell>
                                                 <TableCell>{cls.children_count ?? "—"}</TableCell>
@@ -222,21 +220,21 @@ export default function SchoolDetailPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Users className="h-5 w-5 text-green-500" /> Öğrenciler
+                                <Users className="h-5 w-5 text-green-500" /> {t('schools.detail.studentsTitle')}
                             </CardTitle>
-                            <CardDescription>Bu okuldaki öğrenciler</CardDescription>
+                            <CardDescription>{t('schools.detail.studentsSubtitle')}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {children.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">Henüz öğrenci kaydı yok.</p>
+                                <p className="text-center text-muted-foreground py-8">{t('schools.detail.noStudent')}</p>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Ad Soyad</TableHead>
-                                            <TableHead>Sınıf</TableHead>
-                                            <TableHead>Doğum Tarihi</TableHead>
-                                            <TableHead>Cinsiyet</TableHead>
+                                            <TableHead>{t('schools.detail.fullNameCol')}</TableHead>
+                                            <TableHead>{t('schools.detail.classCol')}</TableHead>
+                                            <TableHead>{t('schools.detail.birthDateCol')}</TableHead>
+                                            <TableHead>{t('schools.detail.genderCol')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -254,7 +252,7 @@ export default function SchoolDetailPage() {
                                                         : "—"}
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
-                                                    {child.gender === "male" ? "Erkek" : child.gender === "female" ? "Kız" : "—"}
+                                                    {child.gender === "male" ? t('schools.detail.genderMale') : child.gender === "female" ? t('schools.detail.genderFemale') : "—"}
                                                 </TableCell>
                                             </TableRow>
                                         ))}

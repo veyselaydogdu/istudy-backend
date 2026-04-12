@@ -15,17 +15,19 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import type { Medication } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Meta = { current_page: number; last_page: number; per_page: number; total: number };
 
 const schema = z.object({
-    name: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
+    name: z.string().min(2),
     usage_notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 export default function MedicationsPage() {
+    const { t } = useTranslation();
     const [items, setItems] = useState<Medication[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -46,11 +48,11 @@ export default function MedicationsPage() {
                 setMeta(res.data.meta ?? null);
             }
         } catch {
-            toast.error('İlaçlar yüklenirken hata oluştu.');
+            toast.error(t('global.medications.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [page, search]);
+    }, [page, search, t]);
 
     useEffect(() => { setPage(1); }, [search]);
     useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -58,24 +60,24 @@ export default function MedicationsPage() {
     const onAdd = async (data: FormValues) => {
         try {
             await apiClient.post('/admin/medications', data);
-            toast.success('İlaç eklendi.');
+            toast.success(t('global.medications.addSuccess'));
             setIsAddOpen(false);
             reset();
             fetchItems();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'İlaç eklenemedi.');
+            toast.error(e.response?.data?.message ?? t('global.medications.addError'));
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Bu ilacı silmek istediğinizden emin misiniz?')) { return; }
+        if (!confirm(t('global.medications.deleteConfirm'))) { return; }
         try {
             await apiClient.delete(`/admin/medications/${id}`);
-            toast.success('İlaç silindi.');
+            toast.success(t('global.medications.deleteSuccess'));
             setItems((prev) => prev.filter((i) => i.id !== id));
         } catch {
-            toast.error('Silinemedi.');
+            toast.error(t('global.medications.deleteError'));
         }
     };
 
@@ -83,25 +85,27 @@ export default function MedicationsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">İlaçlar</h1>
-                    <p className="text-muted-foreground">Çocuklar için takibi yapılan ilaç tanımları global havuzu.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('global.medications.title')}</h1>
+                    <p className="text-muted-foreground">{t('global.medications.subtitle')}</p>
                 </div>
                 <Button onClick={() => setIsAddOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> İlaç Ekle
+                    <Plus className="mr-2 h-4 w-4" /> {t('global.medications.addBtn')}
                 </Button>
             </div>
 
             <div className="relative max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-8" placeholder="İlaç adı ile ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input className="pl-8" placeholder={t('global.medications.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
 
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Pill className="h-5 w-5 text-violet-500" /> İlaç Listesi
+                        <Pill className="h-5 w-5 text-violet-500" /> {t('global.medications.listTitle')}
                     </CardTitle>
-                    <CardDescription>{meta ? `Toplam ${meta.total} ilaç tanımı` : 'Yükleniyor...'}</CardDescription>
+                    <CardDescription>
+                        {meta ? t('global.medications.totalCount', { count: meta.total }) : t('common.loading')}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -113,9 +117,9 @@ export default function MedicationsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>İlaç Adı</TableHead>
-                                        <TableHead>Kullanım Notu</TableHead>
-                                        <TableHead>Eklenme</TableHead>
+                                        <TableHead>{t('global.medications.nameCol')}</TableHead>
+                                        <TableHead>{t('global.medications.notesCol')}</TableHead>
+                                        <TableHead>{t('global.medications.addedCol')}</TableHead>
                                         <TableHead className="w-16" />
                                     </TableRow>
                                 </TableHeader>
@@ -136,14 +140,16 @@ export default function MedicationsPage() {
                                     ))}
                                     {items.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">İlaç bulunamadı.</TableCell>
+                                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">{t('global.medications.noRecord')}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
                             </Table>
                             {meta && meta.last_page > 1 && (
                                 <div className="mt-4 flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">Sayfa {meta.current_page} / {meta.last_page} — {meta.total} kayıt</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('global.medications.pageInfo', { current: meta.current_page, total: meta.last_page, count: meta.total })}
+                                    </p>
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="sm" disabled={meta.current_page === 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
                                         <Button variant="outline" size="sm" disabled={meta.current_page === meta.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
@@ -158,25 +164,25 @@ export default function MedicationsPage() {
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>İlaç Ekle</DialogTitle>
-                        <DialogDescription>Global ilaç havuzuna yeni ilaç ekleyin.</DialogDescription>
+                        <DialogTitle>{t('global.medications.addTitle')}</DialogTitle>
+                        <DialogDescription>{t('global.medications.addDescription')}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit(onAdd)}>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-2">
-                                <Label>İlaç Adı *</Label>
+                                <Label>{t('global.medications.nameLabel')}</Label>
                                 <Input {...register('name')} />
                                 {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label>Kullanım Notu</Label>
+                                <Label>{t('global.medications.notesLabel')}</Label>
                                 <Textarea rows={3} {...register('usage_notes')} />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); reset(); }}>İptal</Button>
+                            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); reset(); }}>{t('common.cancel')}</Button>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ekle
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('common.add')}
                             </Button>
                         </DialogFooter>
                     </form>

@@ -8,6 +8,7 @@ import {
     Plus, Trash2, Heart, ThumbsUp, Zap, MessageCircle, X,
     Image, Video, File, Pin, Globe, Users, Send, ChevronDown,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type PostForm = {
     visibility: 'school' | 'class';
@@ -37,17 +38,6 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function timeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) { return 'Az önce'; }
-    if (mins < 60) { return `${mins} dk önce`; }
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) { return `${hours} sa önce`; }
-    const days = Math.floor(hours / 24);
-    return `${days} gün önce`;
-}
-
 // ─── PostCard Component ───────────────────────────────────────────────────────
 
 function PostCard({
@@ -61,11 +51,23 @@ function PostCard({
     onReact: (id: number, type: 'like' | 'heart' | 'clap') => void;
     schoolId: string;
 }) {
+    const { t } = useTranslation();
     const [showComments, setShowComments] = useState(false);
     const [comments, setComments] = useState<SocialPostComment[]>([]);
     const [commentText, setCommentText] = useState('');
     const [loadingComments, setLoadingComments] = useState(false);
     const [submittingComment, setSubmittingComment] = useState(false);
+
+    const timeAgo = (dateStr: string): string => {
+        const diff = Date.now() - new Date(dateStr).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) { return t('social.justNow'); }
+        if (mins < 60) { return t('social.minutesAgo', { count: mins }); }
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) { return t('social.hoursAgo', { count: hours }); }
+        const days = Math.floor(hours / 24);
+        return t('social.daysAgo', { count: days });
+    };
 
     const loadComments = useCallback(async () => {
         setLoadingComments(true);
@@ -99,7 +101,7 @@ function PostCard({
                 setCommentText('');
             }
         } catch {
-            toast.error('Yorum eklenemedi.');
+            toast.error(t('social.addCommentError'));
         } finally {
             setSubmittingComment(false);
         }
@@ -218,7 +220,7 @@ function PostCard({
                     onClick={toggleComments}
                 >
                     <MessageCircle className="h-4 w-4" />
-                    <span>{post.comments_count} Yorum</span>
+                    <span>{post.comments_count} {t('social.comments')}</span>
                     <ChevronDown className={`h-3 w-3 transition-transform ${showComments ? 'rotate-180' : ''}`} />
                 </button>
             </div>
@@ -227,7 +229,7 @@ function PostCard({
             {showComments && (
                 <div className="mt-3 space-y-2">
                     {loadingComments ? (
-                        <p className="text-xs text-gray-400">Yükleniyor...</p>
+                        <p className="text-xs text-gray-400">{t('common.loading')}</p>
                     ) : (
                         comments.map((c) => (
                             <div key={c.id} className="flex gap-2">
@@ -247,7 +249,7 @@ function PostCard({
                             value={commentText}
                             onChange={(e) => setCommentText(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') { submitComment(); } }}
-                            placeholder="Yorum yaz..."
+                            placeholder={t('social.addComment')}
                             className="form-input flex-1 text-sm"
                         />
                         <button
@@ -268,6 +270,7 @@ function PostCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SocialPage() {
+    const { t } = useTranslation();
     const [schools, setSchools] = useState<School[]>([]);
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
     const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
@@ -320,7 +323,7 @@ export default function SocialPage() {
             }
             setLastPage(res.data?.meta?.last_page ?? 1);
         } catch {
-            toast.error('Paylaşımlar yüklenemedi.');
+            toast.error(t('social.loadCommentError'));
         } finally {
             setLoading(false);
         }
@@ -359,11 +362,11 @@ export default function SocialPage() {
     // ─ Submit post ────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
         if (!form.content.trim() && form.media.length === 0) {
-            toast.error('İçerik veya medya ekleyin.');
+            toast.error(t('social.contentRequired'));
             return;
         }
         if (form.visibility === 'class' && form.class_ids.length === 0) {
-            toast.error('Sınıfa özel paylaşımda en az bir sınıf seçin.');
+            toast.error(t('social.classRequired'));
             return;
         }
 
@@ -380,13 +383,13 @@ export default function SocialPage() {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            toast.success('Paylaşım oluşturuldu.');
+            toast.success(t('social.postSuccess'));
             setShowModal(false);
             setForm(emptyForm);
             setPreviewUrls([]);
             fetchPosts(1);
         } catch {
-            toast.error('Paylaşım oluşturulamadı.');
+            toast.error(t('social.postError'));
         } finally {
             setSaving(false);
         }
@@ -395,20 +398,20 @@ export default function SocialPage() {
     // ─ Delete post ────────────────────────────────────────────────────────────
     const handleDelete = async (id: number) => {
         const result = await Swal.fire({
-            title: 'Emin misiniz?',
-            text: 'Bu paylaşım kalıcı olarak silinecek.',
+            title: t('social.deletePostTitle'),
+            text: t('social.deletePostText'),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, sil',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'),
+            cancelButtonText: t('swal.cancel'),
         });
         if (!result.isConfirmed) { return; }
         try {
             await apiClient.delete(`/schools/${selectedSchoolId}/social/posts/${id}`);
             setPosts((prev) => prev.filter((p) => p.id !== id));
-            toast.success('Paylaşım silindi.');
+            toast.success(t('social.deletePostSuccess'));
         } catch {
-            toast.error('Silinemedi.');
+            toast.error(t('social.deletePostError'));
         }
     };
 
@@ -448,7 +451,7 @@ export default function SocialPage() {
         <div className="space-y-5 p-5">
             {/* Top bar */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 className="text-xl font-bold text-dark dark:text-white">Sosyal Ağ</h1>
+                <h1 className="text-xl font-bold text-dark dark:text-white">{t('social.title')}</h1>
                 <div className="flex items-center gap-3">
                     <select
                         className="form-select w-auto"
@@ -466,18 +469,18 @@ export default function SocialPage() {
                         disabled={!selectedSchoolId}
                     >
                         <Plus className="h-4 w-4" />
-                        Paylaşım Ekle
+                        {t('social.newPostBtn')}
                     </button>
                 </div>
             </div>
 
             {/* Feed */}
             {loading && posts.length === 0 ? (
-                <div className="py-16 text-center text-gray-400">Yükleniyor...</div>
+                <div className="py-16 text-center text-gray-400">{t('common.loading')}</div>
             ) : posts.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-white-light p-12 text-center text-gray-400 dark:border-[#1b2e4b]">
                     <MessageCircle className="mx-auto mb-2 h-8 w-8" />
-                    <p>Henüz paylaşım yok.</p>
+                    <p>{t('social.noPost')}</p>
                 </div>
             ) : (
                 <div className="space-y-4">
@@ -502,7 +505,7 @@ export default function SocialPage() {
                                 }}
                                 disabled={loading}
                             >
-                                Daha Fazla Yükle
+                                {t('common.loadMore')}
                             </button>
                         </div>
                     )}
@@ -514,7 +517,7 @@ export default function SocialPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-black">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Yeni Paylaşım</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('social.newPostTitle')}</h2>
                             <button type="button" onClick={() => { setShowModal(false); setForm(emptyForm); setPreviewUrls([]); }}>
                                 <X className="h-5 w-5 text-gray-500" />
                             </button>
@@ -531,7 +534,7 @@ export default function SocialPage() {
                                 }`}
                                 onClick={() => setForm((prev) => ({ ...prev, visibility: 'school', class_ids: [] }))}
                             >
-                                <Globe className="h-4 w-4" /> Tüm Okul
+                                <Globe className="h-4 w-4" /> {t('social.visibilitySchool')}
                             </button>
                             <button
                                 type="button"
@@ -542,7 +545,7 @@ export default function SocialPage() {
                                 }`}
                                 onClick={() => setForm((prev) => ({ ...prev, visibility: 'class' }))}
                             >
-                                <Users className="h-4 w-4" /> Sınıfa Özel
+                                <Users className="h-4 w-4" /> {t('social.visibilityClass')}
                             </button>
                         </div>
 
@@ -550,7 +553,7 @@ export default function SocialPage() {
                         {form.visibility === 'class' && (
                             <div className="mb-4 max-h-36 overflow-y-auto rounded-lg border border-white-light p-3 dark:border-[#1b2e4b]">
                                 {schoolClasses.length === 0 ? (
-                                    <p className="text-sm text-gray-400">Sınıf bulunamadı.</p>
+                                    <p className="text-sm text-gray-400">{t('social.classRequired')}</p>
                                 ) : (
                                     <div className="space-y-1">
                                         {schoolClasses.map((cls) => (
@@ -574,7 +577,7 @@ export default function SocialPage() {
                             rows={4}
                             value={form.content}
                             onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
-                            placeholder="Ne paylaşmak istiyorsunuz?"
+                            placeholder={t('social.contentPlaceholder')}
                             className="form-textarea mb-3 w-full"
                         />
 
@@ -614,7 +617,7 @@ export default function SocialPage() {
                                     className="btn btn-outline-secondary btn-sm gap-1"
                                     onClick={() => fileInputRef.current?.click()}
                                 >
-                                    <Image className="h-4 w-4" /> Medya
+                                    <Image className="h-4 w-4" /> {t('social.mediaLabel')}
                                 </button>
                                 <input
                                     ref={fileInputRef}
@@ -631,7 +634,7 @@ export default function SocialPage() {
                                         onChange={(e) => setForm((prev) => ({ ...prev, is_pinned: e.target.checked }))}
                                         className="form-checkbox"
                                     />
-                                    <Pin className="h-3 w-3 text-primary" /> Sabitle
+                                    <Pin className="h-3 w-3 text-primary" /> {t('social.pinLabel')}
                                 </label>
                             </div>
                             <button
@@ -640,7 +643,7 @@ export default function SocialPage() {
                                 disabled={saving}
                                 onClick={handleSubmit}
                             >
-                                {saving ? 'Kaydediliyor...' : 'Paylaş'}
+                                {saving ? t('social.posting') : t('social.postBtn')}
                             </button>
                         </div>
                     </div>

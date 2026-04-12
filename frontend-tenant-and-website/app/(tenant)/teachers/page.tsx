@@ -6,13 +6,7 @@ import apiClient from '@/lib/apiClient';
 import { TeacherProfile, TeacherRoleType, School } from '@/types';
 import { Eye, X, Users, Building2, BookOpen, Tag, Mail, UserCheck, UserX, UserMinus, Check, GraduationCap, Award, BookOpen as CourseIcon, Zap, FileText, Phone, Globe, Pencil } from 'lucide-react';
 
-const EMPLOYMENT_LABELS: Record<string, string> = {
-    full_time: 'Tam Zamanlı',
-    part_time: 'Yarı Zamanlı',
-    contract: 'Sözleşmeli',
-    intern: 'Stajyer',
-    volunteer: 'Gönüllü',
-};
+import { useTranslation } from '@/hooks/useTranslation';
 
 const EMPLOYMENT_BADGE: Record<string, string> = {
     full_time: 'badge-outline-success',
@@ -71,6 +65,7 @@ type RoleTypeForm = { name: string; sort_order: string };
 const emptyRoleType: RoleTypeForm = { name: '', sort_order: '0' };
 
 export default function TeachersPage() {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<'teachers' | 'join-requests' | 'role-types'>('teachers');
 
     // ── Öğretmenler ───────────────────────────────────────────
@@ -119,7 +114,7 @@ export default function TeachersPage() {
             setTeachers(res.data?.data ?? []);
             setLastPage(res.data?.meta?.last_page ?? 1);
             setTotal(res.data?.meta?.total ?? 0);
-        } catch { toast.error('Öğretmenler yüklenemedi.'); }
+        } catch { toast.error(t('teachers.loadError')); }
         finally { setLoading(false); }
     }, [page, search]);
 
@@ -128,7 +123,7 @@ export default function TeachersPage() {
         try {
             const res = await apiClient.get('/teachers/join-requests');
             setJoinRequests(res.data?.data ?? []);
-        } catch { toast.error('Katılma talepleri yüklenemedi.'); }
+        } catch { toast.error(t('common.error')); }
         finally { setLoadingRequests(false); }
     }, []);
 
@@ -137,7 +132,7 @@ export default function TeachersPage() {
         try {
             const res = await apiClient.get('/teacher-role-types');
             setRoleTypes(res.data?.data ?? []);
-        } catch { toast.error('Görev türleri yüklenemedi.'); }
+        } catch { toast.error(t('common.error')); }
         finally { setLoadingRoleTypes(false); }
     }, []);
 
@@ -157,48 +152,48 @@ export default function TeachersPage() {
     // ── Davet ─────────────────────────────────────────────────
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!inviteEmail.trim()) { toast.error('E-posta zorunludur.'); return; }
+        if (!inviteEmail.trim()) { toast.error(t('teachers.inviteEmailRequired')); return; }
         setInviting(true);
         try {
             await apiClient.post('/teachers/invite', { email: inviteEmail.trim(), notes: inviteNotes || undefined });
-            toast.success('Öğretmen davet edildi. Daveti kabul etmesi bekleniyor.');
+            toast.success(t('teachers.inviteSuccess'));
             setShowInvite(false);
             setInviteEmail('');
             setInviteNotes('');
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Davet gönderilemedi.');
+            toast.error(e.response?.data?.message ?? t('teachers.inviteError'));
         } finally { setInviting(false); }
     };
 
     // ── Öğretmen Detay Görüntüle ──────────────────────────────
-    const openDetail = async (t: TeacherWithMembership) => {
+    const openDetail = async (teacher: TeacherWithMembership) => {
         setDetailTab('info');
         setLoadingDetail(true);
         setViewingTeacher(null);
         // optimistic: show modal immediately, load data
-        setViewingTeacher({ ...t, bio: null, linkedin_url: null, website_url: null, educations: [], certificates: [], courses: [], skills: [], blog_posts: [] } as unknown as TeacherDetail);
+        setViewingTeacher({ ...teacher, bio: null, linkedin_url: null, website_url: null, educations: [], certificates: [], courses: [], skills: [], blog_posts: [] } as unknown as TeacherDetail);
         try {
-            const res = await apiClient.get(`/teachers/${t.id}`);
+            const res = await apiClient.get(`/teachers/${teacher.id}`);
             setViewingTeacher(res.data?.data as TeacherDetail);
-        } catch { toast.error('Öğretmen detayı yüklenemedi.'); }
+        } catch { toast.error(t('teachers.detailError')); }
         finally { setLoadingDetail(false); }
     };
 
     // ── Öğretmen Düzenle (DEVRE DIŞI — tenant düzenleyemez) ──
-    const openEdit = (t: TeacherWithMembership) => {
-        setEditingTeacher(t);
+    const openEdit = (teacher: TeacherWithMembership) => {
+        setEditingTeacher(teacher);
         setUpdateForm({
-            title: t.title ?? '', specialization: t.specialization ?? '', bio: t.bio ?? '',
-            experience_years: t.experience_years ? String(t.experience_years) : '',
-            employment_type: t.employment_type ?? 'full_time',
-            hire_date: t.hire_date ?? '', phone: t.phone ?? '',
-            phone_country_code: t.phone_country_code ?? '+90',
-            whatsapp_number: t.whatsapp_number ?? '',
-            whatsapp_country_code: t.whatsapp_country_code ?? '+90',
-            country_id: t.nationality_country_id ? String(t.nationality_country_id) : '',
-            identity_number: t.identity_number ?? '',
-            passport_number: t.passport_number ?? '',
+            title: teacher.title ?? '', specialization: teacher.specialization ?? '', bio: teacher.bio ?? '',
+            experience_years: teacher.experience_years ? String(teacher.experience_years) : '',
+            employment_type: teacher.employment_type ?? 'full_time',
+            hire_date: teacher.hire_date ?? '', phone: teacher.phone ?? '',
+            phone_country_code: teacher.phone_country_code ?? '+90',
+            whatsapp_number: teacher.whatsapp_number ?? '',
+            whatsapp_country_code: teacher.whatsapp_country_code ?? '+90',
+            country_id: teacher.nationality_country_id ? String(teacher.nationality_country_id) : '',
+            identity_number: teacher.identity_number ?? '',
+            passport_number: teacher.passport_number ?? '',
         });
     };
 
@@ -217,62 +212,62 @@ export default function TeachersPage() {
                 passport_number: updateForm.passport_number || undefined,
             };
             await apiClient.put(`/teachers/${editingTeacher.id}`, payload);
-            toast.success('Öğretmen güncellendi.');
+            toast.success(t('teachers.updateSuccess'));
             setEditingTeacher(null);
             fetchTeachers();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(e.response?.data?.message ?? t('teachers.updateError'));
         } finally { setSaving(false); }
     };
 
     // ── Üyelik Yönetimi ───────────────────────────────────────
-    const handleActivate = async (t: TeacherWithMembership) => {
+    const handleActivate = async (teacher: TeacherWithMembership) => {
         try {
-            await apiClient.patch(`/teachers/${t.membership_id}/activate`);
-            toast.success('Öğretmen aktif edildi.');
+            await apiClient.patch(`/teachers/${teacher.membership_id}/activate`);
+            toast.success(t('teachers.activateSuccess'));
             fetchTeachers();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'İşlem başarısız.');
+            toast.error(e.response?.data?.message ?? t('teachers.activateError'));
         }
     };
 
-    const handleDeactivate = async (t: TeacherWithMembership) => {
+    const handleDeactivate = async (teacher: TeacherWithMembership) => {
         const result = await Swal.fire({
-            title: 'Öğretmeni Pasifleştir',
-            text: `"${t.name}" pasif yapılacak. Sisteme giriş yapamayacak.`,
+            title: t('teachers.deactivateTitle'),
+            text: t('teachers.deactivateText', { name: teacher.name }),
             icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Evet, Pasifleştir', cancelButtonText: 'İptal',
+            confirmButtonText: t('teachers.deactivateConfirm'), cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) { return; }
         try {
-            await apiClient.patch(`/teachers/${t.membership_id}/deactivate`);
-            toast.success('Öğretmen pasif yapıldı.');
+            await apiClient.patch(`/teachers/${teacher.membership_id}/deactivate`);
+            toast.success(t('teachers.deactivateSuccess'));
             fetchTeachers();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'İşlem başarısız.');
+            toast.error(e.response?.data?.message ?? t('teachers.deactivateError'));
         }
     };
 
-    const handleRemoveMembership = async (t: TeacherWithMembership) => {
+    const handleRemoveMembership = async (teacher: TeacherWithMembership) => {
         const result = await Swal.fire({
-            title: 'Kurumdan Çıkar',
-            text: `"${t.name}" kurumdan çıkarılacak. Profili sistemde korunacak.`,
+            title: t('teachers.removeTitle'),
+            text: t('teachers.removeText', { name: teacher.name }),
             icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Evet, Çıkar', cancelButtonText: 'İptal',
+            confirmButtonText: t('teachers.removeConfirm'), cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) { return; }
         try {
-            await apiClient.delete(`/teachers/${t.membership_id}/membership`);
-            toast.success('Öğretmen kurumdan çıkarıldı.');
+            await apiClient.delete(`/teachers/${teacher.membership_id}/membership`);
+            toast.success(t('teachers.removeSuccess'));
             fetchTeachers();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'İşlem başarısız.');
+            toast.error(e.response?.data?.message ?? t('teachers.removeError'));
         }
     };
 
@@ -281,48 +276,48 @@ export default function TeachersPage() {
     const handleApproveRequest = async (req: JoinRequest) => {
         try {
             await apiClient.patch(`/teachers/join-requests/${req.id}/approve`);
-            toast.success('Talep onaylandı. Öğretmen kurumunuza eklendi.');
+            toast.success(t('teachers.approveRequestSuccess'));
             setJoinRequests(prev => prev.filter(r => r.id !== req.id));
             fetchTeachers();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Onaylama başarısız.');
+            toast.error(e.response?.data?.message ?? t('teachers.approveRequestError'));
         }
     };
 
     const handleRejectRequest = async (req: JoinRequest) => {
         const result = await Swal.fire({
-            title: 'Talebi Reddet',
-            text: `"${req.name}" adlı öğretmenin katılma talebi reddedilecek.`,
+            title: t('teachers.rejectRequestTitle'),
+            text: t('teachers.rejectRequestText', { name: req.name }),
             icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Evet, Reddet', cancelButtonText: 'İptal',
+            confirmButtonText: t('teachers.rejectRequestConfirm'), cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) { return; }
         try {
             await apiClient.patch(`/teachers/join-requests/${req.id}/reject`);
-            toast.success('Talep reddedildi.');
+            toast.success(t('teachers.rejectRequestSuccess'));
             setJoinRequests(prev => prev.filter(r => r.id !== req.id));
-        } catch { toast.error('Reddetme başarısız.'); }
+        } catch { toast.error(t('teachers.rejectRequestError')); }
     };
 
     // ── Görev Türü CRUD ───────────────────────────────────────
     const handleCreateRole = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!roleForm.name.trim()) { toast.error('Görev türü adı zorunludur.'); return; }
+        if (!roleForm.name.trim()) { toast.error(t('teachers.createRoleError')); return; }
         setSavingRole(true);
         try {
             await apiClient.post('/teacher-role-types', {
                 name: roleForm.name,
                 sort_order: roleForm.sort_order ? Number(roleForm.sort_order) : 0,
             });
-            toast.success('Görev türü oluşturuldu.');
+            toast.success(t('teachers.createRoleSuccess'));
             setShowCreateRole(false);
             setRoleForm(emptyRoleType);
             fetchRoleTypes();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(e.response?.data?.message ?? t('teachers.createRoleError2'));
         } finally { setSavingRole(false); }
     };
 
@@ -340,46 +335,80 @@ export default function TeachersPage() {
                 name: roleForm.name,
                 sort_order: roleForm.sort_order ? Number(roleForm.sort_order) : 0,
             });
-            toast.success('Görev türü güncellendi.');
+            toast.success(t('teachers.updateRoleSuccess'));
             setEditingRole(null);
             fetchRoleTypes();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(e.response?.data?.message ?? t('teachers.updateRoleError'));
         } finally { setSavingRole(false); }
+    };
+
+    const getEmploymentLabel = (type: string) => {
+        const map: Record<string, string> = {
+            full_time: t('teachers.fullTime'),
+            part_time: t('teachers.partTime'),
+            contract: t('teachers.contract'),
+            intern: t('teachers.intern'),
+            volunteer: t('teachers.volunteer'),
+        };
+        return map[type] ?? type;
+    };
+
+    const getCourseTypeLabel = (type: string) => {
+        const map: Record<string, string> = {
+            course: t('teachers.courseTypeCourse'),
+            seminar: t('teachers.courseTypeSeminar'),
+            workshop: t('teachers.courseTypeWorkshop'),
+            conference: t('teachers.courseTypeConference'),
+            training: t('teachers.courseTypeTraining'),
+            webinar: t('teachers.courseTypeWebinar'),
+            other: t('teachers.courseTypeOther'),
+        };
+        return map[type] ?? type;
+    };
+
+    const getSkillLevelLabel = (level: string) => {
+        const map: Record<string, string> = {
+            beginner: t('teachers.skillBeginner'),
+            intermediate: t('teachers.skillIntermediate'),
+            advanced: t('teachers.skillAdvanced'),
+            expert: t('teachers.skillExpert'),
+        };
+        return map[level] ?? level;
     };
 
     const handleDeleteRole = async (rt: TeacherRoleType) => {
         const result = await Swal.fire({
-            title: 'Görev Türünü Sil',
-            text: `"${rt.name}" silinecek.`,
+            title: t('teachers.deleteRoleTitle'),
+            text: t('teachers.deleteRoleText', { name: rt.name }),
             icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('swal.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) { return; }
         try {
             await apiClient.delete(`/teacher-role-types/${rt.id}`);
-            toast.success('Görev türü silindi.');
+            toast.success(t('teachers.deleteRoleSuccess'));
             fetchRoleTypes();
-        } catch { toast.error('Silme başarısız.'); }
+        } catch { toast.error(t('teachers.deleteRoleError')); }
     };
 
     return (
         <div className="p-6">
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-dark dark:text-white">Öğretmenler</h1>
-                    <p className="mt-1 text-sm text-[#888ea8]">Tenant genelinde öğretmen ve görev türü yönetimi</p>
+                    <h1 className="text-2xl font-bold text-dark dark:text-white">{t('teachers.title')}</h1>
+                    <p className="mt-1 text-sm text-[#888ea8]">{t('teachers.subtitle')}</p>
                 </div>
                 {activeTab === 'teachers' && (
                     <button type="button" className="btn btn-primary gap-2" onClick={() => { setShowInvite(true); setInviteEmail(''); setInviteNotes(''); }}>
-                        <Mail className="h-4 w-4" />Öğretmeni Davet Et
+                        <Mail className="h-4 w-4" />{t('teachers.inviteBtn')}
                     </button>
                 )}
                 {activeTab === 'role-types' && (
                     <button type="button" className="btn btn-primary gap-2" onClick={() => { setShowCreateRole(true); setRoleForm(emptyRoleType); }}>
-                        <Tag className="h-4 w-4" />Yeni Görev Türü
+                        <Tag className="h-4 w-4" />{t('teachers.newRoleTypeTitle')}
                     </button>
                 )}
             </div>
@@ -391,7 +420,7 @@ export default function TeachersPage() {
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors ${activeTab === 'teachers' ? 'border-b-2 border-primary text-primary' : 'text-[#506690] hover:text-primary'}`}
                     onClick={() => setActiveTab('teachers')}
                 >
-                    <Users className="h-4 w-4" />Öğretmenler
+                    <Users className="h-4 w-4" />{t('teachers.teachersTab')}
                     {total > 0 && <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{total}</span>}
                 </button>
                 <button
@@ -399,7 +428,7 @@ export default function TeachersPage() {
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors ${activeTab === 'join-requests' ? 'border-b-2 border-primary text-primary' : 'text-[#506690] hover:text-primary'}`}
                     onClick={() => setActiveTab('join-requests')}
                 >
-                    <UserCheck className="h-4 w-4" />Katılma Talepleri
+                    <UserCheck className="h-4 w-4" />{t('teachers.joinRequestsTab')}
                     {joinRequests.length > 0 && (
                         <span className="ml-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs text-warning">{joinRequests.length}</span>
                     )}
@@ -409,7 +438,7 @@ export default function TeachersPage() {
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors ${activeTab === 'role-types' ? 'border-b-2 border-primary text-primary' : 'text-[#506690] hover:text-primary'}`}
                     onClick={() => setActiveTab('role-types')}
                 >
-                    <Tag className="h-4 w-4" />Görev Türleri
+                    <Tag className="h-4 w-4" />{t('teachers.roleTypesTab')}
                 </button>
             </div>
 
@@ -420,11 +449,11 @@ export default function TeachersPage() {
                         <input
                             type="text"
                             className="form-input w-full max-w-xs"
-                            placeholder="İsim, e-posta ara..."
+                            placeholder={t('teachers.searchPlaceholder2')}
                             value={search}
                             onChange={e => { setSearch(e.target.value); setPage(1); }}
                         />
-                        {total > 0 && <span className="text-sm text-[#888ea8]">Toplam {total} öğretmen</span>}
+                        {total > 0 && <span className="text-sm text-[#888ea8]">{t('teachers.total', { count: total })}</span>}
                     </div>
 
                     {loading ? (
@@ -434,88 +463,88 @@ export default function TeachersPage() {
                     ) : teachers.length === 0 ? (
                         <div className="flex h-40 flex-col items-center justify-center gap-2 text-[#888ea8]">
                             <Users className="h-10 w-10 opacity-40" />
-                            <p>Henüz öğretmen eklenmemiş.</p>
-                            <p className="text-xs">Öğretmenleri e-posta ile davet edin veya katılma taleplerini onaylayın.</p>
+                            <p>{t('teachers.noTeacher')}</p>
+                            <p className="text-xs">{t('teachers.noTeacherHint')}</p>
                         </div>
                     ) : (
                         <div className="table-responsive">
                             <table className="table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Ad Soyad</th>
-                                        <th>Unvan / Uzmanlık</th>
-                                        <th>İstihdam</th>
-                                        <th>Tecrübe</th>
-                                        <th>Durum</th>
-                                        <th>Okullar</th>
-                                        <th>İşlemler</th>
+                                        <th>{t('teachers.nameCol')}</th>
+                                        <th>{t('teachers.titleSpecializationCol')}</th>
+                                        <th>{t('teachers.employmentCol')}</th>
+                                        <th>{t('teachers.experienceCol')}</th>
+                                        <th>{t('teachers.statusCol')}</th>
+                                        <th>{t('teachers.schoolsCol')}</th>
+                                        <th>{t('teachers.actionsCol')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {teachers.map(t => (
-                                        <tr key={t.id}>
+                                    {teachers.map(teacher => (
+                                        <tr key={teacher.id}>
                                             <td>
                                                 <div className="flex flex-col gap-0.5">
-                                                    <p className="font-semibold text-dark dark:text-white">{t.name}</p>
-                                                    {t.email && (
+                                                    <p className="font-semibold text-dark dark:text-white">{teacher.name}</p>
+                                                    {teacher.email && (
                                                         <span className="flex items-center gap-1 text-xs text-[#888ea8]">
-                                                            <Mail className="h-3 w-3 shrink-0" />{t.email}
+                                                            <Mail className="h-3 w-3 shrink-0" />{teacher.email}
                                                         </span>
                                                     )}
-                                                    {t.phone && (
+                                                    {teacher.phone && (
                                                         <span className="flex items-center gap-1 text-xs text-[#888ea8]">
-                                                            <Phone className="h-3 w-3 shrink-0" />{t.phone}
+                                                            <Phone className="h-3 w-3 shrink-0" />{teacher.phone}
                                                         </span>
                                                     )}
                                                 </div>
                                             </td>
                                             <td>
                                                 <div>
-                                                    {t.title && <p className="text-sm font-medium">{t.title}</p>}
-                                                    {t.specialization && <p className="text-xs text-[#888ea8]">{t.specialization}</p>}
+                                                    {teacher.title && <p className="text-sm font-medium">{teacher.title}</p>}
+                                                    {teacher.specialization && <p className="text-xs text-[#888ea8]">{teacher.specialization}</p>}
                                                 </div>
                                             </td>
                                             <td>
-                                                {t.employment_type && (
-                                                    <span className={`badge ${EMPLOYMENT_BADGE[t.employment_type] ?? 'badge-outline-secondary'} text-xs`}>
-                                                        {EMPLOYMENT_LABELS[t.employment_type] ?? t.employment_type}
+                                                {teacher.employment_type && (
+                                                    <span className={`badge ${EMPLOYMENT_BADGE[teacher.employment_type] ?? 'badge-outline-secondary'} text-xs`}>
+                                                        {getEmploymentLabel(teacher.employment_type)}
                                                     </span>
                                                 )}
                                             </td>
                                             <td>
-                                                {t.experience_years != null
-                                                    ? <span className="text-sm">{t.experience_years} yıl</span>
+                                                {teacher.experience_years != null
+                                                    ? <span className="text-sm">{t('teachers.yearsExp', { count: teacher.experience_years })}</span>
                                                     : <span className="text-xs text-[#888ea8]">—</span>}
                                             </td>
                                             <td>
-                                                <span className={`badge text-xs ${t.membership_status === 'active' ? 'badge-outline-success' : 'badge-outline-danger'}`}>
-                                                    {t.membership_status === 'active' ? 'Aktif' : 'Pasif'}
+                                                <span className={`badge text-xs ${teacher.membership_status === 'active' ? 'badge-outline-success' : 'badge-outline-danger'}`}>
+                                                    {teacher.membership_status === 'active' ? t('teachers.statusActive') : t('teachers.statusInactive')}
                                                 </span>
                                             </td>
                                             <td>
                                                 <div className="flex flex-wrap gap-1">
-                                                    {t.schools && t.schools.length > 0
-                                                        ? t.schools.map(s => (
+                                                    {teacher.schools && teacher.schools.length > 0
+                                                        ? teacher.schools.map(s => (
                                                             <span key={s.id} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{s.name}</span>
                                                         ))
-                                                        : <span className="text-xs text-[#888ea8]">Atanmamış</span>}
+                                                        : <span className="text-xs text-[#888ea8]">{t('teachers.noSchoolAssigned')}</span>}
                                                 </div>
                                             </td>
                                             <td>
                                                 <div className="flex gap-1">
-                                                    <button type="button" title="Görüntüle" className="btn btn-sm btn-outline-primary p-2" onClick={() => openDetail(t)}>
+                                                    <button type="button" title={t('teachers.viewBtn')} className="btn btn-sm btn-outline-primary p-2" onClick={() => openDetail(teacher)}>
                                                         <Eye className="h-4 w-4" />
                                                     </button>
-                                                    {t.membership_status === 'inactive' ? (
-                                                        <button type="button" title="Aktif Et" className="btn btn-sm btn-outline-success p-2" onClick={() => handleActivate(t)}>
+                                                    {teacher.membership_status === 'inactive' ? (
+                                                        <button type="button" title={t('teachers.activateTitle')} className="btn btn-sm btn-outline-success p-2" onClick={() => handleActivate(teacher)}>
                                                             <UserCheck className="h-4 w-4" />
                                                         </button>
                                                     ) : (
-                                                        <button type="button" title="Pasifleştir" className="btn btn-sm btn-outline-warning p-2" onClick={() => handleDeactivate(t)}>
+                                                        <button type="button" title={t('teachers.deactivateTitle2')} className="btn btn-sm btn-outline-warning p-2" onClick={() => handleDeactivate(teacher)}>
                                                             <UserX className="h-4 w-4" />
                                                         </button>
                                                     )}
-                                                    <button type="button" title="Kurumdan Çıkar" className="btn btn-sm btn-outline-danger p-2" onClick={() => handleRemoveMembership(t)}>
+                                                    <button type="button" title={t('teachers.removeFromOrg')} className="btn btn-sm btn-outline-danger p-2" onClick={() => handleRemoveMembership(teacher)}>
                                                         <UserMinus className="h-4 w-4" />
                                                     </button>
                                                 </div>
@@ -529,9 +558,9 @@ export default function TeachersPage() {
 
                     {lastPage > 1 && (
                         <div className="mt-4 flex justify-center gap-2">
-                            <button type="button" className="btn btn-sm btn-outline-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹ Önceki</button>
+                            <button type="button" className="btn btn-sm btn-outline-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>{t('teachers.prevPage')}</button>
                             <span className="flex items-center px-3 text-sm">{page} / {lastPage}</span>
-                            <button type="button" className="btn btn-sm btn-outline-secondary" disabled={page === lastPage} onClick={() => setPage(p => p + 1)}>Sonraki ›</button>
+                            <button type="button" className="btn btn-sm btn-outline-secondary" disabled={page === lastPage} onClick={() => setPage(p => p + 1)}>{t('teachers.nextPage')}</button>
                         </div>
                     )}
                 </div>
@@ -547,20 +576,20 @@ export default function TeachersPage() {
                     ) : joinRequests.length === 0 ? (
                         <div className="flex h-40 flex-col items-center justify-center gap-2 text-[#888ea8]">
                             <UserCheck className="h-10 w-10 opacity-40" />
-                            <p>Bekleyen katılma talebi yok.</p>
-                            <p className="text-xs">Öğretmenler kurumunuzun davet kodunu kullanarak katılma talebinde bulunabilir.</p>
+                            <p>{t('teachers.noJoinRequest')}</p>
+                            <p className="text-xs">{t('teachers.noJoinRequestHint')}</p>
                         </div>
                     ) : (
                         <div className="table-responsive">
                             <table className="table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Ad Soyad</th>
-                                        <th>İletişim</th>
-                                        <th>Uzmanlık</th>
-                                        <th>Tecrübe</th>
-                                        <th>Talep Tarihi</th>
-                                        <th>İşlemler</th>
+                                        <th>{t('teachers.nameCol')}</th>
+                                        <th>{t('teachers.contactCol')}</th>
+                                        <th>{t('teachers.specialization')}</th>
+                                        <th>{t('teachers.experienceCol')}</th>
+                                        <th>{t('teachers.requestDateCol')}</th>
+                                        <th>{t('teachers.actionsCol')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -582,7 +611,7 @@ export default function TeachersPage() {
                                                 </div>
                                             </td>
                                             <td className="text-sm">{req.specialization ?? '—'}</td>
-                                            <td className="text-sm">{req.experience_years != null ? `${req.experience_years} yıl` : '—'}</td>
+                                            <td className="text-sm">{req.experience_years != null ? t('teachers.yearsExp', { count: req.experience_years }) : '—'}</td>
                                             <td className="text-sm text-[#888ea8]">{new Date(req.sent_at).toLocaleDateString('tr-TR')}</td>
                                             <td>
                                                 <div className="flex gap-2">
@@ -591,14 +620,14 @@ export default function TeachersPage() {
                                                         className="btn btn-sm btn-outline-success gap-1"
                                                         onClick={() => handleApproveRequest(req)}
                                                     >
-                                                        <Check className="h-4 w-4" />Onayla
+                                                        <Check className="h-4 w-4" />{t('teachers.approveBtn')}
                                                     </button>
                                                     <button
                                                         type="button"
                                                         className="btn btn-sm btn-outline-danger gap-1"
                                                         onClick={() => handleRejectRequest(req)}
                                                     >
-                                                        <X className="h-4 w-4" />Reddet
+                                                        <X className="h-4 w-4" />{t('teachers.rejectBtn')}
                                                     </button>
                                                 </div>
                                             </td>
@@ -621,18 +650,18 @@ export default function TeachersPage() {
                     ) : roleTypes.length === 0 ? (
                         <div className="flex h-40 flex-col items-center justify-center gap-2 text-[#888ea8]">
                             <Tag className="h-10 w-10 opacity-40" />
-                            <p>Henüz görev türü tanımlanmamış.</p>
-                            <p className="text-xs">Baş Öğretmen, Yardımcı Öğretmen vb. ekleyebilirsiniz.</p>
+                            <p>{t('teachers.noRoleType')}</p>
+                            <p className="text-xs">{t('teachers.noRoleTypeHint')}</p>
                         </div>
                     ) : (
                         <div className="table-responsive">
                             <table className="table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Görev Türü Adı</th>
-                                        <th>Sıra</th>
-                                        <th>Durum</th>
-                                        <th>İşlemler</th>
+                                        <th>{t('teachers.roleTypeNameCol')}</th>
+                                        <th>{t('teachers.sortOrderCol')}</th>
+                                        <th>{t('teachers.statusCol')}</th>
+                                        <th>{t('teachers.actionsCol')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -642,7 +671,7 @@ export default function TeachersPage() {
                                             <td className="text-sm text-[#888ea8]">{rt.sort_order ?? 0}</td>
                                             <td>
                                                 <span className={`badge ${rt.is_active ? 'badge-outline-success' : 'badge-outline-danger'} text-xs`}>
-                                                    {rt.is_active ? 'Aktif' : 'Pasif'}
+                                                    {rt.is_active ? t('teachers.statusActive') : t('teachers.statusInactive')}
                                                 </span>
                                             </td>
                                             <td>
@@ -669,41 +698,41 @@ export default function TeachersPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğretmeni Davet Et</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('teachers.inviteTitle')}</h2>
                             <button type="button" onClick={() => setShowInvite(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <p className="mb-4 text-sm text-[#888ea8]">
-                            Sisteme kayıtlı öğretmenin e-posta adresini girin. Öğretmen daveti kabul ettikten sonra kurumunuza eklenecektir.
+                            {t('teachers.inviteDesc')}
                         </p>
                         <form onSubmit={handleInvite} className="space-y-4">
                             <div>
-                                <label className="mb-1 block text-sm font-medium">E-posta *</label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.inviteEmailLabel')}</label>
                                 <input
                                     type="email"
                                     className="form-input"
-                                    placeholder="ogretmen@mail.com"
+                                    placeholder={t('teachers.inviteEmailPlaceholder')}
                                     value={inviteEmail}
                                     onChange={e => setInviteEmail(e.target.value)}
                                     autoFocus
                                 />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Not <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.inviteNotesOptional')}</label>
                                 <textarea
                                     className="form-input"
                                     rows={3}
-                                    placeholder="Öğretmene iletilecek not..."
+                                    placeholder={t('teachers.inviteNotesPlaceholder')}
                                     value={inviteNotes}
                                     onChange={e => setInviteNotes(e.target.value)}
                                 />
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={inviting}>
-                                    {inviting ? 'Gönderiliyor...' : 'Davet Gönder'}
+                                    {inviting ? t('teachers.inviting') : t('teachers.inviteBtn2')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowInvite(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowInvite(false)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>
@@ -715,14 +744,14 @@ export default function TeachersPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğretmen Düzenle — {editingTeacher.name}</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('teachers.editModalTitle')} — {editingTeacher.name}</h2>
                             <button type="button" onClick={() => setEditingTeacher(null)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <form onSubmit={handleUpdate} className="space-y-4">
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Telefon</label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.phoneLabel')}</label>
                                 <div className="flex gap-2">
                                     <select className="form-select w-36 shrink-0" value={updateForm.phone_country_code} onChange={e => setUpdateForm(p => ({ ...p, phone_country_code: e.target.value }))}>
                                         {countries.map(c => <option key={c.id} value={c.phone_code}>{c.flag_emoji} {c.iso2} {c.phone_code}</option>)}
@@ -731,7 +760,7 @@ export default function TeachersPage() {
                                 </div>
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">WhatsApp <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.whatsappLabel')} <span className="text-xs text-[#888ea8]">{t('teachers.whatsappOptional')}</span></label>
                                 <div className="flex gap-2">
                                     <select className="form-select w-36 shrink-0" value={updateForm.whatsapp_country_code} onChange={e => setUpdateForm(p => ({ ...p, whatsapp_country_code: e.target.value }))}>
                                         {countries.map(c => <option key={c.id} value={c.phone_code}>{c.flag_emoji} {c.iso2} {c.phone_code}</option>)}
@@ -740,55 +769,59 @@ export default function TeachersPage() {
                                 </div>
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Uyruk <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.nationalityLabel')} <span className="text-xs text-[#888ea8]">{t('teachers.nationalityOptional')}</span></label>
                                 <select className="form-select" value={updateForm.country_id} onChange={e => setUpdateForm(p => ({ ...p, country_id: e.target.value }))}>
-                                    <option value="">— Seçiniz —</option>
+                                    <option value="">{t('teachers.selectNationality')}</option>
                                     {countries.map(c => <option key={c.id} value={c.id}>{c.flag_emoji} {c.name}</option>)}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium">TC Kimlik No <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                    <label className="mb-1 block text-sm font-medium">{t('teachers.idNumberLabel')} <span className="text-xs text-[#888ea8]">{t('teachers.idNumberOptional')}</span></label>
                                     <input className="form-input" maxLength={11} value={updateForm.identity_number} onChange={e => setUpdateForm(p => ({ ...p, identity_number: e.target.value }))} />
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium">Pasaport No <span className="text-xs text-[#888ea8]">(opsiyonel)</span></label>
+                                    <label className="mb-1 block text-sm font-medium">{t('teachers.passportLabel')} <span className="text-xs text-[#888ea8]">{t('teachers.passportOptional')}</span></label>
                                     <input className="form-input" maxLength={20} value={updateForm.passport_number} onChange={e => setUpdateForm(p => ({ ...p, passport_number: e.target.value }))} />
                                 </div>
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Unvan</label>
-                                <input className="form-input" placeholder="Dr., Uzm., vb." value={updateForm.title} onChange={e => setUpdateForm(p => ({ ...p, title: e.target.value }))} />
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.titleLabel')}</label>
+                                <input className="form-input" placeholder={t('teachers.titlePlaceholder')} value={updateForm.title} onChange={e => setUpdateForm(p => ({ ...p, title: e.target.value }))} />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium">İstihdam Türü</label>
+                                    <label className="mb-1 block text-sm font-medium">{t('teachers.employmentTypeLabel')}</label>
                                     <select className="form-select" value={updateForm.employment_type} onChange={e => setUpdateForm(p => ({ ...p, employment_type: e.target.value }))}>
-                                        {Object.entries(EMPLOYMENT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                        <option value="full_time">{t('teachers.fullTime')}</option>
+                                        <option value="part_time">{t('teachers.partTime')}</option>
+                                        <option value="contract">{t('teachers.contract')}</option>
+                                        <option value="intern">{t('teachers.intern')}</option>
+                                        <option value="volunteer">{t('teachers.volunteer')}</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium">Tecrübe (yıl)</label>
+                                    <label className="mb-1 block text-sm font-medium">{t('teachers.experienceYearsLabel')}</label>
                                     <input type="number" min={0} className="form-input" value={updateForm.experience_years} onChange={e => setUpdateForm(p => ({ ...p, experience_years: e.target.value }))} />
                                 </div>
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Uzmanlık Alanı</label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.specializationLabel')}</label>
                                 <input className="form-input" value={updateForm.specialization} onChange={e => setUpdateForm(p => ({ ...p, specialization: e.target.value }))} />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">İşe Başlama</label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.hireDateLabel')}</label>
                                 <input type="date" className="form-input" value={updateForm.hire_date} onChange={e => setUpdateForm(p => ({ ...p, hire_date: e.target.value }))} />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Biyografi</label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.bioLabel')}</label>
                                 <textarea className="form-input" rows={3} value={updateForm.bio} onChange={e => setUpdateForm(p => ({ ...p, bio: e.target.value }))} />
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={saving}>
-                                    {saving ? 'Kaydediliyor...' : 'Güncelle'}
+                                    {saving ? t('common.loading') : t('common.update')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setEditingTeacher(null)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setEditingTeacher(null)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>
@@ -801,25 +834,25 @@ export default function TeachersPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Yeni Görev Türü</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('teachers.newRoleTypeTitle')}</h2>
                             <button type="button" onClick={() => setShowCreateRole(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <form onSubmit={handleCreateRole} className="space-y-4">
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Ad *</label>
-                                <input className="form-input" placeholder="ör. Baş Öğretmen" value={roleForm.name} onChange={e => setRoleForm(p => ({ ...p, name: e.target.value }))} />
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.roleNameLabelRequired')}</label>
+                                <input className="form-input" value={roleForm.name} onChange={e => setRoleForm(p => ({ ...p, name: e.target.value }))} />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Sıra</label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.sortLabel')}</label>
                                 <input type="number" min={0} className="form-input" value={roleForm.sort_order} onChange={e => setRoleForm(p => ({ ...p, sort_order: e.target.value }))} />
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingRole}>
-                                    {savingRole ? 'Kaydediliyor...' : 'Kaydet'}
+                                    {savingRole ? t('common.loading') : t('common.save')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowCreateRole(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowCreateRole(false)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>
@@ -831,25 +864,25 @@ export default function TeachersPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Görev Türü Düzenle</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('teachers.editRoleTypeTitle')}</h2>
                             <button type="button" onClick={() => setEditingRole(null)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <form onSubmit={handleUpdateRole} className="space-y-4">
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Ad *</label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.roleNameLabelRequired')}</label>
                                 <input className="form-input" value={roleForm.name} onChange={e => setRoleForm(p => ({ ...p, name: e.target.value }))} />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium">Sıra</label>
+                                <label className="mb-1 block text-sm font-medium">{t('teachers.sortLabel')}</label>
                                 <input type="number" min={0} className="form-input" value={roleForm.sort_order} onChange={e => setRoleForm(p => ({ ...p, sort_order: e.target.value }))} />
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingRole}>
-                                    {savingRole ? 'Kaydediliyor...' : 'Güncelle'}
+                                    {savingRole ? t('common.loading') : t('common.update')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setEditingRole(null)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setEditingRole(null)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>
@@ -872,7 +905,7 @@ export default function TeachersPage() {
                                         {viewingTeacher.title && <span className="text-sm text-[#888ea8]">{viewingTeacher.title}</span>}
                                         {viewingTeacher.specialization && <span className="text-xs text-[#888ea8]">· {viewingTeacher.specialization}</span>}
                                         <span className={`badge text-xs ${viewingTeacher.membership_status === 'active' ? 'badge-outline-success' : 'badge-outline-danger'}`}>
-                                            {viewingTeacher.membership_status === 'active' ? 'Aktif' : 'Pasif'}
+                                            {viewingTeacher.membership_status === 'active' ? t('teachers.statusActive') : t('teachers.statusInactive')}
                                         </span>
                                     </div>
                                 </div>
@@ -885,12 +918,12 @@ export default function TeachersPage() {
                         {/* Sekmeler */}
                         <div className="flex overflow-x-auto border-b border-[#ebedf2] dark:border-[#1b2e4b]">
                             {([
-                                { key: 'info', icon: <Phone className="h-4 w-4" />, label: 'İletişim & Genel' },
-                                { key: 'education', icon: <GraduationCap className="h-4 w-4" />, label: 'Eğitim' },
-                                { key: 'certificates', icon: <Award className="h-4 w-4" />, label: 'Sertifikalar' },
-                                { key: 'courses', icon: <CourseIcon className="h-4 w-4" />, label: 'Kurslar & Seminerler' },
-                                { key: 'skills', icon: <Zap className="h-4 w-4" />, label: 'Beceriler' },
-                                { key: 'blogs', icon: <FileText className="h-4 w-4" />, label: 'Blog Yazıları' },
+                                { key: 'info', icon: <Phone className="h-4 w-4" />, label: t('teachers.contactAndGeneral') },
+                                { key: 'education', icon: <GraduationCap className="h-4 w-4" />, label: t('teachers.educationTab') },
+                                { key: 'certificates', icon: <Award className="h-4 w-4" />, label: t('teachers.certificatesTab') },
+                                { key: 'courses', icon: <CourseIcon className="h-4 w-4" />, label: t('teachers.coursesTab') },
+                                { key: 'skills', icon: <Zap className="h-4 w-4" />, label: t('teachers.skillsTab') },
+                                { key: 'blogs', icon: <FileText className="h-4 w-4" />, label: t('teachers.blogsTab') },
                             ] as { key: typeof detailTab; icon: React.ReactNode; label: string }[]).map(tab => (
                                 <button
                                     key={tab.key}
@@ -914,24 +947,24 @@ export default function TeachersPage() {
                             {!loadingDetail && detailTab === 'info' && (
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                        <InfoRow icon={<Phone className="h-4 w-4" />} label="E-posta" value={viewingTeacher.email} />
-                                        <InfoRow icon={<Phone className="h-4 w-4" />} label="Telefon" value={viewingTeacher.phone ? `${viewingTeacher.phone_country_code ?? ''} ${viewingTeacher.phone}`.trim() : null} />
-                                        <InfoRow icon={<Phone className="h-4 w-4" />} label="WhatsApp" value={viewingTeacher.whatsapp_number ? `${viewingTeacher.whatsapp_country_code ?? ''} ${viewingTeacher.whatsapp_number}`.trim() : null} />
-                                        <InfoRow icon={<GraduationCap className="h-4 w-4" />} label="Tecrübe" value={viewingTeacher.experience_years != null ? `${viewingTeacher.experience_years} yıl` : null} />
-                                        <InfoRow icon={<Building2 className="h-4 w-4" />} label="İstihdam" value={EMPLOYMENT_LABELS[viewingTeacher.employment_type ?? ''] ?? viewingTeacher.employment_type} />
-                                        <InfoRow icon={<Building2 className="h-4 w-4" />} label="İşe Başlama" value={viewingTeacher.hire_date ? new Date(viewingTeacher.hire_date).toLocaleDateString('tr-TR') : null} />
+                                        <InfoRow icon={<Phone className="h-4 w-4" />} label={t('teachers.inviteEmailLabel').replace(' *', '')} value={viewingTeacher.email} />
+                                        <InfoRow icon={<Phone className="h-4 w-4" />} label={t('teachers.phoneLabel')} value={viewingTeacher.phone ? `${viewingTeacher.phone_country_code ?? ''} ${viewingTeacher.phone}`.trim() : null} />
+                                        <InfoRow icon={<Phone className="h-4 w-4" />} label={t('teachers.whatsappLabel')} value={viewingTeacher.whatsapp_number ? `${viewingTeacher.whatsapp_country_code ?? ''} ${viewingTeacher.whatsapp_number}`.trim() : null} />
+                                        <InfoRow icon={<GraduationCap className="h-4 w-4" />} label={t('teachers.experienceCol')} value={viewingTeacher.experience_years != null ? t('teachers.yearsExp', { count: viewingTeacher.experience_years }) : null} />
+                                        <InfoRow icon={<Building2 className="h-4 w-4" />} label={t('teachers.employmentCol')} value={getEmploymentLabel(viewingTeacher.employment_type ?? '')} />
+                                        <InfoRow icon={<Building2 className="h-4 w-4" />} label={t('teachers.hireDateLabel')} value={viewingTeacher.hire_date ? new Date(viewingTeacher.hire_date).toLocaleDateString('tr-TR') : null} />
                                         {viewingTeacher.linkedin_url && <InfoRow icon={<Globe className="h-4 w-4" />} label="LinkedIn" value={viewingTeacher.linkedin_url} />}
                                         {viewingTeacher.website_url && <InfoRow icon={<Globe className="h-4 w-4" />} label="Website" value={viewingTeacher.website_url} />}
                                     </div>
                                     {viewingTeacher.bio && (
                                         <div className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
-                                            <p className="mb-1 text-xs font-semibold text-[#888ea8]">Biyografi</p>
+                                            <p className="mb-1 text-xs font-semibold text-[#888ea8]">{t('teachers.bioSection')}</p>
                                             <p className="text-sm text-dark dark:text-white-light">{viewingTeacher.bio}</p>
                                         </div>
                                     )}
                                     {viewingTeacher.schools && viewingTeacher.schools.length > 0 && (
                                         <div>
-                                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Atanmış Okullar</p>
+                                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">{t('teachers.assignedSchools')}</p>
                                             <div className="flex flex-wrap gap-2">
                                                 {viewingTeacher.schools.map(s => (
                                                     <span key={s.id} className="rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">{s.name}</span>
@@ -945,7 +978,7 @@ export default function TeachersPage() {
                             {!loadingDetail && detailTab === 'education' && (
                                 <div className="space-y-3">
                                     {viewingTeacher.educations.length === 0 ? (
-                                        <EmptyState icon={<GraduationCap />} text="Eğitim bilgisi girilmemiş." />
+                                        <EmptyState icon={<GraduationCap />} text={t('teachers.noEducation')} />
                                     ) : viewingTeacher.educations.map(e => (
                                         <div key={e.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
                                             <div className="flex items-start justify-between">
@@ -956,7 +989,7 @@ export default function TeachersPage() {
                                                 <span className="text-xs text-[#888ea8] whitespace-nowrap">
                                                     {e.start_date ? new Date(e.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
                                                     {' — '}
-                                                    {e.is_current ? 'Devam Ediyor' : e.end_date ? new Date(e.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
+                                                    {e.is_current ? t('teachers.ongoing') : e.end_date ? new Date(e.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
                                                 </span>
                                             </div>
                                             {e.country && <p className="mt-1 text-xs text-[#888ea8]">{e.country.name}</p>}
@@ -969,7 +1002,7 @@ export default function TeachersPage() {
                             {!loadingDetail && detailTab === 'certificates' && (
                                 <div className="space-y-3">
                                     {viewingTeacher.certificates.length === 0 ? (
-                                        <EmptyState icon={<Award />} text="Onaylı sertifika bulunmuyor." />
+                                        <EmptyState icon={<Award />} text={t('teachers.noCertificate')} />
                                     ) : viewingTeacher.certificates.map(c => (
                                         <div key={c.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
                                             <div className="flex items-start justify-between">
@@ -983,7 +1016,7 @@ export default function TeachersPage() {
                                                 </span>
                                             </div>
                                             {c.credential_url && (
-                                                <a href={c.credential_url} target="_blank" rel="noreferrer" className="mt-1 text-xs text-primary hover:underline">Belgeyi Görüntüle →</a>
+                                                <a href={c.credential_url} target="_blank" rel="noreferrer" className="mt-1 text-xs text-primary hover:underline">{t('teachers.viewCredential')}</a>
                                             )}
                                             {c.description && <p className="mt-2 text-xs text-[#888ea8]">{c.description}</p>}
                                         </div>
@@ -994,17 +1027,17 @@ export default function TeachersPage() {
                             {!loadingDetail && detailTab === 'courses' && (
                                 <div className="space-y-3">
                                     {viewingTeacher.courses.length === 0 ? (
-                                        <EmptyState icon={<CourseIcon />} text="Onaylı kurs veya seminer bulunmuyor." />
+                                        <EmptyState icon={<CourseIcon />} text={t('teachers.noCourse')} />
                                     ) : viewingTeacher.courses.map(c => (
                                         <div key={c.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
                                             <div className="flex items-start justify-between">
                                                 <div>
                                                     <p className="font-semibold text-dark dark:text-white">{c.title}</p>
                                                     <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                                                        <span className="badge badge-outline-primary text-xs">{COURSE_TYPE_LABELS[c.type] ?? c.type}</span>
+                                                        <span className="badge badge-outline-primary text-xs">{getCourseTypeLabel(c.type)}</span>
                                                         {c.provider && <span className="text-xs text-[#888ea8]">{c.provider}</span>}
                                                         {c.is_online && <span className="badge badge-outline-info text-xs">Online</span>}
-                                                        {c.duration_hours && <span className="text-xs text-[#888ea8]">{c.duration_hours} saat</span>}
+                                                        {c.duration_hours && <span className="text-xs text-[#888ea8]">{c.duration_hours} {t('teachers.hoursUnit')}</span>}
                                                     </div>
                                                 </div>
                                                 <span className="text-xs text-[#888ea8] whitespace-nowrap">
@@ -1022,14 +1055,14 @@ export default function TeachersPage() {
                             {!loadingDetail && detailTab === 'skills' && (
                                 <div>
                                     {viewingTeacher.skills.length === 0 ? (
-                                        <EmptyState icon={<Zap />} text="Beceri bilgisi girilmemiş." />
+                                        <EmptyState icon={<Zap />} text={t('teachers.noSkill')} />
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
                                             {viewingTeacher.skills.map(s => (
                                                 <div key={s.id} className="flex items-center gap-1.5 rounded-full border border-[#ebedf2] px-3 py-1.5 dark:border-[#1b2e4b]">
                                                     <span className="text-sm font-medium text-dark dark:text-white">{s.name}</span>
                                                     <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${SKILL_LEVEL_BADGE[s.level] ?? 'bg-gray-100 text-gray-600'}`}>
-                                                        {SKILL_LEVEL_LABELS[s.level] ?? s.level}
+                                                        {getSkillLevelLabel(s.level)}
                                                     </span>
                                                 </div>
                                             ))}
@@ -1041,7 +1074,7 @@ export default function TeachersPage() {
                             {!loadingDetail && detailTab === 'blogs' && (
                                 <div className="space-y-3">
                                     {viewingTeacher.blog_posts.length === 0 ? (
-                                        <EmptyState icon={<FileText />} text="Henüz blog yazısı yok." />
+                                        <EmptyState icon={<FileText />} text={t('teachers.noBlog')} />
                                     ) : viewingTeacher.blog_posts.map(p => (
                                         <div key={p.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
                                             <div className="flex items-start justify-between gap-2">
@@ -1060,7 +1093,7 @@ export default function TeachersPage() {
                         </div>
 
                         <div className="border-t border-[#ebedf2] p-4 dark:border-[#1b2e4b]">
-                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setViewingTeacher(null)}>Kapat</button>
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setViewingTeacher(null)}>{t('teachers.closeBtn')}</button>
                         </div>
                     </div>
                 </div>
@@ -1092,14 +1125,6 @@ function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
     );
 }
 
-const COURSE_TYPE_LABELS: Record<string, string> = {
-    course: 'Kurs', seminar: 'Seminer', workshop: 'Atölye', conference: 'Konferans',
-    training: 'Eğitim', webinar: 'Webinar', other: 'Diğer',
-};
-
-const SKILL_LEVEL_LABELS: Record<string, string> = {
-    beginner: 'Başlangıç', intermediate: 'Orta', advanced: 'İleri', expert: 'Uzman',
-};
 
 const SKILL_LEVEL_BADGE: Record<string, string> = {
     beginner: 'bg-gray-100 text-gray-600',

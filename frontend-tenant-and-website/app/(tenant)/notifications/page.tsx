@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
 import { TenantNotification, School, SchoolClass } from '@/types';
 import { Bell, Send, CheckCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Tab = 'inbox' | 'send';
 
@@ -20,21 +21,6 @@ const emptyForm: SendForm = {
     school_id: '', class_id: '', type: 'announcement', title: '', body: '', priority: 'normal',
 };
 
-const NOTIFICATION_TYPES = [
-    { value: 'announcement', label: 'Duyuru' },
-    { value: 'event', label: 'Etkinlik' },
-    { value: 'activity', label: 'Aktivite' },
-    { value: 'meal', label: 'Yemek' },
-    { value: 'attendance', label: 'Devamsızlık' },
-    { value: 'material', label: 'İhtiyaç Listesi' },
-    { value: 'homework', label: 'Ödev' },
-    { value: 'general', label: 'Genel' },
-];
-
-const PRIORITY_LABELS: Record<string, string> = {
-    low: 'Düşük', normal: 'Normal', high: 'Yüksek', urgent: 'Acil',
-};
-
 const TYPE_BADGE_CLASS: Record<string, string> = {
     announcement: 'badge-outline-primary',
     event: 'badge-outline-info',
@@ -47,6 +33,7 @@ const TYPE_BADGE_CLASS: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<Tab>('inbox');
 
     // Inbox
@@ -62,6 +49,17 @@ export default function NotificationsPage() {
     const [form, setForm] = useState<SendForm>(emptyForm);
     const [sending, setSending] = useState(false);
 
+    const NOTIFICATION_TYPES = [
+        { value: 'announcement', label: t('notifications.typeAnnouncement') },
+        { value: 'event', label: t('notifications.typeEvent') },
+        { value: 'activity', label: t('notifications.typeActivity') },
+        { value: 'meal', label: t('notifications.typeMeal') },
+        { value: 'attendance', label: t('notifications.typeAttendance') },
+        { value: 'material', label: t('notifications.typeMaterial') },
+        { value: 'homework', label: t('notifications.typeHomework') },
+        { value: 'general', label: t('notifications.typeGeneral') },
+    ];
+
     const fetchNotifications = useCallback(async () => {
         setLoading(true);
         try {
@@ -69,7 +67,7 @@ export default function NotificationsPage() {
             setNotifications(res.data?.data ?? []);
             setLastPage(res.data?.meta?.last_page ?? 1);
         } catch {
-            toast.error('Bildirimler yüklenirken hata oluştu.');
+            toast.error(t('notifications.loadError'));
         } finally {
             setLoading(false);
         }
@@ -110,9 +108,9 @@ export default function NotificationsPage() {
         try {
             await apiClient.patch('/notifications/read-all');
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-            toast.success('Tüm bildirimler okundu olarak işaretlendi.');
+            toast.success(t('notifications.markAllSuccess'));
         } catch {
-            toast.error('İşlem başarısız.');
+            toast.error(t('notifications.markAllError'));
         } finally {
             setMarkingAll(false);
         }
@@ -131,11 +129,11 @@ export default function NotificationsPage() {
         };
         try {
             await apiClient.post('/notifications', payload);
-            toast.success('Bildirim başarıyla gönderildi.');
+            toast.success(t('notifications.sendSuccess'));
             setForm(prev => ({ ...emptyForm, school_id: prev.school_id }));
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Bildirim gönderilemedi.');
+            toast.error(error.response?.data?.message ?? t('notifications.sendError'));
         } finally {
             setSending(false);
         }
@@ -158,15 +156,15 @@ export default function NotificationsPage() {
 
     return (
         <div className="p-6">
-            <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">Bildirimler</h1>
+            <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">{t('notifications.title')}</h1>
 
             <div className="panel">
                 <div className="mb-4 flex gap-2 border-b border-[#ebedf2] dark:border-[#1b2e4b]">
-                    {tabBtn('inbox', `Gelen${unreadCount > 0 ? ` (${unreadCount})` : ''}`, <Bell className="h-4 w-4" />)}
-                    {tabBtn('send', 'Bildirim Gönder', <Send className="h-4 w-4" />)}
+                    {tabBtn('inbox', `${t('notifications.tabInbox')}${unreadCount > 0 ? ` (${unreadCount})` : ''}`, <Bell className="h-4 w-4" />)}
+                    {tabBtn('send', t('notifications.tabSend'), <Send className="h-4 w-4" />)}
                 </div>
 
-                {/* Gelen Bildirimler */}
+                {/* Inbox */}
                 {activeTab === 'inbox' && (
                     <>
                         {unreadCount > 0 && (
@@ -178,7 +176,7 @@ export default function NotificationsPage() {
                                     disabled={markingAll}
                                 >
                                     <CheckCheck className="h-4 w-4" />
-                                    {markingAll ? 'İşleniyor...' : 'Tümünü Okundu İşaretle'}
+                                    {markingAll ? t('notifications.processing') : t('notifications.markAllRead')}
                                 </button>
                             </div>
                         )}
@@ -190,7 +188,7 @@ export default function NotificationsPage() {
                         ) : notifications.length === 0 ? (
                             <div className="py-12 text-center text-[#515365] dark:text-[#888ea8]">
                                 <Bell className="mx-auto mb-3 h-10 w-10 opacity-30" />
-                                <p>Henüz bildirim yok.</p>
+                                <p>{t('notifications.noNotification')}</p>
                             </div>
                         ) : (
                             <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
@@ -203,7 +201,7 @@ export default function NotificationsPage() {
                                         <div className="min-w-0 flex-1">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className={`badge ${TYPE_BADGE_CLASS[n.type] ?? 'badge-outline-primary'} text-xs`}>
-                                                    {NOTIFICATION_TYPES.find(t => t.value === n.type)?.label ?? n.type}
+                                                    {NOTIFICATION_TYPES.find(nt => nt.value === n.type)?.label ?? n.type}
                                                 </span>
                                                 <span className="text-xs text-[#888ea8]">
                                                     {new Date(n.created_at).toLocaleString('tr-TR')}
@@ -220,7 +218,7 @@ export default function NotificationsPage() {
                                                 className="btn btn-xs btn-outline-secondary shrink-0"
                                                 onClick={() => markAsRead(n.id)}
                                             >
-                                                Okundu
+                                                {t('notifications.readBtn')}
                                             </button>
                                         )}
                                     </div>
@@ -242,21 +240,21 @@ export default function NotificationsPage() {
                     </>
                 )}
 
-                {/* Bildirim Gönder */}
+                {/* Send Notification */}
                 {activeTab === 'send' && (
                     <form onSubmit={handleSend} className="max-w-xl space-y-4">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Okul *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('notifications.schoolLabel')}</label>
                                 <select className="form-select mt-1" value={form.school_id} onChange={f('school_id')} required>
-                                    <option value="">Okul seçin</option>
+                                    <option value="">{t('notifications.selectSchool')}</option>
                                     {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Sınıf (İsteğe Bağlı)</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('notifications.classLabel')}</label>
                                 <select className="form-select mt-1" value={form.class_id} onChange={f('class_id')}>
-                                    <option value="">Tüm sınıflar</option>
+                                    <option value="">{t('notifications.allClasses')}</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
@@ -264,48 +262,51 @@ export default function NotificationsPage() {
 
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Bildirim Türü *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('notifications.typeLabel')}</label>
                                 <select className="form-select mt-1" value={form.type} onChange={f('type')}>
-                                    {NOTIFICATION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                    {NOTIFICATION_TYPES.map(nt => <option key={nt.value} value={nt.value}>{nt.label}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Öncelik</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('notifications.priorityLabel')}</label>
                                 <select className="form-select mt-1" value={form.priority} onChange={f('priority')}>
-                                    {Object.entries(PRIORITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                    <option value="low">{t('notifications.priorityLow')}</option>
+                                    <option value="normal">{t('notifications.priorityNormal')}</option>
+                                    <option value="high">{t('notifications.priorityHigh')}</option>
+                                    <option value="urgent">{t('notifications.priorityUrgent')}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">Başlık *</label>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('notifications.titleLabel')}</label>
                             <input
                                 type="text"
                                 className="form-input mt-1"
                                 value={form.title}
                                 onChange={f('title')}
                                 required
-                                placeholder="Bildirim başlığı..."
+                                placeholder={t('notifications.titlePlaceholder')}
                                 maxLength={255}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">Mesaj *</label>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('notifications.messageLabel')}</label>
                             <textarea
                                 className="form-input mt-1"
                                 rows={4}
                                 value={form.body}
                                 onChange={f('body')}
                                 required
-                                placeholder="Bildirim mesajını yazın..."
+                                placeholder={t('notifications.messagePlaceholder')}
                             />
                         </div>
 
                         <div className="pt-2">
                             <button type="submit" className="btn btn-primary gap-2" disabled={sending || !form.school_id}>
                                 <Send className="h-4 w-4" />
-                                {sending ? 'Gönderiliyor...' : 'Bildirimi Gönder'}
+                                {sending ? t('notifications.sending') : t('notifications.sendBtn')}
                             </button>
                         </div>
                     </form>
