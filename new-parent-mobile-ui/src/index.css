@@ -1,55 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-headline: "Plus Jakarta Sans", sans-serif;
-  --font-body: "Be Vietnam Pro", sans-serif;
+  --font-headline: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
 
   --color-primary: #2a6900;
+  --color-primary-dim: #235b00;
   --color-primary-container: #84fb42;
   --color-on-primary: #d5ffb9;
-  --color-primary-dim: #235b00;
-  
+  --color-on-primary-container: #245c00;
+
   --color-secondary: #00628c;
+  --color-secondary-dim: #00557a;
   --color-secondary-container: #a3d8ff;
   --color-on-secondary: #e9f4ff;
-  --color-secondary-dim: #00557a;
+  --color-on-secondary-container: #004c6e;
 
   --color-tertiary: #725800;
+  --color-tertiary-dim: #644c00;
   --color-tertiary-container: #fec700;
   --color-on-tertiary: #fff1d7;
-  --color-tertiary-dim: #644c00;
+  --color-on-tertiary-container: #574300;
 
   --color-surface: #f6f6f6;
   --color-surface-container: #e7e8e8;
   --color-surface-container-low: #f0f1f1;
   --color-surface-container-lowest: #ffffff;
-  --color-on-surface: #2d2f2f;
-  --color-on-surface-variant: #5a5c5c;
-  
+  --color-surface-container-high: #e1e3e3;
+  --color-surface-container-highest: #dbdddd;
+
   --color-error: #b02500;
+  --color-error-dim: #b92902;
   --color-error-container: #f95630;
   --color-on-error: #ffefec;
+  --color-on-error-container: #520c00;
+
+  --color-outline: #767777;
+  --color-outline-variant: #acadad;
+  --color-on-surface: #2d2f2f;
+  --color-on-surface-variant: #5a5c5c;
 }
 
 @layer base {
   body {
-    @apply bg-surface text-on-surface font-body;
+    @apply bg-surface font-body text-on-surface antialiased;
   }
 }
 
-.tactile-button {
-  @apply transition-all duration-100 active:translate-y-1 active:shadow-none;
-}
-
-.duo-shadow {
-  box-shadow: 0 4px 0 0 var(--tw-shadow-color);
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.custom-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+@layer components {
+  .tactile-button {
+    @apply transition-all duration-100 active:translate-y-1 active:shadow-none;
+  }
+  
+  .duo-button-shadow {
+    box-shadow: 0 4px 0 0 var(--tw-shadow-color);
+  }
 }

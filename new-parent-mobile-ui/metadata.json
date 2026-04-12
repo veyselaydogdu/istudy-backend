@@ -1,5 +1,5 @@
 {
-  "name": "iStudy",
-  "description": "Eğitimin en eğlenceli hali! Öğrenciler ve veliler için kapsamlı eğitim platformu.",
+  "name": "iStudy Parent App",
+  "description": "A comprehensive parent application for tracking student progress, activities, and communication with the school.",
   "requestFramePermissions": []
 }
