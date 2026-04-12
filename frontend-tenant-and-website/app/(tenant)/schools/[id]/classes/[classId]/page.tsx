@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -66,6 +67,7 @@ function calcAge(birthDate: string): number | null {
 // ── Ana bileşen ───────────────────────────────────────────────────────────────
 
 export default function ClassDetailPage() {
+    const { t } = useTranslation();
     const params = useParams();
     const schoolId = params.id as string;
     const classId = params.classId as string;
@@ -302,7 +304,7 @@ export default function ClassDetailPage() {
         const result = await Swal.fire({
             title: 'İhtiyaç Kalemini Sil', text: `"${item.name}" silinecek.`,
             icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) { return; }
@@ -411,7 +413,7 @@ export default function ClassDetailPage() {
             title: 'Menüden Çıkar',
             text: 'Bu yemek menüden kaldırılacak.',
             icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Evet, Kaldır', cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) { return; }
@@ -705,7 +707,7 @@ export default function ClassDetailPage() {
                                         disabled={savingAttendance}
                                     >
                                         <ClipboardList className="h-4 w-4" />
-                                        {savingAttendance ? 'Kaydediliyor...' : 'Yoklamayı Kaydet'}
+                                        {savingAttendance ? t('common.loading') : 'Yoklamayı Kaydet'}
                                     </button>
                                 </>
                             )}
@@ -1042,7 +1044,7 @@ export default function ClassDetailPage() {
                                         onClick={saveMenuEntry}
                                         disabled={savingMenu}
                                     >
-                                        {savingMenu ? 'Ekleniyor...' : 'Evet, Yine de Ekle'}
+                                        {savingMenu ? t('common.loading') : 'Evet, Yine de Ekle'}
                                     </button>
                                     <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowAllergenWarning(false)}>
                                         Geri Dön
@@ -1093,9 +1095,9 @@ export default function ClassDetailPage() {
                                 </div>
                                 <div className="flex gap-3 pt-2">
                                     <button type="submit" className="btn btn-primary flex-1" disabled={savingMenu}>
-                                        {savingMenu ? 'Ekleniyor...' : 'Menüye Ekle'}
+                                        {savingMenu ? t('common.loading') : 'Menüye Ekle'}
                                     </button>
-                                    <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMenuModal(false)}>İptal</button>
+                                    <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMenuModal(false)}>{t('common.cancel')}</button>
                                 </div>
                             </form>
                         )}
@@ -1154,9 +1156,9 @@ export default function ClassDetailPage() {
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingSupply}>
-                                    {savingSupply ? 'Kaydediliyor...' : (editingSupply ? 'Güncelle' : 'Ekle')}
+                                    {savingSupply ? t('common.loading') : (editingSupply ? 'Güncelle' : 'Ekle')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowSupplyModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowSupplyModal(false)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>

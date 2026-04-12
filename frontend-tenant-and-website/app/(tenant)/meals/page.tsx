@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
@@ -33,6 +34,7 @@ const RISK_BADGE: Record<string, string> = { low: 'badge-outline-success', mediu
 const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 export default function MealsPage() {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<Tab>('meals');
     const [schools, setSchools] = useState<School[]>([]);
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
@@ -243,7 +245,7 @@ export default function MealsPage() {
     const handleDeleteMeal = async (meal: Meal) => {
         const result = await Swal.fire({
             title: 'Yemeği Sil', text: `"${meal.name}" silinecek.`, icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal', confirmButtonColor: '#e7515a',
+            showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
@@ -306,7 +308,7 @@ export default function MealsPage() {
         if (!ing.is_custom) { toast.error('Global besin öğeleri silinemez.'); return; }
         const result = await Swal.fire({
             title: 'Besin Öğesi Sil', text: `"${capitalize(ing.name)}" silinecek.`, icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal', confirmButtonColor: '#e7515a',
+            showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
@@ -372,7 +374,7 @@ export default function MealsPage() {
         }
         const result = await Swal.fire({
             title: 'Allergeni Sil', text: `"${allergen.name}" silinecek.`, icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal', confirmButtonColor: '#e7515a',
+            showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
@@ -425,7 +427,7 @@ export default function MealsPage() {
         }
         const result = await Swal.fire({
             title: 'Tıbbi Durumu Sil', text: `"${c.name}" silinecek.`, icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal', confirmButtonColor: '#e7515a',
+            showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
@@ -452,7 +454,7 @@ export default function MealsPage() {
     const handleRejectSuggestion = async (type: 'allergen' | 'condition', id: number, name: string) => {
         const result = await Swal.fire({
             title: 'Öneriyi Reddet', text: `"${name}" önerisi reddedilecek.`, icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Reddet', cancelButtonText: 'İptal', confirmButtonColor: '#e7515a',
+            showCancelButton: true, confirmButtonText: 'Reddet', cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
@@ -499,7 +501,7 @@ export default function MealsPage() {
     const handleDeleteMealType = async (mt: SchoolMealType) => {
         const result = await Swal.fire({
             title: 'Öğün Türünü Sil', text: `"${mt.name}" silinecek.`, icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Evet, Sil', cancelButtonText: 'İptal', confirmButtonColor: '#e7515a',
+            showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
@@ -535,7 +537,7 @@ export default function MealsPage() {
 
     return (
         <div className="p-6">
-            <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">Yemek Yönetimi</h1>
+            <h1 className="mb-6 text-2xl font-bold text-dark dark:text-white">{t('meals.title')}</h1>
 
             <div className="panel">
                 <div className="mb-4 flex flex-wrap gap-2 border-b border-[#ebedf2] dark:border-[#1b2e4b]">
@@ -549,7 +551,7 @@ export default function MealsPage() {
                 {/* Okul seçici — Yemekler ve Öğün Türleri tabları için */}
                 {(activeTab === 'meals' || activeTab === 'meal-types') && (
                     <div className="mb-4">
-                        <label className="block text-sm font-medium text-dark dark:text-white-light">Okul</label>
+                        <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.schoolLabel') || 'Okul'}</label>
                         <select
                             className="form-select mt-1 max-w-xs"
                             value={selectedSchoolId}
@@ -668,10 +670,10 @@ export default function MealsPage() {
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Besin Öğesi</th>
-                                            <th>Allerjenler</th>
-                                            <th>Tür</th>
-                                            <th>İşlemler</th>
+                                            <th>{t('meals.ingredientCol') || 'Besin Öğesi'}</th>
+                                            <th>{t('meals.allergenCol') || 'Allerjenler'}</th>
+                                            <th>{t('meals.typeCol') || 'Tür'}</th>
+                                            <th>{t('common.actions') || 'İşlemler'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -758,7 +760,7 @@ export default function MealsPage() {
                                     <>
                                         {globalAllergens.length > 0 && (
                                             <div className="mb-6">
-                                                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Global Allerjenler</h3>
+                                                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">{t('meals.globalAllergens')}</h3>
                                                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                                     {globalAllergens.map(a => (
                                                         <div key={a.id} className="flex items-center justify-between rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
@@ -1033,8 +1035,8 @@ export default function MealsPage() {
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Öğün Türü</th>
-                                            <th>Sıra</th>
+                                            <th>{t('meals.mealType') || 'Öğün Türü'}</th>
+                                            <th>{t('common.order') || 'Sıra'}</th>
                                             <th>İşlemler</th>
                                         </tr>
                                     </thead>
@@ -1075,7 +1077,7 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleMealSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Yemek Adı *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.mealName') || 'Yemek Adı'} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1084,7 +1086,7 @@ export default function MealsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Öğün Türü</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.mealType') || 'Öğün Türü'}</label>
                                 <select
                                     className="form-select mt-1"
                                     value={mealForm.meal_type}
@@ -1210,9 +1212,9 @@ export default function MealsPage() {
 
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingMeal}>
-                                    {savingMeal ? 'Kaydediliyor...' : (editingMeal ? 'Güncelle' : 'Kaydet')}
+                                    {savingMeal ? t('common.loading') : (editingMeal ? 'Güncelle' : 'Kaydet')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMealModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMealModal(false)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>
@@ -1233,7 +1235,7 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleIngredientSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Ad *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name') || 'Ad'} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1310,9 +1312,9 @@ export default function MealsPage() {
 
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingIngredient}>
-                                    {savingIngredient ? 'Kaydediliyor...' : (editingIngredient ? 'Güncelle' : 'Kaydet')}
+                                    {savingIngredient ? t('common.loading') : (editingIngredient ? 'Güncelle' : 'Kaydet')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowIngredientModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowIngredientModal(false)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>
@@ -1333,7 +1335,7 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleAllergenSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Ad *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name') || 'Ad'} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1342,7 +1344,7 @@ export default function MealsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Açıklama</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.description') || 'Açıklama'}</label>
                                 <textarea
                                     className="form-input mt-1"
                                     rows={2}
@@ -1365,9 +1367,9 @@ export default function MealsPage() {
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingAllergen}>
-                                    {savingAllergen ? 'Kaydediliyor...' : (editingAllergen ? 'Güncelle' : 'Kaydet')}
+                                    {savingAllergen ? t('common.loading') : (editingAllergen ? 'Güncelle' : 'Kaydet')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowAllergenModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowAllergenModal(false)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>
@@ -1388,7 +1390,7 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleConditionSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Ad *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name') || 'Ad'} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1397,7 +1399,7 @@ export default function MealsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Açıklama</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.description') || 'Açıklama'}</label>
                                 <textarea
                                     className="form-input mt-1"
                                     rows={2}
@@ -1407,9 +1409,9 @@ export default function MealsPage() {
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingCondition}>
-                                    {savingCondition ? 'Kaydediliyor...' : (editingCondition ? 'Güncelle' : 'Kaydet')}
+                                    {savingCondition ? t('common.loading') : (editingCondition ? 'Güncelle' : 'Kaydet')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowConditionModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowConditionModal(false)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>
@@ -1430,7 +1432,7 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleMealTypeSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Ad *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name') || 'Ad'} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1441,9 +1443,9 @@ export default function MealsPage() {
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingMealType}>
-                                    {savingMealType ? 'Kaydediliyor...' : (editingMealType ? 'Güncelle' : 'Kaydet')}
+                                    {savingMealType ? t('common.loading') : (editingMealType ? 'Güncelle' : 'Kaydet')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMealTypeModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMealTypeModal(false)}>{t('common.cancel')}</button>
                             </div>
                         </form>
                     </div>

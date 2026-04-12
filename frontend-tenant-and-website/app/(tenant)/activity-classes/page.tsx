@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { ActivityClass, School, SchoolClass } from '@/types';
 import { Plus, Trash2, Edit2, Eye, Users, Star, DollarSign } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type ActivityClassForm = {
     name: string;
@@ -40,6 +41,7 @@ const emptyForm: ActivityClassForm = {
 };
 
 export default function ActivityClassesPage() {
+    const { t } = useTranslation();
     const [schools, setSchools] = useState<School[]>([]);
     const [filterSchoolId, setFilterSchoolId] = useState('');
     const [formSchoolId, setFormSchoolId] = useState('');
@@ -160,10 +162,10 @@ export default function ActivityClassesPage() {
 
     const handleDelete = async (ac: ActivityClass) => {
         const result = await Swal.fire({
-            title: 'Etkinlik sınıfını sil?',
+            title: t('swal.deleteTitle') || 'Etkinlik sınıfını sil?',
             text: `"${ac.name}" silinecek. Bu işlem geri alınamaz.`,
             icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Evet, sil', cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
@@ -189,11 +191,11 @@ export default function ActivityClassesPage() {
         <div className="p-4">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-[#3b3f5c] dark:text-white">Etkinlik Sınıfları</h1>
-                    <p className="text-sm text-[#888ea8] mt-1">Okul etkinlik sınıflarını yönetin</p>
+                    <h1 className="text-2xl font-bold text-[#3b3f5c] dark:text-white">{t('activityClasses.title') || 'Etkinlik Sınıfları'}</h1>
+                    <p className="text-sm text-[#888ea8] mt-1">{t('activityClasses.subtitle') || 'Okul etkinlik sınıflarını yönetin'}</p>
                 </div>
                 <button type="button" onClick={openCreate} className="btn btn-primary flex items-center gap-2">
-                    <Plus className="h-4 w-4" /> Yeni Etkinlik Sınıfı
+                    <Plus className="h-4 w-4" /> {t('activityClasses.addBtn') || 'Yeni Etkinlik Sınıfı'}
                 </button>
             </div>
 
@@ -204,7 +206,7 @@ export default function ActivityClassesPage() {
                     value={filterSchoolId}
                     onChange={e => setFilterSchoolId(e.target.value)}
                 >
-                    <option value="">Tüm Okullar</option>
+                    <option value="">{t('activityClasses.allSchools') || 'Tüm Okullar'}</option>
                     {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
             </div>
@@ -218,9 +220,9 @@ export default function ActivityClassesPage() {
                 ) : activityClasses.length === 0 ? (
                     <div className="text-center py-16 text-[#888ea8]">
                         <Star className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                        <p>Henüz etkinlik sınıfı yok.</p>
+                        <p>{t('activityClasses.noClass') || 'Henüz etkinlik sınıfı yok.'}</p>
                         <button type="button" onClick={openCreate} className="btn btn-primary mt-4">
-                            <Plus className="h-4 w-4 mr-2" /> İlk Etkinlik Sınıfını Oluştur
+                            <Plus className="h-4 w-4 mr-2" /> {t('activityClasses.addBtn') || 'İlk Etkinlik Sınıfını Oluştur'}
                         </button>
                     </div>
                 ) : (
@@ -229,16 +231,16 @@ export default function ActivityClassesPage() {
                             <table className="table-hover">
                                 <thead>
                                     <tr>
-                                        <th>İsim</th>
-                                        <th>Okul</th>
-                                        <th>Dil</th>
-                                        <th>Yaş</th>
-                                        <th>Kapasite</th>
+                                        <th>{t('activityClasses.nameLabel').replace(' *','') || 'İsim'}</th>
+                                        <th>{t('activityClasses.schoolLabel').split(' (')[0] || 'Okul'}</th>
+                                        <th>{t('activityClasses.languageLabel') || 'Dil'}</th>
+                                        <th>{t('activityClasses.ageMinLabel').replace('Min ', '') || 'Yaş'}</th>
+                                        <th>{t('activityClasses.capacityLabel') || 'Kapasite'}</th>
                                         <th>Kayıt</th>
-                                        <th>Ücret</th>
-                                        <th>Tarih</th>
-                                        <th>Durum</th>
-                                        <th>İşlem</th>
+                                        <th>{t('activityClasses.priceLabel') || 'Ücret'}</th>
+                                        <th>{t('activityClasses.startDateLabel').replace('Başlangıç ','') || 'Tarih'}</th>
+                                        <th>{t('common.status') || 'Durum'}</th>
+                                        <th>{t('common.action') || 'İşlem'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -298,13 +300,13 @@ export default function ActivityClassesPage() {
                                             </td>
                                             <td>
                                                 <div className="flex items-center gap-2">
-                                                    <Link href={`/activity-classes/${ac.id}`} className="btn btn-sm btn-outline-primary p-2" title="Detay">
+                                                    <Link href={`/activity-classes/${ac.id}`} className="btn btn-sm btn-outline-primary p-2" title={t('common.details')}>
                                                         <Eye className="h-4 w-4" />
                                                     </Link>
-                                                    <button type="button" onClick={() => openEdit(ac)} className="btn btn-sm btn-outline-info p-2" title="Düzenle">
+                                                    <button type="button" onClick={() => openEdit(ac)} className="btn btn-sm btn-outline-info p-2" title={t('common.edit')}>
                                                         <Edit2 className="h-4 w-4" />
                                                     </button>
-                                                    <button type="button" onClick={() => handleDelete(ac)} className="btn btn-sm btn-outline-danger p-2" title="Sil">
+                                                    <button type="button" onClick={() => handleDelete(ac)} className="btn btn-sm btn-outline-danger p-2" title={t('common.delete')}>
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 </div>
@@ -332,7 +334,7 @@ export default function ActivityClassesPage() {
                     <div className="bg-white dark:bg-[#1b2e4b] rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-5 border-b dark:border-[#1b2e4b]">
                             <h3 className="text-lg font-bold text-[#3b3f5c] dark:text-white">
-                                {editing ? 'Etkinlik Sınıfını Düzenle' : 'Yeni Etkinlik Sınıfı'}
+                                {editing ? t('activityClasses.editModalTitle') || 'Etkinlik Sınıfını Düzenle' : t('activityClasses.addModalTitle') || 'Yeni Etkinlik Sınıfı'}
                             </h3>
                             <button type="button" onClick={() => setShowModal(false)} className="text-[#888ea8] hover:text-red-500">✕</button>
                         </div>
@@ -340,7 +342,7 @@ export default function ActivityClassesPage() {
                         <div className="p-5 space-y-4">
                             {/* Okul Seçimi (opsiyonel) */}
                             <div>
-                                <label className="text-sm font-medium">Okul <span className="text-[#888ea8] font-normal">(opsiyonel — seçilmezse tüm okullarda geçerli olur)</span></label>
+                                <label className="text-sm font-medium">{t('activityClasses.schoolLabel') || 'Okul (opsiyonel)'}</label>
                                 <select
                                     className="form-select mt-1 w-full"
                                     value={formSchoolId}
@@ -351,7 +353,7 @@ export default function ActivityClassesPage() {
                                         fetchFormSchoolClasses(val);
                                     }}
                                 >
-                                    <option value="">Tüm Okullar (Tenant Geneli)</option>
+                                    <option value="">{t('activityClasses.selectSchool') || 'Tüm Okullar (Tenant Geneli)'}</option>
                                     {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             </div>
@@ -359,16 +361,16 @@ export default function ActivityClassesPage() {
                             {/* İsim & Dil */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-sm font-medium">İsim *</label>
+                                    <label className="text-sm font-medium">{t('activityClasses.nameLabel') || 'İsim *'}</label>
                                     <input
                                         className="form-input mt-1 w-full"
-                                        placeholder="Etkinlik sınıfı adı"
+                                        placeholder=""
                                         value={form.name}
                                         onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium">Dil</label>
+                                    <label className="text-sm font-medium">{t('activityClasses.languageLabel') || 'Dil'}</label>
                                     <select className="form-select mt-1 w-full" value={form.language} onChange={e => setForm(prev => ({ ...prev, language: e.target.value }))}>
                                         <option value="tr">Türkçe</option>
                                         <option value="en">İngilizce</option>
@@ -382,7 +384,7 @@ export default function ActivityClassesPage() {
 
                             {/* Açıklama */}
                             <div>
-                                <label className="text-sm font-medium">Açıklama</label>
+                                <label className="text-sm font-medium">{t('activityClasses.descriptionLabel') || 'Açıklama'}</label>
                                 <textarea
                                     className="form-textarea mt-1 w-full"
                                     rows={3}
@@ -395,7 +397,7 @@ export default function ActivityClassesPage() {
                             {/* Yaş aralığı & Kapasite */}
                             <div className="grid grid-cols-3 gap-4">
                                 <div>
-                                    <label className="text-sm font-medium">Min Yaş</label>
+                                    <label className="text-sm font-medium">{t('activityClasses.ageMinLabel') || 'Min Yaş'}</label>
                                     <input
                                         type="number" min={0} max={18} className="form-input mt-1 w-full"
                                         placeholder="0"
@@ -404,7 +406,7 @@ export default function ActivityClassesPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium">Max Yaş</label>
+                                    <label className="text-sm font-medium">{t('activityClasses.ageMaxLabel') || 'Max Yaş'}</label>
                                     <input
                                         type="number" min={0} max={18} className="form-input mt-1 w-full"
                                         placeholder="18"
@@ -413,10 +415,10 @@ export default function ActivityClassesPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium">Kapasite</label>
+                                    <label className="text-sm font-medium">{t('activityClasses.capacityLabel') || 'Kapasite'}</label>
                                     <input
                                         type="number" min={1} className="form-input mt-1 w-full"
-                                        placeholder="Sınırsız"
+                                        placeholder=""
                                         value={form.capacity}
                                         onChange={e => setForm(prev => ({ ...prev, capacity: e.target.value }))}
                                     />
@@ -426,21 +428,21 @@ export default function ActivityClassesPage() {
                             {/* Tarihler & Program */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-sm font-medium">Başlangıç Tarihi</label>
+                                    <label className="text-sm font-medium">{t('activityClasses.startDateLabel') || 'Başlangıç Tarihi'}</label>
                                     <input type="date" className="form-input mt-1 w-full" value={form.start_date} onChange={e => setForm(prev => ({ ...prev, start_date: e.target.value }))} />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium">Bitiş Tarihi</label>
+                                    <label className="text-sm font-medium">{t('activityClasses.endDateLabel') || 'Bitiş Tarihi'}</label>
                                     <input type="date" className="form-input mt-1 w-full" value={form.end_date} onChange={e => setForm(prev => ({ ...prev, end_date: e.target.value }))} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-sm font-medium">Program (Gün/Saat)</label>
-                                    <input className="form-input mt-1 w-full" placeholder="Örn: Pazartesi 14:00-15:00" value={form.schedule} onChange={e => setForm(prev => ({ ...prev, schedule: e.target.value }))} />
+                                    <label className="text-sm font-medium">{t('activityClasses.scheduleLabel') || 'Program (Gün/Saat)'}</label>
+                                    <input className="form-input mt-1 w-full" placeholder="" value={form.schedule} onChange={e => setForm(prev => ({ ...prev, schedule: e.target.value }))} />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium">Konum</label>
+                                    <label className="text-sm font-medium">{t('activityClasses.locationLabel') || 'Konum'}</label>
                                     <input className="form-input mt-1 w-full" placeholder="Derslik, salon..." value={form.location} onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))} />
                                 </div>
                             </div>
@@ -534,9 +536,9 @@ export default function ActivityClassesPage() {
                         </div>
 
                         <div className="flex justify-end gap-3 p-5 border-t dark:border-[#1b2e4b]">
-                            <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline-danger" disabled={saving}>İptal</button>
+                            <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline-danger" disabled={saving}>{t('common.cancel')}</button>
                             <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary">
-                                {saving ? 'Kaydediliyor...' : (editing ? 'Güncelle' : 'Oluştur')}
+                                {saving ? t('common.loading') : (editing ? t('common.update') : 'Oluştur')}
                             </button>
                         </div>
                     </div>

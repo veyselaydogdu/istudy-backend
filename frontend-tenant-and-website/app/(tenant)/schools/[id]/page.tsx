@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -39,6 +40,7 @@ const ICON_CATEGORIES = [
 ];
 
 export default function SchoolDetailPage() {
+    const { t } = useTranslation();
     const params = useParams();
     const id = params.id as string;
 
@@ -257,7 +259,7 @@ export default function SchoolDetailPage() {
             text: `"${selectedChild.full_name}" adlı öğrenciyi "${className}" sınıfından çıkarmak istediğinize emin misiniz?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Çıkar',
+            confirmButtonText: t('swal.confirmRemove') || 'Evet, Çıkar',
             cancelButtonText: 'İptal',
             confirmButtonColor: '#e7515a',
         });
@@ -306,7 +308,7 @@ export default function SchoolDetailPage() {
             text: `"${child.first_name} ${child.last_name}" adlı öğrenciyi okuldan çıkarmak istediğinize emin misiniz? İstatistikler korunacaktır.`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Çıkar',
+            confirmButtonText: t('swal.confirmRemove') || 'Evet, Çıkar',
             cancelButtonText: 'İptal',
             confirmButtonColor: '#e7515a',
         });
@@ -326,7 +328,7 @@ export default function SchoolDetailPage() {
             text: `"${teacher.name}" adlı öğretmeni okuldan çıkarmak istediğinize emin misiniz?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Çıkar',
+            confirmButtonText: t('swal.confirmRemove') || 'Evet, Çıkar',
             cancelButtonText: 'İptal',
             confirmButtonColor: '#e7515a',
         });
@@ -429,7 +431,7 @@ export default function SchoolDetailPage() {
             text: 'Çocuk tüm sınıflardan çıkarılacak ve kaydı silinecek. Bu işlem geri alınamaz.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Sil',
+            confirmButtonText: t('swal.confirmDelete') || 'Evet, Sil',
             cancelButtonText: 'İptal',
             confirmButtonColor: '#e7515a',
         });
@@ -475,7 +477,7 @@ export default function SchoolDetailPage() {
             text: 'Bu kayıt talebini onaylamak istediğinize emin misiniz? Veli için hesap oluşturulacak.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Onayla',
+            confirmButtonText: t('swal.confirmApprove') || 'Evet, Onayla',
             cancelButtonText: 'İptal',
             confirmButtonColor: '#00ab55',
         });
@@ -735,7 +737,7 @@ export default function SchoolDetailPage() {
             text: `"${cls.name}" sınıfını silmek istediğinize emin misiniz?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Sil',
+            confirmButtonText: t('swal.confirmDelete') || 'Evet, Sil',
             cancelButtonText: 'İptal',
             confirmButtonColor: '#e7515a',
         });
@@ -2002,7 +2004,7 @@ export default function SchoolDetailPage() {
                                 >
                                     {savingChildReject ? 'Reddediliyor...' : 'Reddet'}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectChildModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectChildModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
                         </div>
                     </div>
@@ -2262,7 +2264,7 @@ export default function SchoolDetailPage() {
                                 >
                                     {assigningStudentToClass ? 'Atanıyor...' : 'Ata'}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassStudentModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassStudentModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
                         </div>
                     </div>
@@ -2308,7 +2310,7 @@ export default function SchoolDetailPage() {
                                 >
                                     {assigningChildToClass ? 'Atanıyor...' : 'Ata'}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassAssignModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassAssignModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
                         </div>
                     </div>
@@ -2529,7 +2531,7 @@ export default function SchoolDetailPage() {
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingClass}>
                                     {savingClass ? 'Kaydediliyor...' : (editingClass ? 'Güncelle' : 'Kaydet')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
                         </form>
                     </div>
@@ -2654,7 +2656,7 @@ export default function SchoolDetailPage() {
                                 >
                                     {savingReject ? 'Reddediliyor...' : 'Reddet'}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectModal(false)}>İptal</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
                         </div>
                     </div>
