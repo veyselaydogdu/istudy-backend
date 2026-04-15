@@ -30,13 +30,13 @@ const CLASS_ICONS = [
     '🎈', '🎉', '🎁', '🎊', '🎀', '🏆', '🥇', '💎', '🔮', '🎯',
 ];
 
-const ICON_CATEGORIES = [
-    { label: 'Doğa', icons: ['🌟', '⭐', '🌈', '☀️', '🌙', '🌸', '🌺', '🌻', '🌼', '🍀'] },
-    { label: 'Hayvanlar', icons: ['🦋', '🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐨', '🐸', '🦁', '🐬', '🦒', '🦄', '🐠', '🦜', '🦅', '🐣', '🐥', '🦔', '🐞'] },
-    { label: 'Meyveler', icons: ['🍎', '🍓', '🍊', '🍋', '🍇', '🍒', '🍑', '🍌', '🥝', '🍉'] },
-    { label: 'Sanat & Müzik', icons: ['✏️', '📚', '🎨', '🎵', '🎸', '🎺', '🎻', '🥁', '🎤', '🎭'] },
-    { label: 'Macera', icons: ['🚀', '✈️', '🚂', '⛵', '🏠', '🏰', '⛄', '🌊', '🏖️', '🎠'] },
-    { label: 'Kutlama', icons: ['🎈', '🎉', '🎁', '🎊', '🎀', '🏆', '🥇', '💎', '🔮', '🎯'] },
+const ICON_CATEGORIES_KEYS = [
+    { labelKey: 'schools.detail.iconCatNature', icons: ['🌟', '⭐', '🌈', '☀️', '🌙', '🌸', '🌺', '🌻', '🌼', '🍀'] },
+    { labelKey: 'schools.detail.iconCatAnimals', icons: ['🦋', '🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐨', '🐸', '🦁', '🐬', '🦒', '🦄', '🐠', '🦜', '🦅', '🐣', '🐥', '🦔', '🐞'] },
+    { labelKey: 'schools.detail.iconCatFruits', icons: ['🍎', '🍓', '🍊', '🍋', '🍇', '🍒', '🍑', '🍌', '🥝', '🍉'] },
+    { labelKey: 'schools.detail.iconCatArtMusic', icons: ['✏️', '📚', '🎨', '🎵', '🎸', '🎺', '🎻', '🥁', '🎤', '🎭'] },
+    { labelKey: 'schools.detail.iconCatAdventure', icons: ['🚀', '✈️', '🚂', '⛵', '🏠', '🏰', '⛄', '🌊', '🏖️', '🎠'] },
+    { labelKey: 'schools.detail.iconCatCelebration', icons: ['🎈', '🎉', '🎁', '🎊', '🎀', '🏆', '🥇', '💎', '🔮', '🎯'] },
 ];
 
 export default function SchoolDetailPage() {
@@ -199,7 +199,7 @@ export default function SchoolDetailPage() {
                 setParentsFetched(true);
             }
         } catch {
-            toast.error('Okul bilgileri yüklenemedi.');
+            toast.error(t('schools.detail.loadError'));
         } finally {
             setLoading(false);
         }
@@ -214,7 +214,7 @@ export default function SchoolDetailPage() {
             await apiClient.post(`/schools/${id}/classes/${selectedClassIdForAssign}/children`, {
                 child_id: selectedChild.id,
             });
-            toast.success('Öğrenci sınıfa atandı.');
+            toast.success(t('schools.detail.studentAssignedToClass'));
             setShowClassAssignModal(false);
             setSelectedClassIdForAssign('');
             // Çocuk detayını yenile
@@ -222,7 +222,7 @@ export default function SchoolDetailPage() {
             setSelectedChild(res.data?.data ?? null);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Atama başarısız.');
+            toast.error(error.response?.data?.message ?? t('schools.detail.studentAssignError'));
         } finally {
             setAssigningChildToClass(false);
         }
@@ -241,12 +241,12 @@ export default function SchoolDetailPage() {
             await apiClient.post(`/schools/${id}/classes/${classForStudentAssign.id}/children`, {
                 child_id: Number(studentAssignChildId),
             });
-            toast.success('Öğrenci sınıfa atandı.');
+            toast.success(t('schools.detail.studentAssignedToClass'));
             setShowClassStudentModal(false);
             loadData();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Atama başarısız.');
+            toast.error(error.response?.data?.message ?? t('schools.detail.studentAssignError'));
         } finally {
             setAssigningStudentToClass(false);
         }
@@ -255,22 +255,22 @@ export default function SchoolDetailPage() {
     const handleRemoveChildFromClass = async (classId: number, className: string) => {
         if (!selectedChild) return;
         const result = await Swal.fire({
-            title: 'Sınıftan Çıkar',
-            text: `"${selectedChild.full_name}" adlı öğrenciyi "${className}" sınıfından çıkarmak istediğinize emin misiniz?`,
+            title: t('schools.detail.removeFromClassTitle'),
+            text: t('schools.detail.removeFromClassText').replace('{name}', selectedChild.full_name).replace('{class}', className),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: t('swal.confirmRemove') || 'Evet, Çıkar',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('schools.detail.removeFromClassConfirm'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/schools/${id}/classes/${classId}/children/${selectedChild.id}`);
-            toast.success('Öğrenci sınıftan çıkarıldı.');
+            toast.success(t('schools.detail.removeFromClassSuccess'));
             const res = await apiClient.get(`/schools/${id}/children/${selectedChild.id}`);
             setSelectedChild(res.data?.data ?? null);
         } catch {
-            toast.error('İşlem başarısız.');
+            toast.error(t('schools.detail.operationFailed'));
         }
     };
 
@@ -281,7 +281,7 @@ export default function SchoolDetailPage() {
             const res = await apiClient.get(`/schools/${id}/children/${childId}`);
             setSelectedChild(res.data?.data ?? null);
         } catch {
-            toast.error('Öğrenci detayı yüklenemedi.');
+            toast.error(t('schools.detail.childDetailLoadError'));
         } finally {
             setLoadingChildDetail(false);
         }
@@ -294,7 +294,7 @@ export default function SchoolDetailPage() {
             setSchoolLevelTeachers(res.data?.data ?? []);
             setTeachersFetched(true);
         } catch {
-            toast.error('Öğretmenler yüklenemedi.');
+            toast.error(t('schools.detail.teachersLoadError'));
         } finally {
             setLoadingSchoolTeachers(false);
         }
@@ -304,41 +304,41 @@ export default function SchoolDetailPage() {
     const handleUnenrollChild = async (child: Child, e: React.MouseEvent) => {
         e.stopPropagation();
         const result = await Swal.fire({
-            title: 'Öğrenciyi Çıkar',
-            text: `"${child.first_name} ${child.last_name}" adlı öğrenciyi okuldan çıkarmak istediğinize emin misiniz? İstatistikler korunacaktır.`,
+            title: t('schools.detail.unenrollTitle'),
+            text: t('schools.detail.unenrollText').replace('{name}', `${child.first_name} ${child.last_name}`),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: t('swal.confirmRemove') || 'Evet, Çıkar',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('schools.detail.unenrollConfirm'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.patch(`/schools/${id}/children/${child.id}/unenroll`);
-            toast.success('Öğrenci okuldan çıkarıldı.');
+            toast.success(t('schools.detail.unenrollSuccess'));
             setChildren((prev) => prev.filter((c) => c.id !== child.id));
         } catch {
-            toast.error('İşlem başarısız.');
+            toast.error(t('schools.detail.operationFailed'));
         }
     };
 
     const handleRemoveTeacherFromSchool = async (teacher: SchoolTeacher) => {
         const result = await Swal.fire({
-            title: 'Öğretmeni Çıkar',
-            text: `"${teacher.name}" adlı öğretmeni okuldan çıkarmak istediğinize emin misiniz?`,
+            title: t('schools.detail.removeTeacherFromSchoolTitle'),
+            text: t('schools.detail.removeTeacherFromSchoolText').replace('{name}', teacher.name),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: t('swal.confirmRemove') || 'Evet, Çıkar',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('schools.detail.removeTeacherConfirm'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/schools/${id}/teachers/${teacher.id}`);
-            toast.success('Öğretmen okuldan çıkarıldı.');
+            toast.success(t('schools.detail.removeTeacherFromSchoolSuccess'));
             fetchSchoolLevelTeachers();
         } catch {
-            toast.error('İşlem başarısız.');
+            toast.error(t('schools.detail.operationFailed'));
         }
     };
 
@@ -352,7 +352,7 @@ export default function SchoolDetailPage() {
             setRequestsMeta(res.data?.meta ?? { current_page: 1, last_page: 1 });
             setRequestsFetched(true);
         } catch {
-            toast.error('Kayıt talepleri yüklenemedi.');
+            toast.error(t('schools.detail.requestsLoadError'));
         } finally {
             setLoadingRequests(false);
         }
@@ -365,7 +365,7 @@ export default function SchoolDetailPage() {
             setParents(res.data?.data ?? []);
             setParentsFetched(true);
         } catch {
-            toast.error('Veliler yüklenemedi.');
+            toast.error(t('schools.detail.parentsLoadError'));
         } finally {
             setLoadingParents(false);
         }
@@ -381,7 +381,7 @@ export default function SchoolDetailPage() {
             setChildRequestsMeta(res.data?.meta ?? { current_page: 1, last_page: 1 });
             setChildRequestsFetched(true);
         } catch {
-            toast.error('Çocuk kayıt talepleri yüklenemedi.');
+            toast.error(t('schools.detail.childRequestsLoadError'));
         } finally {
             setLoadingChildRequests(false);
         }
@@ -421,28 +421,28 @@ export default function SchoolDetailPage() {
             setRemovalRequests(res.data?.data ?? []);
             setRemovalRequestsFetched(true);
         } catch {
-            toast.error('Silme talepleri yüklenemedi.');
+            toast.error(t('schools.detail.removalRequestsLoadError'));
         }
     };
 
     const handleApproveRemoval = async (requestId: number) => {
         const result = await Swal.fire({
-            title: 'Silme Talebini Onayla',
-            text: 'Çocuk tüm sınıflardan çıkarılacak ve kaydı silinecek. Bu işlem geri alınamaz.',
+            title: t('schools.detail.approveRemovalTitle'),
+            text: t('schools.detail.approveRemovalText'),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: t('swal.confirmDelete') || 'Evet, Sil',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.patch(`/schools/${id}/child-removal-requests/${requestId}/approve`);
-            toast.success('Talep onaylandı ve çocuk kaydı silindi.');
+            toast.success(t('schools.detail.approveRemovalSuccess'));
             void fetchRemovalRequests(removalRequestsFilter);
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(e.response?.data?.message ?? t('schools.detail.errorOccurred'));
         }
     };
 
@@ -453,14 +453,14 @@ export default function SchoolDetailPage() {
             await apiClient.patch(`/schools/${id}/child-removal-requests/${rejectRemovalTargetId}/reject`, {
                 rejection_reason: rejectionRemovalReason.trim(),
             });
-            toast.success('Talep reddedildi.');
+            toast.success(t('schools.detail.rejectEnrollmentSuccess'));
             setShowRejectRemovalModal(false);
             setRejectionRemovalReason('');
             setRejectRemovalTargetId(null);
             void fetchRemovalRequests(removalRequestsFilter);
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(e.response?.data?.message ?? t('schools.detail.errorOccurred'));
         } finally {
             setSavingRemovalReject(false);
         }
@@ -473,22 +473,22 @@ export default function SchoolDetailPage() {
 
     const handleApprove = async (requestId: number) => {
         const result = await Swal.fire({
-            title: 'Talebi Onayla',
-            text: 'Bu kayıt talebini onaylamak istediğinize emin misiniz? Veli için hesap oluşturulacak.',
+            title: t('schools.detail.approveEnrollmentTitle'),
+            text: t('schools.detail.approveEnrollmentText'),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: t('swal.confirmApprove') || 'Evet, Onayla',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmApprove'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#00ab55',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.patch(`/schools/${id}/enrollment-requests/${requestId}/approve`);
-            toast.success('Talep onaylandı. Veli hesabı oluşturuldu.');
+            toast.success(t('schools.detail.approveEnrollmentSuccess'));
             fetchEnrollmentRequests(requestsFilter);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Onaylama başarısız.');
+            toast.error(error.response?.data?.message ?? t('schools.detail.approveEnrollmentError'));
         }
     };
 
@@ -505,12 +505,12 @@ export default function SchoolDetailPage() {
             await apiClient.patch(`/schools/${id}/enrollment-requests/${rejectTargetId}/reject`, {
                 rejection_reason: rejectionReason,
             });
-            toast.success('Talep reddedildi.');
+            toast.success(t('schools.detail.rejectEnrollmentSuccess'));
             setShowRejectModal(false);
             fetchEnrollmentRequests(requestsFilter);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Red işlemi başarısız.');
+            toast.error(error.response?.data?.message ?? t('schools.detail.rejectEnrollmentError'));
         } finally {
             setSavingReject(false);
         }
@@ -518,25 +518,25 @@ export default function SchoolDetailPage() {
 
     const handleApproveChildRequest = async (requestId: number, childName: string) => {
         const result = await Swal.fire({
-            title: 'Öğrenci Kaydını Onayla',
-            text: `"${childName}" adlı çocuğu okula kayıt etmek istediğinize emin misiniz?`,
+            title: t('schools.detail.approveChildEnrollmentTitle'),
+            text: t('schools.detail.approveChildEnrollmentText').replace('{name}', childName),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Kaydet',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('schools.detail.approveChildEnrollmentConfirm'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#00ab55',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.patch(`/schools/${id}/child-enrollment-requests/${requestId}/approve`);
-            toast.success('Öğrenci okula kayıt edildi.');
+            toast.success(t('schools.detail.approveChildEnrollmentSuccess'));
             // Öğrenci listesini ve talep listesini yenile
             const childrenRes = await apiClient.get(`/schools/${id}/children`).catch(() => ({ data: { data: [] } }));
             if (childrenRes.data?.data) setChildren(childrenRes.data.data);
             fetchChildEnrollmentRequests(childRequestsFilter);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Onaylama başarısız.');
+            toast.error(error.response?.data?.message ?? t('schools.detail.approveEnrollmentError'));
         }
     };
 
@@ -553,12 +553,12 @@ export default function SchoolDetailPage() {
             await apiClient.patch(`/schools/${id}/child-enrollment-requests/${rejectChildTargetId}/reject`, {
                 rejection_reason: rejectionChildReason,
             });
-            toast.success('Talep reddedildi.');
+            toast.success(t('schools.detail.rejectEnrollmentSuccess'));
             setShowRejectChildModal(false);
             fetchChildEnrollmentRequests(childRequestsFilter);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Red işlemi başarısız.');
+            toast.error(error.response?.data?.message ?? t('schools.detail.rejectEnrollmentError'));
         } finally {
             setSavingChildReject(false);
         }
@@ -566,12 +566,12 @@ export default function SchoolDetailPage() {
 
     const handleRegenerateInvite = async () => {
         const result = await Swal.fire({
-            title: 'Davet Linkini Yenile',
-            text: 'Eski davet linki geçersiz olacak. Devam etmek istiyor musunuz?',
+            title: t('schools.detail.regenerateInviteTitle'),
+            text: t('schools.detail.regenerateInviteText'),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Evet, Yenile',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('schools.detail.regenerateInviteConfirm'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
@@ -579,16 +579,16 @@ export default function SchoolDetailPage() {
         try {
             const res = await apiClient.post(`/schools/${id}/invite/regenerate`);
             setInviteInfo(res.data?.data ?? null);
-            toast.success('Davet linki yenilendi.');
+            toast.success(t('schools.detail.regenerateInviteSuccess'));
         } catch {
-            toast.error('Yenileme başarısız.');
+            toast.error(t('schools.detail.regenerateInviteError'));
         } finally {
             setRegeneratingInvite(false);
         }
     };
 
     const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text).then(() => toast.success(`${label} kopyalandı.`));
+        navigator.clipboard.writeText(text).then(() => toast.success(t('schools.detail.copiedLabel').replace('{label}', label)));
     };
 
     // ── Sınıf CRUD ──────────────────────────────────────────────
@@ -626,23 +626,26 @@ export default function SchoolDetailPage() {
     };
 
     const handleToggleClassStatus = async (cls: SchoolClass) => {
-        const action = cls.is_active !== false ? 'pasif' : 'aktif';
+        const actionKey = cls.is_active !== false ? 'schools.detail.toggleInactive' : 'schools.detail.toggleActive';
+        const actionTitleKey = cls.is_active !== false ? 'schools.detail.toggleInactiveTitle' : 'schools.detail.toggleActiveTitle';
+        const action = t(actionKey);
+        const actionTitle = t(actionTitleKey);
         const result = await Swal.fire({
-            title: `Sınıfı ${action === 'aktif' ? 'Aktif' : 'Pasif'} Yap`,
-            text: `"${cls.name}" sınıfı ${action} yapılacak. Devam?`,
+            title: t('schools.detail.toggleClassTitle').replace('{action}', actionTitle),
+            text: t('schools.detail.toggleClassText').replace('{name}', cls.name).replace('{action}', action),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Evet',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('common.yes'),
+            cancelButtonText: t('common.cancel'),
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.patch(`/schools/${id}/classes/${cls.id}/toggle-status`);
-            toast.success(`Sınıf ${action} yapıldı.`);
+            toast.success(t('schools.detail.toggleClassSuccess').replace('{action}', action));
             loadData();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Durum değiştirilemedi.');
+            toast.error(error.response?.data?.message ?? t('schools.detail.toggleClassError'));
         }
     };
 
@@ -687,10 +690,10 @@ export default function SchoolDetailPage() {
 
     const handleClassSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!classForm.name.trim()) { toast.error('Sınıf adı zorunludur.'); return; }
-        if (!classForm.color) { toast.error('Sınıf rengi zorunludur.'); return; }
-        if (!editingClass && !classForm.icon && !logoFile) { toast.error('İkon veya logo seçilmelidir.'); return; }
-        if (editingClass && !classForm.icon && !logoFile && !existingLogoUrl) { toast.error('İkon veya logo seçilmelidir.'); return; }
+        if (!classForm.name.trim()) { toast.error(t('schools.detail.classNameRequired')); return; }
+        if (!classForm.color) { toast.error(t('schools.detail.classColorRequired')); return; }
+        if (!editingClass && !classForm.icon && !logoFile) { toast.error(t('schools.detail.classIconRequired')); return; }
+        if (editingClass && !classForm.icon && !logoFile && !existingLogoUrl) { toast.error(t('schools.detail.classIconRequired')); return; }
 
         setSavingClass(true);
         const fd = new FormData();
@@ -710,10 +713,10 @@ export default function SchoolDetailPage() {
         try {
             if (editingClass) {
                 await apiClient.post(`/schools/${id}/classes/${editingClass.id}/update-media`, fd);
-                toast.success('Sınıf güncellendi.');
+                toast.success(t('schools.detail.classUpdated'));
             } else {
                 await apiClient.post(`/schools/${id}/classes`, fd);
-                toast.success('Sınıf oluşturuldu.');
+                toast.success(t('schools.detail.classCreated'));
             }
             setShowClassModal(false);
             loadData();
@@ -722,9 +725,9 @@ export default function SchoolDetailPage() {
             const errs = error.response?.data?.errors;
             if (errs) {
                 const first = Object.values(errs)[0]?.[0];
-                toast.error(first ?? 'Hata oluştu.');
+                toast.error(first ?? t('schools.detail.errorOccurred'));
             } else {
-                toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+                toast.error(error.response?.data?.message ?? t('schools.detail.errorOccurred'));
             }
         } finally {
             setSavingClass(false);
@@ -733,21 +736,21 @@ export default function SchoolDetailPage() {
 
     const handleDeleteClass = async (cls: SchoolClass) => {
         const result = await Swal.fire({
-            title: 'Sınıfı Sil',
-            text: `"${cls.name}" sınıfını silmek istediğinize emin misiniz?`,
+            title: t('schools.detail.deleteClassTitle'),
+            text: t('schools.detail.deleteClassText').replace('{name}', cls.name),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: t('swal.confirmDelete') || 'Evet, Sil',
-            cancelButtonText: 'İptal',
+            confirmButtonText: t('swal.confirmDelete'),
+            cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/schools/${id}/classes/${cls.id}`);
-            toast.success('Sınıf silindi.');
+            toast.success(t('schools.detail.classDeleted'));
             loadData();
         } catch {
-            toast.error('Silme başarısız.');
+            toast.error(t('schools.detail.classDeleteFailed'));
         }
     };
 
@@ -769,7 +772,7 @@ export default function SchoolDetailPage() {
             setSchoolTeachers(schoolTeachersRes.data?.data ?? []);
             if (roleTypes.length === 0) { setRoleTypes(roleTypesRes.data?.data ?? []); }
         } catch {
-            toast.error('Öğretmenler yüklenemedi.');
+            toast.error(t('schools.detail.teachersLoadError'));
         }
     };
 
@@ -781,12 +784,12 @@ export default function SchoolDetailPage() {
                 teacher_profile_id: Number(selectedTeacherId),
                 teacher_role_type_id: classTeacherRoleTypeId ? Number(classTeacherRoleTypeId) : undefined,
             });
-            toast.success('Öğretmen sınıfa atandı.');
+            toast.success(t('schools.detail.teacherAssignedToClass'));
             setShowTeacherModal(false);
             fetchSchoolLevelTeachers();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Atama başarısız.');
+            toast.error(error.response?.data?.message ?? t('schools.detail.teacherAssignError'));
         } finally {
             setAssigningTeacher(false);
         }
@@ -796,19 +799,29 @@ export default function SchoolDetailPage() {
         if (!selectedClass) return;
         try {
             await apiClient.delete(`/schools/${id}/classes/${selectedClass.id}/teachers/${teacherProfileId}`);
-            toast.success('Öğretmen çıkarıldı.');
+            toast.success(t('schools.detail.teacherRemovedFromClass'));
             const res = await apiClient.get(`/schools/${id}/classes/${selectedClass.id}/teachers`);
             setClassTeachers(res.data?.data ?? []);
         } catch {
-            toast.error('İşlem başarısız.');
+            toast.error(t('schools.detail.operationFailed'));
         }
     };
 
     const cf = (field: keyof ClassForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
         setClassForm(prev => ({ ...prev, [field]: e.target.value }));
 
-    const roleLabel = (role: string) => ({ head_teacher: 'Baş Öğretmen', assistant_teacher: 'Yardımcı Öğretmen', substitute_teacher: 'Vekil Öğretmen' }[role] ?? role);
-    const employmentLabel = (type?: string) => ({ full_time: 'Tam Zamanlı', part_time: 'Yarı Zamanlı', contract: 'Sözleşmeli', intern: 'Stajyer', volunteer: 'Gönüllü' }[type ?? ''] ?? type ?? '—');
+    const roleLabel = (role: string) => ({
+        head_teacher: t('schools.detail.roleHeadTeacher'),
+        assistant_teacher: t('schools.detail.roleAssistantTeacher'),
+        substitute_teacher: t('schools.detail.roleSubstituteTeacher'),
+    }[role] ?? role);
+    const employmentLabel = (type?: string) => ({
+        full_time: t('schools.detail.empFullTime'),
+        part_time: t('schools.detail.empPartTime'),
+        contract: t('schools.detail.empContract'),
+        intern: t('schools.detail.empIntern'),
+        volunteer: t('schools.detail.empVolunteer'),
+    }[type ?? ''] ?? type ?? '—');
 
     if (loading) {
         return (
@@ -819,7 +832,7 @@ export default function SchoolDetailPage() {
     }
 
     if (!school) {
-        return <div className="p-6 text-center text-[#515365] dark:text-[#888ea8]">Okul bulunamadı.</div>;
+        return <div className="p-6 text-center text-[#515365] dark:text-[#888ea8]">{t('schools.detail.schoolNotFound')}</div>;
     }
 
     return (
@@ -828,7 +841,7 @@ export default function SchoolDetailPage() {
             <div className="mb-6 flex items-center gap-3">
                 <Link href="/schools" className="btn btn-sm btn-outline-secondary gap-2">
                     <ArrowLeft className="h-4 w-4" />
-                    Geri
+                    {t('schools.detail.backBtn')}
                 </Link>
                 <h1 className="text-2xl font-bold text-dark dark:text-white">{school.name}</h1>
             </div>
@@ -838,44 +851,44 @@ export default function SchoolDetailPage() {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {school.city && (
                         <div>
-                            <p className="text-xs text-[#888ea8]">Şehir</p>
+                            <p className="text-xs text-[#888ea8]">{t('schools.detail.cityLabel')}</p>
                             <p className="mt-1 font-medium text-dark dark:text-white">{school.city}</p>
                         </div>
                     )}
                     {school.address && (
                         <div>
-                            <p className="text-xs text-[#888ea8]">Adres</p>
+                            <p className="text-xs text-[#888ea8]">{t('schools.detail.addressLabel')}</p>
                             <p className="mt-1 font-medium text-dark dark:text-white">{school.address}</p>
                         </div>
                     )}
                     {school.phone && (
                         <div>
-                            <p className="text-xs text-[#888ea8]">Telefon</p>
+                            <p className="text-xs text-[#888ea8]">{t('schools.detail.phoneLabel')}</p>
                             <p className="mt-1 font-medium text-dark dark:text-white">{school.phone}</p>
                         </div>
                     )}
                     {school.gsm && (
                         <div>
-                            <p className="text-xs text-[#888ea8]">GSM</p>
+                            <p className="text-xs text-[#888ea8]">{t('schools.detail.gsmLabel')}</p>
                             <p className="mt-1 font-medium text-dark dark:text-white">{school.gsm}</p>
                         </div>
                     )}
                     {school.whatsapp && (
                         <div>
-                            <p className="text-xs text-[#888ea8]">WhatsApp</p>
+                            <p className="text-xs text-[#888ea8]">{t('schools.detail.whatsappLabel')}</p>
                             <p className="mt-1 font-medium text-dark dark:text-white">{school.whatsapp}</p>
                         </div>
                     )}
                     {school.email && (
                         <div>
-                            <p className="text-xs text-[#888ea8]">E-posta</p>
+                            <p className="text-xs text-[#888ea8]">{t('schools.detail.emailLabel')}</p>
                             <p className="mt-1 font-medium text-dark dark:text-white">{school.email}</p>
                         </div>
                     )}
                     <div>
-                        <p className="text-xs text-[#888ea8]">Durum</p>
+                        <p className="text-xs text-[#888ea8]">{t('schools.detail.statusLabel')}</p>
                         <span className={`badge mt-1 ${school.is_active !== false ? 'badge-outline-success' : 'badge-outline-danger'}`}>
-                            {school.is_active !== false ? 'Aktif' : 'Pasif'}
+                            {school.is_active !== false ? t('schools.detail.statusActive') : t('schools.detail.statusInactive')}
                         </span>
                     </div>
                 </div>
@@ -883,10 +896,10 @@ export default function SchoolDetailPage() {
                 {/* Davet Kodu Bölümü */}
                 {inviteInfo && (
                     <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
-                        <p className="mb-3 text-sm font-semibold text-primary">Veli Davet Bilgileri</p>
+                        <p className="mb-3 text-sm font-semibold text-primary">{t('schools.detail.inviteInfoTitle')}</p>
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <p className="text-xs text-[#888ea8]">Kayıt Kodu</p>
+                                <p className="text-xs text-[#888ea8]">{t('schools.detail.registrationCodeLabel')}</p>
                                 <div className="mt-1 flex items-center gap-2">
                                     <code className="rounded bg-white px-3 py-1 text-base font-bold tracking-widest text-dark dark:bg-[#1b2e4b] dark:text-white">
                                         {inviteInfo.registration_code}
@@ -894,15 +907,15 @@ export default function SchoolDetailPage() {
                                     <button
                                         type="button"
                                         className="btn btn-sm btn-outline-primary p-1.5"
-                                        onClick={() => copyToClipboard(inviteInfo.registration_code, 'Kayıt kodu')}
-                                        title="Kopyala"
+                                        onClick={() => copyToClipboard(inviteInfo.registration_code, t('schools.detail.registrationCodeLabel'))}
+                                        title={t('common.actions')}
                                     >
                                         <Copy className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             </div>
                             <div>
-                                <p className="text-xs text-[#888ea8]">Davet Linki</p>
+                                <p className="text-xs text-[#888ea8]">{t('schools.detail.inviteLinkLabel')}</p>
                                 <div className="mt-1 flex items-center gap-2">
                                     <span className="max-w-[200px] truncate text-sm text-[#515365] dark:text-[#888ea8]">
                                         {`${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${inviteInfo.invite_token}`}
@@ -912,9 +925,9 @@ export default function SchoolDetailPage() {
                                         className="btn btn-sm btn-outline-primary p-1.5"
                                         onClick={() => copyToClipboard(
                                             `${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${inviteInfo.invite_token}`,
-                                            'Davet linki'
+                                            t('schools.detail.inviteLinkLabel')
                                         )}
-                                        title="Linki Kopyala"
+                                        title={t('schools.detail.inviteLinkLabel')}
                                     >
                                         <Copy className="h-3.5 w-3.5" />
                                     </button>
@@ -923,7 +936,7 @@ export default function SchoolDetailPage() {
                                         className="btn btn-sm btn-outline-danger p-1.5"
                                         onClick={handleRegenerateInvite}
                                         disabled={regeneratingInvite}
-                                        title="Linki Yenile (Eski link geçersiz olur)"
+                                        title={t('schools.detail.regenerateInviteTitle')}
                                     >
                                         <RefreshCw className={`h-3.5 w-3.5 ${regeneratingInvite ? 'animate-spin' : ''}`} />
                                     </button>
@@ -943,7 +956,7 @@ export default function SchoolDetailPage() {
                         onClick={() => handleTabChange('classes')}
                     >
                         <BookOpen className="h-4 w-4" />
-                        Sınıflar ({classes.length})
+                        {t('schools.detail.schoolsTab')} ({classes.length})
                     </button>
                     <button
                         type="button"
@@ -951,7 +964,7 @@ export default function SchoolDetailPage() {
                         onClick={() => handleTabChange('children')}
                     >
                         <Users className="h-4 w-4" />
-                        Öğrenciler ({children.length})
+                        {t('schools.detail.childrenTab')} ({children.length})
                     </button>
                     <button
                         type="button"
@@ -959,7 +972,7 @@ export default function SchoolDetailPage() {
                         onClick={() => handleTabChange('teachers')}
                     >
                         <GraduationCap className="h-4 w-4" />
-                        Öğretmenler ({schoolLevelTeachers.length})
+                        {t('schools.detail.teachersTab')} ({schoolLevelTeachers.length})
                     </button>
                     <button
                         type="button"
@@ -967,7 +980,7 @@ export default function SchoolDetailPage() {
                         onClick={() => handleTabChange('requests')}
                     >
                         <Clock className="h-4 w-4" />
-                        Kayıt Talepleri
+                        {t('schools.detail.requestsTab')}
                         {enrollmentRequests.filter(r => r.status === 'pending').length > 0 && (
                             <span className="badge badge-outline-warning text-xs">{enrollmentRequests.filter(r => r.status === 'pending').length}</span>
                         )}
@@ -978,7 +991,7 @@ export default function SchoolDetailPage() {
                         onClick={() => handleTabChange('parents')}
                     >
                         <UserCheck className="h-4 w-4" />
-                        Veliler ({parents.length})
+                        {t('schools.detail.parentsTab')} ({parents.length})
                     </button>
                     <button
                         type="button"
@@ -986,7 +999,7 @@ export default function SchoolDetailPage() {
                         onClick={() => handleTabChange('child-requests')}
                     >
                         <Baby className="h-4 w-4" />
-                        Onay Bekleyen Öğrenciler
+                        {t('schools.detail.childRequestsTab')}
                         {childEnrollmentRequests.filter(r => r.status === 'pending').length > 0 && (
                             <span className="badge badge-outline-warning text-xs">{childEnrollmentRequests.filter(r => r.status === 'pending').length}</span>
                         )}
@@ -997,7 +1010,7 @@ export default function SchoolDetailPage() {
                         onClick={() => handleTabChange('removal-requests')}
                     >
                         <Trash2 className="h-4 w-4" />
-                        Silme Talepleri
+                        {t('schools.detail.removalRequestsTab')}
                         {removalRequests.filter(r => r.status === 'pending').length > 0 && (
                             <span className="badge badge-outline-danger text-xs">{removalRequests.filter(r => r.status === 'pending').length}</span>
                         )}
@@ -1010,22 +1023,22 @@ export default function SchoolDetailPage() {
                         <div className="mb-4 flex justify-end">
                             <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openCreateClass}>
                                 <Plus className="h-4 w-4" />
-                                Sınıf Ekle
+                                {t('schools.detail.addClassBtn')}
                             </button>
                         </div>
                         {classes.length === 0 ? (
-                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Henüz sınıf eklenmemiş.</p>
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('schools.detail.noClass')}</p>
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Sınıf</th>
-                                            <th>Yaş Grubu</th>
-                                            <th>Kapasite</th>
-                                            <th>Öğrenci</th>
-                                            <th>Durum</th>
-                                            <th>İşlemler</th>
+                                            <th>{t('schools.detail.classColHeader')}</th>
+                                            <th>{t('schools.detail.ageGroupColHeader')}</th>
+                                            <th>{t('schools.detail.capacityColHeader')}</th>
+                                            <th>{t('schools.detail.studentColHeader')}</th>
+                                            <th>{t('schools.detail.statusColHeader')}</th>
+                                            <th>{t('schools.detail.actionsColHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1053,18 +1066,18 @@ export default function SchoolDetailPage() {
                                                 </td>
                                                 <td>
                                                     {cls.age_min != null && cls.age_max != null
-                                                        ? `${cls.age_min}–${cls.age_max} yaş`
+                                                        ? `${cls.age_min}–${cls.age_max} ${t('schools.detail.classAgeUnit')}`
                                                         : cls.age_min != null
-                                                            ? `${cls.age_min}+ yaş`
+                                                            ? `${cls.age_min}+ ${t('schools.detail.classAgeUnit')}`
                                                             : '—'}
                                                 </td>
                                                 <td>{cls.capacity ?? '—'}</td>
                                                 <td>{cls.children_count ?? 0}</td>
                                                 <td>
                                                     {cls.is_active !== false ? (
-                                                        <span className="badge badge-outline-success">Aktif</span>
+                                                        <span className="badge badge-outline-success">{t('schools.detail.statusActive')}</span>
                                                     ) : (
-                                                        <span className="badge badge-outline-secondary">Pasif</span>
+                                                        <span className="badge badge-outline-secondary">{t('schools.detail.statusInactive')}</span>
                                                     )}
                                                 </td>
                                                 <td>
@@ -1073,23 +1086,23 @@ export default function SchoolDetailPage() {
                                                             type="button"
                                                             className={`btn btn-sm p-2 ${cls.is_active !== false ? 'btn-outline-warning' : 'btn-outline-success'}`}
                                                             onClick={() => handleToggleClassStatus(cls)}
-                                                            title={cls.is_active !== false ? 'Pasif Yap' : 'Aktif Yap'}
+                                                            title={cls.is_active !== false ? t('schools.detail.toggleInactiveTitle') : t('schools.detail.toggleActiveTitle')}
                                                         >
                                                             {cls.is_active !== false
                                                                 ? <ToggleRight className="h-4 w-4" />
                                                                 : <ToggleLeft className="h-4 w-4" />
                                                             }
                                                         </button>
-                                                        <button type="button" className="btn btn-sm btn-outline-success p-2" onClick={() => openClassStudentModal(cls)} title="Öğrenci Ata">
+                                                        <button type="button" className="btn btn-sm btn-outline-success p-2" onClick={() => openClassStudentModal(cls)} title={t('schools.detail.assignStudentModalTitle')}>
                                                             <Baby className="h-4 w-4" />
                                                         </button>
-                                                        <button type="button" className="btn btn-sm btn-outline-info p-2" onClick={() => openTeacherModal(cls)} title="Öğretmen Ata">
+                                                        <button type="button" className="btn btn-sm btn-outline-info p-2" onClick={() => openTeacherModal(cls)} title={t('schools.detail.assignTeacherBtn')}>
                                                             <UserPlus className="h-4 w-4" />
                                                         </button>
-                                                        <button type="button" className="btn btn-sm btn-outline-primary p-2" onClick={() => openEditClass(cls)} title="Düzenle">
+                                                        <button type="button" className="btn btn-sm btn-outline-primary p-2" onClick={() => openEditClass(cls)} title={t('schools.detail.editClassBtn')}>
                                                             <Edit2 className="h-4 w-4" />
                                                         </button>
-                                                        <button type="button" className="btn btn-sm btn-outline-danger p-2" onClick={() => handleDeleteClass(cls)} title="Sil">
+                                                        <button type="button" className="btn btn-sm btn-outline-danger p-2" onClick={() => handleDeleteClass(cls)} title={t('common.delete')}>
                                                             <Trash2 className="h-4 w-4" />
                                                         </button>
                                                     </div>
@@ -1106,18 +1119,18 @@ export default function SchoolDetailPage() {
                 {/* Öğrenciler Tab */}
                 {activeTab === 'children' && (
                     children.length === 0 ? (
-                        <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Bu okula kayıtlı onaylı öğrenci bulunmuyor.</p>
+                        <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('schools.detail.noStudents')}</p>
                     ) : (
                         <div className="table-responsive">
                             <table className="table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Ad Soyad</th>
-                                        <th>Veli</th>
-                                        <th>Sınıf</th>
-                                        <th>Doğum Tarihi</th>
-                                        <th>Cinsiyet</th>
-                                        <th>Durum</th>
+                                        <th>{t('schools.detail.fullNameColHeader')}</th>
+                                        <th>{t('schools.detail.parentColHeader')}</th>
+                                        <th>{t('schools.detail.classAssignColHeader')}</th>
+                                        <th>{t('schools.detail.birthDateColHeader')}</th>
+                                        <th>{t('schools.detail.genderColHeader')}</th>
+                                        <th>{t('schools.detail.statusColHeader')}</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -1152,11 +1165,11 @@ export default function SchoolDetailPage() {
                                             </td>
                                             <td className="text-sm text-[#515365] dark:text-[#888ea8]">{child.birth_date ? new Date(child.birth_date).toLocaleDateString('tr-TR') : '—'}</td>
                                             <td className="text-sm text-[#515365] dark:text-[#888ea8]">
-                                                {child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : '—'}
+                                                {child.gender === 'male' ? t('schools.detail.genderMale') : child.gender === 'female' ? t('schools.detail.genderFemale') : '—'}
                                             </td>
                                             <td>
                                                 <span className={`badge ${child.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
-                                                    {child.status === 'active' ? 'Aktif' : (child.status ?? '—')}
+                                                    {child.status === 'active' ? t('schools.detail.statusActive') : (child.status ?? '—')}
                                                 </span>
                                             </td>
                                             <td>
@@ -1165,7 +1178,7 @@ export default function SchoolDetailPage() {
                                                         type="button"
                                                         className="btn btn-sm btn-outline-primary p-2"
                                                         onClick={() => openChildDetail(child.id)}
-                                                        title="Detay"
+                                                        title={t('common.detail')}
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                                     </button>
@@ -1173,7 +1186,7 @@ export default function SchoolDetailPage() {
                                                         type="button"
                                                         className="btn btn-sm btn-outline-danger p-2"
                                                         onClick={(e) => handleUnenrollChild(child, e)}
-                                                        title="Okuldan Çıkar"
+                                                        title={t('schools.detail.unenrollTitle')}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
@@ -1195,18 +1208,18 @@ export default function SchoolDetailPage() {
                                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                             </div>
                         ) : schoolLevelTeachers.length === 0 ? (
-                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Bu okula henüz öğretmen atanmamış.</p>
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('schools.detail.noTeachers')}</p>
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Ad</th>
-                                            <th>Unvan</th>
-                                            <th>İstihdam</th>
-                                            <th>Sınıflar</th>
-                                            <th>Durum</th>
-                                            <th>İşlemler</th>
+                                            <th>{t('schools.detail.fullNameColHeader')}</th>
+                                            <th>{t('schools.detail.titleColHeader')}</th>
+                                            <th>{t('schools.detail.employmentColHeader')}</th>
+                                            <th>{t('schools.detail.classesColHeader')}</th>
+                                            <th>{t('schools.detail.statusColHeader')}</th>
+                                            <th>{t('schools.detail.actionsColHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1223,14 +1236,14 @@ export default function SchoolDetailPage() {
                                                             ))}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-xs text-[#888ea8]">Atanmamış</span>
+                                                        <span className="text-xs text-[#888ea8]">{t('schools.detail.notAssigned')}</span>
                                                     )}
                                                 </td>
                                                 <td>
                                                     {teacher.is_active ? (
-                                                        <span className="badge badge-outline-success">Aktif</span>
+                                                        <span className="badge badge-outline-success">{t('schools.detail.statusActive')}</span>
                                                     ) : (
-                                                        <span className="badge badge-outline-secondary">Pasif</span>
+                                                        <span className="badge badge-outline-secondary">{t('schools.detail.statusInactive')}</span>
                                                     )}
                                                 </td>
                                                 <td>
@@ -1239,7 +1252,7 @@ export default function SchoolDetailPage() {
                                                             type="button"
                                                             className="btn btn-sm btn-outline-primary p-2"
                                                             onClick={() => setSelectedTeacherDetail(teacher)}
-                                                            title="Detay"
+                                                            title={t('common.detail')}
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </button>
@@ -1247,7 +1260,7 @@ export default function SchoolDetailPage() {
                                                             type="button"
                                                             className="btn btn-sm btn-outline-danger p-2"
                                                             onClick={() => handleRemoveTeacherFromSchool(teacher)}
-                                                            title="Okuldan Çıkar"
+                                                            title={t('schools.detail.removeTeacherFromSchoolTitle')}
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </button>
@@ -1268,7 +1281,12 @@ export default function SchoolDetailPage() {
                         {/* Filtre Butonları */}
                         <div className="mb-4 flex flex-wrap gap-2">
                             {(['pending', 'approved', 'rejected', ''] as const).map((f) => {
-                                const labels: Record<string, string> = { pending: 'Bekleyenler', approved: 'Onaylananlar', rejected: 'Reddedilenler', '': 'Tümü' };
+                                const labels: Record<string, string> = {
+                                    pending: t('schools.detail.filterPending'),
+                                    approved: t('schools.detail.filterApproved'),
+                                    rejected: t('schools.detail.filterRejected'),
+                                    '': t('schools.detail.filterAll'),
+                                };
                                 const colors: Record<string, string> = { pending: 'btn-outline-warning', approved: 'btn-outline-success', rejected: 'btn-outline-danger', '': 'btn-outline-secondary' };
                                 return (
                                     <button
@@ -1289,20 +1307,20 @@ export default function SchoolDetailPage() {
                             </div>
                         ) : enrollmentRequests.length === 0 ? (
                             <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">
-                                {requestsFilter === 'pending' ? 'Bekleyen kayıt talebi yok.' : 'Kayıt talebi bulunamadı.'}
+                                {requestsFilter === 'pending' ? t('schools.detail.noPendingRequests') : t('schools.detail.noRequests')}
                             </p>
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Ad Soyad</th>
-                                            <th>E-posta</th>
-                                            <th>Telefon</th>
-                                            <th>Mesaj</th>
-                                            <th>Durum</th>
-                                            <th>Tarih</th>
-                                            <th>İşlemler</th>
+                                            <th>{t('schools.detail.fullNameColHeader')}</th>
+                                            <th>{t('schools.detail.emailColHeader')}</th>
+                                            <th>{t('schools.detail.phoneColHeader')}</th>
+                                            <th>{t('schools.detail.messageColHeader')}</th>
+                                            <th>{t('schools.detail.statusColHeader')}</th>
+                                            <th>{t('schools.detail.dateColHeader')}</th>
+                                            <th>{t('schools.detail.actionsColHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1319,14 +1337,14 @@ export default function SchoolDetailPage() {
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">Bekliyor</span>}
-                                                    {req.status === 'approved' && <span className="badge badge-outline-success">Onaylandı</span>}
+                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">{t('schools.detail.statusPending')}</span>}
+                                                    {req.status === 'approved' && <span className="badge badge-outline-success">{t('schools.detail.statusApproved')}</span>}
                                                     {req.status === 'rejected' && (
                                                         <span
                                                             className="badge badge-outline-danger cursor-help"
                                                             title={req.rejection_reason ?? ''}
                                                         >
-                                                            Reddedildi
+                                                            {t('schools.detail.statusRejected')}
                                                         </span>
                                                     )}
                                                 </td>
@@ -1340,7 +1358,7 @@ export default function SchoolDetailPage() {
                                                                 type="button"
                                                                 className="btn btn-sm btn-outline-success p-2"
                                                                 onClick={() => handleApprove(req.id)}
-                                                                title="Onayla"
+                                                                title={t('common.approve')}
                                                             >
                                                                 <CheckCircle className="h-4 w-4" />
                                                             </button>
@@ -1348,7 +1366,7 @@ export default function SchoolDetailPage() {
                                                                 type="button"
                                                                 className="btn btn-sm btn-outline-danger p-2"
                                                                 onClick={() => openRejectModal(req.id)}
-                                                                title="Reddet"
+                                                                title={t('schools.detail.rejectBtn')}
                                                             >
                                                                 <XCircle className="h-4 w-4" />
                                                             </button>
@@ -1365,9 +1383,9 @@ export default function SchoolDetailPage() {
                         {/* Pagination */}
                         {requestsMeta.last_page > 1 && (
                             <div className="mt-4 flex items-center justify-center gap-3">
-                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={requestsMeta.current_page === 1} onClick={() => fetchEnrollmentRequests(requestsFilter, requestsMeta.current_page - 1)}>Önceki</button>
+                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={requestsMeta.current_page === 1} onClick={() => fetchEnrollmentRequests(requestsFilter, requestsMeta.current_page - 1)}>{t('schools.detail.prevPage')}</button>
                                 <span className="text-sm text-[#888ea8]">{requestsMeta.current_page} / {requestsMeta.last_page}</span>
-                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={requestsMeta.current_page === requestsMeta.last_page} onClick={() => fetchEnrollmentRequests(requestsFilter, requestsMeta.current_page + 1)}>Sonraki</button>
+                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={requestsMeta.current_page === requestsMeta.last_page} onClick={() => fetchEnrollmentRequests(requestsFilter, requestsMeta.current_page + 1)}>{t('schools.detail.nextPage')}</button>
                             </div>
                         )}
                     </>
@@ -1381,18 +1399,18 @@ export default function SchoolDetailPage() {
                                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                             </div>
                         ) : parents.length === 0 ? (
-                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Bu okula kayıtlı veli bulunmuyor.</p>
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('schools.detail.noParents')}</p>
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
                                             <th style={{ width: 32 }}></th>
-                                            <th>Veli Adı</th>
-                                            <th>Aile Adı</th>
-                                            <th>E-posta</th>
-                                            <th>Telefon</th>
-                                            <th>Çocuklar</th>
+                                            <th>{t('schools.detail.parentNameColHeader')}</th>
+                                            <th>{t('schools.detail.familyNameColHeader')}</th>
+                                            <th>{t('schools.detail.emailColHeader')}</th>
+                                            <th>{t('schools.detail.phoneColHeader')}</th>
+                                            <th>{t('schools.detail.childrenCountColHeader')}</th>
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -1416,14 +1434,14 @@ export default function SchoolDetailPage() {
                                                     <td>{parent.email ?? '—'}</td>
                                                     <td>{parent.phone ?? '—'}</td>
                                                     <td>
-                                                        <span className="badge badge-outline-info">{parent.children.length} çocuk</span>
+                                                        <span className="badge badge-outline-info">{t('schools.detail.childrenCount').replace('{count}', String(parent.children.length))}</span>
                                                     </td>
                                                     <td onClick={e => e.stopPropagation()}>
                                                         <button
                                                             type="button"
                                                             className="btn btn-sm btn-outline-primary p-2"
                                                             onClick={() => setSelectedFamilyDetail(parent)}
-                                                            title="Detay"
+                                                            title={t('common.detail')}
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </button>
@@ -1433,13 +1451,13 @@ export default function SchoolDetailPage() {
                                                     <tr key={`${parent.id}-children`}>
                                                         <td></td>
                                                         <td colSpan={5} className="bg-primary/5 pb-3 pt-1">
-                                                            <p className="mb-2 text-xs font-semibold text-[#888ea8]">ÇOCUKLAR</p>
+                                                            <p className="mb-2 text-xs font-semibold text-[#888ea8]">{t('schools.detail.childrenSubHeader')}</p>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {parent.children.map((child) => (
                                                                     <div key={child.id} className="flex items-center gap-2 rounded-lg border border-[#ebedf2] bg-white px-3 py-1.5 dark:border-[#1b2e4b] dark:bg-[#0e1726]">
                                                                         <span className="font-medium text-dark dark:text-white">{child.name}</span>
                                                                         {child.birth_date && <span className="text-xs text-[#888ea8]">{new Date(child.birth_date).toLocaleDateString('tr-TR')}</span>}
-                                                                        {child.gender && <span className="badge badge-outline-secondary text-xs">{child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : child.gender}</span>}
+                                                                        {child.gender && <span className="badge badge-outline-secondary text-xs">{child.gender === 'male' ? t('schools.detail.genderMale') : child.gender === 'female' ? t('schools.detail.genderFemale') : child.gender}</span>}
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -1461,7 +1479,12 @@ export default function SchoolDetailPage() {
                         {/* Filtre */}
                         <div className="mb-4 flex flex-wrap gap-2">
                             {(['pending', 'approved', 'rejected', 'all'] as const).map((f) => {
-                                const labels = { pending: 'Bekleyenler', approved: 'Onaylananlar', rejected: 'Reddedilenler', all: 'Tümü' };
+                                const labels = {
+                                    pending: t('schools.detail.filterPending'),
+                                    approved: t('schools.detail.filterApproved'),
+                                    rejected: t('schools.detail.filterRejected'),
+                                    all: t('schools.detail.filterAll'),
+                                };
                                 const colors = { pending: 'btn-outline-warning', approved: 'btn-outline-success', rejected: 'btn-outline-danger', all: 'btn-outline-secondary' };
                                 return (
                                     <button
@@ -1482,20 +1505,20 @@ export default function SchoolDetailPage() {
                             </div>
                         ) : childEnrollmentRequests.length === 0 ? (
                             <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">
-                                {childRequestsFilter === 'pending' ? 'Onay bekleyen öğrenci kaydı yok.' : 'Öğrenci kayıt talebi bulunamadı.'}
+                                {childRequestsFilter === 'pending' ? t('schools.detail.noPendingChildRequests') : t('schools.detail.noChildRequests')}
                             </p>
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Veli</th>
-                                            <th>Çocuk</th>
-                                            <th>Doğum Tarihi</th>
-                                            <th>Cinsiyet</th>
-                                            <th>Durum</th>
-                                            <th>Tarih</th>
-                                            <th>İşlemler</th>
+                                            <th>{t('schools.detail.parentColHeader')}</th>
+                                            <th>{t('schools.detail.childColHeader')}</th>
+                                            <th>{t('schools.detail.birthDateColHeader')}</th>
+                                            <th>{t('schools.detail.genderColHeader')}</th>
+                                            <th>{t('schools.detail.statusColHeader')}</th>
+                                            <th>{t('schools.detail.dateColHeader')}</th>
+                                            <th>{t('schools.detail.actionsColHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1525,13 +1548,13 @@ export default function SchoolDetailPage() {
                                                 </td>
                                                 <td className="text-sm text-[#515365] dark:text-[#888ea8]">{req.child?.birth_date ? new Date(req.child.birth_date).toLocaleDateString('tr-TR') : '—'}</td>
                                                 <td className="text-sm text-[#515365] dark:text-[#888ea8]">
-                                                    {req.child?.gender === 'male' ? 'Erkek' : req.child?.gender === 'female' ? 'Kız' : '—'}
+                                                    {req.child?.gender === 'male' ? t('schools.detail.genderMale') : req.child?.gender === 'female' ? t('schools.detail.genderFemale') : '—'}
                                                 </td>
                                                 <td>
-                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">Bekliyor</span>}
-                                                    {req.status === 'approved' && <span className="badge badge-outline-success">Onaylandı</span>}
+                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">{t('schools.detail.statusPending')}</span>}
+                                                    {req.status === 'approved' && <span className="badge badge-outline-success">{t('schools.detail.statusApproved')}</span>}
                                                     {req.status === 'rejected' && (
-                                                        <span className="badge badge-outline-danger cursor-help" title={req.rejection_reason ?? ''}>Reddedildi</span>
+                                                        <span className="badge badge-outline-danger cursor-help" title={req.rejection_reason ?? ''}>{t('schools.detail.statusRejected')}</span>
                                                     )}
                                                 </td>
                                                 <td className="text-sm text-[#888ea8]">
@@ -1544,7 +1567,7 @@ export default function SchoolDetailPage() {
                                                                 type="button"
                                                                 className="btn btn-sm btn-outline-success p-2"
                                                                 onClick={() => handleApproveChildRequest(req.id, req.child?.full_name ?? '')}
-                                                                title="Onayla"
+                                                                title={t('common.approve')}
                                                             >
                                                                 <CheckCircle className="h-4 w-4" />
                                                             </button>
@@ -1552,7 +1575,7 @@ export default function SchoolDetailPage() {
                                                                 type="button"
                                                                 className="btn btn-sm btn-outline-danger p-2"
                                                                 onClick={() => openRejectChildModal(req.id)}
-                                                                title="Reddet"
+                                                                title={t('schools.detail.rejectBtn')}
                                                             >
                                                                 <XCircle className="h-4 w-4" />
                                                             </button>
@@ -1568,9 +1591,9 @@ export default function SchoolDetailPage() {
 
                         {childRequestsMeta.last_page > 1 && (
                             <div className="mt-4 flex items-center justify-center gap-3">
-                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={childRequestsMeta.current_page === 1} onClick={() => fetchChildEnrollmentRequests(childRequestsFilter, childRequestsMeta.current_page - 1)}>Önceki</button>
+                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={childRequestsMeta.current_page === 1} onClick={() => fetchChildEnrollmentRequests(childRequestsFilter, childRequestsMeta.current_page - 1)}>{t('schools.detail.prevPage')}</button>
                                 <span className="text-sm text-[#888ea8]">{childRequestsMeta.current_page} / {childRequestsMeta.last_page}</span>
-                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={childRequestsMeta.current_page === childRequestsMeta.last_page} onClick={() => fetchChildEnrollmentRequests(childRequestsFilter, childRequestsMeta.current_page + 1)}>Sonraki</button>
+                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={childRequestsMeta.current_page === childRequestsMeta.last_page} onClick={() => fetchChildEnrollmentRequests(childRequestsFilter, childRequestsMeta.current_page + 1)}>{t('schools.detail.nextPage')}</button>
                             </div>
                         )}
                     </>
@@ -1580,10 +1603,15 @@ export default function SchoolDetailPage() {
                 {activeTab === 'removal-requests' && (
                     <>
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-sm text-[#888ea8]">Velilerin çocuk silme talepleri. Onay sonrasında çocuk tüm sınıflardan çıkarılır ve kaydı silinir.</p>
+                            <p className="text-sm text-[#888ea8]">{t('schools.detail.removalRequestsDesc')}</p>
                             <div className="flex gap-2">
                                 {(['pending', 'approved', 'rejected', 'all'] as const).map(f => {
-                                    const labels = { pending: 'Bekleyen', approved: 'Onaylanan', rejected: 'Reddedilen', all: 'Tümü' };
+                                    const labels = {
+                                        pending: t('schools.detail.filterPendingOnly'),
+                                        approved: t('schools.detail.filterApprovedOnly'),
+                                        rejected: t('schools.detail.filterRejectedOnly'),
+                                        all: t('schools.detail.filterAll'),
+                                    };
                                     const colors = { pending: 'btn-outline-warning', approved: 'btn-outline-success', rejected: 'btn-outline-danger', all: 'btn-outline-secondary' };
                                     return (
                                         <button
@@ -1604,19 +1632,19 @@ export default function SchoolDetailPage() {
 
                         {removalRequests.length === 0 ? (
                             <p className="py-12 text-center text-sm text-[#888ea8]">
-                                {removalRequestsFilter === 'pending' ? 'Bekleyen silme talebi yok.' : 'Silme talebi bulunamadı.'}
+                                {removalRequestsFilter === 'pending' ? t('schools.detail.noPendingRemovalRequests') : t('schools.detail.noRemovalRequests')}
                             </p>
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Çocuk</th>
-                                            <th>Veli</th>
-                                            <th>Neden</th>
-                                            <th>Durum</th>
-                                            <th>Tarih</th>
-                                            <th>İşlem</th>
+                                            <th>{t('schools.detail.childColHeader')}</th>
+                                            <th>{t('schools.detail.parentColHeader')}</th>
+                                            <th>{t('schools.detail.reasonColHeader')}</th>
+                                            <th>{t('schools.detail.statusColHeader')}</th>
+                                            <th>{t('schools.detail.dateColHeader')}</th>
+                                            <th>{t('schools.detail.actionsColHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1636,10 +1664,10 @@ export default function SchoolDetailPage() {
                                                     {req.reason ?? '—'}
                                                 </td>
                                                 <td>
-                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">Bekliyor</span>}
-                                                    {req.status === 'approved' && <span className="badge badge-outline-success">Onaylandı</span>}
+                                                    {req.status === 'pending' && <span className="badge badge-outline-warning">{t('schools.detail.statusPending')}</span>}
+                                                    {req.status === 'approved' && <span className="badge badge-outline-success">{t('schools.detail.statusApproved')}</span>}
                                                     {req.status === 'rejected' && (
-                                                        <span className="badge badge-outline-danger cursor-help" title={req.rejection_reason ?? ''}>Reddedildi</span>
+                                                        <span className="badge badge-outline-danger cursor-help" title={req.rejection_reason ?? ''}>{t('schools.detail.statusRejected')}</span>
                                                     )}
                                                 </td>
                                                 <td className="text-sm text-[#888ea8]">
@@ -1652,7 +1680,7 @@ export default function SchoolDetailPage() {
                                                                 type="button"
                                                                 className="btn btn-sm btn-outline-danger p-2"
                                                                 onClick={() => handleApproveRemoval(req.id)}
-                                                                title="Onayla ve Sil"
+                                                                title={t('schools.detail.approveRemovalTitle')}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </button>
@@ -1664,7 +1692,7 @@ export default function SchoolDetailPage() {
                                                                     setRejectionRemovalReason('');
                                                                     setShowRejectRemovalModal(true);
                                                                 }}
-                                                                title="Reddet"
+                                                                title={t('schools.detail.rejectBtn')}
                                                             >
                                                                 <XCircle className="h-4 w-4" />
                                                             </button>
@@ -1686,7 +1714,7 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğretmen Detayı</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.teacherDetailTitle')}</h2>
                             <button type="button" onClick={() => setSelectedTeacherDetail(null)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -1703,7 +1731,7 @@ export default function SchoolDetailPage() {
                                         <p className="text-sm text-[#888ea8]">{selectedTeacherDetail.title}</p>
                                     )}
                                     <span className={`badge mt-1 ${selectedTeacherDetail.is_active ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
-                                        {selectedTeacherDetail.is_active ? 'Aktif' : 'Pasif'}
+                                        {selectedTeacherDetail.is_active ? t('schools.detail.statusActive') : t('schools.detail.statusInactive')}
                                     </span>
                                 </div>
                             </div>
@@ -1712,13 +1740,13 @@ export default function SchoolDetailPage() {
                             <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
                                 {selectedTeacherDetail.employment_type && (
                                     <div className="flex justify-between py-2.5">
-                                        <span className="text-sm text-[#888ea8]">İstihdam Türü</span>
+                                        <span className="text-sm text-[#888ea8]">{t('schools.detail.employmentTypelabel')}</span>
                                         <span className="text-sm font-medium text-dark dark:text-white">{employmentLabel(selectedTeacherDetail.employment_type)}</span>
                                     </div>
                                 )}
                                 {selectedTeacherDetail.role_type && (
                                     <div className="flex justify-between py-2.5">
-                                        <span className="text-sm text-[#888ea8]">Rol Tipi</span>
+                                        <span className="text-sm text-[#888ea8]">{t('schools.detail.rolTypeLabel')}</span>
                                         <span className="text-sm font-medium text-dark dark:text-white">{selectedTeacherDetail.role_type.name}</span>
                                     </div>
                                 )}
@@ -1726,9 +1754,9 @@ export default function SchoolDetailPage() {
 
                             {/* Atandığı sınıflar */}
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Atandığı Sınıflar</p>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.assignedClassesLabel')}</p>
                                 {(selectedTeacherDetail.classes?.length ?? 0) === 0 ? (
-                                    <p className="text-sm text-[#888ea8]">Henüz bir sınıfa atanmamış.</p>
+                                    <p className="text-sm text-[#888ea8]">{t('schools.detail.noClassAssigned')}</p>
                                 ) : (
                                     <div className="flex flex-wrap gap-2">
                                         {selectedTeacherDetail.classes!.map(cls => (
@@ -1739,7 +1767,7 @@ export default function SchoolDetailPage() {
                             </div>
                         </div>
                         <div className="border-t border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
-                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedTeacherDetail(null)}>Kapat</button>
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedTeacherDetail(null)}>{t('common.close')}</button>
                         </div>
                     </div>
                 </div>
@@ -1750,7 +1778,7 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Aile Detayı</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.familyDetailTitle')}</h2>
                             <button type="button" onClick={() => setSelectedFamilyDetail(null)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -1764,7 +1792,7 @@ export default function SchoolDetailPage() {
                                 <div>
                                     <p className="text-xl font-bold text-dark dark:text-white">{selectedFamilyDetail.owner_name}</p>
                                     {selectedFamilyDetail.family_name && (
-                                        <p className="text-sm text-[#888ea8]">{selectedFamilyDetail.family_name} Ailesi</p>
+                                        <p className="text-sm text-[#888ea8]">{selectedFamilyDetail.family_name} {t('schools.detail.familySection')}</p>
                                     )}
                                 </div>
                             </div>
@@ -1773,13 +1801,13 @@ export default function SchoolDetailPage() {
                             <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
                                 {selectedFamilyDetail.email && (
                                     <div className="flex justify-between py-2.5">
-                                        <span className="text-sm text-[#888ea8]">E-posta</span>
+                                        <span className="text-sm text-[#888ea8]">{t('schools.detail.emailLabel')}</span>
                                         <span className="text-sm font-medium text-dark dark:text-white">{selectedFamilyDetail.email}</span>
                                     </div>
                                 )}
                                 {selectedFamilyDetail.phone && (
                                     <div className="flex justify-between py-2.5">
-                                        <span className="text-sm text-[#888ea8]">Telefon</span>
+                                        <span className="text-sm text-[#888ea8]">{t('schools.detail.phoneLabel')}</span>
                                         <span className="text-sm font-medium text-dark dark:text-white">{selectedFamilyDetail.phone}</span>
                                     </div>
                                 )}
@@ -1788,10 +1816,10 @@ export default function SchoolDetailPage() {
                             {/* Çocuklar */}
                             <div>
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">
-                                    Çocuklar ({selectedFamilyDetail.children.length})
+                                    {t('schools.detail.childrenLabel')} ({selectedFamilyDetail.children.length})
                                 </p>
                                 {selectedFamilyDetail.children.length === 0 ? (
-                                    <p className="text-sm text-[#888ea8]">Kayıtlı çocuk bulunmuyor.</p>
+                                    <p className="text-sm text-[#888ea8]">{t('schools.detail.noRegisteredChildren')}</p>
                                 ) : (
                                     <div className="space-y-2">
                                         {selectedFamilyDetail.children.map(child => (
@@ -1803,12 +1831,12 @@ export default function SchoolDetailPage() {
                                                     <p className="font-medium text-dark dark:text-white">{child.name}</p>
                                                     <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-[#888ea8]">
                                                         {child.birth_date && <span>{new Date(child.birth_date).toLocaleDateString('tr-TR')}</span>}
-                                                        {child.gender && <span>{child.gender === 'male' ? 'Erkek' : child.gender === 'female' ? 'Kız' : child.gender}</span>}
+                                                        {child.gender && <span>{child.gender === 'male' ? t('schools.detail.genderMale') : child.gender === 'female' ? t('schools.detail.genderFemale') : child.gender}</span>}
                                                     </div>
                                                 </div>
                                                 {child.status && (
                                                     <span className={`badge ${child.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'} text-xs`}>
-                                                        {child.status === 'active' ? 'Aktif' : child.status}
+                                                        {child.status === 'active' ? t('schools.detail.statusActive') : child.status}
                                                     </span>
                                                 )}
                                             </div>
@@ -1818,7 +1846,7 @@ export default function SchoolDetailPage() {
                             </div>
                         </div>
                         <div className="border-t border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
-                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedFamilyDetail(null)}>Kapat</button>
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedFamilyDetail(null)}>{t('common.close')}</button>
                         </div>
                     </div>
                 </div>
@@ -1829,25 +1857,25 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Talebi Reddet</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.rejectRemovalTitle')}</h2>
                             <button type="button" onClick={() => setShowRejectRemovalModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Red Nedeni *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.rejectRemovalReasonLabel')}</label>
                                 <textarea
                                     className="form-textarea mt-1 w-full"
                                     rows={3}
-                                    placeholder="Reddetme nedeninizi açıklayın..."
+                                    placeholder={t('schools.detail.rejectRemovalPlaceholder')}
                                     value={rejectionRemovalReason}
                                     onChange={e => setRejectionRemovalReason(e.target.value)}
                                 />
                             </div>
                             <div className="flex gap-3">
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectRemovalModal(false)}>
-                                    İptal
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="button"
@@ -1855,7 +1883,7 @@ export default function SchoolDetailPage() {
                                     disabled={!rejectionRemovalReason.trim() || savingRemovalReject}
                                     onClick={() => void handleRejectRemoval()}
                                 >
-                                    {savingRemovalReject ? 'Kaydediliyor...' : 'Reddet'}
+                                    {savingRemovalReject ? t('schools.detail.savingBtn') : t('schools.detail.rejectBtn')}
                                 </button>
                             </div>
                         </div>
@@ -1868,7 +1896,7 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Veli Bilgileri</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.parentDetailTitle')}</h2>
                             <button type="button" onClick={() => setSelectedParentDetail(null)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -1885,12 +1913,12 @@ export default function SchoolDetailPage() {
                             </div>
                             {selectedParentDetail.phone && (
                                 <div className="flex justify-between border-b border-[#ebedf2] py-2 dark:border-[#1b2e4b]">
-                                    <span className="text-sm text-[#888ea8]">Telefon</span>
+                                    <span className="text-sm text-[#888ea8]">{t('schools.detail.phoneLabel')}</span>
                                     <span className="text-sm font-medium text-dark dark:text-white">{selectedParentDetail.phone}</span>
                                 </div>
                             )}
                         </div>
-                        <button type="button" className="btn btn-outline-secondary mt-4 w-full" onClick={() => setSelectedParentDetail(null)}>Kapat</button>
+                        <button type="button" className="btn btn-outline-secondary mt-4 w-full" onClick={() => setSelectedParentDetail(null)}>{t('common.close')}</button>
                     </div>
                 </div>
             )}
@@ -1900,7 +1928,7 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-lg rounded-lg bg-white p-6 dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Çocuk Bilgileri</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.childDetailTitle')}</h2>
                             <button type="button" onClick={() => setSelectedChildDetail(null)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -1913,13 +1941,13 @@ export default function SchoolDetailPage() {
                                 <p className="text-xl font-bold text-dark dark:text-white">{selectedChildDetail.full_name}</p>
                             </div>
                             {[
-                                { label: 'Doğum Tarihi', value: selectedChildDetail.birth_date ? new Date(selectedChildDetail.birth_date).toLocaleDateString('tr-TR') : null },
-                                { label: 'Cinsiyet', value: selectedChildDetail.gender === 'male' ? 'Erkek' : selectedChildDetail.gender === 'female' ? 'Kız' : selectedChildDetail.gender },
-                                { label: 'Kan Grubu', value: selectedChildDetail.blood_type },
-                                { label: 'TC Kimlik No', value: selectedChildDetail.identity_number },
-                                { label: 'Pasaport No', value: selectedChildDetail.passport_number },
-                                { label: 'Uyruk', value: selectedChildDetail.nationality ? `${selectedChildDetail.nationality.flag_emoji ?? ''} ${selectedChildDetail.nationality.name}` : null },
-                                { label: 'Diller', value: selectedChildDetail.languages?.join(', ') ?? null },
+                                { label: t('schools.detail.birthDateLabel'), value: selectedChildDetail.birth_date ? new Date(selectedChildDetail.birth_date).toLocaleDateString('tr-TR') : null },
+                                { label: t('schools.detail.genderColHeader'), value: selectedChildDetail.gender === 'male' ? t('schools.detail.genderMale') : selectedChildDetail.gender === 'female' ? t('schools.detail.genderFemale') : selectedChildDetail.gender },
+                                { label: t('schools.detail.bloodTypeLabel'), value: selectedChildDetail.blood_type },
+                                { label: t('schools.detail.idNumberLabel'), value: selectedChildDetail.identity_number },
+                                { label: t('schools.detail.passportLabel'), value: selectedChildDetail.passport_number },
+                                { label: t('schools.detail.nationalityLabel'), value: selectedChildDetail.nationality ? `${selectedChildDetail.nationality.flag_emoji ?? ''} ${selectedChildDetail.nationality.name}` : null },
+                                { label: t('schools.detail.languagesLabel'), value: selectedChildDetail.languages?.join(', ') ?? null },
                             ].filter(r => r.value).map(r => (
                                 <div key={r.label} className="flex justify-between border-b border-[#ebedf2] py-2 dark:border-[#1b2e4b]">
                                     <span className="text-sm text-[#888ea8]">{r.label}</span>
@@ -1928,11 +1956,11 @@ export default function SchoolDetailPage() {
                             ))}
                             {selectedChildDetail.allergens.length > 0 && (
                                 <div className="pt-3">
-                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Alerjenler</p>
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.allergensSection')}</p>
                                     <div className="flex flex-wrap gap-1.5">
                                         {selectedChildDetail.allergens.map(a => (
                                             <span key={a.id} className={`badge ${a.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-danger'}`}>
-                                                {a.name}{a.status === 'pending' ? ' (bekliyor)' : ''}
+                                                {a.name}{a.status === 'pending' ? ` ${t('schools.detail.allergenPending')}` : ''}
                                             </span>
                                         ))}
                                     </div>
@@ -1940,11 +1968,11 @@ export default function SchoolDetailPage() {
                             )}
                             {selectedChildDetail.conditions.length > 0 && (
                                 <div className="pt-3">
-                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Tıbbi Durumlar</p>
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.conditionsSection')}</p>
                                     <div className="flex flex-wrap gap-1.5">
                                         {selectedChildDetail.conditions.map(c => (
                                             <span key={c.id} className={`badge ${c.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-info'}`}>
-                                                {c.name}{c.status === 'pending' ? ' (bekliyor)' : ''}
+                                                {c.name}{c.status === 'pending' ? ` ${t('schools.detail.conditionPending')}` : ''}
                                             </span>
                                         ))}
                                     </div>
@@ -1952,7 +1980,7 @@ export default function SchoolDetailPage() {
                             )}
                             {selectedChildDetail.medications.length > 0 && (
                                 <div className="pt-3">
-                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">İlaçlar</p>
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.medicationsSection')}</p>
                                     <div className="flex flex-wrap gap-1.5">
                                         {selectedChildDetail.medications.map(m => (
                                             <span key={m.id} className="badge badge-outline-secondary">{m.name}</span>
@@ -1962,12 +1990,12 @@ export default function SchoolDetailPage() {
                             )}
                             {selectedChildDetail.parent_notes && (
                                 <div className="pt-3">
-                                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">Veli Notu</p>
+                                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.parentNoteSection')}</p>
                                     <p className="text-sm text-[#515365] dark:text-[#888ea8]">{selectedChildDetail.parent_notes}</p>
                                 </div>
                             )}
                         </div>
-                        <button type="button" className="btn btn-outline-secondary mt-4 w-full" onClick={() => setSelectedChildDetail(null)}>Kapat</button>
+                        <button type="button" className="btn btn-outline-secondary mt-4 w-full" onClick={() => setSelectedChildDetail(null)}>{t('common.close')}</button>
                     </div>
                 </div>
             )}
@@ -1977,7 +2005,7 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğrenci Talebini Reddet</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.rejectChildRequestTitle')}</h2>
                             <button type="button" onClick={() => setShowRejectChildModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -1985,12 +2013,12 @@ export default function SchoolDetailPage() {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                    Red Sebebi <span className="text-danger">*</span>
+                                    {t('schools.detail.rejectReasonLabel')} <span className="text-danger">*</span>
                                 </label>
                                 <textarea
                                     className="form-textarea mt-1 w-full"
                                     rows={4}
-                                    placeholder="Red sebebini açıklayınız (zorunlu)..."
+                                    placeholder={t('schools.detail.rejectReasonPlaceholder')}
                                     value={rejectionChildReason}
                                     onChange={e => setRejectionChildReason(e.target.value)}
                                 />
@@ -2002,9 +2030,9 @@ export default function SchoolDetailPage() {
                                     onClick={handleRejectChildSubmit}
                                     disabled={!rejectionChildReason.trim() || savingChildReject}
                                 >
-                                    {savingChildReject ? 'Reddediliyor...' : 'Reddet'}
+                                    {savingChildReject ? t('schools.detail.rejectingBtn') : t('schools.detail.rejectBtn')}
                                 </button>
-                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectChildModal(false)}>{t('common.cancel') || 'İptal'}</button>
+                                <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectChildModal(false)}>{t('common.cancel')}</button>
                             </div>
                         </div>
                     </div>
@@ -2016,7 +2044,7 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-2xl rounded-lg bg-white p-6 dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğrenci Detayı</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.studentDetailTitle')}</h2>
                             <button type="button" onClick={() => setSelectedChild(null)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -2036,23 +2064,23 @@ export default function SchoolDetailPage() {
                                     <div>
                                         <p className="text-xl font-bold text-dark dark:text-white">{selectedChild.full_name}</p>
                                         <span className={`badge ${selectedChild.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
-                                            {selectedChild.status === 'active' ? 'Aktif' : (selectedChild.status ?? '—')}
+                                            {selectedChild.status === 'active' ? t('schools.detail.statusActive') : (selectedChild.status ?? '—')}
                                         </span>
                                     </div>
                                 </div>
 
                                 {/* Kişisel Bilgiler */}
                                 <div>
-                                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Kişisel Bilgiler</p>
+                                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.personalInfoSection')}</p>
                                     <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
                                         {[
-                                            { label: 'Doğum Tarihi', value: selectedChild.birth_date ? new Date(selectedChild.birth_date).toLocaleDateString('tr-TR') : null },
-                                            { label: 'Cinsiyet', value: selectedChild.gender === 'male' ? 'Erkek' : selectedChild.gender === 'female' ? 'Kız' : selectedChild.gender },
-                                            { label: 'Kan Grubu', value: selectedChild.blood_type },
-                                            { label: 'TC Kimlik No', value: selectedChild.identity_number },
-                                            { label: 'Pasaport No', value: selectedChild.passport_number },
-                                            { label: 'Uyruk', value: selectedChild.nationality ? `${selectedChild.nationality.flag_emoji ?? ''} ${selectedChild.nationality.name}` : null },
-                                            { label: 'Diller', value: selectedChild.languages?.join(', ') },
+                                            { label: t('schools.detail.birthDateLabel'), value: selectedChild.birth_date ? new Date(selectedChild.birth_date).toLocaleDateString('tr-TR') : null },
+                                            { label: t('schools.detail.genderColHeader'), value: selectedChild.gender === 'male' ? t('schools.detail.genderMale') : selectedChild.gender === 'female' ? t('schools.detail.genderFemale') : selectedChild.gender },
+                                            { label: t('schools.detail.bloodTypeLabel'), value: selectedChild.blood_type },
+                                            { label: t('schools.detail.idNumberLabel'), value: selectedChild.identity_number },
+                                            { label: t('schools.detail.passportLabel'), value: selectedChild.passport_number },
+                                            { label: t('schools.detail.nationalityLabel'), value: selectedChild.nationality ? `${selectedChild.nationality.flag_emoji ?? ''} ${selectedChild.nationality.name}` : null },
+                                            { label: t('schools.detail.languagesLabel'), value: selectedChild.languages?.join(', ') },
                                         ].filter(r => r.value).map(r => (
                                             <div key={r.label} className="flex justify-between py-2">
                                                 <span className="text-sm text-[#888ea8]">{r.label}</span>
@@ -2065,14 +2093,14 @@ export default function SchoolDetailPage() {
                                 {/* Sağlık Bilgileri */}
                                 {((selectedChild.allergens?.length ?? 0) > 0 || (selectedChild.conditions?.length ?? 0) > 0 || (selectedChild.medications?.length ?? 0) > 0) && (
                                     <div>
-                                        <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Sağlık Bilgileri</p>
+                                        <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.healthInfoSection')}</p>
                                         {(selectedChild.allergens?.length ?? 0) > 0 && (
                                             <div className="mb-2">
-                                                <p className="mb-1 text-xs text-[#888ea8]">Alerjenler</p>
+                                                <p className="mb-1 text-xs text-[#888ea8]">{t('schools.detail.allergensSection')}</p>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {selectedChild.allergens!.map(a => (
                                                         <span key={a.id} className={`badge ${a.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-danger'}`}>
-                                                            {a.name}{a.status === 'pending' ? ' (bekliyor)' : ''}
+                                                            {a.name}{a.status === 'pending' ? ` ${t('schools.detail.allergenPending')}` : ''}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -2080,11 +2108,11 @@ export default function SchoolDetailPage() {
                                         )}
                                         {(selectedChild.conditions?.length ?? 0) > 0 && (
                                             <div className="mb-2">
-                                                <p className="mb-1 text-xs text-[#888ea8]">Tıbbi Durumlar</p>
+                                                <p className="mb-1 text-xs text-[#888ea8]">{t('schools.detail.conditionsSection')}</p>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {selectedChild.conditions!.map(c => (
                                                         <span key={c.id} className={`badge ${c.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-info'}`}>
-                                                            {c.name}{c.status === 'pending' ? ' (bekliyor)' : ''}
+                                                            {c.name}{c.status === 'pending' ? ` ${t('schools.detail.conditionPending')}` : ''}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -2092,7 +2120,7 @@ export default function SchoolDetailPage() {
                                         )}
                                         {(selectedChild.medications?.length ?? 0) > 0 && (
                                             <div>
-                                                <p className="mb-1 text-xs text-[#888ea8]">İlaçlar</p>
+                                                <p className="mb-1 text-xs text-[#888ea8]">{t('schools.detail.medicationsSection')}</p>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {selectedChild.medications!.map(m => (
                                                         <span key={m.id} className="badge badge-outline-secondary">{m.name}</span>
@@ -2106,7 +2134,7 @@ export default function SchoolDetailPage() {
                                 {/* Veli Notları */}
                                 {selectedChild.parent_notes && (
                                     <div>
-                                        <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Veli Notu</p>
+                                        <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.parentNoteSection')}</p>
                                         <p className="text-sm text-[#515365] dark:text-[#888ea8]">{selectedChild.parent_notes}</p>
                                     </div>
                                 )}
@@ -2114,10 +2142,10 @@ export default function SchoolDetailPage() {
                                 {/* Aile Bilgileri */}
                                 {selectedChild.family_profile && (
                                     <div>
-                                        <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Aile Bilgileri</p>
+                                        <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.familyInfoSection')}</p>
                                         {selectedChild.family_profile.family_name && (
                                             <p className="mb-2 text-sm font-medium text-dark dark:text-white">
-                                                Aile: {selectedChild.family_profile.family_name}
+                                                {t('schools.detail.familyLabel')} {selectedChild.family_profile.family_name}
                                             </p>
                                         )}
                                         <div className="space-y-2">
@@ -2130,7 +2158,7 @@ export default function SchoolDetailPage() {
                                                     <div className="min-w-0 flex-1">
                                                         <p className="font-medium text-dark dark:text-white">
                                                             {selectedChild.family_profile.owner.name} {selectedChild.family_profile.owner.surname}
-                                                            <span className="ml-2 text-xs text-[#888ea8]">Ana Veli</span>
+                                                            <span className="ml-2 text-xs text-[#888ea8]">{t('schools.detail.mainParentLabel')}</span>
                                                         </p>
                                                         <p className="text-xs text-[#888ea8]">{selectedChild.family_profile.owner.email}</p>
                                                         {selectedChild.family_profile.owner.phone && (
@@ -2149,7 +2177,7 @@ export default function SchoolDetailPage() {
                                                         <p className="font-medium text-dark dark:text-white">
                                                             {m.user!.name} {m.user!.surname}
                                                             <span className="ml-2 text-xs text-[#888ea8]">
-                                                                {m.role === 'super_parent' ? 'Ana Veli' : 'Ek Veli'}
+                                                                {m.role === 'super_parent' ? t('schools.detail.mainParentLabel') : t('schools.detail.coParentLabel')}
                                                             </span>
                                                         </p>
                                                         <p className="text-xs text-[#888ea8]">{m.user!.email}</p>
@@ -2166,18 +2194,18 @@ export default function SchoolDetailPage() {
                                 {/* Sınıf Atamaları */}
                                 <div>
                                     <div className="mb-2 flex items-center justify-between">
-                                        <p className="text-sm font-semibold uppercase tracking-wide text-[#888ea8]">Sınıf Atamaları</p>
+                                        <p className="text-sm font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.classAssignSection')}</p>
                                         <button
                                             type="button"
                                             className="btn btn-xs btn-outline-primary gap-1"
                                             onClick={() => { setSelectedClassIdForAssign(''); setShowClassAssignModal(true); }}
                                         >
                                             <Plus className="h-3 w-3" />
-                                            Sınıfa Ata
+                                            {t('schools.detail.assignToClassBtn')}
                                         </button>
                                     </div>
                                     {(selectedChild.classes?.length ?? 0) === 0 ? (
-                                        <p className="text-sm text-[#888ea8]">Henüz bir sınıfa atanmamış.</p>
+                                        <p className="text-sm text-[#888ea8]">{t('schools.detail.noClassAssignedYet')}</p>
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
                                             {selectedChild.classes!.map((cls: { id: number; name: string }) => (
@@ -2188,7 +2216,7 @@ export default function SchoolDetailPage() {
                                                         type="button"
                                                         className="ml-1 text-[#888ea8] hover:text-danger"
                                                         onClick={() => handleRemoveChildFromClass(cls.id, cls.name)}
-                                                        title="Sınıftan çıkar"
+                                                        title={t('schools.detail.removeFromClassTitle')}
                                                     >
                                                         <X className="h-3.5 w-3.5" />
                                                     </button>
@@ -2198,7 +2226,7 @@ export default function SchoolDetailPage() {
                                     )}
                                 </div>
 
-                                <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedChild(null)}>Kapat</button>
+                                <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedChild(null)}>{t('common.close')}</button>
                             </div>
                         )}
                     </div>
@@ -2210,28 +2238,28 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğrenci Ata</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.assignStudentModalTitle')}</h2>
                             <button type="button" onClick={() => setShowClassStudentModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <p className="mb-4 text-sm text-[#515365] dark:text-[#888ea8]">
-                            <strong className="text-dark dark:text-white">{classForStudentAssign.name}</strong> sınıfına öğrenci seçin.
+                            <strong className="text-dark dark:text-white">{classForStudentAssign.name}</strong> {t('schools.detail.classStudentSelectDesc')}
                             {(classForStudentAssign.age_min != null || classForStudentAssign.age_max != null) && (
                                 <span className="ml-1 text-xs text-[#888ea8]">
-                                    (Yaş aralığı: {classForStudentAssign.age_min ?? '?'}–{classForStudentAssign.age_max ?? '?'})
+                                    ({t('schools.detail.classAgeRangeLabel')}: {classForStudentAssign.age_min ?? '?'}–{classForStudentAssign.age_max ?? '?'})
                                 </span>
                             )}
                         </p>
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Öğrenci *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.assignStudentSelectLabel')}</label>
                                 <select
                                     className="form-select mt-1"
                                     value={studentAssignChildId}
                                     onChange={e => setStudentAssignChildId(e.target.value)}
                                 >
-                                    <option value="">Öğrenci seçin</option>
+                                    <option value="">{t('schools.detail.assignStudentSelectPlaceholder')}</option>
                                     {children.map(c => {
                                         const hasClass = (c.classes?.length ?? 0) > 0;
                                         const birthYear = c.birth_date ? new Date(c.birth_date + 'T00:00:00') : null;
@@ -2245,8 +2273,8 @@ export default function SchoolDetailPage() {
                                         const min = classForStudentAssign?.age_min ?? null;
                                         const max = classForStudentAssign?.age_max ?? null;
                                         const outOfRange = age !== null && ((min !== null && age < min) || (max !== null && age > max));
-                                        if (outOfRange) return null;
-                                        const label = `${c.first_name} ${c.last_name}${age !== null ? ` (${age} yaş)` : ''}${hasClass ? ` — ${c.classes![0].name} sınıfında` : ''}`;
+                                        if (outOfRange) { return null; }
+                                        const label = `${c.first_name} ${c.last_name}${age !== null ? t('schools.detail.assignStudentAgeLabel').replace('{age}', String(age)) : ''}${hasClass ? t('schools.detail.assignStudentInClass').replace('{class}', c.classes![0].name) : ''}`;
                                         return (
                                             <option key={c.id} value={String(c.id)} disabled={hasClass}>
                                                 {label}
@@ -2262,7 +2290,7 @@ export default function SchoolDetailPage() {
                                     disabled={!studentAssignChildId || assigningStudentToClass}
                                     onClick={handleAssignStudentToClass}
                                 >
-                                    {assigningStudentToClass ? 'Atanıyor...' : 'Ata'}
+                                    {assigningStudentToClass ? t('schools.detail.assignStudentAssigning') : t('schools.detail.assignStudentBtn')}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassStudentModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
@@ -2276,27 +2304,27 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Sınıfa Ata</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.assignClassModalTitle')}</h2>
                             <button type="button" onClick={() => setShowClassAssignModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <p className="mb-4 text-sm text-[#515365] dark:text-[#888ea8]">
-                            <strong className="text-dark dark:text-white">{selectedChild.full_name}</strong> için sınıf seçin.
+                            <strong className="text-dark dark:text-white">{selectedChild.full_name}</strong> {t('schools.detail.assignClassSelectDesc')}
                         </p>
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Sınıf *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.assignClassSelectLabel')}</label>
                                 <select
                                     className="form-select mt-1"
                                     value={selectedClassIdForAssign}
                                     onChange={e => setSelectedClassIdForAssign(e.target.value)}
                                 >
-                                    <option value="">Sınıf seçin</option>
+                                    <option value="">{t('schools.detail.assignClassSelectPlaceholder')}</option>
                                     {classes.filter(c => c.is_active !== false).map(c => (
                                         <option key={c.id} value={c.id}>
                                             {c.name}
-                                            {(c.age_min != null || c.age_max != null) && ` (${c.age_min ?? '?'}-${c.age_max ?? '?'} yaş)`}
+                                            {(c.age_min != null || c.age_max != null) && t('schools.detail.assignClassAgeRange').replace('{min}', String(c.age_min ?? '?')).replace('{max}', String(c.age_max ?? '?'))}
                                         </option>
                                     ))}
                                 </select>
@@ -2308,7 +2336,7 @@ export default function SchoolDetailPage() {
                                     disabled={!selectedClassIdForAssign || assigningChildToClass}
                                     onClick={handleAssignChildToClass}
                                 >
-                                    {assigningChildToClass ? 'Atanıyor...' : 'Ata'}
+                                    {assigningChildToClass ? t('schools.detail.assignStudentAssigning') : t('schools.detail.assignStudentBtn')}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassAssignModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
@@ -2323,7 +2351,7 @@ export default function SchoolDetailPage() {
                     <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-[#0e1726]">
                         <div className="flex shrink-0 items-center justify-between border-b border-[#e0e6ed] px-6 py-4 dark:border-[#1b2e4b]">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
-                                {editingClass ? 'Sınıf Düzenle' : 'Yeni Sınıf'}
+                                {editingClass ? t('schools.detail.classEditModal') : t('schools.detail.classNewModal')}
                             </h2>
                             <button type="button" onClick={() => setShowClassModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
@@ -2334,14 +2362,14 @@ export default function SchoolDetailPage() {
 
                                 {/* Sınıf Adı */}
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Sınıf Adı *</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classNameFieldLabel')}</label>
                                     <input type="text" className="form-input mt-1" value={classForm.name} onChange={cf('name')} required />
                                 </div>
 
                                 {/* Renk Seçici — zorunlu */}
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                        Sınıf Rengi <span className="text-danger">*</span>
+                                        {t('schools.detail.classColorFieldLabel')} <span className="text-danger">*</span>
                                     </label>
                                     <div className="mt-2 flex flex-wrap gap-2">
                                         {CLASS_COLORS.map(c => (
@@ -2365,7 +2393,7 @@ export default function SchoolDetailPage() {
                                         {/* Özel renk */}
                                         <label
                                             className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-dashed border-[#888ea8] text-xs text-[#888ea8] hover:border-primary hover:text-primary"
-                                            title="Özel Renk"
+                                            title={t('schools.detail.customColorLabel')}
                                         >
                                             <span>+</span>
                                             <input
@@ -2379,7 +2407,7 @@ export default function SchoolDetailPage() {
                                     {classForm.color && (
                                         <div className="mt-2 flex items-center gap-2 text-sm text-[#515365]">
                                             <span className="inline-block h-4 w-4 rounded-full" style={{ backgroundColor: classForm.color }} />
-                                            <span>Seçili: {classForm.color}</span>
+                                            <span>{t('schools.detail.classSelectedColor').replace('{color}', classForm.color)}</span>
                                         </div>
                                     )}
                                 </div>
@@ -2387,8 +2415,8 @@ export default function SchoolDetailPage() {
                                 {/* İkon veya Logo — birinden biri zorunlu */}
                                 <div>
                                     <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                        İkon veya Logo <span className="text-danger">*</span>
-                                        <span className="ml-1 text-xs font-normal text-[#888ea8]">(birini seçin)</span>
+                                        {t('schools.detail.classIconOrLogoLabel')} <span className="text-danger">*</span>
+                                        <span className="ml-1 text-xs font-normal text-[#888ea8]">{t('schools.detail.classIconOrLogoHint')}</span>
                                     </label>
 
                                     <div className="mt-2 flex gap-3">
@@ -2399,7 +2427,7 @@ export default function SchoolDetailPage() {
                                             className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${classForm.icon && !logoFile ? 'border-primary bg-primary/10 text-primary' : 'border-[#e0e6ed] text-[#515365] hover:border-primary dark:border-[#1b2e4b]'}`}
                                         >
                                             <span className="text-lg">{classForm.icon || '😊'}</span>
-                                            <span>İkon Seç</span>
+                                            <span>{t('schools.detail.classIconSelectBtn')}</span>
                                         </button>
 
                                         {/* Logo yükleme butonu */}
@@ -2407,7 +2435,7 @@ export default function SchoolDetailPage() {
                                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
-                                            <span>Logo Yükle</span>
+                                            <span>{t('schools.detail.classLogoUploadBtn')}</span>
                                             <input type="file" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" className="sr-only" onChange={handleLogoFileChange} />
                                         </label>
                                     </div>
@@ -2415,9 +2443,9 @@ export default function SchoolDetailPage() {
                                     {/* İkon picker */}
                                     {showIconPicker && !logoFile && (
                                         <div className="mt-3 max-h-56 overflow-y-auto rounded-xl border border-[#e0e6ed] bg-[#f8f9fa] p-3 dark:border-[#1b2e4b] dark:bg-[#1b2e4b]">
-                                            {ICON_CATEGORIES.map(cat => (
-                                                <div key={cat.label} className="mb-3">
-                                                    <p className="mb-1 text-xs font-semibold uppercase text-[#888ea8]">{cat.label}</p>
+                                            {ICON_CATEGORIES_KEYS.map(cat => (
+                                                <div key={cat.labelKey} className="mb-3">
+                                                    <p className="mb-1 text-xs font-semibold uppercase text-[#888ea8]">{t(cat.labelKey)}</p>
                                                     <div className="flex flex-wrap gap-1">
                                                         {cat.icons.map(icon => (
                                                             <button
@@ -2445,9 +2473,9 @@ export default function SchoolDetailPage() {
                                             >
                                                 {classForm.icon}
                                             </div>
-                                            <span className="text-sm text-[#515365]">Seçili ikon</span>
+                                            <span className="text-sm text-[#515365]">{t('schools.detail.classSelectedIcon')}</span>
                                             <button type="button" className="text-xs text-danger hover:underline" onClick={() => setClassForm(prev => ({ ...prev, icon: '' }))}>
-                                                Kaldır
+                                                {t('schools.detail.classIconRemove')}
                                             </button>
                                         </div>
                                     )}
@@ -2456,13 +2484,13 @@ export default function SchoolDetailPage() {
                                     {logoPreview && (
                                         <div className="mt-2 flex items-center gap-3">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img src={logoPreview} alt="Logo önizleme" className="h-12 w-12 rounded-xl object-cover shadow-sm" />
+                                            <img src={logoPreview} alt={t('schools.detail.classLogoPreviewAlt')} className="h-12 w-12 rounded-xl object-cover shadow-sm" />
                                             <button
                                                 type="button"
                                                 className="text-xs text-danger hover:underline"
                                                 onClick={() => { setLogoFile(null); setLogoPreview(null); }}
                                             >
-                                                Logoyu Kaldır
+                                                {t('schools.detail.classLogoRemove')}
                                             </button>
                                         </div>
                                     )}
@@ -2471,7 +2499,7 @@ export default function SchoolDetailPage() {
                                         <div className="mt-2 flex items-center gap-3">
                                             <AuthImg
                                                 src={existingLogoUrl}
-                                                alt="Mevcut logo"
+                                                alt={t('schools.detail.classCurrentLogoAlt')}
                                                 className="h-12 w-12 rounded-xl object-cover shadow-sm"
                                                 fallback={<div className="h-12 w-12 animate-pulse rounded-xl bg-gray-200 dark:bg-[#1b2e4b]" />}
                                             />
@@ -2480,7 +2508,7 @@ export default function SchoolDetailPage() {
                                                 className="text-xs text-danger hover:underline"
                                                 onClick={() => { setExistingLogoUrl(null); setClassForm(prev => ({ ...prev, icon: '' })); }}
                                             >
-                                                Logoyu Kaldır
+                                                {t('schools.detail.classLogoRemove')}
                                             </button>
                                         </div>
                                     )}
@@ -2488,16 +2516,16 @@ export default function SchoolDetailPage() {
 
                                 {/* Eğitim Yılı */}
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Eğitim Yılı</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classAcademicYearLabel')}</label>
                                     <select
                                         className="form-select mt-1"
                                         value={classForm.academic_year_id}
                                         onChange={e => setClassForm(prev => ({ ...prev, academic_year_id: e.target.value }))}
                                     >
-                                        <option value="">— Seçin (İsteğe Bağlı) —</option>
+                                        <option value="">{t('schools.detail.classAcademicYearOptional')}</option>
                                         {academicYears.map(y => (
                                             <option key={y.id} value={y.id}>
-                                                {y.name}{y.is_active ? ' (Aktif)' : ''}
+                                                {y.name}{y.is_active ? t('schools.detail.classAcademicYearActive') : ''}
                                             </option>
                                         ))}
                                     </select>
@@ -2505,31 +2533,31 @@ export default function SchoolDetailPage() {
 
                                 {/* Yaş Aralığı */}
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Yaş Aralığı</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classAgeRangeLabel')}</label>
                                     <div className="mt-1 flex items-center gap-2">
                                         <input type="number" className="form-input w-full" placeholder="Min" min={0} max={18} value={classForm.age_min} onChange={cf('age_min')} />
                                         <span className="shrink-0 text-[#888ea8]">—</span>
                                         <input type="number" className="form-input w-full" placeholder="Max" min={0} max={18} value={classForm.age_max} onChange={cf('age_max')} />
-                                        <span className="shrink-0 text-sm text-[#888ea8]">yaş</span>
+                                        <span className="shrink-0 text-sm text-[#888ea8]">{t('schools.detail.classAgeUnit')}</span>
                                     </div>
                                 </div>
 
                                 {/* Kapasite */}
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Kapasite</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classCapacityLabel')}</label>
                                     <input type="number" className="form-input mt-1" min={1} value={classForm.capacity} onChange={cf('capacity')} />
                                 </div>
 
                                 {/* Açıklama */}
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Açıklama</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classDescriptionLabel')}</label>
                                     <textarea className="form-input mt-1" rows={2} value={classForm.description} onChange={cf('description')} />
                                 </div>
                             </div>
 
                             <div className="flex shrink-0 gap-3 border-t border-[#e0e6ed] px-6 py-4 dark:border-[#1b2e4b]">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingClass}>
-                                    {savingClass ? 'Kaydediliyor...' : (editingClass ? 'Güncelle' : 'Kaydet')}
+                                    {savingClass ? t('schools.detail.savingBtn') : (editingClass ? t('schools.detail.classUpdateBtn') : t('schools.detail.classSaveBtn'))}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowClassModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
@@ -2543,7 +2571,7 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
                     <div className="flex w-full max-w-lg flex-col rounded-xl bg-white shadow-2xl dark:bg-[#0e1726]">
                         <div className="flex items-center justify-between border-b border-[#e0e6ed] px-6 py-4 dark:border-[#1b2e4b]">
-                            <h3 className="text-base font-bold text-dark dark:text-white">Logo Kırp</h3>
+                            <h3 className="text-base font-bold text-dark dark:text-white">{t('schools.detail.cropModalTitle')}</h3>
                             <button type="button" onClick={() => { setShowCropModal(false); setCropSrc(null); }} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -2553,7 +2581,7 @@ export default function SchoolDetailPage() {
                             <img
                                 id="crop-img"
                                 src={cropSrc}
-                                alt="Kırpılacak"
+                                alt={t('schools.detail.cropImgAlt')}
                                 className="h-full w-full object-contain"
                                 style={{ display: 'block' }}
                             />
@@ -2591,7 +2619,7 @@ export default function SchoolDetailPage() {
                         </div>
                         <div className="border-t border-[#e0e6ed] px-6 py-3 dark:border-[#1b2e4b]">
                             <label className="block text-xs font-medium text-[#515365] dark:text-[#888ea8]">
-                                Kırpma Boyutu: {cropSize}px
+                                {t('schools.detail.cropSizeLabel').replace('{size}', String(cropSize))}
                             </label>
                             <input
                                 type="range"
@@ -2613,10 +2641,10 @@ export default function SchoolDetailPage() {
                         </div>
                         <div className="flex gap-3 border-t border-[#e0e6ed] px-6 py-4 dark:border-[#1b2e4b]">
                             <button type="button" className="btn btn-primary flex-1" onClick={handleCropConfirm}>
-                                Kırp ve Kullan
+                                {t('schools.detail.cropConfirmBtn')}
                             </button>
                             <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => { setShowCropModal(false); setCropSrc(null); }}>
-                                İptal
+                                {t('common.cancel')}
                             </button>
                         </div>
                     </div>
@@ -2629,7 +2657,7 @@ export default function SchoolDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Talebi Reddet</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.rejectRequestTitle')}</h2>
                             <button type="button" onClick={() => setShowRejectModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -2637,12 +2665,12 @@ export default function SchoolDetailPage() {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                    Red Sebebi <span className="text-danger">*</span>
+                                    {t('schools.detail.rejectReasonLabel')} <span className="text-danger">*</span>
                                 </label>
                                 <textarea
                                     className="form-textarea mt-1 w-full"
                                     rows={4}
-                                    placeholder="Red sebebini açıklayınız (zorunlu)..."
+                                    placeholder={t('schools.detail.rejectReasonPlaceholder')}
                                     value={rejectionReason}
                                     onChange={e => setRejectionReason(e.target.value)}
                                 />
@@ -2654,7 +2682,7 @@ export default function SchoolDetailPage() {
                                     onClick={handleRejectSubmit}
                                     disabled={!rejectionReason.trim() || savingReject}
                                 >
-                                    {savingReject ? 'Reddediliyor...' : 'Reddet'}
+                                    {savingReject ? t('schools.detail.rejectingBtn') : t('schools.detail.rejectBtn')}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowRejectModal(false)}>{t('common.cancel') || 'İptal'}</button>
                             </div>
@@ -2669,7 +2697,7 @@ export default function SchoolDetailPage() {
                     <div className="w-full max-w-lg rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
-                                {selectedClass.name} — Öğretmenler
+                                {selectedClass.name} — {t('schools.detail.teacherModalTitle')}
                             </h2>
                             <button type="button" onClick={() => setShowTeacherModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
@@ -2679,7 +2707,7 @@ export default function SchoolDetailPage() {
                         {/* Mevcut öğretmenler */}
                         {classTeachers.length > 0 && (
                             <div className="mb-4">
-                                <p className="mb-2 text-sm font-medium text-dark dark:text-white-light">Atanmış Öğretmenler</p>
+                                <p className="mb-2 text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.assignedTeachersLabel')}</p>
                                 <div className="space-y-2">
                                     {classTeachers.map(t => (
                                         <div key={t.id} className="flex items-center justify-between rounded border border-[#ebedf2] p-2 dark:border-[#1b2e4b]">
@@ -2698,29 +2726,29 @@ export default function SchoolDetailPage() {
 
                         {/* Öğretmen ekle */}
                         <div className="space-y-3 border-t border-[#ebedf2] pt-4 dark:border-[#1b2e4b]">
-                            <p className="text-sm font-medium text-dark dark:text-white-light">Öğretmen Ekle</p>
+                            <p className="text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.addTeacherLabel')}</p>
                             <select className="form-select" value={selectedTeacherId} onChange={e => setSelectedTeacherId(e.target.value)}>
-                                <option value="">Öğretmen seçin</option>
-                                {schoolTeachers.map(t => {
-                                    const assigned = classTeachers.some(ct => Number(ct.id) === Number(t.id));
+                                <option value="">{t('schools.detail.teacherSelectPlaceholder')}</option>
+                                {schoolTeachers.map(teacher => {
+                                    const assigned = classTeachers.some(ct => Number(ct.id) === Number(teacher.id));
                                     return (
-                                        <option key={t.id} value={t.id} disabled={assigned}>
-                                            {t.name}{assigned ? ' (Zaten atanmış)' : ''}
+                                        <option key={teacher.id} value={teacher.id} disabled={assigned}>
+                                            {teacher.name}{assigned ? t('schools.detail.teacherAlreadyAssigned') : ''}
                                         </option>
                                     );
                                 })}
                             </select>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Görev Türü <span className="text-danger">*</span></label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.roleTypeLabel')} <span className="text-danger">*</span></label>
                                 <select className="form-select mt-1" value={classTeacherRoleTypeId} onChange={e => setClassTeacherRoleTypeId(e.target.value)}>
-                                    <option value="">— Görev Türü Seçin —</option>
+                                    <option value="">{t('schools.detail.roleTypeSelectPlaceholder')}</option>
                                     {roleTypes.filter(r => r.is_active !== false).map(r => (
                                         <option key={r.id} value={r.id}>{r.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <button type="button" className="btn btn-primary w-full" onClick={handleAssignTeacher} disabled={!selectedTeacherId || !classTeacherRoleTypeId || assigningTeacher}>
-                                {assigningTeacher ? 'Atanıyor...' : 'Öğretmeni Ata'}
+                                {assigningTeacher ? t('schools.detail.teacherAssigningBtn') : t('schools.detail.teacherAssignBtn')}
                             </button>
                         </div>
                     </div>

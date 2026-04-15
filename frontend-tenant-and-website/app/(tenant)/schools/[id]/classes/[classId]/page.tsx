@@ -46,13 +46,9 @@ type Tab = 'students' | 'teachers' | 'attendance' | 'activities' | 'meals' | 'su
 
 // ── Sabit etiketler ──────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<string, string> = {
-    present: 'Geldi', absent: 'Gelmedi', late: 'Geç Geldi', excused: 'İzinli',
-};
 const STATUS_ACTIVE: Record<string, string> = {
     present: 'btn-success', absent: 'btn-danger', late: 'btn-warning', excused: 'btn-info',
 };
-const GENDER_LABELS: Record<string, string> = { male: 'Erkek', female: 'Kız' };
 
 function calcAge(birthDate: string): number | null {
     const bd = new Date(birthDate + 'T00:00:00');
@@ -69,6 +65,17 @@ function calcAge(birthDate: string): number | null {
 export default function ClassDetailPage() {
     const { t } = useTranslation();
     const params = useParams();
+
+    const STATUS_LABELS: Record<string, string> = {
+        present: t('schools.detail.classDetail.presentStatus'),
+        absent: t('schools.detail.classDetail.absentStatus'),
+        late: t('schools.detail.classDetail.lateStatus'),
+        excused: t('schools.detail.classDetail.excusedStatus'),
+    };
+    const GENDER_LABELS: Record<string, string> = {
+        male: t('schools.detail.genderMale'),
+        female: t('schools.detail.genderFemale'),
+    };
     const schoolId = params.id as string;
     const classId = params.classId as string;
 
@@ -131,7 +138,7 @@ export default function ClassDetailPage() {
             if (clsRes.data?.data) { setCls(clsRes.data.data); }
             setChildren(childrenRes.data?.data ?? []);
         } catch {
-            toast.error('Sınıf bilgileri yüklenemedi.');
+            toast.error(t('schools.detail.classDetail.classInfoLoadError'));
         } finally {
             setLoading(false);
         }
@@ -143,7 +150,7 @@ export default function ClassDetailPage() {
             const res = await apiClient.get(`/schools/${schoolId}/classes/${classId}/teachers`);
             setClassTeachers(res.data?.data ?? []);
             setTeachersFetched(true);
-        } catch { toast.error('Öğretmenler yüklenemedi.'); }
+        } catch { toast.error(t('schools.detail.classDetail.teachersLoadError')); }
     }, [schoolId, classId, teachersFetched]);
 
     const loadAttendances = useCallback(async (date: string) => {
@@ -157,7 +164,7 @@ export default function ClassDetailPage() {
             data.forEach(a => { statuses[a.child_id] = a.status; });
             setAttendanceStatuses(statuses);
             attendanceLoadedDateRef.current = date;
-        } catch { toast.error('Yoklama yüklenemedi.'); }
+        } catch { toast.error(t('schools.detail.classDetail.attendanceLoadError')); }
     }, [schoolId, classId]);
 
     const loadActivities = useCallback(async () => {
@@ -174,7 +181,7 @@ export default function ClassDetailPage() {
             );
             setActivities(filtered);
             setActivitiesFetched(true);
-        } catch { toast.error('Etkinlikler yüklenemedi.'); }
+        } catch { toast.error(t('schools.detail.classDetail.activitiesLoadError')); }
         finally { setLoadingActivities(false); }
     }, [schoolId, classId, activitiesFetched]);
 
@@ -187,7 +194,7 @@ export default function ClassDetailPage() {
             });
             setMealSchedules(res.data?.data ?? []);
             mealLoadedKeyRef.current = key;
-        } catch { toast.error('Yemek takvimi yüklenemedi.'); }
+        } catch { toast.error(t('schools.detail.classDetail.mealsLoadError')); }
     }, [schoolId, classId]);
 
     const loadSupply = useCallback(async () => {
@@ -196,7 +203,7 @@ export default function ClassDetailPage() {
             const res = await apiClient.get(`/schools/${schoolId}/classes/${classId}/supply-list`);
             setSupplyItems(res.data?.data ?? []);
             setSupplyFetched(true);
-        } catch { toast.error('İhtiyaç listesi yüklenemedi.'); }
+        } catch { toast.error(t('schools.detail.classDetail.supplyLoadError')); }
     }, [schoolId, classId, supplyFetched]);
 
     const loadAvailableMeals = useCallback(async () => {
@@ -205,7 +212,7 @@ export default function ClassDetailPage() {
             const res = await apiClient.get('/meals', { params: { school_id: schoolId } });
             setAvailableMeals(res.data?.data ?? []);
             setAvailableMealsFetched(true);
-        } catch { toast.error('Yemekler yüklenemedi.'); }
+        } catch { toast.error(t('schools.detail.classDetail.mealsAvailableLoadError')); }
     }, [schoolId, availableMealsFetched]);
 
     useEffect(() => { loadInitial(); }, [loadInitial]);
@@ -240,7 +247,7 @@ export default function ClassDetailPage() {
         try {
             const res = await apiClient.get(`/schools/${schoolId}/children/${childId}`);
             setSelectedChild(res.data?.data ?? null);
-        } catch { toast.error('Öğrenci detayı yüklenemedi.'); }
+        } catch { toast.error(t('schools.detail.classDetail.childDetailLoadError')); }
         finally { setLoadingChildDetail(false); }
     };
 
@@ -255,10 +262,10 @@ export default function ClassDetailPage() {
         }));
         try {
             await apiClient.post(`/schools/${schoolId}/attendances`, { class_id: classId, date: attendanceDate, attendances: records });
-            toast.success('Yoklama kaydedildi.');
+            toast.success(t('schools.detail.classDetail.attendanceSaved'));
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Yoklama kaydedilemedi.');
+            toast.error(e.response?.data?.message ?? t('schools.detail.classDetail.attendanceSaveError'));
         } finally {
             setSavingAttendance(false);
         }
@@ -285,24 +292,25 @@ export default function ClassDetailPage() {
         try {
             if (editingSupply) {
                 await apiClient.put(`/schools/${schoolId}/classes/${classId}/supply-list/${editingSupply.id}`, payload);
-                toast.success('Güncellendi.');
+                toast.success(t('schools.detail.classDetail.supplyUpdated'));
             } else {
                 await apiClient.post(`/schools/${schoolId}/classes/${classId}/supply-list`, payload);
-                toast.success('Eklendi.');
+                toast.success(t('schools.detail.classDetail.supplyAdded'));
             }
             setShowSupplyModal(false);
             setSupplyFetched(false);
             setSupplyItems([]);
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(e.response?.data?.message ?? t('schools.detail.classDetail.supplyError'));
         } finally {
             setSavingSupply(false); }
     };
 
     const handleDeleteSupply = async (item: SupplyItem) => {
         const result = await Swal.fire({
-            title: 'İhtiyaç Kalemini Sil', text: `"${item.name}" silinecek.`,
+            title: t('schools.detail.classDetail.deleteSupplyTitle'),
+            text: t('schools.detail.classDetail.deleteSupplyText').replace('{name}', item.name),
             icon: 'warning', showCancelButton: true,
             confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
@@ -310,9 +318,9 @@ export default function ClassDetailPage() {
         if (!result.isConfirmed) { return; }
         try {
             await apiClient.delete(`/schools/${schoolId}/classes/${classId}/supply-list/${item.id}`);
-            toast.success('Silindi.');
+            toast.success(t('schools.detail.classDetail.supplyDeleted'));
             setSupplyItems(prev => prev.filter(s => s.id !== item.id));
-        } catch { toast.error('Silme başarısız.'); }
+        } catch { toast.error(t('schools.detail.classDetail.supplyDeleteFailed')); }
     };
 
     const detectAllergenConflicts = (mealId: string): AllergenConflict[] => {
@@ -384,13 +392,13 @@ export default function ClassDetailPage() {
             }
             setShowMenuModal(false);
             setShowAllergenWarning(false);
-            toast.success('Menüye eklendi.');
+            toast.success(t('schools.detail.classDetail.menuAddedSuccess'));
             // Reload to get updated data
             mealLoadedKeyRef.current = '';
             loadMeals(calendarYear, calendarMonth);
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast.error(e.response?.data?.message ?? 'Menü eklenemedi.');
+            toast.error(e.response?.data?.message ?? t('schools.detail.classDetail.menuAddError'));
         } finally {
             setSavingMenu(false);
         }
@@ -398,7 +406,7 @@ export default function ClassDetailPage() {
 
     const handleMenuSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!menuForm.meal_id) { toast.error('Yemek seçiniz.'); return; }
+        if (!menuForm.meal_id) { toast.error(t('schools.detail.classDetail.menuSelectError')); return; }
         const conflicts = detectAllergenConflicts(menuForm.meal_id);
         if (conflicts.length > 0) {
             setPendingAllergenConflicts(conflicts);
@@ -410,8 +418,8 @@ export default function ClassDetailPage() {
 
     const handleDeleteMenuEntry = async (scheduleId: number) => {
         const result = await Swal.fire({
-            title: 'Menüden Çıkar',
-            text: 'Bu yemek menüden kaldırılacak.',
+            title: t('schools.detail.classDetail.removeFromMenuTitle'),
+            text: t('schools.detail.classDetail.removeFromMenuText'),
             icon: 'warning', showCancelButton: true,
             confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'),
             confirmButtonColor: '#e7515a',
@@ -420,8 +428,8 @@ export default function ClassDetailPage() {
         try {
             await apiClient.delete(`/meal-menus/${scheduleId}`);
             setMealSchedules(prev => prev.filter(s => s.id !== scheduleId));
-            toast.success('Menüden kaldırıldı.');
-        } catch { toast.error('Silme başarısız.'); }
+            toast.success(t('schools.detail.classDetail.menuRemovedSuccess'));
+        } catch { toast.error(t('schools.detail.classDetail.menuRemoveFailed')); }
     };
 
     // ── Render ───────────────────────────────────────────────────────────────
@@ -441,15 +449,15 @@ export default function ClassDetailPage() {
             {/* Header */}
             <div className="mb-6 flex flex-wrap items-center gap-3">
                 <Link href={`/schools/${schoolId}`} className="btn btn-sm btn-outline-secondary gap-2">
-                    <ArrowLeft className="h-4 w-4" />Okula Dön
+                    <ArrowLeft className="h-4 w-4" />{t('schools.detail.classDetail.backBtn')}
                 </Link>
                 <div className="flex-1">
                     <div className="flex items-center gap-3">
                         {cls?.color && (
                             <span className="h-5 w-5 rounded-full border-2 border-white shadow" style={{ background: cls.color }} />
                         )}
-                        <h1 className="text-2xl font-bold text-dark dark:text-white">{cls?.name ?? 'Sınıf'}</h1>
-                        {cls?.is_active === false && <span className="badge badge-outline-danger">Pasif</span>}
+                        <h1 className="text-2xl font-bold text-dark dark:text-white">{cls?.name ?? t('schools.detail.classDetail.classDefaultName')}</h1>
+                        {cls?.is_active === false && <span className="badge badge-outline-danger">{t('schools.detail.statusInactive')}</span>}
                         {cls?.academic_year && (
                             <span className="badge badge-outline-info text-xs">{cls.academic_year.name}</span>
                         )}
@@ -462,25 +470,25 @@ export default function ClassDetailPage() {
             <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <StatCard
                     icon={<Users className="h-5 w-5" />}
-                    label="Öğrenci"
+                    label={t('schools.detail.classDetail.studentStatLabel')}
                     value={`${children.length}${cls?.capacity ? ` / ${cls.capacity}` : ''}`}
                     color="primary"
                 />
                 <StatCard
                     icon={<GraduationCap className="h-5 w-5" />}
-                    label="Öğretmen"
+                    label={t('schools.detail.classDetail.teacherStatLabel')}
                     value={teacherCount > 0 ? String(teacherCount) : '—'}
                     color="info"
                 />
                 <StatCard
                     icon={<Baby className="h-5 w-5" />}
-                    label="Yaş Aralığı"
+                    label={t('schools.detail.classDetail.ageRangeStatLabel')}
                     value={cls?.age_min != null || cls?.age_max != null ? `${cls?.age_min ?? '?'} – ${cls?.age_max ?? '?'}` : '—'}
                     color="success"
                 />
                 <StatCard
                     icon={<AlertCircle className="h-5 w-5" />}
-                    label="Alerjik Öğrenci"
+                    label={t('schools.detail.classDetail.allergyStatLabel')}
                     value={String(children.filter(c => (c.allergens?.length ?? 0) > 0).length)}
                     color="warning"
                 />
@@ -491,12 +499,12 @@ export default function ClassDetailPage() {
                 {/* Tab başlıkları */}
                 <div className="flex flex-wrap gap-0 overflow-x-auto border-b border-[#ebedf2] dark:border-[#1b2e4b]">
                     {([
-                        { key: 'students', label: `Öğrenciler (${children.length})`, icon: <Users className="h-4 w-4" /> },
-                        { key: 'teachers', label: `Öğretmenler${teacherCount > 0 ? ` (${teacherCount})` : ''}`, icon: <GraduationCap className="h-4 w-4" /> },
-                        { key: 'attendance', label: 'Devamsızlık', icon: <ClipboardList className="h-4 w-4" /> },
-                        { key: 'activities', label: 'Etkinlikler', icon: <BookOpen className="h-4 w-4" /> },
-                        { key: 'meals', label: 'Yemek Takvimi', icon: <Calendar className="h-4 w-4" /> },
-                        { key: 'supply', label: 'İhtiyaç Listesi', icon: <Plus className="h-4 w-4" /> },
+                        { key: 'students', label: `${t('schools.detail.classDetail.studentsTab')} (${children.length})`, icon: <Users className="h-4 w-4" /> },
+                        { key: 'teachers', label: `${t('schools.detail.classDetail.teachersTab')}${teacherCount > 0 ? ` (${teacherCount})` : ''}`, icon: <GraduationCap className="h-4 w-4" /> },
+                        { key: 'attendance', label: t('schools.detail.classDetail.attendanceTab'), icon: <ClipboardList className="h-4 w-4" /> },
+                        { key: 'activities', label: t('schools.detail.classDetail.activitiesTab'), icon: <BookOpen className="h-4 w-4" /> },
+                        { key: 'meals', label: t('schools.detail.classDetail.mealsTab'), icon: <Calendar className="h-4 w-4" /> },
+                        { key: 'supply', label: t('schools.detail.classDetail.supplyTab'), icon: <Plus className="h-4 w-4" /> },
                     ] as { key: Tab; label: string; icon: React.ReactNode }[]).map(tab => (
                         <button
                             key={tab.key}
@@ -518,18 +526,18 @@ export default function ClassDetailPage() {
                     {/* ── Öğrenciler ──────────────────────────────────────────── */}
                     {activeTab === 'students' && (
                         children.length === 0 ? (
-                            <EmptyTab icon={<Users />} text="Bu sınıfta henüz öğrenci yok." />
+                            <EmptyTab icon={<Users />} text={t('schools.detail.classDetail.noStudents')} />
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Ad Soyad</th>
-                                            <th>Doğum / Yaş</th>
-                                            <th>Cinsiyet</th>
-                                            <th>Kan Grubu</th>
-                                            <th>Sağlık Uyarısı</th>
-                                            <th>Durum</th>
+                                            <th>{t('schools.detail.classDetail.fullNameColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.birthAgeColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.genderColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.bloodTypeColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.healthWarningColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.statusColHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -553,7 +561,7 @@ export default function ClassDetailPage() {
                                                     </td>
                                                     <td className="text-sm">
                                                         {c.birth_date ? new Date(c.birth_date).toLocaleDateString('tr-TR') : '—'}
-                                                        {age !== null && <span className="ml-1 text-xs text-[#888ea8]">({age} yaş)</span>}
+                                                        {age !== null && <span className="ml-1 text-xs text-[#888ea8]">({age}{t('schools.detail.classDetail.ageUnit')})</span>}
                                                     </td>
                                                     <td className="text-sm">{c.gender ? (GENDER_LABELS[c.gender] ?? c.gender) : '—'}</td>
                                                     <td className="text-sm">{c.blood_type ?? '—'}</td>
@@ -561,12 +569,12 @@ export default function ClassDetailPage() {
                                                         <div className="flex flex-wrap gap-1">
                                                             {allergenCount > 0 && (
                                                                 <span className="badge badge-outline-danger text-xs">
-                                                                    ⚠ {allergenCount} alerjen
+                                                                    {t('schools.detail.classDetail.allergenBadge').replace('{count}', String(allergenCount))}
                                                                 </span>
                                                             )}
                                                             {medicationCount > 0 && (
                                                                 <span className="badge badge-outline-warning text-xs">
-                                                                    💊 {medicationCount} ilaç
+                                                                    {t('schools.detail.classDetail.medicationBadge').replace('{count}', String(medicationCount))}
                                                                 </span>
                                                             )}
                                                             {allergenCount === 0 && medicationCount === 0 && (
@@ -576,7 +584,7 @@ export default function ClassDetailPage() {
                                                     </td>
                                                     <td>
                                                         <span className={`badge text-xs ${c.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
-                                                            {c.status === 'active' ? 'Aktif' : (c.status ?? 'Aktif')}
+                                                            {c.status === 'active' ? t('schools.detail.classDetail.statusActive') : (c.status ?? t('schools.detail.classDetail.statusActive'))}
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -585,7 +593,7 @@ export default function ClassDetailPage() {
                                     </tbody>
                                 </table>
                                 <p className="mt-2 text-xs text-[#888ea8]">
-                                    Öğrenci satırına tıklayarak detaylı bilgiye ulaşabilirsiniz.
+                                    {t('schools.detail.classDetail.clickRowHint')}
                                 </p>
                             </div>
                         )
@@ -596,15 +604,15 @@ export default function ClassDetailPage() {
                         !teachersFetched ? (
                             <LoadingSpinner />
                         ) : classTeachers.length === 0 ? (
-                            <EmptyTab icon={<GraduationCap />} text="Bu sınıfa henüz öğretmen atanmamış." />
+                            <EmptyTab icon={<GraduationCap />} text={t('schools.detail.classDetail.noTeachers')} />
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Öğretmen</th>
-                                            <th>Unvan</th>
-                                            <th>Görev Türü</th>
+                                            <th>{t('schools.detail.classDetail.teacherColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.titleColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.roleTypeColHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -639,7 +647,7 @@ export default function ClassDetailPage() {
                         <div>
                             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                                 <div className="flex items-center gap-3">
-                                    <label className="text-sm font-medium text-dark dark:text-white">Tarih:</label>
+                                    <label className="text-sm font-medium text-dark dark:text-white">{t('schools.detail.classDetail.dateLabel')}</label>
                                     <input
                                         type="date"
                                         className="form-input w-44"
@@ -648,23 +656,23 @@ export default function ClassDetailPage() {
                                     />
                                 </div>
                                 <div className="flex gap-4 text-sm font-medium">
-                                    <span className="text-success">Geldi: {Object.values(attendanceStatuses).filter(s => s === 'present').length}</span>
-                                    <span className="text-danger">Gelmedi: {Object.values(attendanceStatuses).filter(s => s === 'absent').length}</span>
-                                    <span className="text-warning">Geç: {Object.values(attendanceStatuses).filter(s => s === 'late').length}</span>
-                                    <span className="text-info">İzinli: {Object.values(attendanceStatuses).filter(s => s === 'excused').length}</span>
+                                    <span className="text-success">{t('schools.detail.classDetail.presentLabel')} {Object.values(attendanceStatuses).filter(s => s === 'present').length}</span>
+                                    <span className="text-danger">{t('schools.detail.classDetail.absentLabel')} {Object.values(attendanceStatuses).filter(s => s === 'absent').length}</span>
+                                    <span className="text-warning">{t('schools.detail.classDetail.lateLabel')} {Object.values(attendanceStatuses).filter(s => s === 'late').length}</span>
+                                    <span className="text-info">{t('schools.detail.classDetail.excusedLabel')} {Object.values(attendanceStatuses).filter(s => s === 'excused').length}</span>
                                 </div>
                             </div>
 
                             {children.length === 0 ? (
-                                <EmptyTab icon={<ClipboardList />} text="Sınıfta öğrenci yok." />
+                                <EmptyTab icon={<ClipboardList />} text={t('schools.detail.classDetail.noStudentsAttendance')} />
                             ) : (
                                 <>
                                     <div className="table-responsive mb-5">
                                         <table className="table-hover">
                                             <thead>
                                                 <tr>
-                                                    <th>Öğrenci</th>
-                                                    <th>Durum</th>
+                                                    <th>{t('schools.detail.classDetail.studentColHeader')}</th>
+                                                    <th>{t('schools.detail.classDetail.statusAttColHeader')}</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -707,7 +715,7 @@ export default function ClassDetailPage() {
                                         disabled={savingAttendance}
                                     >
                                         <ClipboardList className="h-4 w-4" />
-                                        {savingAttendance ? t('common.loading') : 'Yoklamayı Kaydet'}
+                                        {savingAttendance ? t('common.loading') : t('schools.detail.classDetail.saveAttendanceBtn')}
                                     </button>
                                 </>
                             )}
@@ -719,17 +727,17 @@ export default function ClassDetailPage() {
                         loadingActivities ? (
                             <LoadingSpinner />
                         ) : activities.length === 0 ? (
-                            <EmptyTab icon={<BookOpen />} text="Bu sınıfa ait etkinlik bulunamadı." />
+                            <EmptyTab icon={<BookOpen />} text={t('schools.detail.classDetail.noActivities')} />
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Etkinlik</th>
-                                            <th>Tarih Aralığı</th>
-                                            <th>Tür</th>
-                                            <th>Kapasite</th>
-                                            <th>Kayıt</th>
+                                            <th>{t('schools.detail.classDetail.activityColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.dateRangeColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.typeColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.capacityColHeader')}</th>
+                                            <th>{t('schools.detail.classDetail.enrollmentColHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -750,15 +758,15 @@ export default function ClassDetailPage() {
                                                 <td>
                                                     {a.is_paid ? (
                                                         <span className="badge badge-outline-success text-xs">
-                                                            {a.price ? `₺${a.price}` : 'Ücretli'}
+                                                            {a.price ? `₺${a.price}` : t('schools.detail.classDetail.paidBadge')}
                                                         </span>
                                                     ) : (
-                                                        <span className="badge badge-outline-secondary text-xs">Ücretsiz</span>
+                                                        <span className="badge badge-outline-secondary text-xs">{t('schools.detail.classDetail.freeBadge')}</span>
                                                     )}
                                                 </td>
                                                 <td className="text-sm">{a.capacity ?? '—'}</td>
                                                 <td>
-                                                    <span className="badge badge-outline-info text-xs">{a.enrollments_count ?? 0} kayıt</span>
+                                                    <span className="badge badge-outline-info text-xs">{t('schools.detail.classDetail.enrollmentsBadge').replace('{count}', String(a.enrollments_count ?? 0))}</span>
                                                 </td>
                                             </tr>
                                         ))}
@@ -773,7 +781,7 @@ export default function ClassDetailPage() {
                         <div>
                             <div className="mb-4 flex justify-end">
                                 <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openMenuModal}>
-                                    <Plus className="h-4 w-4" />Menüye Ekle
+                                    <Plus className="h-4 w-4" />{t('schools.detail.classDetail.addToMenuBtn')}
                                 </button>
                             </div>
                             <MealCalendar
@@ -799,21 +807,21 @@ export default function ClassDetailPage() {
                         <div>
                             <div className="mb-4 flex justify-end">
                                 <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openSupplyCreate}>
-                                    <Plus className="h-4 w-4" />Kalem Ekle
+                                    <Plus className="h-4 w-4" />{t('schools.detail.classDetail.addItemBtn')}
                                 </button>
                             </div>
                             {supplyItems.length === 0 ? (
-                                <EmptyTab icon={<BookOpen />} text="İhtiyaç listesi boş." />
+                                <EmptyTab icon={<BookOpen />} text={t('schools.detail.classDetail.noSupply')} />
                             ) : (
                                 <div className="table-responsive">
                                     <table className="table-hover">
                                         <thead>
                                             <tr>
-                                                <th>Malzeme</th>
-                                                <th>Açıklama</th>
-                                                <th>Adet</th>
-                                                <th>Son Tarih</th>
-                                                <th>İşlemler</th>
+                                                <th>{t('schools.detail.classDetail.materialColHeader')}</th>
+                                                <th>{t('schools.detail.classDetail.descriptionColHeader')}</th>
+                                                <th>{t('schools.detail.classDetail.quantityColHeader')}</th>
+                                                <th>{t('schools.detail.classDetail.dueDateColHeader')}</th>
+                                                <th>{t('schools.detail.classDetail.actionsColHeader')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -854,7 +862,7 @@ export default function ClassDetailPage() {
 
                         {/* Modal header — sticky */}
                         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ebedf2] bg-white px-5 py-4 dark:border-[#1b2e4b] dark:bg-[#0e1726]">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Öğrenci Detayı</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.classDetail.studentDetailTitle')}</h2>
                             <button type="button" onClick={() => setSelectedChild(null)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -883,34 +891,34 @@ export default function ClassDetailPage() {
                                             )}
                                             {selectedChild.birth_date && (
                                                 <span className="badge badge-outline-secondary text-xs">
-                                                    {calcAge(selectedChild.birth_date)} yaş
+                                                    {calcAge(selectedChild.birth_date)}{t('schools.detail.classDetail.ageUnit')}
                                                 </span>
                                             )}
                                             <span className={`badge text-xs ${selectedChild.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
-                                                {selectedChild.status === 'active' ? 'Aktif' : (selectedChild.status ?? 'Aktif')}
+                                                {selectedChild.status === 'active' ? t('schools.detail.classDetail.statusActive') : (selectedChild.status ?? t('schools.detail.classDetail.statusActive'))}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Kişisel Bilgiler */}
-                                <Section title="Kişisel Bilgiler">
+                                <Section title={t('schools.detail.classDetail.personalInfoSection')}>
                                     <InfoGrid rows={[
-                                        { label: 'Doğum Tarihi', value: selectedChild.birth_date ? new Date(selectedChild.birth_date).toLocaleDateString('tr-TR') : null },
-                                        { label: 'TC Kimlik No', value: selectedChild.identity_number },
-                                        { label: 'Pasaport No', value: selectedChild.passport_number },
-                                        { label: 'Uyruk', value: selectedChild.nationality ? `${selectedChild.nationality.flag_emoji ?? ''} ${selectedChild.nationality.name}` : null },
-                                        { label: 'Diller', value: selectedChild.languages?.join(', ') ?? null },
+                                        { label: t('schools.detail.birthDateLabel'), value: selectedChild.birth_date ? new Date(selectedChild.birth_date).toLocaleDateString('tr-TR') : null },
+                                        { label: t('schools.detail.idNumberLabel'), value: selectedChild.identity_number },
+                                        { label: t('schools.detail.passportLabel'), value: selectedChild.passport_number },
+                                        { label: t('schools.detail.nationalityLabel'), value: selectedChild.nationality ? `${selectedChild.nationality.flag_emoji ?? ''} ${selectedChild.nationality.name}` : null },
+                                        { label: t('schools.detail.languagesLabel'), value: selectedChild.languages?.join(', ') ?? null },
                                     ]} />
                                     {selectedChild.parent_notes && (
                                         <div className="mt-3 rounded bg-[#f5f5f5] p-3 dark:bg-[#1b2e4b]">
-                                            <p className="mb-1 text-xs font-semibold text-[#888ea8]">Veli Notu</p>
+                                            <p className="mb-1 text-xs font-semibold text-[#888ea8]">{t('schools.detail.classDetail.parentNoteLabel')}</p>
                                             <p className="text-sm text-dark dark:text-white">{selectedChild.parent_notes}</p>
                                         </div>
                                     )}
                                     {selectedChild.special_notes && (
                                         <div className="mt-2 rounded border border-warning/30 bg-warning/5 p-3">
-                                            <p className="mb-1 text-xs font-semibold text-warning">⚠ Özel Not</p>
+                                            <p className="mb-1 text-xs font-semibold text-warning">{t('schools.detail.classDetail.specialNoteLabel')}</p>
                                             <p className="text-sm text-dark dark:text-white">{selectedChild.special_notes}</p>
                                         </div>
                                     )}
@@ -920,17 +928,17 @@ export default function ClassDetailPage() {
                                 {((selectedChild.allergens?.length ?? 0) > 0 ||
                                     (selectedChild.conditions?.length ?? 0) > 0 ||
                                     (selectedChild.medications?.length ?? 0) > 0) && (
-                                    <Section title="Sağlık Bilgileri">
+                                    <Section title={t('schools.detail.classDetail.healthInfoSection')}>
                                         {(selectedChild.allergens?.length ?? 0) > 0 && (
                                             <div className="mb-4">
-                                                <p className="mb-2 text-xs font-semibold text-danger">⚠ Alerjenler</p>
+                                                <p className="mb-2 text-xs font-semibold text-danger">{t('schools.detail.classDetail.allergensLabel')}</p>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {selectedChild.allergens!.map(a => (
                                                         <span
                                                             key={a.id}
                                                             className={`badge ${a.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-danger'}`}
                                                         >
-                                                            {a.name}{a.status === 'pending' ? ' (onay bekliyor)' : ''}
+                                                            {a.name}{a.status === 'pending' ? t('schools.detail.classDetail.pendingApproval') : ''}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -938,14 +946,14 @@ export default function ClassDetailPage() {
                                         )}
                                         {(selectedChild.conditions?.length ?? 0) > 0 && (
                                             <div className="mb-4">
-                                                <p className="mb-2 text-xs font-semibold text-[#888ea8]">Tıbbi Durumlar</p>
+                                                <p className="mb-2 text-xs font-semibold text-[#888ea8]">{t('schools.detail.classDetail.conditionsLabel')}</p>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {selectedChild.conditions!.map(c => (
                                                         <span
                                                             key={c.id}
                                                             className={`badge ${c.status === 'pending' ? 'badge-outline-warning' : 'badge-outline-info'}`}
                                                         >
-                                                            {c.name}{c.status === 'pending' ? ' (onay bekliyor)' : ''}
+                                                            {c.name}{c.status === 'pending' ? t('schools.detail.classDetail.pendingApproval') : ''}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -953,7 +961,7 @@ export default function ClassDetailPage() {
                                         )}
                                         {(selectedChild.medications?.length ?? 0) > 0 && (
                                             <div>
-                                                <p className="mb-2 text-xs font-semibold text-[#888ea8]">İlaçlar</p>
+                                                <p className="mb-2 text-xs font-semibold text-[#888ea8]">{t('schools.detail.classDetail.medicationsLabel')}</p>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {selectedChild.medications!.map(m => (
                                                         <span key={m.id} className="badge badge-outline-secondary">{m.name}</span>
@@ -966,10 +974,10 @@ export default function ClassDetailPage() {
 
                                 {/* Aile Bilgileri */}
                                 {selectedChild.family_profile && (
-                                    <Section title="Aile Bilgileri">
+                                    <Section title={t('schools.detail.classDetail.familyInfoSection')}>
                                         {selectedChild.family_profile.family_name && (
                                             <p className="mb-3 text-sm font-medium text-dark dark:text-white">
-                                                Aile Adı: {selectedChild.family_profile.family_name}
+                                                {t('schools.detail.classDetail.familyNameLabel')} {selectedChild.family_profile.family_name}
                                             </p>
                                         )}
                                         <div className="space-y-2">
@@ -978,7 +986,7 @@ export default function ClassDetailPage() {
                                                     name={`${selectedChild.family_profile.owner.name} ${selectedChild.family_profile.owner.surname}`}
                                                     email={selectedChild.family_profile.owner.email}
                                                     phone={selectedChild.family_profile.owner.phone}
-                                                    label="Ana Veli"
+                                                    label={t('schools.detail.classDetail.mainParentLabel')}
                                                     primary
                                                 />
                                             )}
@@ -988,7 +996,7 @@ export default function ClassDetailPage() {
                                                     name={`${m.user!.name} ${m.user!.surname}`}
                                                     email={m.user!.email}
                                                     phone={m.user!.phone}
-                                                    label={m.role}
+                                                    label={m.role ?? ''}
                                                 />
                                             ))}
                                         </div>
@@ -1001,7 +1009,7 @@ export default function ClassDetailPage() {
                         {/* Modal footer — sticky */}
                         <div className="sticky bottom-0 border-t border-[#ebedf2] bg-white p-4 dark:border-[#1b2e4b] dark:bg-[#0e1726]">
                             <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedChild(null)}>
-                                Kapat
+                                {t('common.close')}
                             </button>
                         </div>
                     </div>
@@ -1013,7 +1021,7 @@ export default function ClassDetailPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">Yemek Menüsüne Ekle</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.classDetail.addToMenuModalTitle')}</h2>
                             <button type="button" onClick={() => setShowMenuModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
@@ -1022,9 +1030,9 @@ export default function ClassDetailPage() {
                         {showAllergenWarning ? (
                             <div>
                                 <div className="mb-4 rounded-lg border border-warning/30 bg-warning/5 p-4">
-                                    <p className="mb-2 font-semibold text-warning">⚠ Alerjen Uyarısı</p>
+                                    <p className="mb-2 font-semibold text-warning">{t('schools.detail.classDetail.allergenWarningTitle')}</p>
                                     <p className="mb-3 text-sm text-[#888ea8]">
-                                        Bu yemeğin içerdiği alerjenler sınıfta alerji kaydı olan öğrencilerle çakışıyor:
+                                        {t('schools.detail.classDetail.allergenWarningDesc')}
                                     </p>
                                     <ul className="space-y-1">
                                         {pendingAllergenConflicts.map((c, i) => (
@@ -1036,7 +1044,7 @@ export default function ClassDetailPage() {
                                         ))}
                                     </ul>
                                 </div>
-                                <p className="mb-4 text-sm text-[#888ea8]">Yine de menüye eklemek istiyor musunuz?</p>
+                                <p className="mb-4 text-sm text-[#888ea8]">{t('schools.detail.classDetail.allergenWarningQuestion')}</p>
                                 <div className="flex gap-3">
                                     <button
                                         type="button"
@@ -1044,24 +1052,24 @@ export default function ClassDetailPage() {
                                         onClick={saveMenuEntry}
                                         disabled={savingMenu}
                                     >
-                                        {savingMenu ? t('common.loading') : 'Evet, Yine de Ekle'}
+                                        {savingMenu ? t('common.loading') : t('schools.detail.classDetail.allergenWarningConfirm')}
                                     </button>
                                     <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowAllergenWarning(false)}>
-                                        Geri Dön
+                                        {t('schools.detail.classDetail.allergenWarningBack')}
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <form onSubmit={handleMenuSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Yemek *</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classDetail.mealSelectLabel')}</label>
                                     <select
                                         className="form-input mt-1"
                                         value={menuForm.meal_id}
                                         onChange={e => setMenuForm(p => ({ ...p, meal_id: e.target.value }))}
                                         required
                                     >
-                                        <option value="">-- Yemek Seçin --</option>
+                                        <option value="">{t('schools.detail.classDetail.mealSelectPlaceholder')}</option>
                                         {availableMeals.map(m => (
                                             <option key={m.id} value={String(m.id)}>
                                                 {m.name}{m.meal_type ? ` (${m.meal_type})` : ''}
@@ -1069,11 +1077,11 @@ export default function ClassDetailPage() {
                                         ))}
                                     </select>
                                     {availableMeals.length === 0 && availableMealsFetched && (
-                                        <p className="mt-1 text-xs text-[#888ea8]">Bu okul için henüz yemek tanımlanmamış.</p>
+                                        <p className="mt-1 text-xs text-[#888ea8]">{t('schools.detail.classDetail.noMealDefined')}</p>
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Tarih *</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classDetail.menuDateLabel')}</label>
                                     <input
                                         type="date" className="form-input mt-1"
                                         value={menuForm.menu_date}
@@ -1082,20 +1090,20 @@ export default function ClassDetailPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Tür</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classDetail.menuTypeLabel')}</label>
                                     <select
                                         className="form-input mt-1"
                                         value={menuForm.schedule_type}
                                         onChange={e => setMenuForm(p => ({ ...p, schedule_type: e.target.value }))}
                                     >
-                                        <option value="daily">Günlük</option>
-                                        <option value="weekly">Haftalık</option>
-                                        <option value="monthly">Aylık</option>
+                                        <option value="daily">{t('schools.detail.classDetail.menuTypeDaily')}</option>
+                                        <option value="weekly">{t('schools.detail.classDetail.menuTypeWeekly')}</option>
+                                        <option value="monthly">{t('schools.detail.classDetail.menuTypeMonthly')}</option>
                                     </select>
                                 </div>
                                 <div className="flex gap-3 pt-2">
                                     <button type="submit" className="btn btn-primary flex-1" disabled={savingMenu}>
-                                        {savingMenu ? t('common.loading') : 'Menüye Ekle'}
+                                        {savingMenu ? t('common.loading') : t('schools.detail.classDetail.addToMenuBtn')}
                                     </button>
                                     <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMenuModal(false)}>{t('common.cancel')}</button>
                                 </div>
@@ -1111,7 +1119,7 @@ export default function ClassDetailPage() {
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
-                                {editingSupply ? 'İhtiyaç Kalemi Düzenle' : 'İhtiyaç Kalemi Ekle'}
+                                {editingSupply ? t('schools.detail.classDetail.supplyEditModalTitle') : t('schools.detail.classDetail.supplyAddModalTitle')}
                             </h2>
                             <button type="button" onClick={() => setShowSupplyModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
@@ -1119,7 +1127,7 @@ export default function ClassDetailPage() {
                         </div>
                         <form onSubmit={handleSupplySubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Malzeme Adı *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classDetail.materialNameLabel')}</label>
                                 <input
                                     type="text" className="form-input mt-1"
                                     value={supplyForm.name}
@@ -1128,17 +1136,17 @@ export default function ClassDetailPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Açıklama / Detay</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classDetail.descriptionDetailLabel')}</label>
                                 <textarea
                                     className="form-input mt-1" rows={2}
-                                    placeholder="Renk, marka, boyut vb."
+                                    placeholder={t('schools.detail.classDetail.descriptionPlaceholder')}
                                     value={supplyForm.description}
                                     onChange={e => setSupplyForm(p => ({ ...p, description: e.target.value }))}
                                 />
                             </div>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Adet</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classDetail.quantityLabel')}</label>
                                     <input
                                         type="number" className="form-input mt-1" min={1}
                                         value={supplyForm.quantity}
@@ -1146,7 +1154,7 @@ export default function ClassDetailPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-dark dark:text-white-light">Son Tarih</label>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('schools.detail.classDetail.dueDateLabel')}</label>
                                     <input
                                         type="date" className="form-input mt-1"
                                         value={supplyForm.due_date}
@@ -1156,7 +1164,7 @@ export default function ClassDetailPage() {
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingSupply}>
-                                    {savingSupply ? t('common.loading') : (editingSupply ? 'Güncelle' : 'Ekle')}
+                                    {savingSupply ? t('common.loading') : (editingSupply ? t('schools.detail.classDetail.supplyUpdateBtn') : t('schools.detail.classDetail.supplyAddBtn'))}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowSupplyModal(false)}>{t('common.cancel')}</button>
                             </div>
@@ -1202,8 +1210,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function InfoGrid({ rows }: { rows: { label: string; value?: string | null }[] }) {
+    const { t } = useTranslation();
     const filtered = rows.filter(r => r.value);
-    if (filtered.length === 0) { return <p className="text-sm text-[#888ea8]">Bilgi girilmemiş.</p>; }
+    if (filtered.length === 0) { return <p className="text-sm text-[#888ea8]">{t('schools.detail.classDetail.noInfoEntered')}</p>; }
     return (
         <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
             {filtered.map(r => (
@@ -1245,9 +1254,22 @@ function MealCalendar({
     onDelete?: (id: number) => void;
     getConflicts?: (s: MealSchedule) => AllergenConflict[];
 }) {
+    const { t } = useTranslation();
     const [expandedSchedule, setExpandedSchedule] = useState<number | null>(null);
-    const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-    const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const MONTHS_TR = [
+        t('schools.detail.classDetail.calMonthJan'), t('schools.detail.classDetail.calMonthFeb'),
+        t('schools.detail.classDetail.calMonthMar'), t('schools.detail.classDetail.calMonthApr'),
+        t('schools.detail.classDetail.calMonthMay'), t('schools.detail.classDetail.calMonthJun'),
+        t('schools.detail.classDetail.calMonthJul'), t('schools.detail.classDetail.calMonthAug'),
+        t('schools.detail.classDetail.calMonthSep'), t('schools.detail.classDetail.calMonthOct'),
+        t('schools.detail.classDetail.calMonthNov'), t('schools.detail.classDetail.calMonthDec'),
+    ];
+    const DAY_NAMES = [
+        t('schools.detail.classDetail.calDayMon'), t('schools.detail.classDetail.calDayTue'),
+        t('schools.detail.classDetail.calDayWed'), t('schools.detail.classDetail.calDayThu'),
+        t('schools.detail.classDetail.calDayFri'), t('schools.detail.classDetail.calDaySat'),
+        t('schools.detail.classDetail.calDaySun'),
+    ];
     const daysInMonth = new Date(year, month, 0).getDate();
     const rawFirstDay = new Date(year, month - 1, 1).getDay();
     const firstDay = rawFirstDay === 0 ? 6 : rawFirstDay - 1;
@@ -1267,11 +1289,11 @@ function MealCalendar({
     return (
         <div>
             <div className="mb-5 flex items-center justify-between">
-                <button type="button" className="btn btn-sm btn-outline-primary px-4" onClick={onPrev}>‹ Önceki</button>
+                <button type="button" className="btn btn-sm btn-outline-primary px-4" onClick={onPrev}>{t('schools.detail.classDetail.calPrevBtn')}</button>
                 <span className="text-lg font-semibold text-dark dark:text-white">
                     {MONTHS_TR[month - 1]} {year}
                 </span>
-                <button type="button" className="btn btn-sm btn-outline-primary px-4" onClick={onNext}>Sonraki ›</button>
+                <button type="button" className="btn btn-sm btn-outline-primary px-4" onClick={onNext}>{t('schools.detail.classDetail.calNextBtn')}</button>
             </div>
             <div className="grid grid-cols-7 gap-1">
                 {DAY_NAMES.map(d => (
@@ -1313,7 +1335,7 @@ function MealCalendar({
                                                             type="button"
                                                             className="shrink-0 opacity-60 hover:opacity-100"
                                                             onClick={() => onDelete(s.id)}
-                                                            title="Menüden kaldır"
+                                                            title={t('schools.detail.classDetail.removeFromMenuTitle')}
                                                         >
                                                             <X className="h-3 w-3" />
                                                         </button>
@@ -1321,7 +1343,7 @@ function MealCalendar({
                                                 </div>
                                                 {expandedSchedule === s.id && hasConflict && (
                                                     <div className="mt-0.5 rounded border border-danger/20 bg-danger/5 p-1 text-[10px]">
-                                                        <p className="mb-0.5 font-semibold text-danger">Alerjen Çakışmaları:</p>
+                                                        <p className="mb-0.5 font-semibold text-danger">{t('schools.detail.classDetail.allergenConflictsTitle')}</p>
                                                         {conflicts.map((c, ci) => (
                                                             <p key={ci} className="text-danger">
                                                                 {c.childName}: {c.allergenName}
@@ -1339,7 +1361,7 @@ function MealCalendar({
                 })}
             </div>
             {mealSchedules.length === 0 && (
-                <p className="mt-4 text-center text-sm text-[#888ea8]">Bu ay için yemek menüsü eklenmemiş.</p>
+                <p className="mt-4 text-center text-sm text-[#888ea8]">{t('schools.detail.classDetail.noMenuThisMonth')}</p>
             )}
         </div>
     );

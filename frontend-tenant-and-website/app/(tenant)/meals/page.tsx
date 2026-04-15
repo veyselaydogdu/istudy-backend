@@ -28,7 +28,7 @@ interface MedicalCondition {
     tenant_id: number | null;
 }
 
-const RISK_LABELS: Record<string, string> = { low: 'Düşük', medium: 'Orta', high: 'Yüksek' };
+const RISK_LABELS_KEYS: Record<string, string> = { low: 'meals.riskLow', medium: 'meals.riskMedium', high: 'meals.riskHigh' };
 const RISK_BADGE: Record<string, string> = { low: 'badge-outline-success', medium: 'badge-outline-warning', high: 'badge-outline-danger' };
 
 const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -210,9 +210,9 @@ export default function MealsPage() {
 
     const handleMealSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!mealForm.name.trim()) { toast.error('Yemek adı zorunludur.'); return; }
-        if (!selectedSchoolId) { toast.error('Lütfen bir okul seçin.'); return; }
-        if (mealForm.ingredient_ids.length === 0) { toast.error('En az bir besin öğesi seçilmelidir.'); return; }
+        if (!mealForm.name.trim()) { toast.error(t('meals.mealNameRequired')); return; }
+        if (!selectedSchoolId) { toast.error(t('meals.selectSchoolRequired')); return; }
+        if (mealForm.ingredient_ids.length === 0) { toast.error(t('meals.ingredientOneRequired')); return; }
 
         setSavingMeal(true);
         try {
@@ -225,18 +225,18 @@ export default function MealsPage() {
             if (editingMeal) {
                 if (removePhoto) fd.append('remove_photo', '1');
                 await apiClient.post(`/meals/${editingMeal.id}?_method=PUT`, fd);
-                toast.success('Yemek güncellendi.');
+                toast.success(t('meals.mealUpdated'));
             } else {
                 fd.append('school_id', selectedSchoolId);
                 await apiClient.post('/meals', fd);
-                toast.success('Yemek oluşturuldu.');
+                toast.success(t('meals.mealCreated'));
             }
             setShowMealModal(false);
             fetchMeals();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
             const errs = error.response?.data?.errors;
-            toast.error(errs ? (Object.values(errs)[0]?.[0] ?? 'Hata oluştu.') : (error.response?.data?.message ?? 'Hata oluştu.'));
+            toast.error(errs ? (Object.values(errs)[0]?.[0] ?? t('meals.genericError')) : (error.response?.data?.message ?? t('meals.genericError')));
         } finally {
             setSavingMeal(false);
         }
@@ -244,15 +244,15 @@ export default function MealsPage() {
 
     const handleDeleteMeal = async (meal: Meal) => {
         const result = await Swal.fire({
-            title: 'Yemeği Sil', text: `"${meal.name}" silinecek.`, icon: 'warning',
+            title: t('meals.deleteMealTitle'), text: `"${meal.name}" silinecek.`, icon: 'warning',
             showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/meals/${meal.id}`);
-            toast.success('Yemek silindi.');
+            toast.success(t('meals.mealDeleted'));
             fetchMeals();
-        } catch { toast.error('Silme başarısız.'); }
+        } catch { toast.error(t('meals.deleteFailed')); }
     };
 
     const toggleIngredient = (id: number) => {
@@ -273,7 +273,7 @@ export default function MealsPage() {
     };
 
     const openEditIngredient = (ing: FoodIngredient) => {
-        if (!ing.is_custom) { toast.error('Global besin öğeleri düzenlenemez.'); return; }
+        if (!ing.is_custom) { toast.error(t('meals.globalIngredientEdit')); return; }
         setEditingIngredient(ing);
         setIngredientForm({
             name: ing.name,
@@ -285,37 +285,37 @@ export default function MealsPage() {
 
     const handleIngredientSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!ingredientForm.name.trim()) { toast.error('Besin öğesi adı zorunludur.'); return; }
+        if (!ingredientForm.name.trim()) { toast.error(t('meals.ingredientNameRequired')); return; }
         setSavingIngredient(true);
         const payload = { ...ingredientForm, name: ingredientForm.name.trim().toLowerCase() };
         try {
             if (editingIngredient) {
                 await apiClient.put(`/food-ingredients/${editingIngredient.id}`, payload);
-                toast.success('Besin öğesi güncellendi.');
+                toast.success(t('meals.ingredientUpdated'));
             } else {
                 await apiClient.post('/food-ingredients', payload);
-                toast.success('Besin öğesi eklendi.');
+                toast.success(t('meals.ingredientAdded'));
             }
             setShowIngredientModal(false);
             fetchIngredients();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(error.response?.data?.message ?? t('meals.genericError'));
         } finally { setSavingIngredient(false); }
     };
 
     const handleDeleteIngredient = async (ing: FoodIngredient) => {
-        if (!ing.is_custom) { toast.error('Global besin öğeleri silinemez.'); return; }
+        if (!ing.is_custom) { toast.error(t('meals.globalIngredientDelete')); return; }
         const result = await Swal.fire({
-            title: 'Besin Öğesi Sil', text: `"${capitalize(ing.name)}" silinecek.`, icon: 'warning',
+            title: t('meals.deleteIngredientTitle'), text: `"${capitalize(ing.name)}" silinecek.`, icon: 'warning',
             showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/food-ingredients/${ing.id}`);
-            toast.success('Besin öğesi silindi.');
+            toast.success(t('meals.ingredientDeleted'));
             fetchIngredients();
-        } catch { toast.error('Silme başarısız.'); }
+        } catch { toast.error(t('meals.deleteFailed')); }
     };
 
     const toggleAllergenInIngredient = (id: number) => {
@@ -336,7 +336,7 @@ export default function MealsPage() {
 
     const openEditAllergen = (allergen: Allergen) => {
         if (allergen.tenant_id === null || allergen.tenant_id === undefined) {
-            toast.error('Global allerjenler düzenlenemez.'); return;
+            toast.error(t('meals.globalAllergenEdit')); return;
         }
         setEditingAllergen(allergen);
         setAllergenForm({ name: allergen.name, description: allergen.description ?? '', risk_level: allergen.risk_level ?? '' });
@@ -345,7 +345,7 @@ export default function MealsPage() {
 
     const handleAllergenSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!allergenForm.name.trim()) { toast.error('Allerjen adı zorunludur.'); return; }
+        if (!allergenForm.name.trim()) { toast.error(t('meals.allergenNameRequired')); return; }
         setSavingAllergen(true);
         const payload = {
             name: allergenForm.name,
@@ -355,33 +355,33 @@ export default function MealsPage() {
         try {
             if (editingAllergen) {
                 await apiClient.put(`/allergens/${editingAllergen.id}`, payload);
-                toast.success('Allerjen güncellendi.');
+                toast.success(t('meals.allergenUpdated'));
             } else {
                 await apiClient.post('/allergens', payload);
-                toast.success('Allerjen eklendi.');
+                toast.success(t('meals.allergenAdded'));
             }
             setShowAllergenModal(false);
             fetchAllergens();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(error.response?.data?.message ?? t('meals.genericError'));
         } finally { setSavingAllergen(false); }
     };
 
     const handleDeleteAllergen = async (allergen: Allergen) => {
         if (allergen.tenant_id === null || allergen.tenant_id === undefined) {
-            toast.error('Global allerjenler silinemez.'); return;
+            toast.error(t('meals.globalAllergenDelete')); return;
         }
         const result = await Swal.fire({
-            title: 'Allergeni Sil', text: `"${allergen.name}" silinecek.`, icon: 'warning',
+            title: t('meals.deleteAllergenTitle'), text: `"${allergen.name}" silinecek.`, icon: 'warning',
             showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/allergens/${allergen.id}`);
-            toast.success('Allerjen silindi.');
+            toast.success(t('meals.allergenDeleted'));
             fetchAllergens();
-        } catch { toast.error('Silme başarısız.'); }
+        } catch { toast.error(t('meals.deleteFailed')); }
     };
 
     // ── Tıbbi Durum CRUD ─────────────────────────────────────────
@@ -393,7 +393,7 @@ export default function MealsPage() {
 
     const openEditCondition = (c: MedicalCondition) => {
         if (c.tenant_id === null || c.tenant_id === undefined) {
-            toast.error('Global tıbbi durumlar düzenlenemez.'); return;
+            toast.error(t('meals.globalConditionEdit')); return;
         }
         setEditingCondition(c);
         setConditionForm({ name: c.name, description: c.description ?? '' });
@@ -402,66 +402,66 @@ export default function MealsPage() {
 
     const handleConditionSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!conditionForm.name.trim()) { toast.error('Tıbbi durum adı zorunludur.'); return; }
+        if (!conditionForm.name.trim()) { toast.error(t('meals.conditionNameRequired')); return; }
         setSavingCondition(true);
         const payload = { name: conditionForm.name.trim(), description: conditionForm.description || null };
         try {
             if (editingCondition) {
                 await apiClient.put(`/medical-conditions/${editingCondition.id}`, payload);
-                toast.success('Tıbbi durum güncellendi.');
+                toast.success(t('meals.conditionUpdated'));
             } else {
                 await apiClient.post('/medical-conditions', payload);
-                toast.success('Tıbbi durum eklendi.');
+                toast.success(t('meals.conditionAdded'));
             }
             setShowConditionModal(false);
             fetchConditions();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(error.response?.data?.message ?? t('meals.genericError'));
         } finally { setSavingCondition(false); }
     };
 
     const handleDeleteCondition = async (c: MedicalCondition) => {
         if (c.tenant_id === null || c.tenant_id === undefined) {
-            toast.error('Global tıbbi durumlar silinemez.'); return;
+            toast.error(t('meals.globalConditionDelete')); return;
         }
         const result = await Swal.fire({
-            title: 'Tıbbi Durumu Sil', text: `"${c.name}" silinecek.`, icon: 'warning',
+            title: t('meals.deleteConditionTitle'), text: `"${c.name}" silinecek.`, icon: 'warning',
             showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/medical-conditions/${c.id}`);
-            toast.success('Tıbbi durum silindi.');
+            toast.success(t('meals.conditionDeleted'));
             fetchConditions();
-        } catch { toast.error('Silme başarısız.'); }
+        } catch { toast.error(t('meals.deleteFailed')); }
     };
 
     // ── Sağlık Önerisi Onayla / Reddet ──────────────────────────
     const handleApproveSuggestion = async (type: 'allergen' | 'condition', id: number) => {
         try {
             await apiClient.post('/health-suggestions/approve', { type, id });
-            toast.success('Öneri onaylandı ve listeye eklendi.');
+            toast.success(t('meals.suggestionApproved'));
             fetchSuggestions();
             if (type === 'allergen') fetchAllergens();
             else fetchConditions();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Onaylama başarısız.');
+            toast.error(error.response?.data?.message ?? t('meals.approveFailed'));
         }
     };
 
     const handleRejectSuggestion = async (type: 'allergen' | 'condition', id: number, name: string) => {
         const result = await Swal.fire({
-            title: 'Öneriyi Reddet', text: `"${name}" önerisi reddedilecek.`, icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Reddet', cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
+            title: t('meals.rejectSuggestionTitle'), text: `"${name}" önerisi reddedilecek.`, icon: 'warning',
+            showCancelButton: true, confirmButtonText: t('meals.rejectBtn'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.post('/health-suggestions/reject', { type, id });
-            toast.success('Öneri reddedildi.');
+            toast.success(t('meals.suggestionRejected'));
             fetchSuggestions();
-        } catch { toast.error('Reddetme başarısız.'); }
+        } catch { toast.error(t('meals.rejectFailed')); }
     };
 
     // ── Öğün Türleri CRUD ───────────────────────────────────────
@@ -479,36 +479,36 @@ export default function MealsPage() {
 
     const handleMealTypeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!mealTypeForm.name.trim()) { toast.error('Öğün türü adı zorunludur.'); return; }
-        if (!selectedSchoolId) { toast.error('Lütfen bir okul seçin.'); return; }
+        if (!mealTypeForm.name.trim()) { toast.error(t('meals.mealTypeNameRequired')); return; }
+        if (!selectedSchoolId) { toast.error(t('meals.selectSchoolRequired')); return; }
         setSavingMealType(true);
         try {
             if (editingMealType) {
                 await apiClient.put(`/schools/${selectedSchoolId}/meal-types/${editingMealType.id}`, mealTypeForm);
-                toast.success('Öğün türü güncellendi.');
+                toast.success(t('meals.mealTypeUpdated'));
             } else {
                 await apiClient.post(`/schools/${selectedSchoolId}/meal-types`, mealTypeForm);
-                toast.success('Öğün türü eklendi.');
+                toast.success(t('meals.mealTypeAdded'));
             }
             setShowMealTypeModal(false);
             fetchMealTypes();
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
-            toast.error(error.response?.data?.message ?? 'Hata oluştu.');
+            toast.error(error.response?.data?.message ?? t('meals.genericError'));
         } finally { setSavingMealType(false); }
     };
 
     const handleDeleteMealType = async (mt: SchoolMealType) => {
         const result = await Swal.fire({
-            title: 'Öğün Türünü Sil', text: `"${mt.name}" silinecek.`, icon: 'warning',
+            title: t('meals.deleteMealTypeTitle'), text: `"${mt.name}" silinecek.`, icon: 'warning',
             showCancelButton: true, confirmButtonText: t('swal.confirmDelete'), cancelButtonText: t('common.cancel'), confirmButtonColor: '#e7515a',
         });
         if (!result.isConfirmed) return;
         try {
             await apiClient.delete(`/schools/${selectedSchoolId}/meal-types/${mt.id}`);
-            toast.success('Öğün türü silindi.');
+            toast.success(t('meals.mealTypeDeleted'));
             fetchMealTypes();
-        } catch { toast.error('Silme başarısız.'); }
+        } catch { toast.error(t('meals.deleteFailed')); }
     };
 
     const tabBtn = (tab: Tab, label: string, icon: React.ReactNode) => (
@@ -541,23 +541,23 @@ export default function MealsPage() {
 
             <div className="panel">
                 <div className="mb-4 flex flex-wrap gap-2 border-b border-[#ebedf2] dark:border-[#1b2e4b]">
-                    {tabBtn('meals', 'Yemekler', <Utensils className="h-4 w-4" />)}
-                    {tabBtn('ingredients', 'Besin Öğeleri', <Leaf className="h-4 w-4" />)}
-                    {tabBtn('allergens', 'Allerjenler', <ShieldAlert className="h-4 w-4" />)}
-                    {tabBtn('conditions', 'Tıbbi Durumlar', <Stethoscope className="h-4 w-4" />)}
-                    {tabBtn('meal-types', 'Öğün Türleri', <Settings className="h-4 w-4" />)}
+                    {tabBtn('meals', t('meals.tabMeals'), <Utensils className="h-4 w-4" />)}
+                    {tabBtn('ingredients', t('meals.tabIngredients'), <Leaf className="h-4 w-4" />)}
+                    {tabBtn('allergens', t('meals.tabAllergens'), <ShieldAlert className="h-4 w-4" />)}
+                    {tabBtn('conditions', t('meals.tabConditions'), <Stethoscope className="h-4 w-4" />)}
+                    {tabBtn('meal-types', t('meals.tabMealTypes'), <Settings className="h-4 w-4" />)}
                 </div>
 
                 {/* Okul seçici — Yemekler ve Öğün Türleri tabları için */}
                 {(activeTab === 'meals' || activeTab === 'meal-types') && (
                     <div className="mb-4">
-                        <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.schoolLabel') || 'Okul'}</label>
+                        <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.schoolLabel')}</label>
                         <select
                             className="form-select mt-1 max-w-xs"
                             value={selectedSchoolId}
                             onChange={e => setSelectedSchoolId(e.target.value)}
                         >
-                            {schools.length === 0 && <option value="">Okul yok</option>}
+                            {schools.length === 0 && <option value="">{t('meals.noSchool')}</option>}
                             {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                     </div>
@@ -574,7 +574,7 @@ export default function MealsPage() {
                                 disabled={!selectedSchoolId}
                             >
                                 <Plus className="h-4 w-4" />
-                                Yemek Ekle
+                                {t('meals.addMealBtn')}
                             </button>
                         </div>
 
@@ -583,9 +583,9 @@ export default function MealsPage() {
                                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                             </div>
                         ) : !selectedSchoolId ? (
-                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Lütfen bir okul seçin.</p>
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('meals.selectSchoolFirst')}</p>
                         ) : meals.length === 0 ? (
-                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Henüz yemek eklenmemiş.</p>
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('meals.noMeal')}</p>
                         ) : (
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 {meals.map(meal => (
@@ -657,7 +657,7 @@ export default function MealsPage() {
                         <div className="mb-4 flex justify-end">
                             <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openCreateIngredient}>
                                 <Plus className="h-4 w-4" />
-                                Besin Öğesi Ekle
+                                {t('meals.addIngredientBtn')}
                             </button>
                         </div>
 
@@ -670,10 +670,10 @@ export default function MealsPage() {
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>{t('meals.ingredientCol') || 'Besin Öğesi'}</th>
-                                            <th>{t('meals.allergenCol') || 'Allerjenler'}</th>
-                                            <th>{t('meals.typeCol') || 'Tür'}</th>
-                                            <th>{t('common.actions') || 'İşlemler'}</th>
+                                            <th>{t('meals.ingredientCol')}</th>
+                                            <th>{t('meals.allergenCol')}</th>
+                                            <th>{t('meals.typeCol')}</th>
+                                            <th>{t('common.actions')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -692,7 +692,7 @@ export default function MealsPage() {
                                                 </td>
                                                 <td>
                                                     <span className={`badge ${ing.is_custom ? 'badge-outline-info' : 'badge-outline-secondary'}`}>
-                                                        {ing.is_custom ? 'Özel' : 'Global'}
+                                                        {ing.is_custom ? t('meals.custom') : t('meals.global')}
                                                     </span>
                                                 </td>
                                                 <td>
@@ -727,7 +727,7 @@ export default function MealsPage() {
                                     className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${allergenSubTab === 'approved' ? 'bg-white shadow text-dark dark:bg-[#0e1726] dark:text-white' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
                                     onClick={() => setAllergenSubTab('approved')}
                                 >
-                                    Onaylı Allerjenler
+                                    {t('meals.approvedAllergens')}
                                 </button>
                                 <button
                                     type="button"
@@ -735,7 +735,7 @@ export default function MealsPage() {
                                     onClick={() => setAllergenSubTab('pending')}
                                 >
                                     <Clock className="h-3.5 w-3.5" />
-                                    Bekleyen Öneriler
+                                    {t('meals.pendingAllergens')}
                                     {allergenSuggestions.length > 0 && (
                                         <span className="rounded-full bg-warning px-1.5 py-0.5 text-xs text-white">{allergenSuggestions.length}</span>
                                     )}
@@ -744,7 +744,7 @@ export default function MealsPage() {
                             {allergenSubTab === 'approved' && (
                                 <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openCreateAllergen}>
                                     <Plus className="h-4 w-4" />
-                                    Allerjen Ekle
+                                    {t('meals.addAllergenBtn')}
                                 </button>
                             )}
                         </div>
@@ -768,20 +768,20 @@ export default function MealsPage() {
                                                                 <p className="font-medium text-dark dark:text-white">{a.name}</p>
                                                                 {a.risk_level && (
                                                                     <span className={`badge ${RISK_BADGE[a.risk_level] ?? 'badge-outline-secondary'} mt-1 text-xs`}>
-                                                                        {RISK_LABELS[a.risk_level] ?? a.risk_level}
+                                                                        {t(RISK_LABELS_KEYS[a.risk_level] ?? '') || a.risk_level}
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <span className="badge badge-outline-secondary text-xs">Global</span>
+                                                            <span className="badge badge-outline-secondary text-xs">{t('meals.global')}</span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
                                         <div>
-                                            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Kuruma Özel</h3>
+                                            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">{t('meals.customAllergens')}</h3>
                                             {tenantAllergens.length === 0 ? (
-                                                <p className="py-4 text-sm text-[#515365] dark:text-[#888ea8]">Henüz kuruma özel allerjen eklenmemiş.</p>
+                                                <p className="py-4 text-sm text-[#515365] dark:text-[#888ea8]">{t('meals.noCustomAllergen')}</p>
                                             ) : (
                                                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                                     {tenantAllergens.map(a => (
@@ -791,7 +791,7 @@ export default function MealsPage() {
                                                                 {a.description && <p className="mt-0.5 text-xs text-[#888ea8]">{a.description}</p>}
                                                                 {a.risk_level && (
                                                                     <span className={`badge ${RISK_BADGE[a.risk_level] ?? 'badge-outline-secondary'} mt-1 text-xs`}>
-                                                                        {RISK_LABELS[a.risk_level] ?? a.risk_level}
+                                                                        {t(RISK_LABELS_KEYS[a.risk_level] ?? '') || a.risk_level}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -822,7 +822,7 @@ export default function MealsPage() {
                             ) : allergenSuggestions.length === 0 ? (
                                 <div className="py-12 text-center">
                                     <Clock className="mx-auto mb-2 h-10 w-10 text-[#e0e6ed]" />
-                                    <p className="text-sm text-[#888ea8]">Bekleyen allerjen önerisi yok.</p>
+                                    <p className="text-sm text-[#888ea8]">{t('meals.noPendingAllergen')}</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -848,7 +848,7 @@ export default function MealsPage() {
                                                     onClick={() => handleApproveSuggestion('allergen', s.id)}
                                                 >
                                                     <Check className="h-3.5 w-3.5" />
-                                                    Onayla
+                                                    {t('meals.approveBtn')}
                                                 </button>
                                                 <button
                                                     type="button"
@@ -856,7 +856,7 @@ export default function MealsPage() {
                                                     onClick={() => handleRejectSuggestion('allergen', s.id, s.name)}
                                                 >
                                                     <XCircle className="h-3.5 w-3.5" />
-                                                    Reddet
+                                                    {t('meals.rejectBtn')}
                                                 </button>
                                             </div>
                                         </div>
@@ -878,7 +878,7 @@ export default function MealsPage() {
                                     className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${conditionSubTab === 'approved' ? 'bg-white shadow text-dark dark:bg-[#0e1726] dark:text-white' : 'text-[#515365] hover:text-primary dark:text-[#888ea8]'}`}
                                     onClick={() => setConditionSubTab('approved')}
                                 >
-                                    Onaylı Durumlar
+                                    {t('meals.approvedConditions')}
                                 </button>
                                 <button
                                     type="button"
@@ -886,7 +886,7 @@ export default function MealsPage() {
                                     onClick={() => setConditionSubTab('pending')}
                                 >
                                     <Clock className="h-3.5 w-3.5" />
-                                    Bekleyen Öneriler
+                                    {t('meals.pendingConditions')}
                                     {conditionSuggestions.length > 0 && (
                                         <span className="rounded-full bg-warning px-1.5 py-0.5 text-xs text-white">{conditionSuggestions.length}</span>
                                     )}
@@ -895,7 +895,7 @@ export default function MealsPage() {
                             {conditionSubTab === 'approved' && (
                                 <button type="button" className="btn btn-primary btn-sm gap-2" onClick={openCreateCondition}>
                                     <Plus className="h-4 w-4" />
-                                    Tıbbi Durum Ekle
+                                    {t('meals.addConditionBtn')}
                                 </button>
                             )}
                         </div>
@@ -910,7 +910,7 @@ export default function MealsPage() {
                                 <>
                                     {globalConditions.length > 0 && (
                                         <div className="mb-6">
-                                            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Global Tıbbi Durumlar</h3>
+                                            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">{t('meals.globalConditions')}</h3>
                                             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                                 {globalConditions.map(c => (
                                                     <div key={c.id} className="flex items-center justify-between rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
@@ -918,16 +918,16 @@ export default function MealsPage() {
                                                             <p className="font-medium text-dark dark:text-white">{c.name}</p>
                                                             {c.description && <p className="mt-0.5 text-xs text-[#888ea8]">{c.description}</p>}
                                                         </div>
-                                                        <span className="badge badge-outline-secondary text-xs">Global</span>
+                                                        <span className="badge badge-outline-secondary text-xs">{t('meals.global')}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     )}
                                     <div>
-                                        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">Kuruma Özel</h3>
+                                        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#888ea8]">{t('meals.customConditions')}</h3>
                                         {tenantConditions.length === 0 ? (
-                                            <p className="py-4 text-sm text-[#515365] dark:text-[#888ea8]">Henüz kuruma özel tıbbi durum eklenmemiş.</p>
+                                            <p className="py-4 text-sm text-[#515365] dark:text-[#888ea8]">{t('meals.noCustomCondition')}</p>
                                         ) : (
                                             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                                 {tenantConditions.map(c => (
@@ -962,7 +962,7 @@ export default function MealsPage() {
                             ) : conditionSuggestions.length === 0 ? (
                                 <div className="py-12 text-center">
                                     <Clock className="mx-auto mb-2 h-10 w-10 text-[#e0e6ed]" />
-                                    <p className="text-sm text-[#888ea8]">Bekleyen tıbbi durum önerisi yok.</p>
+                                    <p className="text-sm text-[#888ea8]">{t('meals.noPendingCondition')}</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -988,7 +988,7 @@ export default function MealsPage() {
                                                     onClick={() => handleApproveSuggestion('condition', s.id)}
                                                 >
                                                     <Check className="h-3.5 w-3.5" />
-                                                    Onayla
+                                                    {t('meals.approveBtn')}
                                                 </button>
                                                 <button
                                                     type="button"
@@ -996,7 +996,7 @@ export default function MealsPage() {
                                                     onClick={() => handleRejectSuggestion('condition', s.id, s.name)}
                                                 >
                                                     <XCircle className="h-3.5 w-3.5" />
-                                                    Reddet
+                                                    {t('meals.rejectBtn')}
                                                 </button>
                                             </div>
                                         </div>
@@ -1018,26 +1018,26 @@ export default function MealsPage() {
                                 disabled={!selectedSchoolId}
                             >
                                 <Plus className="h-4 w-4" />
-                                Öğün Türü Ekle
+                                {t('meals.addMealTypeBtn')}
                             </button>
                         </div>
 
                         {!selectedSchoolId ? (
-                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Lütfen bir okul seçin.</p>
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('meals.selectSchoolFirst')}</p>
                         ) : loadingMealTypes ? (
                             <div className="flex h-32 items-center justify-center">
                                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                             </div>
                         ) : mealTypes.length === 0 ? (
-                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">Henüz öğün türü eklenmemiş.</p>
+                            <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('meals.noMealType')}</p>
                         ) : (
                             <div className="table-responsive">
                                 <table className="table-hover">
                                     <thead>
                                         <tr>
-                                            <th>{t('meals.mealType') || 'Öğün Türü'}</th>
-                                            <th>{t('common.order') || 'Sıra'}</th>
-                                            <th>İşlemler</th>
+                                            <th>{t('meals.mealType')}</th>
+                                            <th>{t('common.order')}</th>
+                                            <th>{t('common.actions')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1070,14 +1070,14 @@ export default function MealsPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">{editingMeal ? 'Yemek Düzenle' : 'Yeni Yemek'}</h2>
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{editingMeal ? t('meals.editMealTitle') : t('meals.addMealTitle')}</h2>
                             <button type="button" onClick={() => setShowMealModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <form onSubmit={handleMealSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.mealName') || 'Yemek Adı'} *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.mealNameLabel')} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1086,19 +1086,19 @@ export default function MealsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.mealType') || 'Öğün Türü'}</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.mealTypeLabel')}</label>
                                 <select
                                     className="form-select mt-1"
                                     value={mealForm.meal_type}
                                     onChange={e => setMealForm(p => ({ ...p, meal_type: e.target.value }))}
                                     disabled={mealTypes.length === 0}
                                 >
-                                    <option value="">— Seçin —</option>
+                                    <option value="">— {t('common.select')} —</option>
                                     {mealTypes.map(mt => <option key={mt.id} value={mt.name}>{mt.name}</option>)}
                                 </select>
                                 {mealTypes.length === 0 && (
                                     <p className="mt-1 text-xs text-[#888ea8]">
-                                        Öğün türü tanımlamak için &quot;Öğün Türleri&quot; sekmesini kullanın.
+                                        {t('meals.mealTypeHint')}
                                     </p>
                                 )}
                             </div>
@@ -1106,7 +1106,7 @@ export default function MealsPage() {
                             {/* Fotoğraf */}
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">
-                                    Fotoğraf <span className="text-xs text-[#888ea8]">(isteğe bağlı, maks. 5 MB)</span>
+                                    {t('meals.photoLabel')} <span className="text-xs text-[#888ea8]">{t('meals.photoHint')}</span>
                                 </label>
                                 <div className="mt-1">
                                     {/* Mevcut fotoğraf önizleme */}
@@ -1114,7 +1114,7 @@ export default function MealsPage() {
                                         <div className="mb-2 flex items-center gap-3">
                                             <AuthImg
                                                 src={existingMealPhotoUrl}
-                                                alt="Mevcut fotoğraf"
+                                                alt={t('meals.currentPhoto')}
                                                 className="h-20 w-28 rounded-lg object-cover"
                                                 fallback={<div className="h-20 w-28 animate-pulse rounded-lg bg-gray-200 dark:bg-[#1b2e4b]" />}
                                             />
@@ -1123,7 +1123,7 @@ export default function MealsPage() {
                                                 className="text-xs text-danger hover:underline"
                                                 onClick={() => { setRemovePhoto(true); setExistingMealPhotoUrl(null); }}
                                             >
-                                                Fotoğrafı Kaldır
+                                                {t('meals.removePhoto')}
                                             </button>
                                         </div>
                                     )}
@@ -1131,19 +1131,19 @@ export default function MealsPage() {
                                     {mealPhotoPreview && (
                                         <div className="mb-2 flex items-center gap-3">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img src={mealPhotoPreview} alt="Önizleme" className="h-20 w-28 rounded-lg object-cover" />
+                                            <img src={mealPhotoPreview} alt={t('meals.photoPreview')} className="h-20 w-28 rounded-lg object-cover" />
                                             <button
                                                 type="button"
                                                 className="text-xs text-danger hover:underline"
                                                 onClick={() => { setMealPhotoFile(null); setMealPhotoPreview(null); }}
                                             >
-                                                İptal
+                                                {t('common.cancel')}
                                             </button>
                                         </div>
                                     )}
                                     <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[#e0e6ed] px-4 py-3 text-sm text-[#515365] hover:border-primary hover:text-primary dark:border-[#1b2e4b]">
                                         <Camera className="h-4 w-4" />
-                                        <span>{mealPhotoFile ? mealPhotoFile.name : 'Fotoğraf seç...'}</span>
+                                        <span>{mealPhotoFile ? mealPhotoFile.name : t('meals.photoSelect')}</span>
                                         <input
                                             type="file"
                                             accept="image/jpeg,image/jpg,image/png,image/webp"
@@ -1162,10 +1162,10 @@ export default function MealsPage() {
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">
-                                    Besin Öğeleri * <span className="text-xs text-[#888ea8]">(en az 1 seçilmeli)</span>
+                                    {t('meals.ingredientsLabel')} * <span className="text-xs text-[#888ea8]">{t('meals.ingredientsMinHint')}</span>
                                 </label>
                                 {ingredients.length === 0 && (
-                                    <p className="text-sm text-[#888ea8]">Besin öğesi yükleniyor...</p>
+                                    <p className="text-sm text-[#888ea8]">{t('meals.ingredientsLoading')}</p>
                                 )}
                                 <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto">
                                     {ingredients.map(ing => (
@@ -1184,15 +1184,15 @@ export default function MealsPage() {
                                     ))}
                                 </div>
                                 {mealForm.ingredient_ids.length === 0 && (
-                                    <p className="mt-1 text-xs text-danger">Lütfen en az bir besin öğesi seçin.</p>
+                                    <p className="mt-1 text-xs text-danger">{t('meals.ingredientsRequired')}</p>
                                 )}
                             </div>
 
                             {lockedAllergens.length > 0 && (
                                 <div>
                                     <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">
-                                        Tespit Edilen Allerjenler{' '}
-                                        <span className="text-xs text-[#888ea8]">(besin öğelerinden otomatik, kaldırılamaz)</span>
+                                        {t('meals.derivedAllergens')}{' '}
+                                        <span className="text-xs text-[#888ea8]">{t('meals.derivedAllergensHint')}</span>
                                     </label>
                                     <div className="flex flex-wrap gap-2">
                                         {lockedAllergens.map(a => (
@@ -1200,7 +1200,7 @@ export default function MealsPage() {
                                                 key={a.id}
                                                 type="button"
                                                 className="flex cursor-not-allowed items-center gap-1 rounded-full bg-danger/10 px-3 py-1 text-xs font-medium text-danger"
-                                                onClick={() => toast.error('Bu besin öğesi alerjen içermektedir, kaldırılamaz.')}
+                                                onClick={() => toast.error(t('meals.allergenLockedError'))}
                                             >
                                                 <Lock className="h-3 w-3" />
                                                 {capitalize(a.name)}
@@ -1212,7 +1212,7 @@ export default function MealsPage() {
 
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingMeal}>
-                                    {savingMeal ? t('common.loading') : (editingMeal ? 'Güncelle' : 'Kaydet')}
+                                    {savingMeal ? t('common.loading') : (editingMeal ? t('common.update') : t('common.save'))}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMealModal(false)}>{t('common.cancel')}</button>
                             </div>
@@ -1227,7 +1227,7 @@ export default function MealsPage() {
                     <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
-                                {editingIngredient ? 'Besin Öğesi Düzenle' : 'Yeni Besin Öğesi'}
+                                {editingIngredient ? t('meals.editIngredientTitle') : t('meals.addIngredientTitle')}
                             </h2>
                             <button type="button" onClick={() => setShowIngredientModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
@@ -1235,7 +1235,7 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleIngredientSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name') || 'Ad'} *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name')} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1246,26 +1246,26 @@ export default function MealsPage() {
 
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">
-                                    Allerjenler <span className="text-xs text-[#888ea8]">(isteğe bağlı)</span>
+                                    {t('meals.allergenCol')} <span className="text-xs text-[#888ea8]">{t('meals.allerjenOptional')}</span>
                                 </label>
 
                                 {loadingAllergens ? (
                                     <div className="flex items-center gap-2 text-sm text-[#888ea8]">
                                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                                        Allerjenler yükleniyor...
+                                        {t('meals.allergensLoading')}
                                     </div>
                                 ) : allergens.length === 0 ? (
                                     <p className="text-xs text-[#888ea8]">
-                                        Henüz allerjen tanımlanmamış.{' '}
+                                        {t('meals.noAllergensYet')}{' '}
                                         <button type="button" className="text-primary underline" onClick={() => { setShowIngredientModal(false); setActiveTab('allergens'); }}>
-                                            Allerjen eklemek için tıklayın
+                                            {t('meals.goToAllergens')}
                                         </button>
                                     </p>
                                 ) : (
                                     <>
                                         {globalAllergens.length > 0 && (
                                             <div className="mb-3">
-                                                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Global</p>
+                                                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">{t('meals.global')}</p>
                                                 <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
                                                     {globalAllergens.map(a => (
                                                         <label
@@ -1287,7 +1287,7 @@ export default function MealsPage() {
 
                                         {tenantAllergens.length > 0 && (
                                             <div>
-                                                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">Kuruma Özel</p>
+                                                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">{t('meals.customAllergens')}</p>
                                                 <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
                                                     {tenantAllergens.map(a => (
                                                         <label
@@ -1312,7 +1312,7 @@ export default function MealsPage() {
 
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingIngredient}>
-                                    {savingIngredient ? t('common.loading') : (editingIngredient ? 'Güncelle' : 'Kaydet')}
+                                    {savingIngredient ? t('common.loading') : (editingIngredient ? t('common.update') : t('common.save'))}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowIngredientModal(false)}>{t('common.cancel')}</button>
                             </div>
@@ -1327,7 +1327,7 @@ export default function MealsPage() {
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
-                                {editingAllergen ? 'Allerjen Düzenle' : 'Yeni Allerjen'}
+                                {editingAllergen ? t('meals.editAllergenTitle') : t('meals.addAllergenTitle')}
                             </h2>
                             <button type="button" onClick={() => setShowAllergenModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
@@ -1335,7 +1335,7 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleAllergenSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name') || 'Ad'} *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name')} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1344,7 +1344,7 @@ export default function MealsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.description') || 'Açıklama'}</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.description')}</label>
                                 <textarea
                                     className="form-input mt-1"
                                     rows={2}
@@ -1353,21 +1353,21 @@ export default function MealsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">Risk Seviyesi</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('meals.riskLevelLabel')}</label>
                                 <select
                                     className="form-select mt-1"
                                     value={allergenForm.risk_level}
                                     onChange={e => setAllergenForm(p => ({ ...p, risk_level: e.target.value }))}
                                 >
-                                    <option value="">Seçin (İsteğe Bağlı)</option>
-                                    <option value="low">Düşük</option>
-                                    <option value="medium">Orta</option>
-                                    <option value="high">Yüksek</option>
+                                    <option value="">{t('meals.riskOptionalSelect')}</option>
+                                    <option value="low">{t('meals.riskLow')}</option>
+                                    <option value="medium">{t('meals.riskMedium')}</option>
+                                    <option value="high">{t('meals.riskHigh')}</option>
                                 </select>
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingAllergen}>
-                                    {savingAllergen ? t('common.loading') : (editingAllergen ? 'Güncelle' : 'Kaydet')}
+                                    {savingAllergen ? t('common.loading') : (editingAllergen ? t('common.update') : t('common.save'))}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowAllergenModal(false)}>{t('common.cancel')}</button>
                             </div>
@@ -1382,7 +1382,7 @@ export default function MealsPage() {
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
-                                {editingCondition ? 'Tıbbi Durum Düzenle' : 'Yeni Tıbbi Durum'}
+                                {editingCondition ? t('meals.editConditionTitle') : t('meals.addConditionTitle')}
                             </h2>
                             <button type="button" onClick={() => setShowConditionModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
@@ -1390,7 +1390,7 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleConditionSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name') || 'Ad'} *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name')} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
@@ -1399,7 +1399,7 @@ export default function MealsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.description') || 'Açıklama'}</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.description')}</label>
                                 <textarea
                                     className="form-input mt-1"
                                     rows={2}
@@ -1409,7 +1409,7 @@ export default function MealsPage() {
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingCondition}>
-                                    {savingCondition ? t('common.loading') : (editingCondition ? 'Güncelle' : 'Kaydet')}
+                                    {savingCondition ? t('common.loading') : (editingCondition ? t('common.update') : t('common.save'))}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowConditionModal(false)}>{t('common.cancel')}</button>
                             </div>
@@ -1424,7 +1424,7 @@ export default function MealsPage() {
                     <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-[#0e1726]">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-dark dark:text-white">
-                                {editingMealType ? 'Öğün Türü Düzenle' : 'Yeni Öğün Türü'}
+                                {editingMealType ? t('meals.editMealTypeTitle') : t('meals.addMealTypeTitle')}
                             </h2>
                             <button type="button" onClick={() => setShowMealTypeModal(false)} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
@@ -1432,18 +1432,18 @@ export default function MealsPage() {
                         </div>
                         <form onSubmit={handleMealTypeSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name') || 'Ad'} *</label>
+                                <label className="block text-sm font-medium text-dark dark:text-white-light">{t('common.name')} *</label>
                                 <input
                                     type="text"
                                     className="form-input mt-1"
-                                    placeholder="Ör: Kahvaltı, Öğle Yemeği..."
+                                    placeholder={t('meals.mealTypePlaceholder')}
                                     value={mealTypeForm.name}
                                     onChange={e => setMealTypeForm(p => ({ ...p, name: e.target.value }))}
                                 />
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" className="btn btn-primary flex-1" disabled={savingMealType}>
-                                    {savingMealType ? t('common.loading') : (editingMealType ? 'Güncelle' : 'Kaydet')}
+                                    {savingMealType ? t('common.loading') : (editingMealType ? t('common.update') : t('common.save'))}
                                 </button>
                                 <button type="button" className="btn btn-outline-secondary flex-1" onClick={() => setShowMealTypeModal(false)}>{t('common.cancel')}</button>
                             </div>
