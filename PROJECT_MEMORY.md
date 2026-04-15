@@ -73,7 +73,7 @@ bootstrap/app.php   middleware alias + exception handler
 ## 3. Veritabanı Şeması (Tablo Listesi)
 
 ### Auth & Kullanıcı
-`users`, `roles`, `permissions`, `role_user`, `permission_role`
+`users` (`role_id` FK → `user_roles`), `user_roles` (sabit ID'li lookup), `roles`, `permissions`, `role_user`, `permission_role`
 
 ### Kurum & Okul
 `tenants`, `schools`, `academic_years`
@@ -191,14 +191,44 @@ class XxxController extends BaseSchoolController
 
 ## 6. Auth Sistemi
 
+### Rol Sistemi — user_roles tablosu (Sabit ID'ler)
+| ID | Name | Açıklama |
+|----|------|----------|
+| 1 | super_admin | Sistem yöneticisi |
+| 5 | tenant | Kurum sahibi (web kayıt) |
+| 10 | teacher | Öğretmen (mobil kayıt) |
+| 15 | parent | Veli (mobil kayıt) |
+| 20 | student | Öğrenci |
+
+**UserRole model** (`app/Models/Base/UserRole.php`): Sabitler `UserRole::SUPER_ADMIN`, `UserRole::TENANT`, `UserRole::TEACHER`, `UserRole::PARENT`, `UserRole::STUDENT`.
+
+**User model yardımcıları**: `isSuperAdmin()`, `isTenant()`, `isTeacher()`, `isParent()`, `canAccessTenantPanel()` → `role_id` üzerinden çalışır.
+
+### Route Middleware Korumaları
+- `role:super_admin,tenant` → Tenant paneli rotaları (`/auth/logout`, `/auth/me`, `/tenant/*`, `/tenants`, `/notifications`, `/contact-numbers`, `/invoices`)
+- `role:parent` → Veli rotaları (`/parent/enrollment-requests`, `/parent/authorized-pickups`)
+- `role:teacher` + `abilities:role:teacher` → Öğretmen rotaları (`/teacher/profile/*`, `/teacher/auth/*`, vb.)
+- `subscription.active` + `tenant.role` → Abonelik gerektiren tenant rotaları
+- `super.admin` → Admin panel rotaları (`/admin/*`)
+
+**Middleware Alias'ları** (bootstrap/app.php):
+- `role` → `EnsureRole` (parametreli: `role:teacher`, `role:super_admin,tenant`)
+- `tenant.role` → `EnsureTenantRole`
+- `super.admin` → `EnsureSuperAdmin`
+
+### Login Kuralları
+- `AuthController::login()` → sadece `role_id ∈ {1,5}` (super_admin, tenant) girebilir
+- `ParentAuthController::login()` → sadece `role_id = 15` (parent) girebilir
+- `TeacherAuthController::login()` → sadece `role_id = 10` (teacher) girebilir
+
 ### Endpoint'ler
 ```
-POST /api/auth/register    → User + Tenant oluşturur, tenant_owner rolü atar, token döner
-POST /api/auth/login       → token döner
+POST /api/auth/register    → User + Tenant oluşturur, role_id=5 (tenant), token döner
+POST /api/auth/login       → token döner (sadece tenant/super_admin)
 POST /api/auth/forgot-password
 POST /api/auth/reset-password
-POST /api/auth/logout      (auth:sanctum)
-GET  /api/auth/me          (auth:sanctum)
+POST /api/auth/logout      (auth:sanctum + role:super_admin,tenant)
+GET  /api/auth/me          (auth:sanctum + role:super_admin,tenant)
 ```
 
 ### Şifre Sıfırlama Akışı

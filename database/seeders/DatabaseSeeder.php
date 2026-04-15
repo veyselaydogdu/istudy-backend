@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Base\Role;
+use App\Models\Base\UserRole;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class DatabaseSeeder extends Seeder
         DB::statement('SET FOREIGN_KEY_CHECKS = 0');
 
         $tables = [
-            'role_user', 'roles', 'permissions', 'role_permissions',
+            'role_user', 'roles', 'permissions', 'role_permissions', 'user_roles',
             'teacher_blog_likes', 'teacher_blog_comments', 'teacher_blog_posts', 'teacher_follows',
             'child_pickup_logs', 'child_medication_logs', 'child_allergens', 'child_conditions',
             'child_medications', 'child_classes', 'children',
@@ -65,8 +66,13 @@ class DatabaseSeeder extends Seeder
 
         $this->command->info('✅ Tüm tablolar temizlendi.');
 
-        // ── 2. Super Admin kullanıcı ──────────────────────────────────────────
+        // ── 2. UserRole lookup tablosu ────────────────────────────────────────
+        $this->call(UserRoleSeeder::class);
+        $this->command->info('✅ UserRole lookup tablosu dolduruldu.');
+
+        // ── 3. Super Admin kullanıcı ──────────────────────────────────────────
         $superAdmin = User::create([
+            'role_id' => UserRole::SUPER_ADMIN,
             'name' => 'Super',
             'surname' => 'Admin',
             'email' => 'admin@istudy.com',
@@ -79,7 +85,7 @@ class DatabaseSeeder extends Seeder
         // Auth context (BaseModel created_by için)
         auth()->login($superAdmin);
 
-        // ── 3. Roller ─────────────────────────────────────────────────────────
+        // ── 4. Roller ─────────────────────────────────────────────────────────
         $this->call(RoleSeeder::class);
 
         $superAdminRole = Role::where('name', 'super_admin')->first();
@@ -89,11 +95,11 @@ class DatabaseSeeder extends Seeder
 
         $this->command->info('✅ Roller oluşturuldu ve Super Admin rolü atandı.');
 
-        // ── 4. Paketler ───────────────────────────────────────────────────────
+        // ── 5. Paketler ───────────────────────────────────────────────────────
         $this->call(PackageSeeder::class);
         $this->command->info('✅ Paketler oluşturuldu.');
 
-        // ── 5. Global veriler ─────────────────────────────────────────────────
+        // ── 6. Global veriler ─────────────────────────────────────────────────
         $this->call(InitialDataSeeder::class);
         $this->command->info('✅ Para birimleri, ülkeler, alerjenler, hastalıklar, besin öğeleri eklendi.');
 

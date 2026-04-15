@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Teachers;
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Resources\UserResource;
 use App\Models\Base\Role;
+use App\Models\Base\UserRole;
 use App\Models\School\TeacherProfile;
 use App\Models\School\TeacherTenantMembership;
 use App\Models\User;
@@ -38,6 +39,7 @@ class TeacherAuthController extends BaseController
         try {
             $result = DB::transaction(function () use ($request) {
                 $user = User::create([
+                    'role_id' => UserRole::TEACHER,
                     'name' => $request->name,
                     'surname' => $request->surname,
                     'email' => mb_strtolower($request->email),
@@ -97,7 +99,8 @@ class TeacherAuthController extends BaseController
                 return $this->errorResponse('E-posta veya şifre hatalı.', 401);
             }
 
-            if (! $user->roles->contains('name', 'teacher')) {
+            // Yalnızca teacher rolüne sahip kullanıcılar öğretmen girişi yapabilir
+            if ($user->role_id !== UserRole::TEACHER) {
                 return $this->errorResponse('Bu hesap öğretmen hesabı değil.', 401);
             }
 

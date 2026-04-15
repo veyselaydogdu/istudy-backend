@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Parent\RegisterParentRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Base\Role;
+use App\Models\Base\UserRole;
 use App\Models\Child\FamilyMember;
 use App\Models\Child\FamilyProfile;
 use App\Models\User;
@@ -30,6 +31,7 @@ class ParentAuthController extends BaseController
                 $data = $request->validated();
 
                 $user = User::create([
+                    'role_id' => UserRole::PARENT,
                     'name' => $data['name'],
                     'surname' => $data['surname'],
                     'email' => mb_strtolower($data['email']),
@@ -98,6 +100,14 @@ class ParentAuthController extends BaseController
 
             /** @var User $user */
             $user = Auth::user();
+
+            // Yalnızca parent rolüne sahip kullanıcılar veli girişi yapabilir
+            if ($user->role_id !== UserRole::PARENT) {
+                Auth::logout();
+
+                return $this->errorResponse('Bu hesap veli hesabı değil.', 401);
+            }
+
             $user->update(['last_login_at' => now()]);
 
             // L-2: Token scope — parent yalnızca parent endpoint'lerine erişebilir

@@ -7,16 +7,14 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Super Admin Middleware
+ * Tenant Paneli Erişim Kontrolü
  *
- * Bu middleware sadece super_admin rolüne sahip kullanıcıların
- * admin paneli endpoint'lerine erişmesini sağlar.
+ * Yalnızca super_admin (1) ve tenant (5) rollerine sahip kullanıcıların
+ * tenant paneli endpoint'lerine erişmesini sağlar.
+ * Teacher ve parent rolündeki kullanıcılar 403 alır.
  */
-class EnsureSuperAdmin
+class EnsureTenantRole
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
@@ -28,13 +26,12 @@ class EnsureSuperAdmin
             ], 401);
         }
 
-        if (! $user->isSuperAdmin()) {
+        if (! $user->canAccessTenantPanel()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bu işlem için Super Admin yetkisi gereklidir.',
+                'message' => 'Bu alana erişim yetkiniz bulunmuyor.',
             ], 403);
         }
-        // Not: isSuperAdmin() artık role_id = 1 (UserRole::SUPER_ADMIN) kontrol eder.
 
         return $next($request);
     }

@@ -6,6 +6,7 @@ namespace App\Models;
 use App\Models\Base\Country;
 use App\Models\Base\Role;
 use App\Models\Base\UserContactNumber;
+use App\Models\Base\UserRole;
 use App\Models\Child\FamilyProfile;
 use App\Models\School\School;
 use App\Models\School\TeacherProfile;
@@ -29,6 +30,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'ulid',
+        'role_id',
         'name',
         'surname',
         'email',
@@ -64,14 +66,40 @@ class User extends Authenticatable
         'last_login_at' => 'datetime',
     ];
 
-    /**
-     * Check if user is super admin.
-     * This logic depends on Roles implementation.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Rol Yardımcıları
+    |--------------------------------------------------------------------------
+    */
+
     public function isSuperAdmin(): bool
     {
-        // Role check logic here
-        return $this->roles()->where('name', 'super_admin')->exists();
+        return $this->role_id === UserRole::SUPER_ADMIN;
+    }
+
+    public function isTenant(): bool
+    {
+        return $this->role_id === UserRole::TENANT;
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->role_id === UserRole::TEACHER;
+    }
+
+    public function isParent(): bool
+    {
+        return $this->role_id === UserRole::PARENT;
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->role_id === UserRole::STUDENT;
+    }
+
+    public function canAccessTenantPanel(): bool
+    {
+        return in_array($this->role_id, UserRole::TENANT_PANEL_ROLES, true);
     }
 
     /*
@@ -127,6 +155,13 @@ class User extends Authenticatable
         return $this->hasMany(FamilyProfile::class, 'owner_user_id');
     }
 
+    /** Ana rol (user_roles lookup tablosu — doğrudan FK) */
+    public function userRole()
+    {
+        return $this->belongsTo(UserRole::class, 'role_id');
+    }
+
+    /** Eski çoktan-çoğa roller (geriye dönük uyumluluk için korundu) */
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'role_user', 'user_id', 'role_id')->withTimestamps();

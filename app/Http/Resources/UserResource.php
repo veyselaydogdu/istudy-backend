@@ -17,6 +17,8 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'locale' => $this->locale,
+            'role_id' => $this->role_id,
+            'role' => $this->userRole?->name,
             'tenant_id' => $this->tenant_id,
             'has_active_subscription' => $this->tenant_id
                 ? Tenant::find($this->tenant_id)?->hasActiveSubscription() ?? false

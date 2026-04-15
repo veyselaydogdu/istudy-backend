@@ -31,6 +31,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'subscription.active' => \App\Http\Middleware\EnsureActiveSubscription::class,
             'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'tenant.role' => \App\Http\Middleware\EnsureTenantRole::class,
+            // Parametreli genel rol kontrolü: role:tenant,super_admin / role:parent / role:teacher
+            'role' => \App\Http\Middleware\EnsureRole::class,
             // L-2: Sanctum token ability kontrolü
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,

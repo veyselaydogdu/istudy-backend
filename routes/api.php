@@ -261,27 +261,71 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
 // ═══════════════════════════════════════════════════════════
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Auth işlemleri
-    Route::post('/auth/logout', [\App\Http\Controllers\Auth\AuthController::class, 'logout']);
-    Route::get('/auth/me', [\App\Http\Controllers\Auth\AuthController::class, 'me']);
+    // ───────────────────────────────────────────────────────
+    // TENANT PANELİ — role: super_admin veya tenant
+    // ───────────────────────────────────────────────────────
+    Route::middleware('role:super_admin,tenant')->group(function () {
 
-    // Paket seçimi ve abonelik yönetimi
-    Route::prefix('tenant')->group(function () {
-        Route::post('/subscribe', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'subscribe']);
-        Route::get('/subscription', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'currentSubscription']);
-        Route::get('/subscription/history', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'subscriptionHistory']);
-        Route::get('/subscription/usage', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'usageReport']);
-        Route::post('/subscription/cancel', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'cancelSubscription']);
-    });
+        // Auth işlemleri
+        Route::post('/auth/logout', [\App\Http\Controllers\Auth\AuthController::class, 'logout']);
+        Route::get('/auth/me', [\App\Http\Controllers\Auth\AuthController::class, 'me']);
 
-    // Tenant CRUD (abonelik gerekmez, tenant yönetimi için)
-    Route::apiResource('tenants', \App\Http\Controllers\Tenant\TenantController::class)
-        ->except(['store']);
+        // Paket seçimi ve abonelik yönetimi
+        Route::prefix('tenant')->group(function () {
+            Route::post('/subscribe', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'subscribe']);
+            Route::get('/subscription', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'currentSubscription']);
+            Route::get('/subscription/history', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'subscriptionHistory']);
+            Route::get('/subscription/usage', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'usageReport']);
+            Route::post('/subscription/cancel', [\App\Http\Controllers\Tenant\PackageSelectionController::class, 'cancelSubscription']);
+        });
+
+        // Tenant CRUD (abonelik gerekmez, tenant yönetimi için)
+        Route::apiResource('tenants', \App\Http\Controllers\Tenant\TenantController::class)
+            ->except(['store']);
+
+        // ───────────────────────────────────────────────────────
+        // BİLDİRİM SİSTEMİ (Tenant panel, abonelik gerekmez)
+        // ───────────────────────────────────────────────────────
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\NotificationController::class, 'index']);
+            Route::get('/unread', [\App\Http\Controllers\Schools\NotificationController::class, 'unread']);
+            Route::get('/unread-count', [\App\Http\Controllers\Schools\NotificationController::class, 'unreadCount']);
+            Route::patch('/{notification}/read', [\App\Http\Controllers\Schools\NotificationController::class, 'markAsRead']);
+            Route::patch('/read-all', [\App\Http\Controllers\Schools\NotificationController::class, 'markAllAsRead']);
+            Route::get('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'preferences']);
+            Route::put('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'updatePreferences']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // EK İLETİŞİM NUMARALARI (Tenant panel)
+        // ───────────────────────────────────────────────────
+        Route::prefix('contact-numbers')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Auth\UserContactController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Auth\UserContactController::class, 'store']);
+            Route::put('/{id}', [\App\Http\Controllers\Auth\UserContactController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Auth\UserContactController::class, 'destroy']);
+            Route::get('/types', [\App\Http\Controllers\Auth\UserContactController::class, 'types']);
+        });
+
+        // ───────────────────────────────────────────────────
+        // FATURA & ÖDEME SİSTEMİ (Tenant panel)
+        // ───────────────────────────────────────────────────
+        Route::prefix('invoices')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Billing\InvoiceController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Billing\InvoiceController::class, 'store']);
+            Route::get('/tenant', [\App\Http\Controllers\Billing\InvoiceController::class, 'tenantInvoices']);
+            Route::get('/stats', [\App\Http\Controllers\Billing\InvoiceController::class, 'stats']);
+            Route::get('/{invoice}', [\App\Http\Controllers\Billing\InvoiceController::class, 'show']);
+            Route::get('/{invoice}/transactions', [\App\Http\Controllers\Billing\InvoiceController::class, 'transactions']);
+            Route::post('/{invoice}/pay', [\App\Http\Controllers\Billing\InvoiceController::class, 'initiatePayment']);
+        });
+
+    }); // end role:super_admin,tenant
 
     // ───────────────────────────────────────────────────────
-    // VELİ TARAFI — Kayıt Talebi & Yetkili Alıcı
+    // VELİ TARAFI — role: parent
     // ───────────────────────────────────────────────────────
-    Route::prefix('parent')->group(function () {
+    Route::middleware('role:parent')->prefix('parent')->group(function () {
         // Okul kayıt talebi gönder
         Route::post('/enrollment-requests', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'store']);
         Route::get('/enrollment-requests', [\App\Http\Controllers\Schools\EnrollmentRequestController::class, 'index']);
@@ -290,67 +334,38 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('authorized-pickups', \App\Http\Controllers\Parents\AuthorizedPickupController::class);
     });
 
-    // ───────────────────────────────────────────────────────
-    // BİLDİRİM SİSTEMİ (Auth gerekli, abonelik gerekmez)
-    // ───────────────────────────────────────────────────────
-    Route::prefix('notifications')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Schools\NotificationController::class, 'index']);
-        Route::get('/unread', [\App\Http\Controllers\Schools\NotificationController::class, 'unread']);
-        Route::get('/unread-count', [\App\Http\Controllers\Schools\NotificationController::class, 'unreadCount']);
-        Route::patch('/{notification}/read', [\App\Http\Controllers\Schools\NotificationController::class, 'markAsRead']);
-        Route::patch('/read-all', [\App\Http\Controllers\Schools\NotificationController::class, 'markAllAsRead']);
-        Route::get('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'preferences']);
-        Route::put('/preferences', [\App\Http\Controllers\Schools\NotificationController::class, 'updatePreferences']);
-    });
-
     // ───────────────────────────────────────────────────
-    // EK İLETİŞİM NUMARALARI (WhatsApp, Telegram vb.)
+    // ÖĞRETMEN ROUTES — role: teacher + token ability:role:teacher
     // ───────────────────────────────────────────────────
-    Route::prefix('contact-numbers')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Auth\UserContactController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\Auth\UserContactController::class, 'store']);
-        Route::put('/{id}', [\App\Http\Controllers\Auth\UserContactController::class, 'update']);
-        Route::delete('/{id}', [\App\Http\Controllers\Auth\UserContactController::class, 'destroy']);
-        Route::get('/types', [\App\Http\Controllers\Auth\UserContactController::class, 'types']);
-    });
+    Route::middleware(['role:teacher', 'abilities:role:teacher'])->group(function () {
 
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN PROFİLİ — Kendi CV/Özgeçmiş Yönetimi
-    // ───────────────────────────────────────────────────
-    Route::prefix('teacher/profile')->group(function () {
-        // Profil
-        Route::get('/', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'myProfile']);
-        Route::put('/', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateMyProfile']);
+        // ───────────────────────────────────────────────────
+        // ÖĞRETMEN PROFİLİ — Kendi CV/Özgeçmiş Yönetimi
+        // ───────────────────────────────────────────────────
+        Route::prefix('teacher/profile')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'myProfile']);
+            Route::put('/', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateMyProfile']);
 
-        // Eğitim Geçmişi
-        Route::get('/educations', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'educations']);
-        Route::post('/educations', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeEducation']);
-        Route::put('/educations/{educationId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateEducation']);
-        Route::delete('/educations/{educationId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyEducation']);
+            Route::get('/educations', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'educations']);
+            Route::post('/educations', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeEducation']);
+            Route::put('/educations/{educationId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateEducation']);
+            Route::delete('/educations/{educationId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyEducation']);
 
-        // Sertifikalar (onay gerektirir)
-        Route::get('/certificates', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'certificates']);
-        Route::post('/certificates', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeCertificate']);
-        Route::put('/certificates/{certificateId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateCertificate']);
-        Route::delete('/certificates/{certificateId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyCertificate']);
+            Route::get('/certificates', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'certificates']);
+            Route::post('/certificates', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeCertificate']);
+            Route::put('/certificates/{certificateId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateCertificate']);
+            Route::delete('/certificates/{certificateId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyCertificate']);
 
-        // Kurs & Seminer (onay gerektirir)
-        Route::get('/courses', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'courses']);
-        Route::post('/courses', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeCourse']);
-        Route::put('/courses/{courseId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateCourse']);
-        Route::delete('/courses/{courseId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyCourse']);
+            Route::get('/courses', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'courses']);
+            Route::post('/courses', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeCourse']);
+            Route::put('/courses/{courseId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateCourse']);
+            Route::delete('/courses/{courseId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroyCourse']);
 
-        // Yetenekler
-        Route::get('/skills', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'skills']);
-        Route::post('/skills', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeSkill']);
-        Route::put('/skills/{skillId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateSkill']);
-        Route::delete('/skills/{skillId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroySkill']);
-    });
-
-    // ───────────────────────────────────────────────────
-    // ÖĞRETMEN ROUTES — L-2: Yalnızca role:teacher token'ı erişebilir
-    // ───────────────────────────────────────────────────
-    Route::middleware('abilities:role:teacher')->group(function () {
+            Route::get('/skills', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'skills']);
+            Route::post('/skills', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeSkill']);
+            Route::put('/skills/{skillId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateSkill']);
+            Route::delete('/skills/{skillId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroySkill']);
+        });
 
         // ÖĞRETMEN AUTH
         Route::prefix('teacher/auth')->group(function () {
@@ -432,25 +447,12 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/bulk', [\App\Http\Controllers\Teachers\TeacherDailyReportController::class, 'bulkStore']); // Toplu Kayıt
         });
 
-    }); // end abilities:role:teacher group
-
-    // ───────────────────────────────────────────────────
-    // FATURA & ÖDEME SİSTEMİ
-    // ───────────────────────────────────────────────────
-    Route::prefix('invoices')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Billing\InvoiceController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\Billing\InvoiceController::class, 'store']);
-        Route::get('/tenant', [\App\Http\Controllers\Billing\InvoiceController::class, 'tenantInvoices']);
-        Route::get('/stats', [\App\Http\Controllers\Billing\InvoiceController::class, 'stats']);
-        Route::get('/{invoice}', [\App\Http\Controllers\Billing\InvoiceController::class, 'show']);
-        Route::get('/{invoice}/transactions', [\App\Http\Controllers\Billing\InvoiceController::class, 'transactions']);
-        Route::post('/{invoice}/pay', [\App\Http\Controllers\Billing\InvoiceController::class, 'initiatePayment']);
-    });
+    }); // end role:teacher group
 
     // ═══════════════════════════════════════════════════════
-    // 3️⃣ ABONELİK GEREKLİ (Aktif paket zorunlu)
+    // 3️⃣ ABONELİK GEREKLİ (Aktif paket zorunlu — yalnızca tenant rolü)
     // ═══════════════════════════════════════════════════════
-    Route::middleware('subscription.active')->group(function () {
+    Route::middleware(['subscription.active', 'tenant.role'])->group(function () {
 
         // Bekleyen onaylar — tenant geneli
         Route::get('/pending-approvals', [\App\Http\Controllers\Schools\PendingApprovalsController::class, 'index']);

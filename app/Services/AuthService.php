@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Base\Role;
+use App\Models\Base\UserRole;
 use App\Models\Tenant\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -16,8 +17,9 @@ class AuthService
     public function register(array $data): array
     {
         return DB::transaction(function () use ($data) {
-            // Kullanıcı oluştur
+            // Kullanıcı oluştur (rol: tenant)
             $user = User::create([
+                'role_id' => UserRole::TENANT,
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => $data['password'], // Model'de hashed cast var
@@ -62,6 +64,11 @@ class AuthService
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw new \Exception('E-posta veya şifre hatalı.', 401);
+        }
+
+        // Sadece super_admin ve tenant rolleri tenant paneline giriş yapabilir
+        if (! $user->canAccessTenantPanel()) {
+            throw new \Exception('Bu hesap tenant paneli için yetkili değil.', 401);
         }
 
         // Son giriş tarihini güncelle
