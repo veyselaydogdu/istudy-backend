@@ -213,7 +213,7 @@ protected function isAccessible(User $user, ?string $path = null): bool
 | `PROJECT_MEMORY.md` | Laravel backend: mimari, route'lar, controller şablonları, DB şeması, modüller, kritik kurallar |
 | `PROJECT_MEMORY_FRONTEND.md` | Frontend Tenant (port 3002): dizin yapısı, TS tipleri, UI standartları, sayfa detayları |
 | `PROJECT_MEMORY_FRONTEND_ADMIN.md` | Frontend Admin (port 3001): admin paneli, API eşleşmeleri, dashboard stats |
-| `PROJECT_MEMORY_MOBILE.md` | React Native veli uygulaması: Expo Router, ekranlar, auth akışı, fatura modülü |
+| `PROJECT_MEMORY_MOBILE.md` | React Native veli + öğretmen uygulaması: Expo Router, ekranlar, tüm API endpoint'leri, auth akışı |
 
 ---
 
@@ -302,7 +302,7 @@ vendor/bin/pint --dirty   # Her PHP değişikliği sonrası
 
 - **Expo Router Stack Layout:** Alt ekranların ayrı tab olmaması için `_layout.tsx` ile Stack navigator ekle
 - **iOS Nested Modal:** Modal içinde Modal açılamaz → inline dropdown pattern kullan
-- **Signed URL:** Mobil `<Image>` auth header gönderemez → `middleware: 'signed'` kullan (NOT `auth:sanctum`)
+- **Signed URL:** Mobil `<Image>` auth header gönderemez → `middleware: ['auth:sanctum', 'signed']` kullan (her ikisi birden)
 - **API prefix:** Tüm veli endpoint'leri `/parent/` prefix'li (ör: `/parent/activity-classes`)
 
 ---
