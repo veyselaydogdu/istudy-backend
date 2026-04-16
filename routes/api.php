@@ -76,11 +76,13 @@ Route::prefix('countries')->group(function () {
 // ═══════════════════════════════════════════════════════════
 // MEDYA SUNUCU — Tüm private dosyalar auth:sanctum zorunlu
 // ═══════════════════════════════════════════════════════════
-Route::middleware(['auth:sanctum', 'signed'])->group(function () {
-    // Çocuk profil fotoğrafı
+// Çocuk profil fotoğrafı — sadece imzalı URL (mobil <Image> header gönderemez)
+Route::middleware(['signed'])->group(function () {
     Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
         ->name('parent.child.photo');
+});
 
+Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     // Etkinlik sınıfı galerisi
     Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'serve'])
         ->name('activity-class-gallery.serve');
@@ -150,6 +152,10 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     Route::post('/children/{child}/medications', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncMedications']);
     Route::post('/children/{child}/conditions', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncConditions']);
     Route::post('/children/{child}/removal-request', [\App\Http\Controllers\Parents\ParentChildController::class, 'requestRemoval']);
+
+    // Aile profili
+    Route::get('/family', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'showProfile']);
+    Route::put('/family', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'updateFamilyName']);
 
     // Aile üyeleri
     Route::get('/family/members', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'members']);

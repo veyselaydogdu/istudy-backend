@@ -146,7 +146,6 @@ class EnrollmentRequestService extends BaseService
         if (! $familyProfile) {
             $familyProfile = FamilyProfile::create([
                 'owner_user_id' => $user->id,
-                'tenant_id' => $tenantId,
                 'family_name' => trim(($request->parent_surname ?? '').' Ailesi') ?: 'Aile',
                 'created_by' => $reviewerId,
             ]);

@@ -14,6 +14,69 @@ use Illuminate\Support\Facades\Log;
 class ParentFamilyController extends BaseParentController
 {
     /**
+     * Aile profilini döndürür (aile adı dahil).
+     */
+    public function showProfile(): JsonResponse
+    {
+        try {
+            $familyProfile = $this->getFamilyProfile();
+
+            if (! $familyProfile) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            return $this->successResponse([
+                'id' => $familyProfile->ulid,
+                'family_name' => $familyProfile->family_name,
+            ], 'Aile profili.');
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::showProfile Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Aile adını günceller (yalnızca super_parent yapabilir).
+     */
+    public function updateFamilyName(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'family_name' => ['required', 'string', 'max:100'],
+        ]);
+
+        try {
+            $familyProfile = $this->getFamilyProfile();
+
+            if (! $familyProfile) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            $currentMember = FamilyMember::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $familyProfile->id)
+                ->where('user_id', $this->user()->id)
+                ->first();
+
+            if (! $currentMember || $currentMember->role !== 'super_parent') {
+                return $this->errorResponse('Aile adını değiştirme yetkisi yalnızca ana velidedir.', 403);
+            }
+
+            $familyProfile->update([
+                'family_name' => $data['family_name'],
+                'updated_by' => $this->user()->id,
+            ]);
+
+            return $this->successResponse([
+                'family_name' => $familyProfile->family_name,
+            ], 'Aile adı güncellendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::updateFamilyName Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Aile üyelerini listeler.
      */
     public function members(): JsonResponse

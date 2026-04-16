@@ -4,7 +4,6 @@ namespace App\Models\Child;
 
 use App\Models\Base\BaseModel;
 use App\Models\Billing\FamilySubscription;
-use App\Models\Tenant\Tenant;
 use App\Models\User;
 use App\Traits\HasUlid;
 
@@ -17,7 +16,6 @@ class FamilyProfile extends BaseModel
     protected $fillable = [
         'ulid',
         'owner_user_id',
-        'tenant_id',
         'family_name',
         'created_by',
         'updated_by',
@@ -32,12 +30,6 @@ class FamilyProfile extends BaseModel
     public function owner()
     {
         return $this->belongsTo(User::class, 'owner_user_id')->withDefault();
-    }
-
-    // Explicit relation to tenant usually handled by GlobalScope but here explicitly requested or useful for admin
-    public function tenant()
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id')->withDefault();
     }
 
     public function members()

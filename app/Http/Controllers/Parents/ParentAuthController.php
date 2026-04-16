@@ -49,8 +49,7 @@ class ParentAuthController extends BaseController
                 // FamilyProfile oluştur
                 $familyProfile = FamilyProfile::withoutGlobalScope('tenant')->create([
                     'owner_user_id' => $user->id,
-                    'tenant_id' => null,
-                    'family_name' => "{$data['name']} {$data['surname']}",
+                    'family_name' => mb_convert_case($data['surname'], MB_CASE_TITLE, 'UTF-8').' Family',
                     'created_by' => $user->id,
                 ]);
 

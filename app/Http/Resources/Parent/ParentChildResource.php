@@ -72,11 +72,12 @@ class ParentChildResource extends JsonResource
             'medications' => \Illuminate\Support\Facades\DB::table('child_medications')
                 ->leftJoin('medications', 'child_medications.medication_id', '=', 'medications.id')
                 ->where('child_medications.child_id', $this->id)
-                ->select('child_medications.*', 'medications.name', 'medications.status as med_status')
+                ->select('child_medications.*', 'medications.name as med_name', 'medications.status as med_status')
                 ->get()
                 ->map(fn ($row) => [
-                    'id' => $row->medication_id,
-                    'name' => $row->name ?? null,
+                    'id' => $row->id,
+                    'medication_id' => $row->medication_id,
+                    'name' => $row->med_name ?? $row->custom_name ?? null,
                     'custom_name' => $row->custom_name ?? null,
                     'dose' => $row->dose ?? null,
                     'usage_time' => isset($row->usage_time) ? json_decode($row->usage_time, true) : null,

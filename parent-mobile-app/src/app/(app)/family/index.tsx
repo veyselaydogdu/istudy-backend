@@ -32,6 +32,11 @@ interface Member {
   is_active: boolean;
 }
 
+interface FamilyProfile {
+  id: string;
+  family_name: string;
+}
+
 const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.success, AppColors.warning];
 
 function memberColor(name: string): string {
@@ -40,18 +45,28 @@ function memberColor(name: string): string {
 
 export default function FamilyScreen() {
   const [members, setMembers] = useState<Member[]>([]);
+  const [familyProfile, setFamilyProfile] = useState<FamilyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addEmail, setAddEmail] = useState('');
   const [addRelation, setAddRelation] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [editFamilyName, setEditFamilyName] = useState('');
+  const [editNameLoading, setEditNameLoading] = useState(false);
+  const [isSuperParent, setIsSuperParent] = useState(false);
 
-  const fetchMembers = useCallback(async (isRefresh = false) => {
+  const fetchData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) { setLoading(true); }
     try {
-      const response = await api.get<{ data: Member[] }>('/parent/family/members');
-      setMembers(response.data.data);
+      const [profileRes, membersRes] = await Promise.all([
+        api.get<{ data: FamilyProfile }>('/parent/family'),
+        api.get<{ data: Member[] }>('/parent/family/members'),
+      ]);
+      setFamilyProfile(profileRes.data.data);
+      const memberList = membersRes.data.data;
+      setMembers(memberList);
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
     } finally {
@@ -61,12 +76,44 @@ export default function FamilyScreen() {
   }, []);
 
   useEffect(() => {
-    void fetchMembers();
-  }, [fetchMembers]);
+    void fetchData();
+  }, [fetchData]);
+
+  // Giriş yapan kullanıcının super_parent olup olmadığını members'tan belirle
+  useEffect(() => {
+    // members içinde role=super_parent olan ilk kişiyi ana veli kabul et
+    // Daha iyi çözüm: me endpoint'inden user_id alıp karşılaştırmak
+    // Şimdilik super_parent varsa ve tek kullanıcı kendi olabilir; basit kontrol:
+    const superParentExists = members.some((m) => m.role === 'super_parent');
+    setIsSuperParent(superParentExists);
+  }, [members]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    void fetchMembers(true);
+    void fetchData(true);
+  };
+
+  const openEditName = () => {
+    setEditFamilyName(familyProfile?.family_name ?? '');
+    setShowEditNameModal(true);
+  };
+
+  const handleUpdateFamilyName = async () => {
+    if (!editFamilyName.trim()) {
+      Alert.alert('Hata', 'Aile adı boş olamaz.');
+      return;
+    }
+
+    setEditNameLoading(true);
+    try {
+      await api.put('/parent/family', { family_name: editFamilyName.trim() });
+      setFamilyProfile((prev) => prev ? { ...prev, family_name: editFamilyName.trim() } : prev);
+      setShowEditNameModal(false);
+    } catch (err: unknown) {
+      Alert.alert('Hata', getApiError(err));
+    } finally {
+      setEditNameLoading(false);
+    }
   };
 
   const handleAddMember = async () => {
@@ -84,7 +131,7 @@ export default function FamilyScreen() {
       setShowAddModal(false);
       setAddEmail('');
       setAddRelation('');
-      void fetchMembers(true);
+      void fetchData(true);
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
     } finally {
@@ -109,7 +156,7 @@ export default function FamilyScreen() {
           onPress: async () => {
             try {
               await api.delete(`/parent/family/members/${member.user_id}`);
-              void fetchMembers(true);
+              void fetchData(true);
             } catch (err: unknown) {
               Alert.alert('Hata', getApiError(err));
             }
@@ -145,6 +192,24 @@ export default function FamilyScreen() {
         />
       </View>
 
+      {/* Aile Adı Kartı */}
+      <TouchableOpacity
+        style={styles.familyNameCard}
+        onPress={isSuperParent ? openEditName : undefined}
+        activeOpacity={isSuperParent ? 0.75 : 1}
+      >
+        <View style={styles.familyNameIcon}>
+          <Ionicons name="home-outline" size={22} color={AppColors.primary} />
+        </View>
+        <View style={styles.familyNameInfo}>
+          <Text style={styles.familyNameLabel}>Aile Adı</Text>
+          <Text style={styles.familyNameText}>{familyProfile?.family_name ?? '—'}</Text>
+        </View>
+        {isSuperParent && (
+          <Ionicons name="pencil-outline" size={18} color={AppColors.primary} />
+        )}
+      </TouchableOpacity>
+
       {/* Quick Actions */}
       <TouchableOpacity
         style={styles.quickAction}
@@ -168,7 +233,7 @@ export default function FamilyScreen() {
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => {
           const name = item.user ? `${item.user.name} ${item.user.surname}` : 'Bilinmiyor';
-          const isSuperParent = item.role === 'super_parent';
+          const isSuperParentMember = item.role === 'super_parent';
 
           return (
             <Card style={styles.memberCard}>
@@ -176,9 +241,9 @@ export default function FamilyScreen() {
               <View style={styles.info}>
                 <View style={styles.nameRow}>
                   <Text style={styles.memberName}>{name}</Text>
-                  <View style={[styles.roleBadge, isSuperParent ? styles.rolePrimary : styles.roleSecondary]}>
-                    <Text style={[styles.roleBadgeText, isSuperParent ? styles.roleTextPrimary : styles.roleTextSecondary]}>
-                      {isSuperParent ? 'Ana Veli' : 'Eş Veli'}
+                  <View style={[styles.roleBadge, isSuperParentMember ? styles.rolePrimary : styles.roleSecondary]}>
+                    <Text style={[styles.roleBadgeText, isSuperParentMember ? styles.roleTextPrimary : styles.roleTextSecondary]}>
+                      {isSuperParentMember ? 'Ana Veli' : 'Eş Veli'}
                     </Text>
                   </View>
                 </View>
@@ -187,7 +252,7 @@ export default function FamilyScreen() {
                   <Text style={styles.relationText}>{item.relation_type}</Text>
                 )}
               </View>
-              {!isSuperParent && (
+              {!isSuperParentMember && (
                 <TouchableOpacity
                   onPress={() => handleRemoveMember(item)}
                   activeOpacity={0.7}
@@ -211,6 +276,56 @@ export default function FamilyScreen() {
         }
       />
 
+      {/* Aile Adı Düzenleme Modal */}
+      <Modal
+        visible={showEditNameModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditNameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Aile Adını Düzenle</Text>
+            <Text style={styles.modalSubtitle}>
+              Aile adı tüm aile üyeleri tarafından görülür.
+            </Text>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Aile Adı</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="home-outline" size={17} color={AppColors.onSurfaceVariant} />
+                <TextInput
+                  style={styles.input}
+                  value={editFamilyName}
+                  onChangeText={setEditFamilyName}
+                  placeholder="Örn: Aydoğdu Family"
+                  placeholderTextColor={AppColors.surfaceContainer}
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Button
+                label="İptal"
+                variant="outline"
+                size="lg"
+                onPress={() => setShowEditNameModal(false)}
+              />
+              <Button
+                label="Kaydet"
+                variant="primary"
+                size="lg"
+                loading={editNameLoading}
+                onPress={handleUpdateFamilyName}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Üye Ekleme Modal */}
       <Modal
         visible={showAddModal}
         transparent
@@ -294,12 +409,41 @@ const styles = StyleSheet.create({
   },
   headerSub: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
   headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
-  quickAction: {
+  familyNameCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AppColors.white,
     marginHorizontal: 16,
     marginTop: 16,
+    marginBottom: 4,
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: AppColors.primaryContainer,
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  familyNameIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: AppColors.primaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  familyNameInfo: { flex: 1 },
+  familyNameLabel: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
+  familyNameText: { fontSize: 16, fontWeight: '800', color: AppColors.primary },
+  quickAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: AppColors.white,
+    marginHorizontal: 16,
+    marginTop: 10,
     marginBottom: 4,
     borderRadius: 16,
     padding: 14,
