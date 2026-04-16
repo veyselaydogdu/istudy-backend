@@ -3,6 +3,7 @@
 namespace App\Models\School;
 
 use App\Models\Base\BaseModel;
+use App\Models\Child\Child;
 use App\Models\Child\FamilyProfile;
 use App\Models\User;
 
@@ -20,6 +21,7 @@ class SchoolEnrollmentRequest extends BaseModel
         'school_id',
         'user_id',
         'family_profile_id',
+        'child_id',
         'parent_name',
         'parent_surname',
         'parent_email',
@@ -57,6 +59,11 @@ class SchoolEnrollmentRequest extends BaseModel
     public function familyProfile()
     {
         return $this->belongsTo(FamilyProfile::class);
+    }
+
+    public function child()
+    {
+        return $this->belongsTo(Child::class)->withDefault();
     }
 
     public function reviewer()

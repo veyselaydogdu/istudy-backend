@@ -10,6 +10,7 @@ use App\Models\School\SchoolEnrollmentRequest;
 use App\Models\Social\SocialPost;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ParentSchoolController extends BaseParentController
@@ -91,7 +92,48 @@ class ParentSchoolController extends BaseParentController
     }
 
     /**
+     * Velinin okula kayıt edilebilecek çocuklarını listeler.
+     * Başka bir okula kayıtlı olan veya bekleyen/onaylı talebi olan çocuklar dahil edilmez.
+     */
+    public function enrollableChildren(): JsonResponse
+    {
+        try {
+            $familyProfile = $this->getFamilyProfile();
+
+            if (! $familyProfile) {
+                return $this->successResponse([], 'Çocuklar listelendi.');
+            }
+
+            $enrolledChildIds = SchoolChildEnrollmentRequest::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $familyProfile->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->pluck('child_id');
+
+            $children = Child::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $familyProfile->id)
+                ->whereNull('school_id')
+                ->whereNotIn('id', $enrolledChildIds)
+                ->get()
+                ->map(fn ($child) => [
+                    'id' => $child->id,
+                    'first_name' => $child->first_name,
+                    'last_name' => $child->last_name,
+                    'full_name' => $child->first_name.' '.$child->last_name,
+                    'birth_date' => $child->birth_date,
+                    'gender' => $child->gender,
+                ]);
+
+            return $this->successResponse($children, 'Çocuklar listelendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::enrollableChildren Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Okula katılım talebi oluşturur (davet kodu veya invite token ile).
+     * Çocuk seçimi zorunludur; bir çocuk yalnızca bir okula kaydedilebilir.
      * Aynı okul için pending/approved talep varsa yeni talep açılmaz.
      */
     public function joinSchool(Request $request): JsonResponse
@@ -99,6 +141,7 @@ class ParentSchoolController extends BaseParentController
         $data = $request->validate([
             'invite_token' => ['nullable', 'string'],
             'registration_code' => ['nullable', 'string'],
+            'child_id' => ['required', 'integer'],
         ]);
 
         try {
@@ -117,8 +160,38 @@ class ParentSchoolController extends BaseParentController
             }
 
             $user = $this->user();
+            $familyProfile = $this->getFamilyProfile();
 
-            // Aynı okul için zaten pending veya approved talep var mı?
+            if (! $familyProfile) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            // Çocuk bu veliye ait mi?
+            $child = Child::withoutGlobalScope('tenant')
+                ->where('id', $data['child_id'])
+                ->where('family_profile_id', $familyProfile->id)
+                ->first();
+
+            if (! $child) {
+                return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            // Çocuk başka bir okula kayıtlı mı?
+            if ($child->school_id) {
+                return $this->errorResponse('Bu çocuk zaten bir okula kayıtlı. Bir çocuk yalnızca bir okulda olabilir.', 409);
+            }
+
+            // Çocuğun başka bir okula bekleyen/onaylı talebi var mı?
+            $childExistingRequest = SchoolChildEnrollmentRequest::withoutGlobalScope('tenant')
+                ->where('child_id', $child->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->first();
+
+            if ($childExistingRequest) {
+                return $this->errorResponse('Bu çocuk için zaten bir okul kaydı veya bekleyen bir talep bulunmaktadır.', 409);
+            }
+
+            // Aynı okul için zaten pending veya approved veli talebi var mı?
             $existingRequest = SchoolEnrollmentRequest::withoutGlobalScope('tenant')
                 ->where('school_id', $school->id)
                 ->where('user_id', $user->id)
@@ -133,16 +206,28 @@ class ParentSchoolController extends BaseParentController
                 return $this->errorResponse($message, 409);
             }
 
-            SchoolEnrollmentRequest::withoutGlobalScope('tenant')->create([
-                'school_id' => $school->id,
-                'user_id' => $user->id,
-                'parent_name' => $user->name,
-                'parent_surname' => $user->surname,
-                'parent_email' => $user->email,
-                'parent_phone' => $user->phone,
-                'invite_token' => $data['invite_token'] ?? null,
-                'status' => 'pending',
-            ]);
+            DB::transaction(function () use ($school, $user, $familyProfile, $child, $data) {
+                SchoolEnrollmentRequest::withoutGlobalScope('tenant')->create([
+                    'school_id' => $school->id,
+                    'user_id' => $user->id,
+                    'family_profile_id' => $familyProfile->id,
+                    'child_id' => $child->id,
+                    'parent_name' => $user->name,
+                    'parent_surname' => $user->surname,
+                    'parent_email' => $user->email,
+                    'parent_phone' => $user->phone,
+                    'invite_token' => $data['invite_token'] ?? null,
+                    'status' => 'pending',
+                ]);
+
+                SchoolChildEnrollmentRequest::create([
+                    'school_id' => $school->id,
+                    'child_id' => $child->id,
+                    'family_profile_id' => $familyProfile->id,
+                    'requested_by_user_id' => $user->id,
+                    'status' => 'pending',
+                ]);
+            });
 
             return $this->successResponse(null, 'Okul kayıt talebiniz gönderildi. Onay bekleniyor.', 201);
         } catch (\Throwable $e) {

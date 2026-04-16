@@ -163,6 +163,7 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
 
     // Okullar
     Route::get('/schools', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'mySchools']);
+    Route::get('/children/enrollable', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'enrollableChildren']);
     Route::post('/schools/join', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'joinSchool']);
     Route::get('/my-enrollment-requests', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'myEnrollmentRequests']);
     Route::get('/schools/{school}', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'schoolDetail']);
