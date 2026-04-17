@@ -208,7 +208,10 @@ export default function FamilyScreen() {
                         {(inv.children ?? []).map((child) => (
                           <View key={child.id} style={styles.childTag}>
                             <Ionicons name="person-outline" size={11} color={AppColors.secondary} />
-                            <Text style={styles.childTagText}>{child.full_name}</Text>
+                            <Text style={styles.childTagText}>
+                              {child.full_name}
+                              {child.birth_date ? ` · ${new Date(child.birth_date).getFullYear()}` : ''}
+                            </Text>
                           </View>
                         ))}
                       </View>
