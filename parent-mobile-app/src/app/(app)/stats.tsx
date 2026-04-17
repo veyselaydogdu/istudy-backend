@@ -27,6 +27,7 @@ interface ChildSummary {
   full_name: string;
   school_id: number | null;
   school: { id: number; name: string } | null;
+  profile_photo: string | null;
 }
 
 interface ChildStats {
@@ -161,6 +162,7 @@ export default function StatsScreen() {
                       size={32}
                       shape="circle"
                       color={active ? AppColors.white : AppColors.primary}
+                      uri={c.profile_photo}
                     />
                     <Text style={[styles.childPillText, active && styles.childPillTextActive]} numberOfLines={1}>
                       {c.full_name.split(' ')[0]}
