@@ -23,14 +23,16 @@ class ParentChildController extends BaseParentController
     public function index(): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $familyProfiles = $this->getFamilyProfiles();
 
-            if (! $familyProfile) {
+            if ($familyProfiles->isEmpty()) {
                 return $this->successResponse([], 'Çocuklar listelendi.');
             }
 
-            $children = $familyProfile->children()
-                ->withoutGlobalScope('tenant')
+            $accessibleChildIds = $this->collectAccessibleChildIds($familyProfiles);
+
+            $children = Child::withoutGlobalScope('tenant')
+                ->whereIn('id', $accessibleChildIds)
                 ->with(['allergens', 'conditions', 'medications', 'nationality', 'school', 'classes:id,name'])
                 ->get();
 

@@ -4,33 +4,127 @@ namespace App\Http\Controllers\Parents;
 
 use App\Http\Requests\Parent\StoreEmergencyContactRequest;
 use App\Models\Base\AppSetting;
+use App\Models\Child\Child;
 use App\Models\Child\EmergencyContact;
 use App\Models\Child\FamilyMember;
+use App\Models\Child\FamilyProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ParentFamilyController extends BaseParentController
 {
+    // =========================================================================
+    // AİLE LİSTESİ & OLUŞTURMA
+    // =========================================================================
+
     /**
-     * Aile profilini döndürür (aile adı dahil).
+     * Auth user'ın erişebildiği tüm aile profillerini döndürür.
      */
-    public function showProfile(): JsonResponse
+    public function index(): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $userId = $this->user()->id;
 
-            if (! $familyProfile) {
+            // Sahip olunan aileler
+            $ownedFamilies = FamilyProfile::withoutGlobalScope('tenant')
+                ->where('owner_user_id', $userId)
+                ->with(['members' => fn ($q) => $q->withoutGlobalScope('tenant')->with('user')])
+                ->get()
+                ->map(fn ($f) => $this->formatFamily($f, 'super_parent'));
+
+            // Co-parent olarak kabul edilmiş aileler
+            $memberRecords = FamilyMember::withoutGlobalScope('tenant')
+                ->where('user_id', $userId)
+                ->where('invitation_status', 'accepted')
+                ->where('is_active', true)
+                ->pluck('family_profile_id');
+
+            $coParentFamilies = FamilyProfile::withoutGlobalScope('tenant')
+                ->whereIn('id', $memberRecords)
+                ->whereNot('owner_user_id', $userId)
+                ->with(['members' => fn ($q) => $q->withoutGlobalScope('tenant')->with('user')])
+                ->get()
+                ->map(fn ($f) => $this->formatFamily($f, 'co_parent'));
+
+            return $this->successResponse(
+                $ownedFamilies->merge($coParentFamilies)->values(),
+                'Aileler listelendi.'
+            );
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::index Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Yeni aile profili oluşturur. Oluşturan kullanıcı otomatik olarak super_parent olur.
+     */
+    public function createFamily(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'family_name' => ['required', 'string', 'max:100'],
+        ]);
+
+        try {
+            $result = DB::transaction(function () use ($data) {
+                $userId = $this->user()->id;
+
+                $familyProfile = FamilyProfile::withoutGlobalScope('tenant')->create([
+                    'ulid' => (string) Str::ulid(),
+                    'owner_user_id' => $userId,
+                    'family_name' => $data['family_name'],
+                    'created_by' => $userId,
+                ]);
+
+                FamilyMember::withoutGlobalScope('tenant')->create([
+                    'family_profile_id' => $familyProfile->id,
+                    'user_id' => $userId,
+                    'relation_type' => 'owner',
+                    'role' => 'super_parent',
+                    'is_active' => true,
+                    'invitation_status' => 'accepted',
+                    'accepted_at' => now(),
+                    'created_by' => $userId,
+                ]);
+
+                return $familyProfile;
+            });
+
+            return $this->successResponse([
+                'id' => $result->ulid,
+                'family_name' => $result->family_name,
+            ], 'Aile profili oluşturuldu.', 201);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ParentFamilyController::createFamily Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Belirli bir aile profilini döndürür.
+     */
+    public function show(string $ulid): JsonResponse
+    {
+        try {
+            $family = $this->resolveFamily($ulid);
+
+            if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
             return $this->successResponse([
-                'id' => $familyProfile->ulid,
-                'family_name' => $familyProfile->family_name,
+                'id' => $family->ulid,
+                'family_name' => $family->family_name,
             ], 'Aile profili.');
         } catch (\Throwable $e) {
-            Log::error('ParentFamilyController::showProfile Error', ['message' => $e->getMessage()]);
+            Log::error('ParentFamilyController::show Error', ['message' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 500);
         }
@@ -39,35 +133,30 @@ class ParentFamilyController extends BaseParentController
     /**
      * Aile adını günceller (yalnızca super_parent yapabilir).
      */
-    public function updateFamilyName(Request $request): JsonResponse
+    public function updateFamilyName(Request $request, string $ulid): JsonResponse
     {
         $data = $request->validate([
             'family_name' => ['required', 'string', 'max:100'],
         ]);
 
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $family = $this->resolveFamily($ulid);
 
-            if (! $familyProfile) {
+            if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
-            $currentMember = FamilyMember::withoutGlobalScope('tenant')
-                ->where('family_profile_id', $familyProfile->id)
-                ->where('user_id', $this->user()->id)
-                ->first();
-
-            if (! $currentMember || $currentMember->role !== 'super_parent') {
+            if (! $this->isSuperParentOf($family)) {
                 return $this->errorResponse('Aile adını değiştirme yetkisi yalnızca ana velidedir.', 403);
             }
 
-            $familyProfile->update([
+            $family->update([
                 'family_name' => $data['family_name'],
                 'updated_by' => $this->user()->id,
             ]);
 
             return $this->successResponse([
-                'family_name' => $familyProfile->family_name,
+                'family_name' => $family->family_name,
             ], 'Aile adı güncellendi.');
         } catch (\Throwable $e) {
             Log::error('ParentFamilyController::updateFamilyName Error', ['message' => $e->getMessage()]);
@@ -76,21 +165,56 @@ class ParentFamilyController extends BaseParentController
         }
     }
 
+    // =========================================================================
+    // AİLE ÜYELERİ
+    // =========================================================================
+
     /**
-     * Aile üyelerini listeler.
+     * Belirli ailenin tüm çocuklarını listeler.
+     * Üye eklerken çocuk selectbox'ı doldurmak için kullanılır.
      */
-    public function members(): JsonResponse
+    public function familyChildren(string $ulid): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $family = $this->resolveFamily($ulid);
 
-            if (! $familyProfile) {
+            if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
-            $members = $familyProfile->members()
-                ->withoutGlobalScope('tenant')
-                ->with('user')
+            $children = Child::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $family->id)
+                ->get(['id', 'first_name', 'last_name', 'birth_date', 'gender'])
+                ->map(fn ($c) => [
+                    'id' => $c->id,
+                    'full_name' => $c->first_name.' '.$c->last_name,
+                    'birth_date' => $c->birth_date,
+                    'gender' => $c->gender,
+                ]);
+
+            return $this->successResponse($children, 'Aile çocukları listelendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::familyChildren Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Belirli ailenin üyelerini listeler (beklemede olanlar dahil).
+     */
+    public function members(string $ulid): JsonResponse
+    {
+        try {
+            $family = $this->resolveFamily($ulid);
+
+            if (! $family) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            $members = FamilyMember::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $family->id)
+                ->with(['user', 'restrictedChildren:id,first_name,last_name'])
                 ->get()
                 ->map(fn ($member) => [
                     'id' => $member->id,
@@ -105,7 +229,14 @@ class ParentFamilyController extends BaseParentController
                     'relation_type' => $member->relation_type,
                     'role' => $member->role,
                     'is_active' => $member->is_active,
+                    'invitation_status' => $member->invitation_status,
                     'accepted_at' => $member->accepted_at,
+                    'restricted_children' => $member->role !== 'super_parent'
+                        ? $member->restrictedChildren->map(fn ($c) => [
+                            'id' => $c->id,
+                            'full_name' => $c->first_name.' '.$c->last_name,
+                        ])
+                        : null,
                 ]);
 
             return $this->successResponse($members, 'Aile üyeleri listelendi.');
@@ -117,30 +248,27 @@ class ParentFamilyController extends BaseParentController
     }
 
     /**
-     * Aileye yeni üye ekler (e-posta ile).
-     * Hedef kullanıcı sisteme kayıtlı olmalıdır.
+     * Belirli aileye yeni üye davet eder (e-posta ile).
+     * Davet edilen kişi kabul edene kadar invitation_status='pending' kalır.
+     * Opsiyonel child_ids ile davet anında çocuk kısıtlaması atanabilir.
      */
-    public function addMember(Request $request): JsonResponse
+    public function addMember(Request $request, string $ulid): JsonResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
             'relation_type' => ['nullable', 'string', 'max:50'],
+            'child_ids' => ['nullable', 'array'],
+            'child_ids.*' => ['integer'],
         ]);
 
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $family = $this->resolveFamily($ulid);
 
-            if (! $familyProfile) {
+            if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
-            // Sadece super_parent yeni üye ekleyebilir
-            $currentMember = FamilyMember::withoutGlobalScope('tenant')
-                ->where('family_profile_id', $familyProfile->id)
-                ->where('user_id', $this->user()->id)
-                ->first();
-
-            if (! $currentMember || $currentMember->role !== 'super_parent') {
+            if (! $this->isSuperParentOf($family)) {
                 return $this->errorResponse('Aileye üye ekleme yetkisi sadece ana velidedir.', 403);
             }
 
@@ -157,28 +285,52 @@ class ParentFamilyController extends BaseParentController
                 return $this->errorResponse('Kendinizi aile üyesi olarak ekleyemezsiniz.', 422);
             }
 
-            // Zaten üye mi?
             $existing = FamilyMember::withoutGlobalScope('tenant')
-                ->where('family_profile_id', $familyProfile->id)
+                ->where('family_profile_id', $family->id)
                 ->where('user_id', $targetUser->id)
                 ->first();
 
             if ($existing) {
+                if ($existing->invitation_status === 'pending') {
+                    return $this->errorResponse('Bu kullanıcıya zaten bekleyen bir davet gönderilmiş.', 409);
+                }
+
                 return $this->errorResponse('Bu kullanıcı zaten aile üyesi.', 409);
             }
 
-            FamilyMember::withoutGlobalScope('tenant')->create([
-                'family_profile_id' => $familyProfile->id,
+            $member = FamilyMember::withoutGlobalScope('tenant')->create([
+                'family_profile_id' => $family->id,
                 'user_id' => $targetUser->id,
-                'relation_type' => $data['relation_type'] ?? null,
+                'relation_type' => $data['relation_type'] ?? 'co_parent',
                 'role' => 'co_parent',
-                'is_active' => true,
+                'is_active' => false,
+                'invitation_status' => 'pending',
                 'invited_by_user_id' => $this->user()->id,
-                'accepted_at' => now(),
+                'accepted_at' => null,
                 'created_by' => $this->user()->id,
             ]);
 
-            return $this->successResponse(null, 'Aile üyesi başarıyla eklendi.', 201);
+            // Çocuk ataması yapıldıysa kaydet
+            if (! empty($data['child_ids'])) {
+                $validChildIds = Child::withoutGlobalScope('tenant')
+                    ->where('family_profile_id', $family->id)
+                    ->whereIn('id', $data['child_ids'])
+                    ->pluck('id');
+
+                if ($validChildIds->isNotEmpty()) {
+                    $now = now();
+                    $rows = $validChildIds->map(fn ($childId) => [
+                        'family_member_id' => $member->id,
+                        'child_id' => $childId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ])->values()->all();
+
+                    DB::table('family_member_children')->insert($rows);
+                }
+            }
+
+            return $this->successResponse(null, 'Davet gönderildi. Kullanıcı kabul ettiğinde aileye dahil olacak.', 201);
         } catch (\Throwable $e) {
             Log::error('ParentFamilyController::addMember Error', ['message' => $e->getMessage()]);
 
@@ -191,17 +343,17 @@ class ParentFamilyController extends BaseParentController
      * Super parent hiçbir zaman kaldırılamaz.
      * Sadece super_parent başkasını kaldırabilir; co_parent yalnızca kendini kaldırabilir.
      */
-    public function removeMember(int $userId): JsonResponse
+    public function removeMember(string $ulid, int $userId): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $family = $this->resolveFamily($ulid);
 
-            if (! $familyProfile) {
+            if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
             $targetMember = FamilyMember::withoutGlobalScope('tenant')
-                ->where('family_profile_id', $familyProfile->id)
+                ->where('family_profile_id', $family->id)
                 ->where('user_id', $userId)
                 ->first();
 
@@ -213,12 +365,7 @@ class ParentFamilyController extends BaseParentController
                 return $this->errorResponse('Ana veli aileden kaldırılamaz.', 403);
             }
 
-            $currentMember = FamilyMember::withoutGlobalScope('tenant')
-                ->where('family_profile_id', $familyProfile->id)
-                ->where('user_id', $this->user()->id)
-                ->first();
-
-            $isSuperParent = $currentMember && $currentMember->role === 'super_parent';
+            $isSuperParent = $this->isSuperParentOf($family);
             $isRemovingSelf = $userId === $this->user()->id;
 
             if (! $isSuperParent && ! $isRemovingSelf) {
@@ -235,20 +382,125 @@ class ParentFamilyController extends BaseParentController
         }
     }
 
+    // =========================================================================
+    // DAVET AKIŞI
+    // =========================================================================
+
     /**
-     * Acil durum kişilerini listeler.
+     * Auth user'a gelen bekleyen davetleri listeler.
      */
-    public function emergencyContacts(): JsonResponse
+    public function myInvitations(): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $userId = $this->user()->id;
 
-            if (! $familyProfile) {
+            $invitations = FamilyMember::withoutGlobalScope('tenant')
+                ->where('user_id', $userId)
+                ->where('invitation_status', 'pending')
+                ->with(['familyProfile', 'invitedBy'])
+                ->get()
+                ->map(fn ($member) => [
+                    'id' => $member->id,
+                    'family' => $member->familyProfile ? [
+                        'id' => $member->familyProfile->ulid,
+                        'family_name' => $member->familyProfile->family_name,
+                    ] : null,
+                    'invited_by' => $member->invitedBy ? [
+                        'name' => $member->invitedBy->name,
+                        'surname' => $member->invitedBy->surname,
+                        'email' => $member->invitedBy->email,
+                    ] : null,
+                    'relation_type' => $member->relation_type,
+                    'created_at' => $member->created_at,
+                ]);
+
+            return $this->successResponse($invitations, 'Bekleyen davetler listelendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::myInvitations Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Aile davetini kabul eder.
+     */
+    public function acceptInvitation(int $id): JsonResponse
+    {
+        try {
+            $userId = $this->user()->id;
+
+            $member = FamilyMember::withoutGlobalScope('tenant')
+                ->where('id', $id)
+                ->where('user_id', $userId)
+                ->where('invitation_status', 'pending')
+                ->first();
+
+            if (! $member) {
+                return $this->errorResponse('Davet bulunamadı.', 404);
+            }
+
+            $member->update([
+                'invitation_status' => 'accepted',
+                'is_active' => true,
+                'accepted_at' => now(),
+                'updated_by' => $userId,
+            ]);
+
+            return $this->successResponse(null, 'Davet kabul edildi. Aileye dahil oldunuz.');
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::acceptInvitation Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Aile davetini reddeder.
+     */
+    public function rejectInvitation(int $id): JsonResponse
+    {
+        try {
+            $userId = $this->user()->id;
+
+            $member = FamilyMember::withoutGlobalScope('tenant')
+                ->where('id', $id)
+                ->where('user_id', $userId)
+                ->where('invitation_status', 'pending')
+                ->first();
+
+            if (! $member) {
+                return $this->errorResponse('Davet bulunamadı.', 404);
+            }
+
+            $member->delete();
+
+            return $this->successResponse(null, 'Davet reddedildi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::rejectInvitation Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    // =========================================================================
+    // ACİL DURUM KİŞİLERİ
+    // =========================================================================
+
+    /**
+     * Belirli ailenin acil durum kişilerini listeler.
+     */
+    public function emergencyContacts(string $ulid): JsonResponse
+    {
+        try {
+            $family = $this->resolveFamily($ulid);
+
+            if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
             $contacts = EmergencyContact::withoutGlobalScope('tenant')
-                ->where('family_profile_id', $familyProfile->id)
+                ->where('family_profile_id', $family->id)
                 ->with('nationality')
                 ->orderBy('sort_order')
                 ->get();
@@ -262,21 +514,21 @@ class ParentFamilyController extends BaseParentController
     }
 
     /**
-     * Acil durum kişisi ekler. Limit app_settings'ten okunur.
+     * Belirli aileye acil durum kişisi ekler.
      */
-    public function storeEmergencyContact(StoreEmergencyContactRequest $request): JsonResponse
+    public function storeEmergencyContact(StoreEmergencyContactRequest $request, string $ulid): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $family = $this->resolveFamily($ulid);
 
-            if (! $familyProfile) {
+            if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
             $maxContacts = (int) AppSetting::getByKey('max_emergency_contacts', 5);
 
             $currentCount = EmergencyContact::withoutGlobalScope('tenant')
-                ->where('family_profile_id', $familyProfile->id)
+                ->where('family_profile_id', $family->id)
                 ->count();
 
             if ($currentCount >= $maxContacts) {
@@ -284,7 +536,7 @@ class ParentFamilyController extends BaseParentController
             }
 
             $data = $request->validated();
-            $data['family_profile_id'] = $familyProfile->id;
+            $data['family_profile_id'] = $family->id;
             $data['created_by'] = $this->user()->id;
 
             $contact = EmergencyContact::withoutGlobalScope('tenant')->create($data);
@@ -300,14 +552,18 @@ class ParentFamilyController extends BaseParentController
     /**
      * Acil durum kişisini günceller.
      */
-    public function updateEmergencyContact(StoreEmergencyContactRequest $request, int $contact): JsonResponse
+    public function updateEmergencyContact(StoreEmergencyContactRequest $request, string $ulid, int $contact): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $family = $this->resolveFamily($ulid);
+
+            if (! $family) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
 
             $contactModel = EmergencyContact::withoutGlobalScope('tenant')
                 ->where('id', $contact)
-                ->where('family_profile_id', $familyProfile?->id)
+                ->where('family_profile_id', $family->id)
                 ->first();
 
             if (! $contactModel) {
@@ -329,14 +585,18 @@ class ParentFamilyController extends BaseParentController
     /**
      * Acil durum kişisini siler.
      */
-    public function destroyEmergencyContact(int $contact): JsonResponse
+    public function destroyEmergencyContact(string $ulid, int $contact): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $family = $this->resolveFamily($ulid);
+
+            if (! $family) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
 
             $contactModel = EmergencyContact::withoutGlobalScope('tenant')
                 ->where('id', $contact)
-                ->where('family_profile_id', $familyProfile?->id)
+                ->where('family_profile_id', $family->id)
                 ->first();
 
             if (! $contactModel) {
@@ -351,5 +611,200 @@ class ParentFamilyController extends BaseParentController
 
             return $this->errorResponse($e->getMessage(), 500);
         }
+    }
+
+    // =========================================================================
+    // ÇOCUK ATAMASI
+    // =========================================================================
+
+    /**
+     * Bir co-parent üyenin erişebileceği çocukları atar.
+     * Sadece super_parent yapabilir. Boş liste = tüm aile çocuklarına erişim.
+     */
+    public function assignMemberChildren(Request $request, string $ulid, int $memberId): JsonResponse
+    {
+        $data = $request->validate([
+            'child_ids' => ['present', 'array'],
+            'child_ids.*' => ['integer'],
+        ]);
+
+        try {
+            $family = $this->resolveFamily($ulid);
+
+            if (! $family) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            if (! $this->isSuperParentOf($family)) {
+                return $this->errorResponse('Çocuk ataması sadece ana veli tarafından yapılabilir.', 403);
+            }
+
+            $member = FamilyMember::withoutGlobalScope('tenant')
+                ->where('id', $memberId)
+                ->where('family_profile_id', $family->id)
+                ->first();
+
+            if (! $member) {
+                return $this->errorResponse('Aile üyesi bulunamadı.', 404);
+            }
+
+            if ($member->role === 'super_parent') {
+                return $this->errorResponse('Ana veliye çocuk kısıtlaması uygulanamaz.', 422);
+            }
+
+            // Yalnızca bu aileye ait geçerli çocuk ID'lerini al
+            $validChildIds = Child::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $family->id)
+                ->whereIn('id', $data['child_ids'])
+                ->pluck('id');
+
+            DB::table('family_member_children')
+                ->where('family_member_id', $member->id)
+                ->delete();
+
+            if ($validChildIds->isNotEmpty()) {
+                $now = now();
+                $rows = $validChildIds->map(fn ($childId) => [
+                    'family_member_id' => $member->id,
+                    'child_id' => $childId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])->values()->all();
+
+                DB::table('family_member_children')->insert($rows);
+            }
+
+            $message = $validChildIds->isEmpty()
+                ? 'Çocuk kısıtlaması kaldırıldı. Üye tüm aile çocuklarına erişebilir.'
+                : 'Çocuk ataması güncellendi.';
+
+            return $this->successResponse([
+                'assigned_child_ids' => $validChildIds->values(),
+            ], $message);
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::assignMemberChildren Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Bir aile üyesine atanmış çocukları listeler.
+     */
+    public function memberChildren(string $ulid, int $memberId): JsonResponse
+    {
+        try {
+            $family = $this->resolveFamily($ulid);
+
+            if (! $family) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            $member = FamilyMember::withoutGlobalScope('tenant')
+                ->where('id', $memberId)
+                ->where('family_profile_id', $family->id)
+                ->first();
+
+            if (! $member) {
+                return $this->errorResponse('Aile üyesi bulunamadı.', 404);
+            }
+
+            $assignedChildIds = DB::table('family_member_children')
+                ->where('family_member_id', $member->id)
+                ->pluck('child_id');
+
+            $children = Child::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $family->id)
+                ->whereIn('id', $assignedChildIds)
+                ->get(['id', 'first_name', 'last_name', 'birth_date', 'gender']);
+
+            return $this->successResponse([
+                'is_restricted' => $assignedChildIds->isNotEmpty(),
+                'children' => $children->map(fn ($c) => [
+                    'id' => $c->id,
+                    'full_name' => $c->first_name.' '.$c->last_name,
+                    'birth_date' => $c->birth_date,
+                    'gender' => $c->gender,
+                ]),
+            ], 'Atanmış çocuklar listelendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::memberChildren Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    // =========================================================================
+    // YARDIMCI METODLAR
+    // =========================================================================
+
+    /**
+     * ULID ile aile profilini çözer ve auth user'ın erişim iznini doğrular.
+     * Owner veya kabul edilmiş co_parent ise döndürür, aksi hâlde null.
+     */
+    private function resolveFamily(string $ulid): ?FamilyProfile
+    {
+        $userId = $this->user()->id;
+
+        $family = FamilyProfile::withoutGlobalScope('tenant')
+            ->where('ulid', $ulid)
+            ->first();
+
+        if (! $family) {
+            return null;
+        }
+
+        if ($family->owner_user_id === $userId) {
+            return $family;
+        }
+
+        $member = FamilyMember::withoutGlobalScope('tenant')
+            ->where('family_profile_id', $family->id)
+            ->where('user_id', $userId)
+            ->where('invitation_status', 'accepted')
+            ->where('is_active', true)
+            ->first();
+
+        return $member ? $family : null;
+    }
+
+    /**
+     * Auth user'ın belirli ailede super_parent olup olmadığını kontrol eder.
+     */
+    private function isSuperParentOf(FamilyProfile $family): bool
+    {
+        if ($family->owner_user_id === $this->user()->id) {
+            return true;
+        }
+
+        $member = FamilyMember::withoutGlobalScope('tenant')
+            ->where('family_profile_id', $family->id)
+            ->where('user_id', $this->user()->id)
+            ->where('role', 'super_parent')
+            ->first();
+
+        return $member !== null;
+    }
+
+    /**
+     * FamilyProfile'ı listeleme için formatlar.
+     */
+    private function formatFamily(FamilyProfile $family, string $myRole): array
+    {
+        $memberCount = $family->members
+            ? $family->members->where('invitation_status', 'accepted')->count()
+            : 0;
+
+        $pendingCount = $family->members
+            ? $family->members->where('invitation_status', 'pending')->count()
+            : 0;
+
+        return [
+            'id' => $family->ulid,
+            'family_name' => $family->family_name,
+            'my_role' => $myRole,
+            'member_count' => $memberCount,
+            'pending_invitations_count' => $pendingCount,
+        ];
     }
 }

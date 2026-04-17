@@ -332,9 +332,12 @@ class ParentSchoolController extends BaseParentController
             $familyProfile = $this->getFamilyProfile();
 
             if (! $familyProfile) {
-                return $this->paginatedResponse(
-                    ParentSocialPostResource::collection(collect())
-                );
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Veriler başarıyla listelendi.',
+                    'data' => [],
+                    'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 20, 'total' => 0],
+                ]);
             }
 
             $schoolIds = $familyProfile->schools()

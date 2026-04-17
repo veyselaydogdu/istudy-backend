@@ -16,57 +16,47 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
-import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
-interface Member {
-  id: number;
-  user_id: number;
-  user: { id: number; name: string; surname: string; email: string; phone: string | null } | null;
-  relation_type: string | null;
-  role: 'super_parent' | 'co_parent';
-  is_active: boolean;
-}
-
-interface FamilyProfile {
+interface Family {
   id: string;
   family_name: string;
+  my_role: 'super_parent' | 'co_parent';
+  member_count: number;
+  pending_invitations_count: number;
 }
 
-const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.success, AppColors.warning];
-
-function memberColor(name: string): string {
-  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+interface Invitation {
+  id: number;
+  family: { id: string; family_name: string } | null;
+  invited_by: { name: string; surname: string; email: string } | null;
+  relation_type: string | null;
+  created_at: string;
 }
 
 export default function FamilyScreen() {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [familyProfile, setFamilyProfile] = useState<FamilyProfile | null>(null);
+  const [families, setFamilies] = useState<Family[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addEmail, setAddEmail] = useState('');
-  const [addRelation, setAddRelation] = useState('');
-  const [addLoading, setAddLoading] = useState(false);
-  const [showEditNameModal, setShowEditNameModal] = useState(false);
-  const [editFamilyName, setEditFamilyName] = useState('');
-  const [editNameLoading, setEditNameLoading] = useState(false);
-  const [isSuperParent, setIsSuperParent] = useState(false);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createFamilyName, setCreateFamilyName] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) { setLoading(true); }
     try {
-      const [profileRes, membersRes] = await Promise.all([
-        api.get<{ data: FamilyProfile }>('/parent/family'),
-        api.get<{ data: Member[] }>('/parent/family/members'),
+      const [familiesRes, invitationsRes] = await Promise.all([
+        api.get<{ data: Family[] }>('/parent/families'),
+        api.get<{ data: Invitation[] }>('/parent/family/invitations'),
       ]);
-      setFamilyProfile(profileRes.data.data);
-      const memberList = membersRes.data.data;
-      setMembers(memberList);
+      setFamilies(familiesRes.data.data);
+      setInvitations(invitationsRes.data.data);
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
     } finally {
@@ -79,83 +69,50 @@ export default function FamilyScreen() {
     void fetchData();
   }, [fetchData]);
 
-  // Giriş yapan kullanıcının super_parent olup olmadığını members'tan belirle
-  useEffect(() => {
-    // members içinde role=super_parent olan ilk kişiyi ana veli kabul et
-    // Daha iyi çözüm: me endpoint'inden user_id alıp karşılaştırmak
-    // Şimdilik super_parent varsa ve tek kullanıcı kendi olabilir; basit kontrol:
-    const superParentExists = members.some((m) => m.role === 'super_parent');
-    setIsSuperParent(superParentExists);
-  }, [members]);
-
   const handleRefresh = () => {
     setRefreshing(true);
     void fetchData(true);
   };
 
-  const openEditName = () => {
-    setEditFamilyName(familyProfile?.family_name ?? '');
-    setShowEditNameModal(true);
-  };
-
-  const handleUpdateFamilyName = async () => {
-    if (!editFamilyName.trim()) {
+  const handleCreateFamily = async () => {
+    if (!createFamilyName.trim()) {
       Alert.alert('Hata', 'Aile adı boş olamaz.');
       return;
     }
-
-    setEditNameLoading(true);
+    setCreateLoading(true);
     try {
-      await api.put('/parent/family', { family_name: editFamilyName.trim() });
-      setFamilyProfile((prev) => prev ? { ...prev, family_name: editFamilyName.trim() } : prev);
-      setShowEditNameModal(false);
-    } catch (err: unknown) {
-      Alert.alert('Hata', getApiError(err));
-    } finally {
-      setEditNameLoading(false);
-    }
-  };
-
-  const handleAddMember = async () => {
-    if (!addEmail.trim()) {
-      Alert.alert('Hata', 'E-posta adresi zorunludur.');
-      return;
-    }
-
-    setAddLoading(true);
-    try {
-      await api.post('/parent/family/members', {
-        email: addEmail.trim(),
-        relation_type: addRelation.trim() || undefined,
-      });
-      setShowAddModal(false);
-      setAddEmail('');
-      setAddRelation('');
+      await api.post('/parent/families', { family_name: createFamilyName.trim() });
+      setShowCreateModal(false);
+      setCreateFamilyName('');
       void fetchData(true);
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
     } finally {
-      setAddLoading(false);
+      setCreateLoading(false);
     }
   };
 
-  const handleRemoveMember = (member: Member) => {
-    if (member.role === 'super_parent') {
-      Alert.alert('Hata', 'Ana veli aileden kaldırılamaz.');
-      return;
+  const handleAcceptInvitation = async (invitation: Invitation) => {
+    try {
+      await api.post(`/parent/family/invitations/${invitation.id}/accept`);
+      void fetchData(true);
+    } catch (err: unknown) {
+      Alert.alert('Hata', getApiError(err));
     }
+  };
 
+  const handleRejectInvitation = (invitation: Invitation) => {
     Alert.alert(
-      'Üyeyi Kaldır',
-      `${member.user?.name ?? ''} ${member.user?.surname ?? ''} aile üyesini kaldırmak istediğinize emin misiniz?`,
+      'Daveti Reddet',
+      `${invitation.family?.family_name ?? 'Bu aile'} davetini reddetmek istediğinize emin misiniz?`,
       [
         { text: 'İptal', style: 'cancel' },
         {
-          text: 'Kaldır',
+          text: 'Reddet',
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.delete(`/parent/family/members/${member.user_id}`);
+              await api.delete(`/parent/family/invitations/${invitation.id}/reject`);
               void fetchData(true);
             } catch (err: unknown) {
               Alert.alert('Hata', getApiError(err));
@@ -184,111 +141,120 @@ export default function FamilyScreen() {
           <Text style={styles.headerTitle}>Ailem</Text>
         </View>
         <Button
-          label="Üye Ekle"
+          label="Aile Oluştur"
           variant="primary"
           size="sm"
-          icon={<Ionicons name="person-add-outline" size={16} color={AppColors.white} />}
-          onPress={() => setShowAddModal(true)}
+          icon={<Ionicons name="add-outline" size={16} color={AppColors.white} />}
+          onPress={() => setShowCreateModal(true)}
         />
       </View>
 
-      {/* Aile Adı Kartı */}
-      <TouchableOpacity
-        style={styles.familyNameCard}
-        onPress={isSuperParent ? openEditName : undefined}
-        activeOpacity={isSuperParent ? 0.75 : 1}
-      >
-        <View style={styles.familyNameIcon}>
-          <Ionicons name="home-outline" size={22} color={AppColors.primary} />
-        </View>
-        <View style={styles.familyNameInfo}>
-          <Text style={styles.familyNameLabel}>Aile Adı</Text>
-          <Text style={styles.familyNameText}>{familyProfile?.family_name ?? '—'}</Text>
-        </View>
-        {isSuperParent && (
-          <Ionicons name="pencil-outline" size={18} color={AppColors.primary} />
-        )}
-      </TouchableOpacity>
-
-      {/* Quick Actions */}
-      <TouchableOpacity
-        style={styles.quickAction}
-        onPress={() => router.push('/(app)/family/emergency')}
-        activeOpacity={0.75}
-      >
-        <View style={styles.quickActionIcon}>
-          <Ionicons name="medkit-outline" size={22} color={AppColors.error} />
-        </View>
-        <View style={styles.quickActionInfo}>
-          <Text style={styles.quickActionTitle}>Acil Durum Kişileri</Text>
-          <Text style={styles.quickActionSub}>Acil iletişim listesini yönetin</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={AppColors.surfaceContainer} />
-      </TouchableOpacity>
-
-      <SectionLabel style={styles.sectionLabelPad}>Aile Üyeleri</SectionLabel>
-
       <FlatList
-        data={members}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => {
-          const name = item.user ? `${item.user.name} ${item.user.surname}` : 'Bilinmiyor';
-          const isSuperParentMember = item.role === 'super_parent';
-
-          return (
-            <Card style={styles.memberCard}>
-              <Avatar name={name} size={46} shape="rounded" />
-              <View style={styles.info}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.memberName}>{name}</Text>
-                  <View style={[styles.roleBadge, isSuperParentMember ? styles.rolePrimary : styles.roleSecondary]}>
-                    <Text style={[styles.roleBadgeText, isSuperParentMember ? styles.roleTextPrimary : styles.roleTextSecondary]}>
-                      {isSuperParentMember ? 'Ana Veli' : 'Eş Veli'}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.memberEmail}>{item.user?.email ?? ''}</Text>
-                {item.relation_type && (
-                  <Text style={styles.relationText}>{item.relation_type}</Text>
-                )}
-              </View>
-              {!isSuperParentMember && (
-                <TouchableOpacity
-                  onPress={() => handleRemoveMember(item)}
-                  activeOpacity={0.7}
-                  style={styles.removeBtn}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="close-circle-outline" size={22} color={AppColors.error} />
-                </TouchableOpacity>
-              )}
-            </Card>
-          );
-        }}
-        contentContainerStyle={styles.list}
+        data={families}
+        keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
         }
+        ListHeaderComponent={
+          invitations.length > 0 ? (
+            <View>
+              <SectionLabel style={styles.sectionLabelPad}>Bekleyen Davetler</SectionLabel>
+              {invitations.map((inv) => (
+                <Card key={inv.id} style={styles.invitationCard}>
+                  <View style={styles.invitationIcon}>
+                    <Ionicons name="mail-outline" size={22} color={AppColors.warning} />
+                  </View>
+                  <View style={styles.invitationInfo}>
+                    <Text style={styles.invitationFamily}>{inv.family?.family_name ?? 'Bilinmeyen Aile'}</Text>
+                    {inv.invited_by && (
+                      <Text style={styles.invitationBy}>
+                        {inv.invited_by.name} {inv.invited_by.surname} tarafından davet edildiniz
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.invitationActions}>
+                    <TouchableOpacity
+                      style={styles.acceptBtn}
+                      onPress={() => handleAcceptInvitation(inv)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="checkmark-outline" size={18} color={AppColors.white} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rejectBtn}
+                      onPress={() => handleRejectInvitation(inv)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="close-outline" size={18} color={AppColors.white} />
+                    </TouchableOpacity>
+                  </View>
+                </Card>
+              ))}
+            </View>
+          ) : null
+        }
+        ListHeaderComponentStyle={{ marginBottom: families.length > 0 ? 0 : undefined }}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/(app)/family/[ulid]', params: { ulid: item.id } })}
+            activeOpacity={0.8}
+          >
+            <Card style={styles.familyCard}>
+              <View style={styles.familyIcon}>
+                <Ionicons name="home-outline" size={22} color={AppColors.primary} />
+              </View>
+              <View style={styles.familyInfo}>
+                <Text style={styles.familyName}>{item.family_name}</Text>
+                <View style={styles.familyMeta}>
+                  <Text style={styles.familyMetaText}>{item.member_count} üye</Text>
+                  {item.pending_invitations_count > 0 && (
+                    <View style={styles.pendingBadge}>
+                      <Text style={styles.pendingBadgeText}>{item.pending_invitations_count} bekliyor</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <View style={styles.familyRoleBadge}>
+                <Text style={styles.familyRoleText}>
+                  {item.my_role === 'super_parent' ? 'Ana Veli' : 'Eş Veli'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={AppColors.surfaceContainer} />
+            </Card>
+          </TouchableOpacity>
+        )}
+        contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>Aile üyesi bulunamadı.</Text>
-          </View>
+          invitations.length === 0 ? (
+            <View style={styles.empty}>
+              <Ionicons name="home-outline" size={48} color={AppColors.surfaceContainer} />
+              <Text style={styles.emptyTitle}>Henüz aile profili yok</Text>
+              <Text style={styles.emptyText}>Aile oluşturarak çocuklarınızı ve üyelerinizi yönetebilirsiniz.</Text>
+              <Button
+                label="İlk Ailemi Oluştur"
+                variant="primary"
+                size="md"
+                onPress={() => setShowCreateModal(true)}
+                style={styles.emptyBtn}
+              />
+            </View>
+          ) : null
         }
       />
 
-      {/* Aile Adı Düzenleme Modal */}
+      {/* Aile Oluşturma Modal */}
       <Modal
-        visible={showEditNameModal}
+        visible={showCreateModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowEditNameModal(false)}
+        onRequestClose={() => setShowCreateModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Aile Adını Düzenle</Text>
+            <Text style={styles.modalTitle}>Yeni Aile Oluştur</Text>
             <Text style={styles.modalSubtitle}>
-              Aile adı tüm aile üyeleri tarafından görülür.
+              Aile oluşturduktan sonra diğer velileri davet edebilirsiniz.
             </Text>
 
             <View style={styles.field}>
@@ -297,9 +263,9 @@ export default function FamilyScreen() {
                 <Ionicons name="home-outline" size={17} color={AppColors.onSurfaceVariant} />
                 <TextInput
                   style={styles.input}
-                  value={editFamilyName}
-                  onChangeText={setEditFamilyName}
-                  placeholder="Örn: Aydoğdu Family"
+                  value={createFamilyName}
+                  onChangeText={setCreateFamilyName}
+                  placeholder="Örn: Aydoğdu Ailesi"
                   placeholderTextColor={AppColors.surfaceContainer}
                   autoCorrect={false}
                 />
@@ -311,79 +277,14 @@ export default function FamilyScreen() {
                 label="İptal"
                 variant="outline"
                 size="lg"
-                onPress={() => setShowEditNameModal(false)}
+                onPress={() => { setShowCreateModal(false); setCreateFamilyName(''); }}
               />
               <Button
-                label="Kaydet"
+                label="Oluştur"
                 variant="primary"
                 size="lg"
-                loading={editNameLoading}
-                onPress={handleUpdateFamilyName}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Üye Ekleme Modal */}
-      <Modal
-        visible={showAddModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowAddModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Aile Üyesi Ekle</Text>
-            <Text style={styles.modalSubtitle}>
-              Eklenmek istenen kişinin iStudy hesabı olması gerekir.
-            </Text>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>E-posta Adresi</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="mail-outline" size={17} color={AppColors.onSurfaceVariant} />
-                <TextInput
-                  style={styles.input}
-                  value={addEmail}
-                  onChangeText={setAddEmail}
-                  placeholder="ornek@mail.com"
-                  placeholderTextColor={AppColors.surfaceContainer}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>İlişki Türü (İsteğe bağlı)</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="people-outline" size={17} color={AppColors.onSurfaceVariant} />
-                <TextInput
-                  style={styles.input}
-                  value={addRelation}
-                  onChangeText={setAddRelation}
-                  placeholder="Anne, Baba, Vasi..."
-                  placeholderTextColor={AppColors.surfaceContainer}
-                />
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
-              <Button
-                label="İptal"
-                variant="outline"
-                size="lg"
-                onPress={() => setShowAddModal(false)}
-              />
-              <Button
-                label="Ekle"
-                variant="primary"
-                size="lg"
-                loading={addLoading}
-                onPress={handleAddMember}
+                loading={createLoading}
+                onPress={handleCreateFamily}
               />
             </View>
           </View>
@@ -409,93 +310,87 @@ const styles = StyleSheet.create({
   },
   headerSub: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
   headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
-  familyNameCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: AppColors.white,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 4,
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: AppColors.primaryContainer,
-    shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  familyNameIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: AppColors.primaryContainer,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  familyNameInfo: { flex: 1 },
-  familyNameLabel: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
-  familyNameText: { fontSize: 16, fontWeight: '800', color: AppColors.primary },
-  quickAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: AppColors.white,
-    marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 4,
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: AppColors.surfaceContainer,
-    shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  quickActionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FEE2E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickActionInfo: { flex: 1 },
-  quickActionTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
-  quickActionSub: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
   sectionLabelPad: { paddingHorizontal: 20, marginTop: 16, marginBottom: 8 },
-  list: { paddingHorizontal: 16, paddingBottom: 20 },
-  memberCard: {
+  list: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 12 },
+  // Davet
+  invitationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: AppColors.warning,
+  },
+  invitationIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  invitationInfo: { flex: 1 },
+  invitationFamily: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
+  invitationBy: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  invitationActions: { flexDirection: 'row', gap: 8 },
+  acceptBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: AppColors.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rejectBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: AppColors.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Aile kartı
+  familyCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 14,
     marginBottom: 10,
   },
-  info: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-  memberName: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface, flexShrink: 1 },
-  roleBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
-  rolePrimary: { backgroundColor: AppColors.primaryContainer },
-  roleSecondary: { backgroundColor: AppColors.surfaceContainerLow },
-  roleBadgeText: { fontSize: 10, fontWeight: '700' },
-  roleTextPrimary: { color: AppColors.primary },
-  roleTextSecondary: { color: AppColors.onSurfaceVariant },
-  memberEmail: { fontSize: 12, color: AppColors.onSurfaceVariant },
-  relationText: { fontSize: 11, color: AppColors.surfaceContainer, marginTop: 2 },
-  removeBtn: { padding: 2 },
-  empty: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant },
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+  familyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: AppColors.primaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  familyInfo: { flex: 1 },
+  familyName: { fontSize: 16, fontWeight: '800', color: AppColors.onSurface },
+  familyMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
+  familyMetaText: { fontSize: 12, color: AppColors.onSurfaceVariant },
+  pendingBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 20,
+  },
+  pendingBadgeText: { fontSize: 10, fontWeight: '700', color: '#D97706' },
+  familyRoleBadge: {
+    backgroundColor: AppColors.primaryContainer,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  familyRoleText: { fontSize: 11, fontWeight: '700', color: AppColors.primary },
+  // Boş durum
+  empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: AppColors.onSurface, marginTop: 16, marginBottom: 8 },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 22 },
+  emptyBtn: { marginTop: 24, alignSelf: 'center' },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: {
     backgroundColor: AppColors.white,
     borderTopLeftRadius: 28,

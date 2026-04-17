@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -76,6 +76,7 @@ const emptyForm: ContactForm = {
 // ─── Ana Ekran ────────────────────────────────────────────
 
 export default function EmergencyContactsScreen() {
+  const { familyUlid } = useLocalSearchParams<{ familyUlid: string }>();
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,7 +134,7 @@ export default function EmergencyContactsScreen() {
     if (!isRefresh) setLoading(true);
     try {
       const response = await api.get<{ data: EmergencyContact[] }>(
-        '/parent/family/emergency-contacts',
+        `/parent/families/${familyUlid}/emergency-contacts`,
       );
       setContacts(response.data.data);
     } catch (err: unknown) {
@@ -142,7 +143,7 @@ export default function EmergencyContactsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [familyUlid]);
 
   useEffect(() => {
     void fetchContacts();
@@ -237,9 +238,9 @@ export default function EmergencyContactsScreen() {
       };
 
       if (editingId) {
-        await api.put(`/parent/family/emergency-contacts/${editingId}`, payload);
+        await api.put(`/parent/families/${familyUlid}/emergency-contacts/${editingId}`, payload);
       } else {
-        await api.post('/parent/family/emergency-contacts', payload);
+        await api.post(`/parent/families/${familyUlid}/emergency-contacts`, payload);
       }
 
       setShowModal(false);
@@ -262,7 +263,7 @@ export default function EmergencyContactsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.delete(`/parent/family/emergency-contacts/${contact.id}`);
+              await api.delete(`/parent/families/${familyUlid}/emergency-contacts/${contact.id}`);
               void fetchContacts(true);
             } catch (err: unknown) {
               Alert.alert('Hata', getApiError(err));

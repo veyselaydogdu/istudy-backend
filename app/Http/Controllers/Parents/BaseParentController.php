@@ -6,24 +6,23 @@ use App\Http\Controllers\Base\BaseController;
 use App\Models\Child\Child;
 use App\Models\Child\FamilyMember;
 use App\Models\Child\FamilyProfile;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Tüm Parent controller'larının atası.
- * getFamilyProfile() hem owner hem co-parent için çalışır.
+ * Bir parent birden fazla aileye sahip olabilir / birden fazla ailede co_parent olabilir.
  */
 abstract class BaseParentController extends BaseController
 {
     /**
-     * Auth user'ın erişebildiği FamilyProfile'ı döndürür.
-     *
-     * - Owner ise doğrudan owner_user_id ile bulur.
-     * - Co-parent olarak eklendiyse family_members üzerinden bulur.
+     * Auth user'ın birincil FamilyProfile'ını döndürür.
+     * Önce sahip olduğu (owner_user_id), sonra kabul edilmiş co_parent üyeliğine göre.
      */
     protected function getFamilyProfile(): ?FamilyProfile
     {
         $userId = $this->user()->id;
 
-        // Önce owner olarak bak
         $profile = FamilyProfile::withoutGlobalScope('tenant')
             ->where('owner_user_id', $userId)
             ->first();
@@ -32,9 +31,9 @@ abstract class BaseParentController extends BaseController
             return $profile;
         }
 
-        // Co-parent olarak eklenmiş mi?
         $member = FamilyMember::withoutGlobalScope('tenant')
             ->where('user_id', $userId)
+            ->where('invitation_status', 'accepted')
             ->where('is_active', true)
             ->first();
 
@@ -47,22 +46,104 @@ abstract class BaseParentController extends BaseController
     }
 
     /**
-     * Auth user'ın erişebildiği aile profiline ait çocuğu döndürür.
+     * Auth user'ın erişebildiği tüm aile profillerini döndürür.
+     * Sahip olduğu aileler + kabul edilmiş co_parent üyelikleri.
+     */
+    protected function getFamilyProfiles(): Collection
+    {
+        $userId = $this->user()->id;
+
+        $ownedIds = FamilyProfile::withoutGlobalScope('tenant')
+            ->where('owner_user_id', $userId)
+            ->pluck('id');
+
+        $memberIds = FamilyMember::withoutGlobalScope('tenant')
+            ->where('user_id', $userId)
+            ->where('invitation_status', 'accepted')
+            ->where('is_active', true)
+            ->pluck('family_profile_id');
+
+        $allIds = $ownedIds->merge($memberIds)->unique()->values();
+
+        return FamilyProfile::withoutGlobalScope('tenant')
+            ->whereIn('id', $allIds)
+            ->get();
+    }
+
+    /**
+     * Auth user'ın verilen aile profillerindeki erişebileceği çocuk ID'lerini toplar.
+     *
+     * Co-parent üyeliğinde `family_member_children` tablosunda atanmış çocuklar varsa
+     * yalnızca onlar dahil edilir; tablo boşsa tüm aile çocukları erişilebilir.
+     * Owner ise her zaman tüm çocuklara erişir.
+     */
+    protected function collectAccessibleChildIds(Collection $familyProfiles): Collection
+    {
+        $userId = $this->user()->id;
+        $allIds = collect();
+
+        foreach ($familyProfiles as $family) {
+            if ($family->owner_user_id === $userId) {
+                $allIds = $allIds->merge(
+                    Child::withoutGlobalScope('tenant')
+                        ->where('family_profile_id', $family->id)
+                        ->pluck('id')
+                );
+            } else {
+                $member = FamilyMember::withoutGlobalScope('tenant')
+                    ->where('family_profile_id', $family->id)
+                    ->where('user_id', $userId)
+                    ->where('invitation_status', 'accepted')
+                    ->where('is_active', true)
+                    ->first();
+
+                if (! $member) {
+                    continue;
+                }
+
+                $restrictedChildIds = DB::table('family_member_children')
+                    ->where('family_member_id', $member->id)
+                    ->pluck('child_id');
+
+                if ($restrictedChildIds->isEmpty()) {
+                    // Kısıtlama yok — tüm aile çocukları erişilebilir
+                    $allIds = $allIds->merge(
+                        Child::withoutGlobalScope('tenant')
+                            ->where('family_profile_id', $family->id)
+                            ->pluck('id')
+                    );
+                } else {
+                    $allIds = $allIds->merge($restrictedChildIds);
+                }
+            }
+        }
+
+        return $allIds->unique()->values();
+    }
+
+    /**
+     * Auth user'ın erişebildiği tüm aile profillerine ait çocuğu döndürür.
+     * Co-parent çocuk kısıtlamalarını dikkate alır.
      *
      * @param  int|string  $childId  Integer PK veya ULID (hibrit ULID mimarisi)
      */
     protected function findOwnedChild(int|string $childId): ?Child
     {
-        $familyProfile = $this->getFamilyProfile();
+        $familyProfiles = $this->getFamilyProfiles();
 
-        if (! $familyProfile) {
+        if ($familyProfiles->isEmpty()) {
+            return null;
+        }
+
+        $accessibleChildIds = $this->collectAccessibleChildIds($familyProfiles);
+
+        if ($accessibleChildIds->isEmpty()) {
             return null;
         }
 
         $query = Child::withoutGlobalScope('tenant')
-            ->where('family_profile_id', $familyProfile->id);
+            ->whereIn('id', $accessibleChildIds);
 
-        // ULID (26-char alphanum) veya integer PK ile çözümle
         if (is_numeric($childId)) {
             $query->where('id', (int) $childId);
         } else {

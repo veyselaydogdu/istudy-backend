@@ -153,20 +153,30 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     Route::post('/children/{child}/conditions', [\App\Http\Controllers\Parents\ParentChildController::class, 'syncConditions']);
     Route::post('/children/{child}/removal-request', [\App\Http\Controllers\Parents\ParentChildController::class, 'requestRemoval']);
 
-    // Aile profili
-    Route::get('/family', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'showProfile']);
-    Route::put('/family', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'updateFamilyName']);
+    // Aileler (çoklu aile desteği)
+    Route::get('/families', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'index']);
+    Route::post('/families', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'createFamily']);
+    Route::get('/families/{ulid}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'show']);
+    Route::put('/families/{ulid}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'updateFamilyName']);
 
-    // Aile üyeleri
-    Route::get('/family/members', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'members']);
-    Route::post('/family/members', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'addMember']);
-    Route::delete('/family/members/{userId}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'removeMember']);
+    // Aile üyeleri (family ULID ile)
+    Route::get('/families/{ulid}/children', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'familyChildren']);
+    Route::get('/families/{ulid}/members', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'members']);
+    Route::post('/families/{ulid}/members', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'addMember']);
+    Route::delete('/families/{ulid}/members/{userId}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'removeMember']);
+    Route::get('/families/{ulid}/members/{memberId}/children', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'memberChildren']);
+    Route::put('/families/{ulid}/members/{memberId}/children', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'assignMemberChildren']);
 
-    // Acil durum kişileri
-    Route::get('/family/emergency-contacts', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'emergencyContacts']);
-    Route::post('/family/emergency-contacts', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'storeEmergencyContact']);
-    Route::put('/family/emergency-contacts/{contact}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'updateEmergencyContact']);
-    Route::delete('/family/emergency-contacts/{contact}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'destroyEmergencyContact']);
+    // Acil durum kişileri (family ULID ile)
+    Route::get('/families/{ulid}/emergency-contacts', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'emergencyContacts']);
+    Route::post('/families/{ulid}/emergency-contacts', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'storeEmergencyContact']);
+    Route::put('/families/{ulid}/emergency-contacts/{contact}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'updateEmergencyContact']);
+    Route::delete('/families/{ulid}/emergency-contacts/{contact}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'destroyEmergencyContact']);
+
+    // Davetler
+    Route::get('/family/invitations', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'myInvitations']);
+    Route::post('/family/invitations/{id}/accept', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'acceptInvitation']);
+    Route::delete('/family/invitations/{id}/reject', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'rejectInvitation']);
 
     // Okullar
     Route::get('/schools', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'mySchools']);

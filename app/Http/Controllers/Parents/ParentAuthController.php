@@ -8,8 +8,6 @@ use App\Http\Requests\Parent\RegisterParentRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Base\Role;
 use App\Models\Base\UserRole;
-use App\Models\Child\FamilyMember;
-use App\Models\Child\FamilyProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +20,8 @@ use Illuminate\Support\Facades\Password;
 class ParentAuthController extends BaseController
 {
     /**
-     * Veli kaydı — User + FamilyProfile + FamilyMember oluşturur
+     * Veli kaydı — yalnızca User oluşturur.
+     * Aile profili giriş sonrası parent tarafından ayrıca oluşturulmalıdır.
      */
     public function register(RegisterParentRequest $request): JsonResponse
     {
@@ -45,24 +44,6 @@ class ParentAuthController extends BaseController
                 if ($parentRole) {
                     $user->roles()->attach($parentRole->id);
                 }
-
-                // FamilyProfile oluştur
-                $familyProfile = FamilyProfile::withoutGlobalScope('tenant')->create([
-                    'owner_user_id' => $user->id,
-                    'family_name' => mb_convert_case($data['surname'], MB_CASE_TITLE, 'UTF-8').' Family',
-                    'created_by' => $user->id,
-                ]);
-
-                // FamilyMember kaydı (super_parent)
-                FamilyMember::withoutGlobalScope('tenant')->create([
-                    'family_profile_id' => $familyProfile->id,
-                    'user_id' => $user->id,
-                    'relation_type' => 'owner',
-                    'role' => 'super_parent',
-                    'is_active' => true,
-                    'accepted_at' => now(),
-                    'created_by' => $user->id,
-                ]);
 
                 // L-2: Token scope — parent yalnızca parent endpoint'lerine erişebilir
                 $token = $user->createToken('parent-mobile', ['role:parent'])->plainTextToken;

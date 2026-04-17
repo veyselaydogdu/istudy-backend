@@ -17,6 +17,7 @@ class FamilyMember extends BaseModel
         'is_active',
         'invited_by_user_id',
         'accepted_at',
+        'invitation_status',
         'created_by',
         'updated_by',
     ];
@@ -42,5 +43,15 @@ class FamilyMember extends BaseModel
     public function invitedBy()
     {
         return $this->belongsTo(User::class, 'invited_by_user_id')->withDefault();
+    }
+
+    /**
+     * Bu üyeye atanmış çocuklar (kısıtlı erişim listesi).
+     * Boşsa üye tüm aile çocuklarına erişebilir.
+     */
+    public function restrictedChildren()
+    {
+        return $this->belongsToMany(Child::class, 'family_member_children', 'family_member_id', 'child_id')
+            ->withTimestamps();
     }
 }
