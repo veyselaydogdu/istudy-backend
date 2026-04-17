@@ -399,20 +399,39 @@ class ParentFamilyController extends BaseParentController
                 ->where('invitation_status', 'pending')
                 ->with(['familyProfile', 'invitedBy'])
                 ->get()
-                ->map(fn ($member) => [
-                    'id' => $member->id,
-                    'family' => $member->familyProfile ? [
-                        'id' => $member->familyProfile->ulid,
-                        'family_name' => $member->familyProfile->family_name,
-                    ] : null,
-                    'invited_by' => $member->invitedBy ? [
-                        'name' => $member->invitedBy->name,
-                        'surname' => $member->invitedBy->surname,
-                        'email' => $member->invitedBy->email,
-                    ] : null,
-                    'relation_type' => $member->relation_type,
-                    'created_at' => $member->created_at,
-                ]);
+                ->map(function ($member) {
+                    $assignedChildIds = DB::table('family_member_children')
+                        ->where('family_member_id', $member->id)
+                        ->pluck('child_id');
+
+                    $children = $assignedChildIds->isNotEmpty()
+                        ? Child::withoutGlobalScope('tenant')
+                            ->whereIn('id', $assignedChildIds)
+                            ->get(['id', 'first_name', 'last_name', 'birth_date', 'gender'])
+                            ->map(fn ($c) => [
+                                'id' => $c->id,
+                                'full_name' => $c->first_name.' '.$c->last_name,
+                                'birth_date' => $c->birth_date,
+                                'gender' => $c->gender,
+                            ])
+                        : collect();
+
+                    return [
+                        'id' => $member->id,
+                        'family' => $member->familyProfile ? [
+                            'id' => $member->familyProfile->ulid,
+                            'family_name' => $member->familyProfile->family_name,
+                        ] : null,
+                        'invited_by' => $member->invitedBy ? [
+                            'name' => $member->invitedBy->name,
+                            'surname' => $member->invitedBy->surname,
+                            'email' => $member->invitedBy->email,
+                        ] : null,
+                        'relation_type' => $member->relation_type,
+                        'children' => $children->values(),
+                        'created_at' => $member->created_at,
+                    ];
+                });
 
             return $this->successResponse($invitations, 'Bekleyen davetler listelendi.');
         } catch (\Throwable $e) {

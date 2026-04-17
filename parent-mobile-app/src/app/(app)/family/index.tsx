@@ -30,11 +30,19 @@ interface Family {
   pending_invitations_count: number;
 }
 
+interface InvitationChild {
+  id: number;
+  full_name: string;
+  birth_date: string | null;
+  gender: string | null;
+}
+
 interface Invitation {
   id: number;
   family: { id: string; family_name: string } | null;
   invited_by: { name: string; surname: string; email: string } | null;
   relation_type: string | null;
+  children: InvitationChild[];
   created_at: string;
 }
 
@@ -161,33 +169,51 @@ export default function FamilyScreen() {
               <SectionLabel style={styles.sectionLabelPad}>Bekleyen Davetler</SectionLabel>
               {invitations.map((inv) => (
                 <Card key={inv.id} style={styles.invitationCard}>
-                  <View style={styles.invitationIcon}>
-                    <Ionicons name="mail-outline" size={22} color={AppColors.warning} />
+                  <View style={styles.invitationTop}>
+                    <View style={styles.invitationIcon}>
+                      <Ionicons name="mail-outline" size={22} color={AppColors.warning} />
+                    </View>
+                    <View style={styles.invitationInfo}>
+                      <Text style={styles.invitationFamily}>{inv.family?.family_name ?? 'Bilinmeyen Aile'}</Text>
+                      {inv.invited_by && (
+                        <Text style={styles.invitationBy}>
+                          {inv.invited_by.name} {inv.invited_by.surname} davet etti
+                        </Text>
+                      )}
+                      {inv.invited_by?.email ? (
+                        <Text style={styles.invitationEmail}>{inv.invited_by.email}</Text>
+                      ) : null}
+                    </View>
+                    <View style={styles.invitationActions}>
+                      <TouchableOpacity
+                        style={styles.acceptBtn}
+                        onPress={() => handleAcceptInvitation(inv)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="checkmark-outline" size={18} color={AppColors.white} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.rejectBtn}
+                        onPress={() => handleRejectInvitation(inv)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="close-outline" size={18} color={AppColors.white} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <View style={styles.invitationInfo}>
-                    <Text style={styles.invitationFamily}>{inv.family?.family_name ?? 'Bilinmeyen Aile'}</Text>
-                    {inv.invited_by && (
-                      <Text style={styles.invitationBy}>
-                        {inv.invited_by.name} {inv.invited_by.surname} tarafından davet edildiniz
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.invitationActions}>
-                    <TouchableOpacity
-                      style={styles.acceptBtn}
-                      onPress={() => handleAcceptInvitation(inv)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="checkmark-outline" size={18} color={AppColors.white} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.rejectBtn}
-                      onPress={() => handleRejectInvitation(inv)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="close-outline" size={18} color={AppColors.white} />
-                    </TouchableOpacity>
-                  </View>
+                  {(inv.children?.length ?? 0) > 0 && (
+                    <View style={styles.invitationChildren}>
+                      <Text style={styles.invitationChildrenLabel}>Atanmış çocuklar:</Text>
+                      <View style={styles.invitationChildTags}>
+                        {(inv.children ?? []).map((child) => (
+                          <View key={child.id} style={styles.childTag}>
+                            <Ionicons name="person-outline" size={11} color={AppColors.secondary} />
+                            <Text style={styles.childTagText}>{child.full_name}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
                 </Card>
               ))}
             </View>
@@ -314,13 +340,16 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 12 },
   // Davet
   invitationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     padding: 14,
     marginBottom: 10,
     borderLeftWidth: 4,
     borderLeftColor: AppColors.warning,
+    gap: 10,
+  },
+  invitationTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   invitationIcon: {
     width: 44,
@@ -333,7 +362,32 @@ const styles = StyleSheet.create({
   invitationInfo: { flex: 1 },
   invitationFamily: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
   invitationBy: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  invitationEmail: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 1 },
   invitationActions: { flexDirection: 'row', gap: 8 },
+  invitationChildren: {
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderRadius: 10,
+    padding: 10,
+    gap: 6,
+  },
+  invitationChildrenLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: AppColors.onSurfaceVariant,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  invitationChildTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  childTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: AppColors.secondaryContainer,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  childTagText: { fontSize: 11, fontWeight: '600', color: AppColors.secondary },
   acceptBtn: {
     width: 34,
     height: 34,

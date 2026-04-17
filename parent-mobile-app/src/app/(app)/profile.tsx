@@ -32,18 +32,23 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [invoiceStats, setInvoiceStats] = useState<InvoiceStats | null>(null);
+  const [pendingInvitationCount, setPendingInvitationCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      const fetchInvoiceStats = async () => {
+      const fetchData = async () => {
         try {
-          const res = await api.get<{ data: InvoiceStats }>('/parent/invoices/stats');
-          setInvoiceStats(res.data.data);
+          const [invoiceRes, invitationsRes] = await Promise.all([
+            api.get<{ data: InvoiceStats }>('/parent/invoices/stats'),
+            api.get<{ data: { id: number }[] }>('/parent/family/invitations'),
+          ]);
+          setInvoiceStats(invoiceRes.data.data);
+          setPendingInvitationCount(invitationsRes.data.data.length);
         } catch {
           // sessizce geç
         }
       };
-      void fetchInvoiceStats();
+      void fetchData();
     }, [])
   );
 
@@ -111,6 +116,23 @@ export default function ProfileScreen() {
               {pendingCount} adet ödeme bekleyen faturanız var
             </Text>
             <Ionicons name="chevron-forward" size={16} color={AppColors.warning} />
+          </TouchableOpacity>
+        )}
+
+        {/* Bekleyen aile daveti bildirimi */}
+        {pendingInvitationCount > 0 && (
+          <TouchableOpacity
+            style={styles.invitationAlert}
+            onPress={() => router.push('/(app)/family')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="mail-outline" size={20} color={AppColors.info} />
+            <Text style={styles.invitationAlertText}>
+              {pendingInvitationCount === 1
+                ? 'Bekleyen 1 aile davetiniz var'
+                : `${pendingInvitationCount} adet bekleyen aile davetiniz var`}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={AppColors.info} />
           </TouchableOpacity>
         )}
 
@@ -260,6 +282,24 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: AppColors.warning,
+    fontWeight: '600',
+  },
+
+  invitationAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: AppColors.infoContainer,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    marginBottom: 12,
+  },
+  invitationAlertText: {
+    flex: 1,
+    fontSize: 13,
+    color: AppColors.info,
     fontWeight: '600',
   },
 
