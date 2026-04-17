@@ -51,7 +51,7 @@ class ParentFamilyController extends BaseParentController
                 ->map(fn ($f) => $this->formatFamily($f, 'co_parent'));
 
             return $this->successResponse(
-                $ownedFamilies->merge($coParentFamilies)->values(),
+                array_values(array_merge($ownedFamilies->all(), $coParentFamilies->all())),
                 'Aileler listelendi.'
             );
         } catch (\Throwable $e) {
@@ -230,6 +230,9 @@ class ParentFamilyController extends BaseParentController
                     'role' => $member->role,
                     'is_active' => $member->is_active,
                     'invitation_status' => $member->invitation_status,
+                    'invitation_security_code' => $member->invitation_status === 'pending'
+                        ? $member->invitation_security_code
+                        : null,
                     'accepted_at' => $member->accepted_at,
                     'restricted_children' => $member->role !== 'super_parent'
                         ? $member->restrictedChildren->map(fn ($c) => [
@@ -298,6 +301,8 @@ class ParentFamilyController extends BaseParentController
                 return $this->errorResponse('Bu kullanıcı zaten aile üyesi.', 409);
             }
 
+            $securityCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
             $member = FamilyMember::withoutGlobalScope('tenant')->create([
                 'family_profile_id' => $family->id,
                 'user_id' => $targetUser->id,
@@ -305,6 +310,7 @@ class ParentFamilyController extends BaseParentController
                 'role' => 'co_parent',
                 'is_active' => false,
                 'invitation_status' => 'pending',
+                'invitation_security_code' => $securityCode,
                 'invited_by_user_id' => $this->user()->id,
                 'accepted_at' => null,
                 'created_by' => $this->user()->id,
@@ -394,44 +400,53 @@ class ParentFamilyController extends BaseParentController
         try {
             $userId = $this->user()->id;
 
-            $invitations = FamilyMember::withoutGlobalScope('tenant')
+            $members = FamilyMember::withoutGlobalScope('tenant')
                 ->where('user_id', $userId)
                 ->where('invitation_status', 'pending')
                 ->with(['familyProfile', 'invitedBy'])
-                ->get()
-                ->map(function ($member) {
-                    $assignedChildIds = DB::table('family_member_children')
-                        ->where('family_member_id', $member->id)
-                        ->pluck('child_id');
+                ->get();
 
-                    $children = $assignedChildIds->isNotEmpty()
-                        ? Child::withoutGlobalScope('tenant')
-                            ->whereIn('id', $assignedChildIds)
-                            ->get(['id', 'first_name', 'last_name', 'birth_date', 'gender'])
-                            ->map(fn ($c) => [
-                                'id' => $c->id,
-                                'full_name' => $c->first_name.' '.$c->last_name,
-                                'birth_date' => $c->birth_date,
-                                'gender' => $c->gender,
-                            ])
-                        : collect();
+            $invitations = [];
 
-                    return [
-                        'id' => $member->id,
-                        'family' => $member->familyProfile ? [
-                            'id' => $member->familyProfile->ulid,
-                            'family_name' => $member->familyProfile->family_name,
-                        ] : null,
-                        'invited_by' => $member->invitedBy ? [
-                            'name' => $member->invitedBy->name,
-                            'surname' => $member->invitedBy->surname,
-                            'email' => $member->invitedBy->email,
-                        ] : null,
-                        'relation_type' => $member->relation_type,
-                        'children' => $children->values(),
-                        'created_at' => $member->created_at,
-                    ];
-                });
+            foreach ($members as $member) {
+                $assignedChildIds = DB::table('family_member_children')
+                    ->where('family_member_id', $member->id)
+                    ->pluck('child_id');
+
+                $children = [];
+
+                if ($assignedChildIds->isNotEmpty()) {
+                    $childModels = Child::withoutGlobalScope('tenant')
+                        ->whereIn('id', $assignedChildIds)
+                        ->get(['id', 'first_name', 'last_name', 'birth_date']);
+
+                    foreach ($childModels as $c) {
+                        $firstTwo = mb_substr($c->first_name, 0, 2);
+                        $lastTwo = mb_substr($c->last_name, 0, 2);
+                        $children[] = [
+                            'id' => $c->id,
+                            'masked_name' => $firstTwo.'. '.$lastTwo.'.',
+                            'birth_year' => $c->birth_date ? date('Y', strtotime($c->birth_date)) : null,
+                        ];
+                    }
+                }
+
+                $invitations[] = [
+                    'id' => $member->id,
+                    'family' => $member->familyProfile ? [
+                        'id' => $member->familyProfile->ulid,
+                        'family_name' => $member->familyProfile->family_name,
+                    ] : null,
+                    'invited_by' => $member->invitedBy ? [
+                        'name' => $member->invitedBy->name,
+                        'surname' => $member->invitedBy->surname,
+                        'email' => $member->invitedBy->email,
+                    ] : null,
+                    'relation_type' => $member->relation_type,
+                    'children' => $children,
+                    'created_at' => $member->created_at,
+                ];
+            }
 
             return $this->successResponse($invitations, 'Bekleyen davetler listelendi.');
         } catch (\Throwable $e) {
@@ -444,8 +459,12 @@ class ParentFamilyController extends BaseParentController
     /**
      * Aile davetini kabul eder.
      */
-    public function acceptInvitation(int $id): JsonResponse
+    public function acceptInvitation(Request $request, int $id): JsonResponse
     {
+        $data = $request->validate([
+            'security_code' => ['required', 'string', 'size:6'],
+        ]);
+
         try {
             $userId = $this->user()->id;
 
@@ -459,8 +478,13 @@ class ParentFamilyController extends BaseParentController
                 return $this->errorResponse('Davet bulunamadı.', 404);
             }
 
+            if ($member->invitation_security_code !== $data['security_code']) {
+                return $this->errorResponse('Güvenlik kodu hatalı. Lütfen tekrar deneyin.', 422);
+            }
+
             $member->update([
                 'invitation_status' => 'accepted',
+                'invitation_security_code' => null,
                 'is_active' => true,
                 'accepted_at' => now(),
                 'updated_by' => $userId,

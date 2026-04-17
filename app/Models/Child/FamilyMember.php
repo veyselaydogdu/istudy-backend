@@ -18,6 +18,7 @@ class FamilyMember extends BaseModel
         'invited_by_user_id',
         'accepted_at',
         'invitation_status',
+        'invitation_security_code',
         'created_by',
         'updated_by',
     ];

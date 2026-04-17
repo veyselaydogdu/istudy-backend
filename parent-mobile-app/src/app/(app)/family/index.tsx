@@ -32,9 +32,8 @@ interface Family {
 
 interface InvitationChild {
   id: number;
-  full_name: string;
-  birth_date: string | null;
-  gender: string | null;
+  masked_name: string;
+  birth_year: number | null;
 }
 
 interface Invitation {
@@ -55,6 +54,10 @@ export default function FamilyScreen() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createFamilyName, setCreateFamilyName] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
+
+  const [pendingAcceptInvitation, setPendingAcceptInvitation] = useState<Invitation | null>(null);
+  const [securityCode, setSecurityCode] = useState('');
+  const [acceptLoading, setAcceptLoading] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) { setLoading(true); }
@@ -100,12 +103,30 @@ export default function FamilyScreen() {
     }
   };
 
-  const handleAcceptInvitation = async (invitation: Invitation) => {
+  const handleAcceptInvitation = (invitation: Invitation) => {
+    setPendingAcceptInvitation(invitation);
+    setSecurityCode('');
+  };
+
+  const handleConfirmAccept = async () => {
+    if (!pendingAcceptInvitation) { return; }
+    if (securityCode.length !== 6) {
+      Alert.alert('Hata', 'Lütfen 6 haneli güvenlik kodunu girin.');
+      return;
+    }
+    setAcceptLoading(true);
     try {
-      await api.post(`/parent/family/invitations/${invitation.id}/accept`);
+      await api.post(`/parent/family/invitations/${pendingAcceptInvitation.id}/accept`, {
+        security_code: securityCode,
+      });
+      setPendingAcceptInvitation(null);
+      setSecurityCode('');
       void fetchData(true);
+      Alert.alert('Başarılı', 'Daveti kabul ettiniz. Aileye dahil oldunuz.');
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
+    } finally {
+      setAcceptLoading(false);
     }
   };
 
@@ -209,8 +230,8 @@ export default function FamilyScreen() {
                           <View key={child.id} style={styles.childTag}>
                             <Ionicons name="person-outline" size={11} color={AppColors.secondary} />
                             <Text style={styles.childTagText}>
-                              {child.full_name}
-                              {child.birth_date ? ` · ${new Date(child.birth_date).getFullYear()}` : ''}
+                              {child.masked_name}
+                              {child.birth_year ? ` · ${child.birth_year}` : ''}
                             </Text>
                           </View>
                         ))}
@@ -270,6 +291,62 @@ export default function FamilyScreen() {
           ) : null
         }
       />
+
+      {/* Güvenlik Kodu Doğrulama Modal */}
+      <Modal
+        visible={pendingAcceptInvitation !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setPendingAcceptInvitation(null); setSecurityCode(''); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <View style={styles.securityIconRow}>
+              <View style={styles.securityIcon}>
+                <Ionicons name="shield-checkmark-outline" size={28} color={AppColors.info} />
+              </View>
+            </View>
+            <Text style={styles.modalTitle}>Güvenlik Doğrulaması</Text>
+            <Text style={styles.modalSubtitle}>
+              <Text style={{ fontWeight: '700' }}>{pendingAcceptInvitation?.family?.family_name}</Text>
+              {' '}ailesine katılmak için daveti gönderen kişiden aldığınız 6 haneli güvenlik kodunu girin.
+            </Text>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Güvenlik Kodu</Text>
+              <View style={[styles.inputRow, styles.codeInputRow]}>
+                <Ionicons name="key-outline" size={17} color={AppColors.onSurfaceVariant} />
+                <TextInput
+                  style={[styles.input, styles.codeInput]}
+                  value={securityCode}
+                  onChangeText={(t) => setSecurityCode(t.replace(/[^0-9]/g, '').substring(0, 6))}
+                  placeholder="000000"
+                  placeholderTextColor={AppColors.surfaceContainer}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Button
+                label="İptal"
+                variant="outline"
+                size="lg"
+                onPress={() => { setPendingAcceptInvitation(null); setSecurityCode(''); }}
+              />
+              <Button
+                label="Katıl"
+                variant="primary"
+                size="lg"
+                loading={acceptLoading}
+                onPress={handleConfirmAccept}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Aile Oluşturma Modal */}
       <Modal
@@ -446,6 +523,18 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontWeight: '800', color: AppColors.onSurface, marginTop: 16, marginBottom: 8 },
   emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 22 },
   emptyBtn: { marginTop: 24, alignSelf: 'center' },
+  // Güvenlik kodu modal
+  securityIconRow: { alignItems: 'center', marginBottom: 4 },
+  securityIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    backgroundColor: AppColors.infoContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  codeInputRow: { borderColor: AppColors.info },
+  codeInput: { fontSize: 20, fontWeight: '800', letterSpacing: 6, textAlign: 'center' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: {

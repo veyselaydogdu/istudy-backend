@@ -36,6 +36,7 @@ interface Member {
   role: 'super_parent' | 'co_parent';
   is_active: boolean;
   invitation_status: 'pending' | 'accepted';
+  invitation_security_code: string | null;
 }
 
 interface FamilyChild {
@@ -276,7 +277,7 @@ export default function FamilyDetailScreen() {
           const isPending = item.invitation_status === 'pending';
 
           return (
-            <Card style={styles.memberCard}>
+            <Card style={[styles.memberCard, isPending && styles.memberCardPending]}>
               <Avatar name={name} size={46} shape="rounded" />
               <View style={styles.info}>
                 <View style={styles.nameRow}>
@@ -296,6 +297,13 @@ export default function FamilyDetailScreen() {
                 <Text style={styles.memberEmail}>{item.user?.email ?? ''}</Text>
                 {item.relation_type && (
                   <Text style={styles.relationText}>{item.relation_type}</Text>
+                )}
+                {isPending && isSuperParent && item.invitation_security_code && (
+                  <View style={styles.securityCodeRow}>
+                    <Ionicons name="key-outline" size={12} color={AppColors.info} />
+                    <Text style={styles.securityCodeLabel}>Güvenlik Kodu: </Text>
+                    <Text style={styles.securityCodeValue}>{item.invitation_security_code}</Text>
+                  </View>
                 )}
               </View>
               {!isSuperParentMember && isSuperParent && (
@@ -532,8 +540,22 @@ const styles = StyleSheet.create({
   roleBadgeText: { fontSize: 10, fontWeight: '700' },
   roleTextPrimary: { color: AppColors.primary },
   roleTextSecondary: { color: AppColors.onSurfaceVariant },
+  memberCardPending: { borderLeftWidth: 3, borderLeftColor: '#D97706' },
   pendingBadge: { backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   pendingBadgeText: { fontSize: 10, fontWeight: '700', color: '#D97706' },
+  securityCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 5,
+    backgroundColor: AppColors.infoContainer,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  securityCodeLabel: { fontSize: 11, color: AppColors.info, fontWeight: '600' },
+  securityCodeValue: { fontSize: 13, color: AppColors.info, fontWeight: '900', letterSpacing: 2 },
   memberEmail: { fontSize: 12, color: AppColors.onSurfaceVariant },
   relationText: { fontSize: 11, color: AppColors.surfaceContainer, marginTop: 2 },
   removeBtn: { padding: 2 },
