@@ -2,118 +2,214 @@
 
 namespace Database\Seeders;
 
-use App\Models\Base\Role;
-use App\Models\Base\UserRole;
-use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Veritabanını sıfırla ve başlangıç verilerini ekle.
-     *
-     * Sıralama (FK bağımlılıkları dikkate alınarak):
-     *   1. Tablolar temizlenir (truncate + FK disable)
-     *   2. Super Admin kullanıcı oluşturulur
-     *   3. Roller oluşturulur ve admin'e atanır
-     *   4. Paketler oluşturulur
-     *   5. Global veriler eklenir (para birimleri, ülkeler, sağlık)
-     */
     public function run(): void
     {
-        // ── 1. Tüm tabloları temizle ──────────────────────────────────────────
-        DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+        $this->call([
+            // Core / Lookup tables
+            UserRolesTableSeeder::class,
+            BloodTypesTableSeeder::class,
+            CountriesTableSeeder::class,
+            CurrenciesTableSeeder::class,
+            ExchangeRatesTableSeeder::class,
+            ExchangeRateLogsTableSeeder::class,
+            AppSettingsTableSeeder::class,
 
-        $tables = [
-            'role_user', 'roles', 'permissions', 'role_permissions', 'user_roles',
-            'teacher_blog_likes', 'teacher_blog_comments', 'teacher_blog_posts', 'teacher_follows',
-            'child_pickup_logs', 'child_medication_logs', 'child_allergens', 'child_conditions',
-            'child_medications', 'child_classes', 'children',
-            'class_teacher_assignments', 'school_teacher_assignments', 'teacher_tenant_memberships',
-            'teacher_profiles', 'teacher_educations', 'teacher_certificates',
-            'teacher_courses', 'teacher_skills',
-            'activity_class_gallery', 'activity_class_materials', 'activity_class_invoices',
-            'activity_class_enrollments', 'activity_class_teachers', 'activity_classes',
-            'attendances', 'daily_reports', 'activities', 'activity_child',
-            'school_child_enrollment_requests', 'school_family_assignments',
-            'family_members', 'family_profiles',
-            'authorized_pickups', 'emergency_contacts',
-            'classes', 'academic_years',
-            'schools',
-            'tenant_payments', 'tenant_subscriptions', 'package_features',
-            'packages',
-            'tenants',
-            'user_contact_numbers',
-            'food_ingredient_allergens', 'food_ingredients',
-            'allergens', 'medical_conditions', 'medications',
-            'currencies', 'countries',
-            'invoices', 'invoice_items', 'transactions',
-            'notifications', 'activity_logs',
-            'meal_ingredients', 'meals',
-            'contact_requests',
-            'users',
-        ];
+            // Roles & Permissions
+            RolesTableSeeder::class,
+            RolesHistoriesTableSeeder::class,
+            PermissionsTableSeeder::class,
+            PermissionsHistoriesTableSeeder::class,
+            PermissionRoleTableSeeder::class,
+            RoleUserTableSeeder::class,
 
-        foreach ($tables as $table) {
-            if (DB::getSchemaBuilder()->hasTable($table)) {
-                DB::table($table)->truncate();
-            }
-        }
+            // Packages & Subscriptions
+            PackagesTableSeeder::class,
+            PackagesHistoriesTableSeeder::class,
+            PackageFeaturesTableSeeder::class,
+            PackageFeaturePivotTableSeeder::class,
+            SubscriptionPlansTableSeeder::class,
+            SubscriptionPlansHistoriesTableSeeder::class,
+            PlanTierPricingTableSeeder::class,
+            PlanTierPricingHistoriesTableSeeder::class,
+            RevenueSharesTableSeeder::class,
+            RevenueSharesHistoriesTableSeeder::class,
 
-        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+            // Users & Tenants
+            UsersTableSeeder::class,
+            UsersHistoriesTableSeeder::class,
+            UserContactNumbersTableSeeder::class,
+            TenantsTableSeeder::class,
+            TenantsHistoriesTableSeeder::class,
+            TenantSubscriptionsTableSeeder::class,
+            TenantSubscriptionsHistoriesTableSeeder::class,
+            TenantPaymentsTableSeeder::class,
+            TenantPaymentsHistoriesTableSeeder::class,
 
-        $this->command->info('✅ Tüm tablolar temizlendi.');
+            // Schools
+            SchoolsTableSeeder::class,
+            SchoolsHistoriesTableSeeder::class,
+            SchoolRolesTableSeeder::class,
+            SchoolRolesHistoriesTableSeeder::class,
+            SchoolRolePermissionsTableSeeder::class,
+            SchoolRolePermissionsHistoriesTableSeeder::class,
+            SchoolUserRolesTableSeeder::class,
+            SchoolUserRolesHistoriesTableSeeder::class,
+            SchoolMealTypesTableSeeder::class,
 
-        // ── 2. UserRole lookup tablosu ────────────────────────────────────────
-        $this->call(UserRoleSeeder::class);
-        $this->command->info('✅ UserRole lookup tablosu dolduruldu.');
+            // Teachers
+            TeacherProfilesTableSeeder::class,
+            TeacherProfilesHistoriesTableSeeder::class,
+            TeacherRoleTypesTableSeeder::class,
+            TeacherSkillsTableSeeder::class,
+            TeacherCertificatesTableSeeder::class,
+            TeacherCoursesTableSeeder::class,
+            TeacherEducationsTableSeeder::class,
+            TeacherFollowsTableSeeder::class,
+            TeacherBlogPostsTableSeeder::class,
+            TeacherBlogCommentsTableSeeder::class,
+            TeacherBlogLikesTableSeeder::class,
+            TeacherTenantMembershipsTableSeeder::class,
+            SchoolTeacherAssignmentsTableSeeder::class,
 
-        // ── 3. Super Admin kullanıcı ──────────────────────────────────────────
-        $superAdmin = User::create([
-            'role_id' => UserRole::SUPER_ADMIN,
-            'name' => 'Super',
-            'surname' => 'Admin',
-            'email' => 'admin@istudy.com',
-            'password' => Hash::make('Admin123!'),
-            'phone' => '+905551234567',
+            // Classes & Academic Years
+            AcademicYearsTableSeeder::class,
+            AcademicYearsHistoriesTableSeeder::class,
+            ClassesTableSeeder::class,
+            ClassesHistoriesTableSeeder::class,
+            ClassTeacherAssignmentsTableSeeder::class,
+
+            // Children
+            ChildrenTableSeeder::class,
+            ChildrenHistoriesTableSeeder::class,
+            ChildClassAssignmentsTableSeeder::class,
+            ChildRemovalRequestsTableSeeder::class,
+            ChildFieldChangeRequestsTableSeeder::class,
+            ChildPricingSettingsTableSeeder::class,
+            ChildPricingSettingsHistoriesTableSeeder::class,
+
+            // Medical
+            MedicalConditionsTableSeeder::class,
+            MedicalConditionsHistoriesTableSeeder::class,
+            ChildConditionsTableSeeder::class,
+            MedicationsTableSeeder::class,
+            MedicationsHistoriesTableSeeder::class,
+            ChildMedicationsTableSeeder::class,
+            ChildMedicationLogsTableSeeder::class,
+            AllergensTableSeeder::class,
+            AllergensHistoriesTableSeeder::class,
+            ChildAllergensTableSeeder::class,
+
+            // Families & Parents
+            FamilyProfilesTableSeeder::class,
+            FamilyProfilesHistoriesTableSeeder::class,
+            FamilyMembersTableSeeder::class,
+            FamilyMembersHistoriesTableSeeder::class,
+            FamilyMemberChildrenTableSeeder::class,
+            FamilySubscriptionsTableSeeder::class,
+            FamilySubscriptionsHistoriesTableSeeder::class,
+            EmergencyContactsTableSeeder::class,
+            AuthorizedPickupsTableSeeder::class,
+            AuthorizedPickupsHistoriesTableSeeder::class,
+            ChildPickupLogsTableSeeder::class,
+
+            // School Enrollment
+            SchoolEnrollmentRequestsTableSeeder::class,
+            SchoolEnrollmentRequestsHistoriesTableSeeder::class,
+            SchoolChildEnrollmentRequestsTableSeeder::class,
+            SchoolFamilyAssignmentsTableSeeder::class,
+
+            // Attendance
+            AttendancesTableSeeder::class,
+            AttendancesHistoriesTableSeeder::class,
+
+            // Meals & Food
+            MealsTableSeeder::class,
+            MealsHistoriesTableSeeder::class,
+            FoodIngredientsTableSeeder::class,
+            FoodIngredientsHistoriesTableSeeder::class,
+            FoodIngredientAllergensTableSeeder::class,
+            MealIngredientPivotTableSeeder::class,
+            MealMenuSchedulesTableSeeder::class,
+            MealMenuSchedulesHistoriesTableSeeder::class,
+
+            // Activities
+            ActivitiesTableSeeder::class,
+            ActivitiesHistoriesTableSeeder::class,
+            ActivityClassesTableSeeder::class,
+            ActivityClassAssignmentsTableSeeder::class,
+            ActivityClassSchoolClassAssignmentsTableSeeder::class,
+            ActivityClassTeachersTableSeeder::class,
+            ActivityClassEnrollmentsTableSeeder::class,
+            ActivityClassGalleryTableSeeder::class,
+            ActivityClassInvoicesTableSeeder::class,
+            ActivityClassMaterialsTableSeeder::class,
+            ActivityEnrollmentsTableSeeder::class,
+            ActivityGalleryTableSeeder::class,
+            ActivityPaymentsTableSeeder::class,
+            ActivityPaymentsHistoriesTableSeeder::class,
+            ChildActivityEnrollmentsTableSeeder::class,
+            ActivityLogsTableSeeder::class,
+            ActivityLogsArchiveTableSeeder::class,
+            ActivityLogSummariesTableSeeder::class,
+
+            // Materials & Homework
+            MaterialsTableSeeder::class,
+            MaterialsHistoriesTableSeeder::class,
+            ChildMaterialTrackingsTableSeeder::class,
+            HomeworkTableSeeder::class,
+            HomeworkHistoriesTableSeeder::class,
+            HomeworkClassAssignmentsTableSeeder::class,
+            HomeworkCompletionsTableSeeder::class,
+            HomeworkCompletionsHistoriesTableSeeder::class,
+
+            // Events
+            EventsTableSeeder::class,
+            EventsHistoriesTableSeeder::class,
+            ChildEventParticipationsTableSeeder::class,
+            EventPaymentsTableSeeder::class,
+            EventPaymentsHistoriesTableSeeder::class,
+
+            // Announcements & Social
+            AnnouncementsTableSeeder::class,
+            AnnouncementsHistoriesTableSeeder::class,
+            SocialPostsTableSeeder::class,
+            SocialPostMediaTableSeeder::class,
+            SocialPostClassTagsTableSeeder::class,
+            SocialPostCommentsTableSeeder::class,
+            SocialPostReactionsTableSeeder::class,
+
+            // Reports
+            ReportTemplatesTableSeeder::class,
+            ReportTemplatesHistoriesTableSeeder::class,
+            ReportTemplateInputsTableSeeder::class,
+            ReportTemplateInputsHistoriesTableSeeder::class,
+            ReportInputValuesTableSeeder::class,
+            ReportInputValuesHistoriesTableSeeder::class,
+            DailyChildReportsTableSeeder::class,
+            DailyChildReportsHistoriesTableSeeder::class,
+
+            // Invoices & Payments
+            InvoicesTableSeeder::class,
+            InvoicesHistoriesTableSeeder::class,
+            InvoiceItemsTableSeeder::class,
+            PaymentsTableSeeder::class,
+            PaymentsHistoriesTableSeeder::class,
+            TransactionsTableSeeder::class,
+            TransactionsHistoriesTableSeeder::class,
+
+            // Notifications
+            SystemNotificationsTableSeeder::class,
+            SystemNotificationsHistoriesTableSeeder::class,
+            NotificationPreferencesTableSeeder::class,
+            NotificationUserTableSeeder::class,
+
+            // Audit & Misc
+            AuditLogsTableSeeder::class,
+            ContactRequestsTableSeeder::class,
         ]);
-
-        $this->command->info('✅ Super Admin oluşturuldu: admin@istudy.com / Admin123!');
-
-        // Auth context (BaseModel created_by için)
-        auth()->login($superAdmin);
-
-        // ── 4. Roller ─────────────────────────────────────────────────────────
-        $this->call(RoleSeeder::class);
-
-        $superAdminRole = Role::where('name', 'super_admin')->first();
-        if ($superAdminRole) {
-            $superAdmin->roles()->syncWithoutDetaching([$superAdminRole->id]);
-        }
-
-        $this->command->info('✅ Roller oluşturuldu ve Super Admin rolü atandı.');
-
-        // ── 5. Paketler ───────────────────────────────────────────────────────
-        $this->call(PackageSeeder::class);
-        $this->command->info('✅ Paketler oluşturuldu.');
-
-        // ── 6. Global veriler ─────────────────────────────────────────────────
-        $this->call(InitialDataSeeder::class);
-        $this->command->info('✅ Para birimleri, ülkeler, alerjenler, hastalıklar, besin öğeleri eklendi.');
-
-        auth()->logout();
-
-        $this->command->newLine();
-        $this->command->info('🎉 Veritabanı başarıyla hazırlandı!');
-        $this->command->table(
-            ['Hesap', 'Değer'],
-            [
-                ['E-posta', 'admin@istudy.com'],
-                ['Şifre', 'Admin123!'],
-                ['Rol', 'super_admin'],
-            ]
-        );
     }
 }

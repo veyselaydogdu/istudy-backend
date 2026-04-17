@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace Database\Seeders\old_seeders;
 
 use App\Models\Package\Package;
 use App\Models\PackageFeature;
