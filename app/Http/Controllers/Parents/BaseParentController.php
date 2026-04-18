@@ -101,6 +101,11 @@ abstract class BaseParentController extends BaseController
                     continue;
                 }
 
+                // permissions = [] (boş dizi) → hiçbir çocuğa erişim yok
+                if ($member->permissions !== null && count($member->permissions) === 0) {
+                    continue;
+                }
+
                 $restrictedChildIds = DB::table('family_member_children')
                     ->where('family_member_id', $member->id)
                     ->pluck('child_id');
@@ -119,6 +124,66 @@ abstract class BaseParentController extends BaseController
         }
 
         return $allIds->unique()->values();
+    }
+
+    /**
+     * Auth user'ın verilen çocuk için co-parent mi olduğunu döndürür.
+     * super_parent (owner) için false döner.
+     */
+    protected function isCoParentForChild(Child $child): bool
+    {
+        $userId = $this->user()->id;
+
+        $family = FamilyProfile::withoutGlobalScope('tenant')
+            ->find($child->family_profile_id);
+
+        if (! $family) {
+            return false;
+        }
+
+        if ($family->owner_user_id === $userId) {
+            return false;
+        }
+
+        $member = FamilyMember::withoutGlobalScope('tenant')
+            ->where('family_profile_id', $family->id)
+            ->where('user_id', $userId)
+            ->where('invitation_status', 'accepted')
+            ->first();
+
+        return $member !== null && $member->role !== 'super_parent';
+    }
+
+    /**
+     * Auth user'ın verilen çocuk üzerinde belirli izne sahip olup olmadığını kontrol eder.
+     */
+    protected function coParentHasPermission(Child $child, string $permission): bool
+    {
+        $userId = $this->user()->id;
+
+        $family = FamilyProfile::withoutGlobalScope('tenant')
+            ->find($child->family_profile_id);
+
+        if (! $family) {
+            return false;
+        }
+
+        if ($family->owner_user_id === $userId) {
+            return true;
+        }
+
+        $member = FamilyMember::withoutGlobalScope('tenant')
+            ->where('family_profile_id', $family->id)
+            ->where('user_id', $userId)
+            ->where('invitation_status', 'accepted')
+            ->where('is_active', true)
+            ->first();
+
+        if (! $member) {
+            return false;
+        }
+
+        return $member->hasPermission($permission);
     }
 
     /**

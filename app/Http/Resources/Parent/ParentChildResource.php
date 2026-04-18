@@ -27,6 +27,8 @@ class ParentChildResource extends JsonResource
             'profile_photo' => $this->profile_photo
                 ? URL::signedRoute('parent.child.photo', ['child' => $this->ulid], now()->addHours(1))
                 : null,
+            'family_profile_id' => $this->family_profile_id,
+            'family_name' => $this->whenLoaded('familyProfile', fn () => $this->familyProfile?->family_name),
             'status' => $this->status,
             'enrollment_date' => $this->enrollment_date?->format('Y-m-d'),
             'school_id' => $this->school_id,

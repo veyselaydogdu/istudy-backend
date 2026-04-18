@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Schools;
 
 use App\Models\Child\Child;
+use App\Models\Health\Allergen;
+use App\Models\Health\MedicalCondition;
+use App\Models\Health\Medication;
+use App\Models\School\School;
 use App\Models\School\SchoolChildEnrollmentRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -133,6 +137,12 @@ class ChildEnrollmentRequestController extends BaseSchoolController
             // Çocuğun school_id'sini güncelle
             if ($child) {
                 $child->update(['school_id' => $schoolId]);
+
+                // Yeni okulun tenant_id'sini al ve pending sağlık önerilerini bu tenant'a ilet
+                $school = School::find($schoolId);
+                if ($school?->tenant_id) {
+                    $this->propagatePendingHealthItems($child, $school->tenant_id);
+                }
             }
 
             DB::commit();
@@ -189,6 +199,159 @@ class ChildEnrollmentRequestController extends BaseSchoolController
             Log::error('ChildEnrollmentRequestController::reject Error', ['message' => $e->getMessage()]);
 
             return $this->errorResponse('Red işlemi sırasında hata oluştu.', 500);
+        }
+    }
+
+    /**
+     * Çocuğun pending sağlık önerilerini yeni okul tenant'ına iletir.
+     *
+     * Kural: pending allerjen/hastalık/ilaçlar için;
+     *  - tenant_id NULL ise → yeni tenant_id'ye güncelle
+     *  - tenant_id farklı bir tenant ise → yeni tenant için kopya pending kayıt oluştur
+     *  - tenant_id zaten aynı ise → dokunma
+     */
+    private function propagatePendingHealthItems(Child $child, int $newTenantId): void
+    {
+        try {
+            // Çocuğun allerjenlerini al (pending olanlar)
+            $allergenIds = DB::table('child_allergens')
+                ->where('child_id', $child->id)
+                ->pluck('allergen_id');
+
+            if ($allergenIds->isNotEmpty()) {
+                $pendingAllergens = Allergen::withoutGlobalScopes()
+                    ->whereIn('id', $allergenIds)
+                    ->where('status', 'pending')
+                    ->get();
+
+                foreach ($pendingAllergens as $allergen) {
+                    if ($allergen->tenant_id === null) {
+                        $allergen->update(['tenant_id' => $newTenantId]);
+                    } elseif ($allergen->tenant_id !== $newTenantId) {
+                        // Yeni tenant için kopya oluştur ve çocuğa bağla
+                        $existing = Allergen::withoutGlobalScopes()
+                            ->where('name', $allergen->name)
+                            ->where('tenant_id', $newTenantId)
+                            ->where('status', 'pending')
+                            ->first();
+
+                        if (! $existing) {
+                            $newAllergen = Allergen::withoutGlobalScopes()->create([
+                                'name' => $allergen->name,
+                                'description' => $allergen->description,
+                                'risk_level' => $allergen->risk_level ?? 'medium',
+                                'tenant_id' => $newTenantId,
+                                'status' => 'pending',
+                                'suggested_by_user_id' => $allergen->suggested_by_user_id,
+                                'created_by' => $allergen->created_by,
+                            ]);
+
+                            DB::table('child_allergens')->insert([
+                                'child_id' => $child->id,
+                                'allergen_id' => $newAllergen->id,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Çocuğun tıbbi durumlarını al (pending olanlar)
+            $conditionIds = DB::table('child_conditions')
+                ->where('child_id', $child->id)
+                ->pluck('medical_condition_id');
+
+            if ($conditionIds->isNotEmpty()) {
+                $pendingConditions = MedicalCondition::withoutGlobalScopes()
+                    ->whereIn('id', $conditionIds)
+                    ->where('status', 'pending')
+                    ->get();
+
+                foreach ($pendingConditions as $condition) {
+                    if ($condition->tenant_id === null) {
+                        $condition->update(['tenant_id' => $newTenantId]);
+                    } elseif ($condition->tenant_id !== $newTenantId) {
+                        $existing = MedicalCondition::withoutGlobalScopes()
+                            ->where('name', $condition->name)
+                            ->where('tenant_id', $newTenantId)
+                            ->where('status', 'pending')
+                            ->first();
+
+                        if (! $existing) {
+                            $newCondition = MedicalCondition::withoutGlobalScopes()->create([
+                                'name' => $condition->name,
+                                'description' => $condition->description,
+                                'tenant_id' => $newTenantId,
+                                'status' => 'pending',
+                                'suggested_by_user_id' => $condition->suggested_by_user_id,
+                                'created_by' => $condition->created_by,
+                            ]);
+
+                            DB::table('child_conditions')->insert([
+                                'child_id' => $child->id,
+                                'medical_condition_id' => $newCondition->id,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Çocuğun ilaçlarını al (pending olanlar)
+            $medicationRows = DB::table('child_medications')
+                ->where('child_id', $child->id)
+                ->whereNotNull('medication_id')
+                ->get();
+
+            foreach ($medicationRows as $row) {
+                $medication = Medication::withoutGlobalScopes()
+                    ->where('id', $row->medication_id)
+                    ->where('status', 'pending')
+                    ->first();
+
+                if (! $medication) {
+                    continue;
+                }
+
+                if ($medication->tenant_id === null) {
+                    $medication->update(['tenant_id' => $newTenantId]);
+                } elseif ($medication->tenant_id !== $newTenantId) {
+                    $existing = Medication::withoutGlobalScopes()
+                        ->where('name', $medication->name)
+                        ->where('tenant_id', $newTenantId)
+                        ->where('status', 'pending')
+                        ->first();
+
+                    if (! $existing) {
+                        $newMedication = Medication::withoutGlobalScopes()->create([
+                            'name' => $medication->name,
+                            'tenant_id' => $newTenantId,
+                            'status' => 'pending',
+                            'suggested_by_user_id' => $medication->suggested_by_user_id,
+                            'created_by' => $medication->created_by,
+                        ]);
+
+                        DB::table('child_medications')->insert([
+                            'child_id' => $child->id,
+                            'medication_id' => $newMedication->id,
+                            'custom_name' => $row->custom_name,
+                            'dose' => $row->dose,
+                            'usage_time' => $row->usage_time,
+                            'usage_days' => $row->usage_days,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('ChildEnrollmentRequestController::propagatePendingHealthItems Error', [
+                'child_id' => $child->id,
+                'tenant_id' => $newTenantId,
+                'message' => $e->getMessage(),
+            ]);
         }
     }
 }

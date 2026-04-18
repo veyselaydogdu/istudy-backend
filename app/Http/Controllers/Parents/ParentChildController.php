@@ -33,7 +33,8 @@ class ParentChildController extends BaseParentController
 
             $children = Child::withoutGlobalScope('tenant')
                 ->whereIn('id', $accessibleChildIds)
-                ->with(['allergens', 'conditions', 'medications', 'nationality', 'school', 'classes:id,name'])
+                ->with(['allergens', 'conditions', 'medications', 'nationality', 'school', 'classes:id,name',
+                    'familyProfile' => fn ($q) => $q->withoutGlobalScope('tenant')])
                 ->get();
 
             return $this->successResponse(
@@ -54,6 +55,20 @@ class ParentChildController extends BaseParentController
 
             if (! $familyProfile) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            // Co-parent için çocuk ekleme izni kontrolü
+            $userId = $this->user()->id;
+            if ($familyProfile->owner_user_id !== $userId) {
+                $member = \App\Models\Child\FamilyMember::withoutGlobalScope('tenant')
+                    ->where('family_profile_id', $familyProfile->id)
+                    ->where('user_id', $userId)
+                    ->where('invitation_status', 'accepted')
+                    ->first();
+
+                if ($member && ! $member->hasPermission('can_add_child')) {
+                    return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
+                }
             }
 
             $data = $request->validated();
@@ -142,6 +157,11 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
+            // Co-parent için profil düzenleme izin kontrolü
+            if ($this->isCoParentForChild($childModel) && ! $this->coParentHasPermission($childModel, 'can_edit_child_profile')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
+            }
+
             $data = $request->validated();
 
             // Okula kayıtlı çocuklarda doğum tarihi değişikliği tenant onayı gerektirir
@@ -208,6 +228,11 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
+            // Co-parent çocuk silemez — bu işlem sadece ana veliye aittir
+            if ($this->isCoParentForChild($childModel)) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
+            }
+
             // Sınıfa kayıtlı çocuklar direkt silinemez
             if ($childModel->school_id) {
                 return $this->errorResponse(
@@ -240,6 +265,11 @@ class ParentChildController extends BaseParentController
 
             if (! $childModel) {
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            // Co-parent çocuğu okuldan çıkaramaz
+            if ($this->isCoParentForChild($childModel)) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
             }
 
             if (! $childModel->school_id) {
@@ -289,6 +319,10 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
+            if ($this->isCoParentForChild($childModel) && ! $this->coParentHasPermission($childModel, 'can_edit_child_profile')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
+            }
+
             $childModel->allergens()->sync($data['allergen_ids']);
 
             return $this->successResponse(null, 'Alerjenler güncellendi.');
@@ -321,6 +355,10 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
+            if ($this->isCoParentForChild($childModel) && ! $this->coParentHasPermission($childModel, 'can_edit_child_profile')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
+            }
+
             $this->saveMedications($childModel, $data['medications']);
 
             return $this->successResponse(null, 'İlaçlar güncellendi.');
@@ -343,6 +381,10 @@ class ParentChildController extends BaseParentController
 
             if (! $childModel) {
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            if ($this->isCoParentForChild($childModel) && ! $this->coParentHasPermission($childModel, 'can_edit_child_profile')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
             }
 
             $childModel->conditions()->sync($data['condition_ids']);
@@ -371,6 +413,10 @@ class ParentChildController extends BaseParentController
 
             if (! $childModel) {
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            if ($this->isCoParentForChild($childModel) && ! $this->coParentHasPermission($childModel, 'can_edit_child_profile')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
             }
 
             // Tenant'ı önce çocuğun okulundan bul, yoksa family assignment'tan al
@@ -430,6 +476,10 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
+            if ($this->isCoParentForChild($childModel) && ! $this->coParentHasPermission($childModel, 'can_edit_child_profile')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
+            }
+
             // Tenant'ı önce çocuğun okulundan bul, yoksa family assignment'tan al
             $tenantId = null;
             if ($childModel->school_id) {
@@ -486,6 +536,10 @@ class ParentChildController extends BaseParentController
 
             if (! $childModel) {
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
+            }
+
+            if ($this->isCoParentForChild($childModel) && ! $this->coParentHasPermission($childModel, 'can_edit_child_profile')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
             }
 
             // Tenant'ı önce çocuğun okulundan bul, yoksa family assignment'tan al

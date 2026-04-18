@@ -383,14 +383,16 @@ class ParentSchoolController extends BaseParentController
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
-            // Çocuk bu veliye ait mi?
-            $child = Child::withoutGlobalScope('tenant')
-                ->where('id', $data['child_id'])
-                ->where('family_profile_id', $familyProfile->id)
-                ->first();
+            // Co-parent çocuk kısıtlamalarına uygun erişim kontrolü
+            $child = $this->findOwnedChild($data['child_id']);
 
             if (! $child) {
-                return $this->errorResponse('Çocuk bulunamadı.', 404);
+                return $this->errorResponse('Çocuk bulunamadı veya bu çocuğa erişim yetkiniz yok.', 404);
+            }
+
+            // Co-parent için okul kayıt izni kontrolü
+            if ($this->isCoParentForChild($child) && ! $this->coParentHasPermission($child, 'can_enroll_child')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
             }
 
             // Çocuk zaten bir okula kayıtlı mı?

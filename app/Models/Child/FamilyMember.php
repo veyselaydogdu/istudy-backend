@@ -19,6 +19,7 @@ class FamilyMember extends BaseModel
         'accepted_at',
         'invitation_status',
         'invitation_security_code',
+        'permissions',
         'created_by',
         'updated_by',
     ];
@@ -28,6 +29,38 @@ class FamilyMember extends BaseModel
         return [
             'is_active' => 'boolean',
             'accepted_at' => 'datetime',
+            'permissions' => 'array',
+        ];
+    }
+
+    /**
+     * Verilen izne sahip mi kontrol eder.
+     * super_parent için daima true döner.
+     * null permissions → tüm izinler açık (geriye dönük uyumluluk).
+     */
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->role === 'super_parent') {
+            return true;
+        }
+
+        if ($this->permissions === null) {
+            return true;
+        }
+
+        return in_array($permission, $this->permissions, true);
+    }
+
+    /**
+     * Geçerli izin sabitleri.
+     */
+    public static function availablePermissions(): array
+    {
+        return [
+            'can_edit_child_profile',
+            'can_add_child',
+            'can_enroll_child',
+            'can_view_child_details',
         ];
     }
 

@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class ParentAuthController extends BaseController
 {
@@ -244,6 +246,58 @@ class ParentAuthController extends BaseController
 
             return $this->errorResponse($e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Velinin profil fotoğrafını private diske yükler ve imzalı URL döner.
+     * Depolama: parents/profile-photos/{userId}/
+     */
+    public function uploadProfilePhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => ['required', 'image', 'max:5120'],
+        ]);
+
+        try {
+            $user = $this->user();
+
+            if ($user->profile_photo && Storage::disk('local')->exists($user->profile_photo)) {
+                Storage::disk('local')->delete($user->profile_photo);
+            }
+
+            $path = $request->file('photo')->store("parents/profile-photos/{$user->id}", 'local');
+            $user->update(['profile_photo' => $path]);
+
+            $signedUrl = URL::signedRoute('parent.profile.photo', ['user' => $user->id], now()->addMinutes(30));
+
+            return $this->successResponse(['profile_photo' => $signedUrl], 'Profil fotoğrafı güncellendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentAuthController::uploadProfilePhoto Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Fotoğraf yüklenirken hata oluştu.', 500);
+        }
+    }
+
+    /**
+     * İmzalı URL ile velinin profil fotoğrafını private diskten sunar.
+     * Route: GET /api/parent/profile/photo/{user} — auth:sanctum + signed
+     */
+    public function serveProfilePhoto(int $user): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
+    {
+        $userModel = User::find($user);
+
+        if (! $userModel || ! $userModel->profile_photo) {
+            abort(404);
+        }
+
+        if (! Storage::disk('local')->exists($userModel->profile_photo)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($userModel->profile_photo, null, [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+        ]);
     }
 
     /**

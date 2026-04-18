@@ -80,6 +80,8 @@ Route::prefix('countries')->group(function () {
 Route::middleware(['signed'])->group(function () {
     Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
         ->name('parent.child.photo');
+    Route::get('/parent/profile/photo/{user}', [\App\Http\Controllers\Parents\ParentAuthController::class, 'serveProfilePhoto'])
+        ->name('parent.profile.photo');
 });
 
 Route::middleware(['auth:sanctum', 'signed'])->group(function () {
@@ -145,6 +147,9 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     Route::get('/auth/me', [\App\Http\Controllers\Parents\ParentAuthController::class, 'me']);
     Route::post('/auth/resend-verification', [\App\Http\Controllers\Parents\ParentAuthController::class, 'resendVerification']);
 
+    // Veli profil fotoğrafı
+    Route::post('/profile/photo', [\App\Http\Controllers\Parents\ParentAuthController::class, 'uploadProfilePhoto']);
+
     // Çocuklar
     Route::get('/children/enrollable', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'enrollableChildren']);
     Route::apiResource('children', \App\Http\Controllers\Parents\ParentChildController::class);
@@ -166,6 +171,7 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     Route::delete('/families/{ulid}/members/{userId}', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'removeMember']);
     Route::get('/families/{ulid}/members/{memberId}/children', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'memberChildren']);
     Route::put('/families/{ulid}/members/{memberId}/children', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'assignMemberChildren']);
+    Route::put('/families/{ulid}/members/{memberId}/permissions', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'updateMemberPermissions']);
 
     // Acil durum kişileri (family ULID ile)
     Route::get('/families/{ulid}/emergency-contacts', [\App\Http\Controllers\Parents\ParentFamilyController::class, 'emergencyContacts']);

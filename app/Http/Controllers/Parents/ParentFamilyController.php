@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ParentFamilyController extends BaseParentController
 {
@@ -234,6 +235,10 @@ class ParentFamilyController extends BaseParentController
                         ? $member->invitation_security_code
                         : null,
                     'accepted_at' => $member->accepted_at,
+                    'permissions' => $member->role !== 'super_parent' ? $member->permissions : null,
+                    'available_permissions' => $member->role !== 'super_parent'
+                        ? FamilyMember::availablePermissions()
+                        : null,
                     'restricted_children' => $member->role !== 'super_parent'
                         ? $member->restrictedChildren->map(fn ($c) => [
                             'id' => $c->id,
@@ -262,6 +267,8 @@ class ParentFamilyController extends BaseParentController
             'relation_type' => ['nullable', 'string', 'max:50'],
             'child_ids' => ['nullable', 'array'],
             'child_ids.*' => ['integer'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', Rule::in(FamilyMember::availablePermissions())],
         ]);
 
         try {
@@ -303,6 +310,10 @@ class ParentFamilyController extends BaseParentController
 
             $securityCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
+            $permissions = isset($data['permissions'])
+                ? array_values(array_unique($data['permissions']))
+                : null;
+
             $member = FamilyMember::withoutGlobalScope('tenant')->create([
                 'family_profile_id' => $family->id,
                 'user_id' => $targetUser->id,
@@ -313,6 +324,7 @@ class ParentFamilyController extends BaseParentController
                 'invitation_security_code' => $securityCode,
                 'invited_by_user_id' => $this->user()->id,
                 'accepted_at' => null,
+                'permissions' => $permissions,
                 'created_by' => $this->user()->id,
             ]);
 
@@ -558,6 +570,7 @@ class ParentFamilyController extends BaseParentController
 
     /**
      * Belirli aileye acil durum kişisi ekler.
+     * Co-parent acil durum kişisi ekleyemez (sadece görüntüleyici).
      */
     public function storeEmergencyContact(StoreEmergencyContactRequest $request, string $ulid): JsonResponse
     {
@@ -566,6 +579,10 @@ class ParentFamilyController extends BaseParentController
 
             if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            if (! $this->isSuperParentOf($family)) {
+                return $this->errorResponse('Acil durum kişisi ekleme yetkisi sadece ana velidedir.', 403);
             }
 
             $maxContacts = (int) AppSetting::getByKey('max_emergency_contacts', 5);
@@ -594,11 +611,16 @@ class ParentFamilyController extends BaseParentController
 
     /**
      * Acil durum kişisini günceller.
+     * Co-parent acil durum kişisi düzenleyemez.
      */
     public function updateEmergencyContact(StoreEmergencyContactRequest $request, string $ulid, int $contact): JsonResponse
     {
         try {
             $family = $this->resolveFamily($ulid);
+
+            if ($family && ! $this->isSuperParentOf($family)) {
+                return $this->errorResponse('Acil durum kişisi düzenleme yetkisi sadece ana velidedir.', 403);
+            }
 
             if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
@@ -627,11 +649,16 @@ class ParentFamilyController extends BaseParentController
 
     /**
      * Acil durum kişisini siler.
+     * Co-parent acil durum kişisi silemez.
      */
     public function destroyEmergencyContact(string $ulid, int $contact): JsonResponse
     {
         try {
             $family = $this->resolveFamily($ulid);
+
+            if ($family && ! $this->isSuperParentOf($family)) {
+                return $this->errorResponse('Acil durum kişisi silme yetkisi sadece ana velidedir.', 403);
+            }
 
             if (! $family) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
@@ -659,6 +686,60 @@ class ParentFamilyController extends BaseParentController
     // =========================================================================
     // ÇOCUK ATAMASI
     // =========================================================================
+
+    /**
+     * Bir co-parent üyenin izinlerini günceller.
+     * Sadece super_parent yapabilir. Geçerli izinler: FamilyMember::availablePermissions()
+     *
+     * PUT /parent/families/{ulid}/members/{memberId}/permissions
+     */
+    public function updateMemberPermissions(Request $request, string $ulid, int $memberId): JsonResponse
+    {
+        $data = $request->validate([
+            'permissions' => ['present', 'array'],
+            'permissions.*' => ['string', Rule::in(FamilyMember::availablePermissions())],
+        ]);
+
+        try {
+            $family = $this->resolveFamily($ulid);
+
+            if (! $family) {
+                return $this->errorResponse('Aile profili bulunamadı.', 404);
+            }
+
+            if (! $this->isSuperParentOf($family)) {
+                return $this->errorResponse('İzin güncelleme yetkisi sadece ana velidedir.', 403);
+            }
+
+            $member = FamilyMember::withoutGlobalScope('tenant')
+                ->where('id', $memberId)
+                ->where('family_profile_id', $family->id)
+                ->first();
+
+            if (! $member) {
+                return $this->errorResponse('Aile üyesi bulunamadı.', 404);
+            }
+
+            if ($member->role === 'super_parent') {
+                return $this->errorResponse('Ana velinin izinleri değiştirilemez.', 422);
+            }
+
+            $member->update([
+                'permissions' => array_values(array_unique($data['permissions'])),
+                'updated_by' => $this->user()->id,
+            ]);
+
+            return $this->successResponse([
+                'member_id' => $member->id,
+                'permissions' => $member->permissions,
+                'available_permissions' => FamilyMember::availablePermissions(),
+            ], 'İzinler güncellendi.');
+        } catch (\Throwable $e) {
+            Log::error('ParentFamilyController::updateMemberPermissions Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
 
     /**
      * Bir co-parent üyenin erişebileceği çocukları atar.

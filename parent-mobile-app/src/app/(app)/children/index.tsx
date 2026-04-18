@@ -3,8 +3,8 @@ import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,6 +26,14 @@ interface Child {
   blood_type: string | null;
   profile_photo: string | null;
   status: string;
+  family_profile_id: number | null;
+  family_name: string | null;
+}
+
+interface FamilyGroup {
+  family_profile_id: number | null;
+  family_name: string;
+  children: Child[];
 }
 
 const AVATAR_COLORS = [AppColors.primary, '#8B5CF6', '#EC4899', AppColors.warning, AppColors.success, AppColors.error];
@@ -40,6 +48,22 @@ function getAge(birthDate: string | null): string {
   const diff = Date.now() - new Date(birthDate).getTime();
   const age = Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
   return `${age} yaş`;
+}
+
+function groupByFamily(children: Child[]): FamilyGroup[] {
+  const map = new Map<number | null, FamilyGroup>();
+  for (const child of children) {
+    const key = child.family_profile_id;
+    if (!map.has(key)) {
+      map.set(key, {
+        family_profile_id: key,
+        family_name: child.family_name ?? 'Ailem',
+        children: [],
+      });
+    }
+    map.get(key)!.children.push(child);
+  }
+  return Array.from(map.values());
 }
 
 function ChildCard({ child, onPress }: { child: Child; onPress: () => void }) {
@@ -77,7 +101,7 @@ function ChildCard({ child, onPress }: { child: Child; onPress: () => void }) {
 }
 
 export default function ChildrenScreen() {
-  const [children, setChildren] = useState<Child[]>([]);
+  const [groups, setGroups] = useState<FamilyGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +111,7 @@ export default function ChildrenScreen() {
     setError(null);
     try {
       const response = await api.get<{ data: Child[] }>('/parent/children');
-      setChildren(response.data.data);
+      setGroups(groupByFamily(response.data.data));
     } catch (err: unknown) {
       setError(getApiError(err));
     } finally {
@@ -96,7 +120,6 @@ export default function ChildrenScreen() {
     }
   }, []);
 
-  // Ekran her odaklandığında (add/edit'ten geri dönünce) listeyi güncelle
   useFocusEffect(
     useCallback(() => {
       void fetchChildren();
@@ -107,6 +130,8 @@ export default function ChildrenScreen() {
     setRefreshing(true);
     void fetchChildren(true);
   };
+
+  const totalChildren = groups.reduce((sum, g) => sum + g.children.length, 0);
 
   if (loading) {
     return (
@@ -142,20 +167,13 @@ export default function ChildrenScreen() {
         </View>
       )}
 
-      <FlatList
-        data={children}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => (
-          <ChildCard
-            child={item}
-            onPress={() => router.push(`/(app)/children/${item.id}`)}
-          />
-        )}
-        contentContainerStyle={styles.list}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
         }
-        ListEmptyComponent={
+      >
+        {totalChildren === 0 ? (
           <View style={styles.empty}>
             <View style={styles.emptyIconWrap}>
               <Ionicons name="people-outline" size={40} color="#D1D5DB" />
@@ -171,22 +189,36 @@ export default function ChildrenScreen() {
               <Text style={styles.emptyButtonText}>İlk Çocuğu Ekle</Text>
             </TouchableOpacity>
           </View>
-        }
-      />
+        ) : (
+          groups.map((group) => (
+            <View key={String(group.family_profile_id)} style={styles.group}>
+              <View style={styles.groupHeader}>
+                <View style={styles.groupIconBox}>
+                  <Ionicons name="home-outline" size={15} color={AppColors.primary} />
+                </View>
+                <Text style={styles.groupTitle}>{group.family_name}</Text>
+                <View style={styles.groupCountBadge}>
+                  <Text style={styles.groupCountText}>{group.children.length}</Text>
+                </View>
+              </View>
+              {group.children.map((child) => (
+                <ChildCard
+                  key={String(child.id)}
+                  child={child}
+                  onPress={() => router.push(`/(app)/children/${child.id}`)}
+                />
+              ))}
+            </View>
+          ))
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: AppColors.surface,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -195,17 +227,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 14,
   },
-  headerSub: {
-    fontSize: 13,
-    color: AppColors.onSurfaceVariant,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: AppColors.onSurface,
-  },
+  headerSub: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500', marginBottom: 2 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: AppColors.onSurface },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -220,11 +243,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  addButtonText: {
-    color: AppColors.white,
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  addButtonText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -235,15 +254,32 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-  errorText: {
-    color: AppColors.error,
-    fontSize: 13,
-    flex: 1,
+  errorText: { color: AppColors.error, fontSize: 13, flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 20 },
+  group: { marginBottom: 8 },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    marginTop: 16,
   },
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+  groupIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: AppColors.primaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  groupTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: AppColors.primary },
+  groupCountBadge: {
+    backgroundColor: AppColors.primaryContainer,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  groupCountText: { fontSize: 12, fontWeight: '800', color: AppColors.primary },
   card: {
     backgroundColor: AppColors.white,
     borderRadius: 18,
@@ -258,89 +294,27 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: AppColors.white,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  childName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: AppColors.onSurface,
-    marginBottom: 5,
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    gap: 6,
-    alignItems: 'center',
-  },
-  metaChip: {
-    backgroundColor: AppColors.surfaceContainerLow,
-    borderRadius: 6,
-    padding: 4,
-  },
-  metaText: {
-    fontSize: 13,
-    color: AppColors.onSurfaceVariant,
-  },
-  bloodTag: {
-    backgroundColor: AppColors.warningContainer,
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  bloodTagText: {
-    fontSize: 11,
-    color: AppColors.warning,
-    fontWeight: '700',
-  },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    gap: 10,
-  },
+  avatar: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: AppColors.white, fontSize: 18, fontWeight: '800' },
+  cardInfo: { flex: 1 },
+  childName: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface, marginBottom: 5 },
+  cardMeta: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  metaChip: { backgroundColor: AppColors.surfaceContainerLow, borderRadius: 6, padding: 4 },
+  metaText: { fontSize: 13, color: AppColors.onSurfaceVariant },
+  bloodTag: { backgroundColor: AppColors.warningContainer, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  bloodTagText: { fontSize: 11, color: AppColors.warning, fontWeight: '700' },
+  empty: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
+    width: 88, height: 88, borderRadius: 28,
     backgroundColor: AppColors.surfaceContainerLow,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 6,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: AppColors.onSurface,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: AppColors.onSurfaceVariant,
-    textAlign: 'center',
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center' },
   emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: AppColors.primary,
-    borderRadius: 14,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    marginTop: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: AppColors.primary, borderRadius: 14,
+    paddingHorizontal: 24, paddingVertical: 12, marginTop: 8,
   },
-  emptyButtonText: {
-    color: AppColors.white,
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  emptyButtonText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
 });

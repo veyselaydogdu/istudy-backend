@@ -37,6 +37,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // L-2: Sanctum token ability kontrolü
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
+            // Aile üyesi (co-parent) izin kontrolü: family.permission:can_add_child
+            'family.permission' => \App\Http\Middleware\EnsureFamilyPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

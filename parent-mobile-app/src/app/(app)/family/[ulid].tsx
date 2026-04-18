@@ -7,6 +7,7 @@ import {
   FlatList,
   Modal,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -46,6 +47,22 @@ interface FamilyChild {
   gender: string | null;
 }
 
+const PERMISSION_LABELS: Record<string, string> = {
+  can_edit_child_profile: 'Çocuk profili düzenleyebilir',
+  can_add_child: 'Çocuk ekleyebilir',
+  can_enroll_child: 'Okula kayıt yapabilir',
+  can_view_child_details: 'Tüm detayları görüntüleyebilir',
+};
+
+const PERMISSION_ICONS: Record<string, string> = {
+  can_edit_child_profile: 'create-outline',
+  can_add_child: 'person-add-outline',
+  can_enroll_child: 'school-outline',
+  can_view_child_details: 'eye-outline',
+};
+
+const ALL_PERMISSIONS = Object.keys(PERMISSION_LABELS);
+
 export default function FamilyDetailScreen() {
   const { ulid } = useLocalSearchParams<{ ulid: string }>();
 
@@ -61,6 +78,7 @@ export default function FamilyDetailScreen() {
   const [addLoading, setAddLoading] = useState(false);
   const [familyChildren, setFamilyChildren] = useState<FamilyChild[]>([]);
   const [selectedChildIds, setSelectedChildIds] = useState<number[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['can_view_child_details']);
   const [childrenLoading, setChildrenLoading] = useState(false);
 
   const [showEditNameModal, setShowEditNameModal] = useState(false);
@@ -131,7 +149,14 @@ export default function FamilyDetailScreen() {
     setAddEmail('');
     setAddRelation('');
     setSelectedChildIds([]);
+    setSelectedPermissions(['can_view_child_details']);
     setFamilyChildren([]);
+  };
+
+  const togglePermission = (perm: string) => {
+    setSelectedPermissions((prev) =>
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+    );
   };
 
   const handleAddMember = async () => {
@@ -145,6 +170,7 @@ export default function FamilyDetailScreen() {
         email: addEmail.trim(),
         relation_type: addRelation.trim() || undefined,
         child_ids: selectedChildIds.length > 0 ? selectedChildIds : undefined,
+        permissions: selectedPermissions.length > 0 ? selectedPermissions : undefined,
       });
       setShowAddModal(false);
       resetAddModal();
@@ -377,69 +403,112 @@ export default function FamilyDetailScreen() {
             <Text style={styles.modalSubtitle}>
               Davet edilen kişi kabul ettiğinde aileye dahil olur. Kişinin iStudy hesabı olmalıdır.
             </Text>
-            <View style={styles.field}>
-              <Text style={styles.label}>E-posta Adresi</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="mail-outline" size={17} color={AppColors.onSurfaceVariant} />
-                <TextInput
-                  style={styles.input}
-                  value={addEmail}
-                  onChangeText={setAddEmail}
-                  placeholder="ornek@mail.com"
-                  placeholderTextColor={AppColors.surfaceContainer}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+              <View style={styles.field}>
+                <Text style={styles.label}>E-posta Adresi</Text>
+                <View style={styles.inputRow}>
+                  <Ionicons name="mail-outline" size={17} color={AppColors.onSurfaceVariant} />
+                  <TextInput
+                    style={styles.input}
+                    value={addEmail}
+                    onChangeText={setAddEmail}
+                    placeholder="ornek@mail.com"
+                    placeholderTextColor={AppColors.surfaceContainer}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
               </View>
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.label}>İlişki Türü (İsteğe bağlı)</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="people-outline" size={17} color={AppColors.onSurfaceVariant} />
-                <TextInput
-                  style={styles.input}
-                  value={addRelation}
-                  onChangeText={setAddRelation}
-                  placeholder="Anne, Baba, Vasi..."
-                  placeholderTextColor={AppColors.surfaceContainer}
-                />
+              <View style={[styles.field, styles.fieldGap]}>
+                <Text style={styles.label}>İlişki Türü (İsteğe bağlı)</Text>
+                <View style={styles.inputRow}>
+                  <Ionicons name="people-outline" size={17} color={AppColors.onSurfaceVariant} />
+                  <TextInput
+                    style={styles.input}
+                    value={addRelation}
+                    onChangeText={setAddRelation}
+                    placeholder="Anne, Baba, Vasi..."
+                    placeholderTextColor={AppColors.surfaceContainer}
+                  />
+                </View>
               </View>
-            </View>
 
-            {/* Çocuk Seçimi */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Erişim İzni (İsteğe bağlı)</Text>
-              <Text style={styles.labelHint}>Seçilmezse tüm çocuklara erişebilir.</Text>
-              {childrenLoading ? (
-                <ActivityIndicator size="small" color={AppColors.primary} style={{ marginTop: 8 }} />
-              ) : familyChildren.length === 0 ? (
-                <Text style={styles.noChildrenText}>Bu ailede henüz çocuk bulunmuyor.</Text>
-              ) : (
-                <View style={styles.chipGroup}>
-                  {familyChildren.map((child) => {
-                    const selected = selectedChildIds.includes(child.id);
+              {/* Yetkiler */}
+              <View style={[styles.field, styles.fieldGap]}>
+                <View style={styles.permissionHeader}>
+                  <Ionicons name="shield-checkmark-outline" size={16} color={AppColors.primary} />
+                  <Text style={styles.label}>Yetkiler</Text>
+                </View>
+                <Text style={styles.labelHint}>
+                  Seçilen işlemleri yapabilir. Seçilmeyen yetkiler için "Yetkiniz yok" uyarısı alır.
+                </Text>
+                <View style={styles.permissionList}>
+                  {ALL_PERMISSIONS.map((perm) => {
+                    const active = selectedPermissions.includes(perm);
                     return (
                       <TouchableOpacity
-                        key={child.id}
-                        style={[styles.chip, selected && styles.chipSelected]}
-                        onPress={() => toggleChild(child.id)}
+                        key={perm}
+                        style={[styles.permRow, active && styles.permRowActive]}
+                        onPress={() => togglePermission(perm)}
                         activeOpacity={0.75}
                       >
-                        <Ionicons
-                          name={selected ? 'checkmark-circle' : 'ellipse-outline'}
-                          size={16}
-                          color={selected ? AppColors.white : AppColors.onSurfaceVariant}
-                        />
-                        <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                          {child.full_name}
+                        <View style={[styles.permIconBox, active && styles.permIconBoxActive]}>
+                          <Ionicons
+                            name={PERMISSION_ICONS[perm] as any}
+                            size={16}
+                            color={active ? AppColors.white : AppColors.onSurfaceVariant}
+                          />
+                        </View>
+                        <Text style={[styles.permLabel, active && styles.permLabelActive]}>
+                          {PERMISSION_LABELS[perm]}
                         </Text>
+                        <View style={[styles.permCheck, active && styles.permCheckActive]}>
+                          {active && <Ionicons name="checkmark" size={13} color={AppColors.white} />}
+                        </View>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
-              )}
-            </View>
+              </View>
+
+              {/* Çocuk Seçimi */}
+              <View style={[styles.field, styles.fieldGap]}>
+                <View style={styles.permissionHeader}>
+                  <Ionicons name="people-outline" size={16} color={AppColors.primary} />
+                  <Text style={styles.label}>Çocuk Erişimi (İsteğe bağlı)</Text>
+                </View>
+                <Text style={styles.labelHint}>Seçilmezse tüm çocuklara erişebilir.</Text>
+                {childrenLoading ? (
+                  <ActivityIndicator size="small" color={AppColors.primary} style={{ marginTop: 8 }} />
+                ) : familyChildren.length === 0 ? (
+                  <Text style={styles.noChildrenText}>Bu ailede henüz çocuk bulunmuyor.</Text>
+                ) : (
+                  <View style={styles.chipGroup}>
+                    {familyChildren.map((child) => {
+                      const selected = selectedChildIds.includes(child.id);
+                      return (
+                        <TouchableOpacity
+                          key={child.id}
+                          style={[styles.chip, selected && styles.chipSelected]}
+                          onPress={() => toggleChild(child.id)}
+                          activeOpacity={0.75}
+                        >
+                          <Ionicons
+                            name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                            size={16}
+                            color={selected ? AppColors.white : AppColors.onSurfaceVariant}
+                          />
+                          <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                            {child.full_name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            </ScrollView>
 
             <View style={styles.modalActions}>
               <Button label="İptal" variant="outline" size="lg" onPress={() => { setShowAddModal(false); resetAddModal(); }} />
@@ -569,7 +638,9 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
     gap: 14,
+    maxHeight: '90%',
   },
+  modalScroll: { flexGrow: 0 },
   modalHandle: {
     width: 40, height: 4, borderRadius: 2,
     backgroundColor: AppColors.surfaceContainer,
@@ -613,4 +684,47 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontWeight: '600', color: AppColors.onSurfaceVariant },
   chipTextSelected: { color: AppColors.white },
+  fieldGap: { marginTop: 6 },
+  permissionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  permissionList: { gap: 8, marginTop: 4 },
+  permRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderWidth: 1.5,
+    borderColor: AppColors.surfaceContainer,
+  },
+  permRowActive: {
+    backgroundColor: AppColors.primaryContainer,
+    borderColor: AppColors.primary,
+  },
+  permIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: AppColors.surfaceContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  permIconBoxActive: {
+    backgroundColor: AppColors.primary,
+  },
+  permLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: AppColors.onSurfaceVariant },
+  permLabelActive: { color: AppColors.primary },
+  permCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  permCheckActive: {
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
+  },
 });

@@ -38,6 +38,7 @@ class User extends Authenticatable
         'phone',
         'country_id',
         'locale',
+        'profile_photo',
         'last_login_at',
         'created_by',
         'updated_by',
