@@ -14,6 +14,7 @@ class StoreParentChildRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'family_profile_ulid' => ['required', 'string'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'birth_date' => ['required', 'date'],
@@ -42,6 +43,7 @@ class StoreParentChildRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'family_profile_ulid.required' => 'Aile profili seçimi zorunludur.',
             'first_name.required' => 'Ad zorunludur.',
             'last_name.required' => 'Soyad zorunludur.',
             'birth_date.required' => 'Doğum tarihi zorunludur.',

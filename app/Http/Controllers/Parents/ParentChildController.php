@@ -51,27 +51,39 @@ class ParentChildController extends BaseParentController
     public function store(StoreParentChildRequest $request): JsonResponse
     {
         try {
-            $familyProfile = $this->getFamilyProfile();
+            $data = $request->validated();
+            $userId = $this->user()->id;
+
+            // Seçilen aile profilini ULID ile bul
+            $familyProfile = \App\Models\Child\FamilyProfile::withoutGlobalScope('tenant')
+                ->where('ulid', $data['family_profile_ulid'])
+                ->first();
 
             if (! $familyProfile) {
                 return $this->errorResponse('Aile profili bulunamadı.', 404);
             }
 
-            // Co-parent için çocuk ekleme izni kontrolü
-            $userId = $this->user()->id;
-            if ($familyProfile->owner_user_id !== $userId) {
+            // Kullanıcının bu aileye erişimi var mı? (owner veya kabul edilmiş üye)
+            $isOwner = $familyProfile->owner_user_id === $userId;
+            $member = null;
+
+            if (! $isOwner) {
                 $member = \App\Models\Child\FamilyMember::withoutGlobalScope('tenant')
                     ->where('family_profile_id', $familyProfile->id)
                     ->where('user_id', $userId)
                     ->where('invitation_status', 'accepted')
+                    ->where('is_active', true)
                     ->first();
 
-                if ($member && ! $member->hasPermission('can_add_child')) {
-                    return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
+                if (! $member) {
+                    return $this->errorResponse('Bu aile profiline erişim yetkiniz yok.', 403);
                 }
             }
 
-            $data = $request->validated();
+            // Co-parent için çocuk ekleme izni kontrolü
+            if (! $isOwner && $member && ! $member->hasPermission('can_add_child')) {
+                return $this->errorResponse('Bu işlem için yetkiniz yok.', 403);
+            }
 
             $child = Child::withoutGlobalScope('tenant')->create([
                 'family_profile_id' => $familyProfile->id,

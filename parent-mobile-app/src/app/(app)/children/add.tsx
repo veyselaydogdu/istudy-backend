@@ -21,6 +21,11 @@ import { AppColors } from '@/constants/theme';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
+interface FamilyProfile {
+  id: string;
+  family_name: string;
+}
+
 interface Country {
   id: number;
   name: string;
@@ -300,6 +305,11 @@ export default function AddChildScreen() {
     special_notes: '',
   });
 
+  const [families, setFamilies] = useState<FamilyProfile[]>([]);
+  const [familiesLoading, setFamiliesLoading] = useState(true);
+  const [selectedFamilyUlid, setSelectedFamilyUlid] = useState<string | null>(null);
+  const [showFamilyPicker, setShowFamilyPicker] = useState(false);
+
   const [countries, setCountries] = useState<Country[]>([]);
   const [bloodTypes, setBloodTypes] = useState<BloodType[]>([]);
   const [bloodTypesLoading, setBloodTypesLoading] = useState(false);
@@ -346,10 +356,27 @@ export default function AddChildScreen() {
   const [showConditionPicker, setShowConditionPicker] = useState(false);
 
   useEffect(() => {
+    void fetchFamilies();
     void fetchCountries();
     void fetchBloodTypes();
     void fetchHealthData();
   }, []);
+
+  const fetchFamilies = async () => {
+    setFamiliesLoading(true);
+    try {
+      const res = await api.get<{ data: FamilyProfile[] }>('/parent/families');
+      const list = res.data.data;
+      setFamilies(list);
+      if (list.length === 1) {
+        setSelectedFamilyUlid(list[0].id);
+      }
+    } catch {
+      // sessizce geç
+    } finally {
+      setFamiliesLoading(false);
+    }
+  };
 
   const fetchHealthData = async () => {
     setHealthLoading(true);
@@ -433,6 +460,10 @@ export default function AddChildScreen() {
   };
 
   const handleSave = async () => {
+    if (!selectedFamilyUlid) {
+      Alert.alert('Hata', 'Lütfen çocuğun dahil edileceği aileyi seçin.');
+      return;
+    }
     if (!form.first_name.trim() || !form.last_name.trim()) {
       Alert.alert('Hata', 'Ad ve soyad zorunludur.');
       return;
@@ -449,6 +480,7 @@ export default function AddChildScreen() {
     setLoading(true);
     try {
       const res = await api.post<{ data: { id: number } }>('/parent/children', {
+        family_profile_ulid: selectedFamilyUlid,
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         birth_date: form.birth_date.trim(),
@@ -505,10 +537,65 @@ export default function AddChildScreen() {
           <View style={{ width: 60 }} />
         </View>
 
+        {familiesLoading ? (
+          <View style={styles.centerFill}>
+            <ActivityIndicator size="large" color={AppColors.primary} />
+          </View>
+        ) : families.length === 0 ? (
+          <View style={styles.noFamilyWrap}>
+            <View style={styles.noFamilyIconBox}>
+              <Ionicons name="home-outline" size={40} color="#D1D5DB" />
+            </View>
+            <Text style={styles.noFamilyTitle}>Önce Aile Oluşturun</Text>
+            <Text style={styles.noFamilyText}>
+              Çocuk eklemeden önce en az bir aile profili oluşturmanız gerekiyor.
+            </Text>
+            <TouchableOpacity
+              style={styles.noFamilyBtn}
+              onPress={() => router.push('/(app)/family')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.noFamilyBtnText}>Aile Oluştur</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
         >
+          {/* AİLE SEÇİMİ */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Aile *</Text>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowFamilyPicker(!showFamilyPicker)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.pickerButtonText, !selectedFamilyUlid && styles.placeholderText]}>
+                {selectedFamilyUlid
+                  ? (families.find((f) => f.id === selectedFamilyUlid)?.family_name ?? 'Aile seçildi')
+                  : 'Aile seçin *'}
+              </Text>
+              <Text style={styles.pickerArrow}>{showFamilyPicker ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+            {showFamilyPicker && (
+              <View style={styles.dropdown}>
+                <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                  {families.map((f) => (
+                    <TouchableOpacity
+                      key={f.id}
+                      style={[styles.dropdownItem, selectedFamilyUlid === f.id && styles.dropdownItemActive]}
+                      onPress={() => { setSelectedFamilyUlid(f.id); setShowFamilyPicker(false); }}
+                    >
+                      <Text style={styles.dropdownItemText}>{f.family_name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+
           {/* TEMEL BİLGİLER */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Temel Bilgiler</Text>
@@ -909,6 +996,7 @@ export default function AddChildScreen() {
             )}
           </TouchableOpacity>
         </ScrollView>
+        )}
       </KeyboardAvoidingView>
 
       {/* CUSTOM DATE PICKER MODAL */}
@@ -1618,4 +1706,19 @@ const styles = StyleSheet.create({
   medItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow },
   medName: { fontSize: 14, fontWeight: '600', color: AppColors.onSurface },
   medDetail: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  centerFill: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  noFamilyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
+  noFamilyIconBox: {
+    width: 88, height: 88, borderRadius: 28,
+    backgroundColor: AppColors.surfaceContainerLow,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 8,
+  },
+  noFamilyTitle: { fontSize: 20, fontWeight: '800', color: AppColors.onSurface, textAlign: 'center' },
+  noFamilyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center' },
+  noFamilyBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: AppColors.primary, borderRadius: 14,
+    paddingHorizontal: 24, paddingVertical: 12, marginTop: 8,
+  },
+  noFamilyBtnText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
 });
