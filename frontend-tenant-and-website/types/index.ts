@@ -477,9 +477,18 @@ export type SocialPostMedia = {
     sort_order?: number
 }
 
+export type SocialPostEditSnapshot = {
+    edited_at: string
+    title: string | null
+    content: string | null
+    visibility: string
+    is_pinned: boolean
+}
+
 export type SocialPost = {
     id: number
     school_id: number
+    title?: string | null
     visibility: 'school' | 'class'
     content?: string | null
     is_pinned: boolean
@@ -491,22 +500,26 @@ export type SocialPost = {
     }
     media: SocialPostMedia[]
     classes?: { id: number; name: string }[]
+    edit_history: SocialPostEditSnapshot[]
     reactions_count: number
     user_reaction?: 'like' | 'heart' | 'clap' | null
     comments_count: number
     created_at: string
+    updated_at?: string | null
 }
 
 export type SocialPostComment = {
     id: number
+    is_deleted: boolean
     user: {
         id: number
         name: string
         avatar?: string | null
     }
-    content: string
+    content: string | null
     parent_id?: number | null
     replies?: SocialPostComment[]
+    deleted_at?: string | null
     created_at: string
 }
 

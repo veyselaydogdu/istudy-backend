@@ -22,45 +22,65 @@ class SocialPostController extends BaseController
     public function __construct(protected SocialPostService $service) {}
 
     /**
-     * Okul erişimini doğrula.
-     * BaseSchoolController'dan farklı olarak ebeveynleri de destekler.
+     * ULID veya integer school_id'yi integer PK'ya çözümle.
+     * Aynı zamanda okul bazlı erişim kontrolü yapar (tenant veya ebeveyn).
      */
-    protected function validateSchoolAccess(int $schoolId): void
+    protected function resolveSchoolId(string|int $schoolParam): int
     {
         $user = $this->user();
-        $isParent = $user->roles()->where('name', 'parent')->exists();
+        $isParent = $user->isParent();
 
         if ($isParent) {
-            // Ebeveyn: çocuklarından birinin kayıtlı olduğu okul olmalı
+            $query = is_numeric($schoolParam)
+                ? School::where('id', (int) $schoolParam)
+                : School::where('ulid', $schoolParam);
+
+            $school = $query->first();
+
+            if (! $school) {
+                abort(404);
+            }
+
             $childSchoolIds = $user->familyProfiles()
                 ->with('children')
                 ->get()
                 ->flatMap(fn ($fp) => $fp->children->pluck('school_id'))
                 ->unique();
 
-            if (! $childSchoolIds->contains($schoolId)) {
+            if (! $childSchoolIds->contains($school->id)) {
                 abort(403, 'Bu okula erişim yetkiniz yok.');
             }
-        } else {
-            // Diğer kullanıcılar: tenant üzerinden erişim
-            $hasAccess = $user->schools()->where('schools.id', $schoolId)->exists();
 
-            if (! $hasAccess) {
-                abort(403, 'Bu okula erişim yetkiniz yok.');
-            }
+            return $school->id;
         }
+
+        $query = School::where('tenant_id', $user->tenant_id);
+
+        if (is_numeric($schoolParam)) {
+            $query->where('id', (int) $schoolParam);
+        } else {
+            $query->where('ulid', $schoolParam);
+        }
+
+        $school = $query->first();
+
+        if (! $school) {
+            abort(403, 'Bu okula erişim yetkiniz yok.');
+        }
+
+        return $school->id;
     }
 
     /**
      * Postları listele
      */
-    public function index(Request $request, int $school_id): JsonResponse
+    public function index(Request $request, string $school_id): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $schoolId = $this->resolveSchoolId($school_id);
             $this->authorize('viewAny', SocialPost::class);
 
-            $paginator = $this->service->getPostsForUser($this->user(), $school_id, $request->all());
+            $paginator = $this->service->getPostsForUser($this->user(), $schoolId, $request->all());
 
             $resourceClass = SocialPostResource::class;
             $data = collect($paginator->items())->map(fn ($item) => (new $resourceClass($item))->resolve($request));
@@ -87,19 +107,19 @@ class SocialPostController extends BaseController
     /**
      * Yeni post oluştur
      */
-    public function store(StoreSocialPostRequest $request, int $school_id): JsonResponse
+    public function store(StoreSocialPostRequest $request, string $school_id): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $schoolId = $this->resolveSchoolId($school_id);
             $this->authorize('create', SocialPost::class);
 
             DB::beginTransaction();
 
-            $school = School::findOrFail($school_id);
+            $school = School::findOrFail($schoolId);
 
             $data = array_merge($request->validated(), [
                 'tenant_id' => $school->tenant_id,
-                'school_id' => $school_id,
+                'school_id' => $schoolId,
                 'author_id' => $this->user()->id,
                 'published_at' => $request->published_at ?? now(),
             ]);
@@ -128,10 +148,10 @@ class SocialPostController extends BaseController
     /**
      * Post detayını getir
      */
-    public function show(int $school_id, SocialPost $socialPost): JsonResponse
+    public function show(string $school_id, SocialPost $socialPost): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $this->resolveSchoolId($school_id);
             $this->authorize('view', $socialPost);
 
             $socialPost->load(['author', 'media', 'classes', 'reactions']);
@@ -150,10 +170,10 @@ class SocialPostController extends BaseController
     /**
      * Post güncelle
      */
-    public function update(UpdateSocialPostRequest $request, int $school_id, SocialPost $socialPost): JsonResponse
+    public function update(UpdateSocialPostRequest $request, string $school_id, SocialPost $socialPost): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $this->resolveSchoolId($school_id);
             $this->authorize('update', $socialPost);
 
             DB::beginTransaction();
@@ -181,10 +201,10 @@ class SocialPostController extends BaseController
     /**
      * Post sil
      */
-    public function destroy(int $school_id, SocialPost $socialPost): JsonResponse
+    public function destroy(string $school_id, SocialPost $socialPost): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $this->resolveSchoolId($school_id);
             $this->authorize('delete', $socialPost);
 
             DB::beginTransaction();
@@ -206,10 +226,10 @@ class SocialPostController extends BaseController
     /**
      * Tepki ekle / kaldır
      */
-    public function react(Request $request, int $school_id, SocialPost $socialPost): JsonResponse
+    public function react(Request $request, string $school_id, SocialPost $socialPost): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $this->resolveSchoolId($school_id);
             $this->authorize('react', $socialPost);
 
             $request->validate([
@@ -234,14 +254,15 @@ class SocialPostController extends BaseController
     /**
      * Yorumları listele
      */
-    public function comments(Request $request, int $school_id, SocialPost $socialPost): JsonResponse
+    public function comments(Request $request, string $school_id, SocialPost $socialPost): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $this->resolveSchoolId($school_id);
             $this->authorize('view', $socialPost);
 
             $comments = $socialPost->comments()
-                ->with(['user', 'replies.user'])
+                ->withTrashed()
+                ->with(['user', 'replies' => fn ($q) => $q->withTrashed()->with('user')])
                 ->whereNull('parent_id')
                 ->latest()
                 ->get();
@@ -260,10 +281,10 @@ class SocialPostController extends BaseController
     /**
      * Yorum ekle
      */
-    public function comment(StoreSocialCommentRequest $request, int $school_id, SocialPost $socialPost): JsonResponse
+    public function comment(StoreSocialCommentRequest $request, string $school_id, SocialPost $socialPost): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $this->resolveSchoolId($school_id);
             $this->authorize('comment', $socialPost);
 
             $comment = $this->service->addComment($socialPost, $this->user(), $request->validated());
@@ -285,10 +306,10 @@ class SocialPostController extends BaseController
     /**
      * Yorum sil
      */
-    public function deleteComment(int $school_id, SocialPost $socialPost, SocialPostComment $comment): JsonResponse
+    public function deleteComment(string $school_id, SocialPost $socialPost, SocialPostComment $comment): JsonResponse
     {
         try {
-            $this->validateSchoolAccess($school_id);
+            $this->resolveSchoolId($school_id);
 
             // Yorum sahibi veya post sahibi veya admin silebilir
             $user = $this->user();

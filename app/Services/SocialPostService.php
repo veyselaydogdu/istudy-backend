@@ -60,14 +60,25 @@ class SocialPostService
     }
 
     /**
-     * Post güncelle.
+     * Post güncelle — düzenleme öncesi mevcut içeriği edit_history'e ekle.
      *
      * @param  array<string, mixed>  $data
      * @param  array<int>  $classIds
      */
     public function updatePost(SocialPost $post, array $data, array $classIds = []): SocialPost
     {
-        $post->update($data);
+        $snapshot = [
+            'edited_at' => now()->toISOString(),
+            'title' => $post->title,
+            'content' => $post->content,
+            'visibility' => $post->visibility,
+            'is_pinned' => $post->is_pinned,
+        ];
+
+        $history = $post->edit_history ?? [];
+        $history[] = $snapshot;
+
+        $post->update(array_merge($data, ['edit_history' => $history]));
 
         if (array_key_exists('class_ids', $data) || ! empty($classIds)) {
             $post->classes()->sync($classIds);
@@ -98,7 +109,7 @@ class SocialPostService
         $type = $this->resolveMediaType($mimeType);
 
         $tenantId = $post->tenant_id;
-        $path = Storage::disk('local')->putFile("{$tenantId}/social/{$post->school_id}/{$post->id}", $file);
+        $path = Storage::disk('local')->putFile("tenants/{$tenantId}/social/posts/{$post->id}", $file);
 
         return SocialPostMedia::create([
             'post_id' => $post->id,

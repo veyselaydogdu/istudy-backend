@@ -1,16 +1,19 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
-import { School, SchoolClass, SocialPost, SocialPostComment } from '@/types';
+import AuthImg from '@/components/AuthImg';
+import { School, SchoolClass, SocialPost } from '@/types';
 import {
-    Plus, Trash2, Heart, ThumbsUp, Zap, MessageCircle, X,
-    Image, Video, File, Pin, Globe, Users, Send, ChevronDown,
+    Plus, Trash2, X, Image, File, Pin, Globe, Users, Pencil, Clock, Eye,
+    Heart, ThumbsUp, Zap, MessageCircle,
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type PostForm = {
+    title: string;
     visibility: 'school' | 'class';
     content: string;
     class_ids: number[];
@@ -19,17 +22,12 @@ type PostForm = {
 };
 
 const emptyForm: PostForm = {
+    title: '',
     visibility: 'school',
     content: '',
     class_ids: [],
     is_pinned: false,
     media: [],
-};
-
-const REACTION_ICONS = {
-    like: ThumbsUp,
-    heart: Heart,
-    clap: Zap,
 };
 
 function formatFileSize(bytes: number): string {
@@ -38,239 +36,9 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ─── PostCard Component ───────────────────────────────────────────────────────
-
-function PostCard({
-    post,
-    onDelete,
-    onReact,
-    schoolId,
-}: {
-    post: SocialPost;
-    onDelete: (id: number) => void;
-    onReact: (id: number, type: 'like' | 'heart' | 'clap') => void;
-    schoolId: string;
-}) {
-    const { t } = useTranslation();
-    const [showComments, setShowComments] = useState(false);
-    const [comments, setComments] = useState<SocialPostComment[]>([]);
-    const [commentText, setCommentText] = useState('');
-    const [loadingComments, setLoadingComments] = useState(false);
-    const [submittingComment, setSubmittingComment] = useState(false);
-
-    const timeAgo = (dateStr: string): string => {
-        const diff = Date.now() - new Date(dateStr).getTime();
-        const mins = Math.floor(diff / 60000);
-        if (mins < 1) { return t('social.justNow'); }
-        if (mins < 60) { return t('social.minutesAgo', { count: mins }); }
-        const hours = Math.floor(mins / 60);
-        if (hours < 24) { return t('social.hoursAgo', { count: hours }); }
-        const days = Math.floor(hours / 24);
-        return t('social.daysAgo', { count: days });
-    };
-
-    const loadComments = useCallback(async () => {
-        setLoadingComments(true);
-        try {
-            const res = await apiClient.get(`/schools/${schoolId}/social/posts/${post.id}/comments`);
-            setComments(res.data?.data ?? []);
-        } catch {
-            /* sessizce geç */
-        } finally {
-            setLoadingComments(false);
-        }
-    }, [schoolId, post.id]);
-
-    const toggleComments = () => {
-        if (!showComments && comments.length === 0) {
-            loadComments();
-        }
-        setShowComments((v) => !v);
-    };
-
-    const submitComment = async () => {
-        if (!commentText.trim()) { return; }
-        setSubmittingComment(true);
-        try {
-            const res = await apiClient.post(
-                `/schools/${schoolId}/social/posts/${post.id}/comments`,
-                { content: commentText }
-            );
-            if (res.data?.data) {
-                setComments((prev) => [...prev, res.data.data]);
-                setCommentText('');
-            }
-        } catch {
-            toast.error(t('social.addCommentError'));
-        } finally {
-            setSubmittingComment(false);
-        }
-    };
-
-    return (
-        <div className="rounded-xl border border-white-light bg-white p-5 shadow-sm dark:border-[#1b2e4b] dark:bg-black">
-            {/* Header */}
-            <div className="mb-3 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-                        {post.author.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                        <p className="font-semibold text-dark dark:text-white">{post.author.name}</p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span>{timeAgo(post.created_at)}</span>
-                            {post.visibility === 'school' ? (
-                                <Globe className="h-3 w-3" />
-                            ) : (
-                                <Users className="h-3 w-3" />
-                            )}
-                            {post.is_pinned && <Pin className="h-3 w-3 text-primary" />}
-                        </div>
-                    </div>
-                </div>
-                <button
-                    type="button"
-                    className="text-gray-400 hover:text-danger"
-                    onClick={() => onDelete(post.id)}
-                >
-                    <Trash2 className="h-4 w-4" />
-                </button>
-            </div>
-
-            {/* Class tags */}
-            {post.classes && post.classes.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1">
-                    {post.classes.map((cls) => (
-                        <span
-                            key={cls.id}
-                            className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-                        >
-                            {cls.name}
-                        </span>
-                    ))}
-                </div>
-            )}
-
-            {/* Content */}
-            {post.content && (
-                <p className="mb-3 whitespace-pre-wrap text-sm text-dark dark:text-white-light">{post.content}</p>
-            )}
-
-            {/* Media */}
-            {post.media && post.media.length > 0 && (
-                <div className={`mb-3 grid gap-2 ${post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                    {post.media.map((m) => (
-                        <div key={m.id}>
-                            {m.type === 'image' && (
-                                <img
-                                    src={m.url}
-                                    alt={m.original_name}
-                                    className="h-48 w-full rounded-lg object-cover"
-                                />
-                            )}
-                            {m.type === 'video' && (
-                                <video
-                                    src={m.url}
-                                    controls
-                                    className="h-48 w-full rounded-lg object-cover"
-                                />
-                            )}
-                            {m.type === 'file' && (
-                                <a
-                                    href={m.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-2 rounded-lg border border-white-light p-3 hover:bg-gray-50 dark:border-[#1b2e4b] dark:hover:bg-[#1b2e4b]"
-                                >
-                                    <File className="h-5 w-5 text-primary" />
-                                    <div>
-                                        <p className="text-sm font-medium text-dark dark:text-white">{m.original_name}</p>
-                                        <p className="text-xs text-gray-500">{formatFileSize(m.file_size)}</p>
-                                    </div>
-                                </a>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex items-center gap-4 border-t border-white-light pt-3 dark:border-[#1b2e4b]">
-                <div className="flex items-center gap-1">
-                    {(['like', 'heart', 'clap'] as const).map((type) => {
-                        const Icon = REACTION_ICONS[type];
-                        return (
-                            <button
-                                key={type}
-                                type="button"
-                                onClick={() => onReact(post.id, type)}
-                                className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition hover:bg-gray-100 dark:hover:bg-[#1b2e4b] ${
-                                    post.user_reaction === type ? 'text-primary font-semibold' : 'text-gray-500'
-                                }`}
-                            >
-                                <Icon className="h-4 w-4" />
-                            </button>
-                        );
-                    })}
-                    <span className="ml-1 text-xs text-gray-500">{post.reactions_count}</span>
-                </div>
-                <button
-                    type="button"
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary"
-                    onClick={toggleComments}
-                >
-                    <MessageCircle className="h-4 w-4" />
-                    <span>{post.comments_count} {t('social.comments')}</span>
-                    <ChevronDown className={`h-3 w-3 transition-transform ${showComments ? 'rotate-180' : ''}`} />
-                </button>
-            </div>
-
-            {/* Comments */}
-            {showComments && (
-                <div className="mt-3 space-y-2">
-                    {loadingComments ? (
-                        <p className="text-xs text-gray-400">{t('common.loading')}</p>
-                    ) : (
-                        comments.map((c) => (
-                            <div key={c.id} className="flex gap-2">
-                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-dark dark:bg-[#1b2e4b] dark:text-white">
-                                    {c.user.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-[#1b2e4b]">
-                                    <p className="font-semibold text-dark dark:text-white">{c.user.name}</p>
-                                    <p className="text-gray-600 dark:text-gray-300">{c.content}</p>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                    <div className="flex gap-2 pt-1">
-                        <input
-                            type="text"
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { submitComment(); } }}
-                            placeholder={t('social.addComment')}
-                            className="form-input flex-1 text-sm"
-                        />
-                        <button
-                            type="button"
-                            disabled={submittingComment || !commentText.trim()}
-                            onClick={submitComment}
-                            className="btn btn-primary btn-sm"
-                        >
-                            <Send className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
 export default function SocialPage() {
     const { t } = useTranslation();
+    const router = useRouter();
     const [schools, setSchools] = useState<School[]>([]);
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
     const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
@@ -286,6 +54,10 @@ export default function SocialPage() {
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
+    const [editForm, setEditForm] = useState<Omit<PostForm, 'media'>>(emptyForm);
+    const [editSaving, setEditSaving] = useState(false);
+
     // ─ Fetch schools ─────────────────────────────────────────────────────────
     const fetchSchools = useCallback(async () => {
         try {
@@ -298,7 +70,6 @@ export default function SocialPage() {
         } catch { /* sessizce geç */ }
     }, []);
 
-    // ─ Fetch classes for selected school ─────────────────────────────────────
     const fetchClasses = useCallback(async () => {
         if (!selectedSchoolId) { return; }
         try {
@@ -307,7 +78,6 @@ export default function SocialPage() {
         } catch { /* sessizce geç */ }
     }, [selectedSchoolId]);
 
-    // ─ Fetch posts ────────────────────────────────────────────────────────────
     const fetchPosts = useCallback(async (pageNum = 1) => {
         if (!selectedSchoolId) { return; }
         setLoading(true);
@@ -374,6 +144,7 @@ export default function SocialPage() {
         try {
             const fd = new FormData();
             fd.append('visibility', form.visibility);
+            if (form.title) { fd.append('title', form.title); }
             if (form.content) { fd.append('content', form.content); }
             fd.append('is_pinned', form.is_pinned ? '1' : '0');
             form.class_ids.forEach((id) => fd.append('class_ids[]', String(id)));
@@ -415,29 +186,46 @@ export default function SocialPage() {
         }
     };
 
-    // ─ React to post ─────────────────────────────────────────────────────────
-    const handleReact = async (postId: number, type: 'like' | 'heart' | 'clap') => {
-        try {
-            const res = await apiClient.post(
-                `/schools/${selectedSchoolId}/social/posts/${postId}/react`,
-                { type }
-            );
-            const { reactions_count } = res.data?.data ?? {};
-            setPosts((prev) =>
-                prev.map((p) => {
-                    if (p.id !== postId) { return p; }
-                    const wasReacting = p.user_reaction === type;
-                    return {
-                        ...p,
-                        reactions_count: reactions_count ?? p.reactions_count,
-                        user_reaction: wasReacting ? null : type,
-                    };
-                })
-            );
-        } catch { /* sessizce geç */ }
+    // ─ Edit post ─────────────────────────────────────────────────────────────
+    const openEditModal = (post: SocialPost) => {
+        setEditingPost(post);
+        setEditForm({
+            title: post.title ?? '',
+            visibility: post.visibility,
+            content: post.content ?? '',
+            class_ids: post.classes?.map((c) => c.id) ?? [],
+            is_pinned: post.is_pinned,
+            media: [],
+        });
     };
 
-    // ─ Toggle class selection ─────────────────────────────────────────────────
+    const handleEditSubmit = async () => {
+        if (!editingPost) { return; }
+        setEditSaving(true);
+        try {
+            const res = await apiClient.put(
+                `/schools/${selectedSchoolId}/social/posts/${editingPost.id}`,
+                {
+                    title: editForm.title || null,
+                    visibility: editForm.visibility,
+                    content: editForm.content || null,
+                    class_ids: editForm.class_ids,
+                    is_pinned: editForm.is_pinned,
+                }
+            );
+            const updated: SocialPost = res.data?.data;
+            if (updated) {
+                setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+            }
+            toast.success(t('social.editSuccess'));
+            setEditingPost(null);
+        } catch {
+            toast.error(t('social.editError'));
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
     const toggleClass = (id: number) => {
         setForm((prev) => {
             const ids = prev.class_ids.includes(id)
@@ -474,41 +262,272 @@ export default function SocialPage() {
                 </div>
             </div>
 
-            {/* Feed */}
-            {loading && posts.length === 0 ? (
-                <div className="py-16 text-center text-gray-400">{t('common.loading')}</div>
-            ) : posts.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white-light p-12 text-center text-gray-400 dark:border-[#1b2e4b]">
-                    <MessageCircle className="mx-auto mb-2 h-8 w-8" />
-                    <p>{t('social.noPost')}</p>
+            {/* List table */}
+            <div className="table-responsive">
+                <table className="table-hover table">
+                    <thead>
+                        <tr>
+                            <th className="w-16">{t('social.tableMedia')}</th>
+                            <th>{t('social.tableTitle')}</th>
+                            <th>{t('social.tableContent')}</th>
+                            <th className="text-center">{t('social.tableStats')}</th>
+                            <th>{t('social.tableVisibility')}</th>
+                            <th>{t('social.tableDate')}</th>
+                            <th className="text-center">{t('common.actions')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading && posts.length === 0 ? (
+                            <tr>
+                                <td colSpan={7} className="py-10 text-center text-gray-400">{t('common.loading')}</td>
+                            </tr>
+                        ) : posts.length === 0 ? (
+                            <tr>
+                                <td colSpan={7} className="py-10 text-center text-gray-400">{t('social.noPost')}</td>
+                            </tr>
+                        ) : posts.map((post) => (
+                            <tr key={post.id}>
+                                {/* Thumbnail */}
+                                <td>
+                                    {post.media && post.media.length > 0 && post.media[0].type === 'image' ? (
+                                        <AuthImg
+                                            src={post.media[0].url}
+                                            alt=""
+                                            className="h-12 w-12 rounded-lg object-cover"
+                                        />
+                                    ) : post.media && post.media.length > 0 ? (
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#1b2e4b]">
+                                            <File className="h-5 w-5 text-gray-400" />
+                                        </div>
+                                    ) : (
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#1b2e4b]">
+                                            <Image className="h-5 w-5 text-gray-300" />
+                                        </div>
+                                    )}
+                                </td>
+
+                                {/* Title */}
+                                <td>
+                                    <div className="flex items-center gap-1">
+                                        {post.is_pinned && <Pin className="h-3 w-3 shrink-0 text-primary" />}
+                                        <span className="font-medium text-dark dark:text-white">
+                                            {post.title || <span className="text-gray-400 italic">{t('social.noTitle')}</span>}
+                                        </span>
+                                    </div>
+                                    {post.edit_history && post.edit_history.length > 0 && (
+                                        <span className="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
+                                            <Clock className="h-3 w-3" />
+                                            {post.edit_history.length}x {t('social.edited')}
+                                        </span>
+                                    )}
+                                </td>
+
+                                {/* Content preview */}
+                                <td className="max-w-xs">
+                                    <p className="line-clamp-2 text-sm text-gray-500 dark:text-gray-400">
+                                        {post.content
+                                            ? post.content.slice(0, 200) + (post.content.length > 200 ? '…' : '')
+                                            : <span className="italic">{t('social.noContent')}</span>}
+                                    </p>
+                                    {post.classes && post.classes.length > 0 && (
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                            {post.classes.map((cls) => (
+                                                <span key={cls.id} className="rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                                                    {cls.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </td>
+
+                                {/* Stats */}
+                                <td className="text-center">
+                                    <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+                                        <span className="flex items-center gap-1">
+                                            <ThumbsUp className="h-3 w-3" />{post.reactions_count}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <MessageCircle className="h-3 w-3" />{post.comments_count}
+                                        </span>
+                                    </div>
+                                </td>
+
+                                {/* Visibility */}
+                                <td>
+                                    {post.visibility === 'school' ? (
+                                        <span className="flex items-center gap-1 text-xs text-blue-500">
+                                            <Globe className="h-3 w-3" />{t('social.visibilitySchool')}
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1 text-xs text-purple-500">
+                                            <Users className="h-3 w-3" />{t('social.visibilityClass')}
+                                        </span>
+                                    )}
+                                </td>
+
+                                {/* Dates */}
+                                <td className="text-xs text-gray-500 dark:text-gray-400">
+                                    <div>{new Date(post.created_at).toLocaleDateString('tr-TR')}</div>
+                                    {post.updated_at && post.updated_at !== post.created_at && (
+                                        <div className="text-gray-400">{t('social.updatedAt')} {new Date(post.updated_at).toLocaleDateString('tr-TR')}</div>
+                                    )}
+                                </td>
+
+                                {/* Actions */}
+                                <td>
+                                    <div className="flex items-center justify-center gap-1">
+                                        <button
+                                            type="button"
+                                            title={t('social.viewDetail')}
+                                            className="btn btn-outline-primary btn-sm p-1.5"
+                                            onClick={() => router.push(`/social/${post.id}?school=${selectedSchoolId}`)}
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            title={t('common.edit')}
+                                            className="btn btn-outline-warning btn-sm p-1.5"
+                                            onClick={() => openEditModal(post)}
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            title={t('common.delete')}
+                                            className="btn btn-outline-danger btn-sm p-1.5"
+                                            onClick={() => handleDelete(post.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Load more */}
+            {page < lastPage && (
+                <div className="text-center">
+                    <button
+                        type="button"
+                        className="btn btn-outline-primary"
+                        onClick={() => { const next = page + 1; setPage(next); fetchPosts(next); }}
+                        disabled={loading}
+                    >
+                        {t('common.loadMore')}
+                    </button>
                 </div>
-            ) : (
-                <div className="space-y-4">
-                    {posts.map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            onDelete={handleDelete}
-                            onReact={handleReact}
-                            schoolId={selectedSchoolId}
-                        />
-                    ))}
-                    {page < lastPage && (
-                        <div className="text-center">
-                            <button
-                                type="button"
-                                className="btn btn-outline-primary"
-                                onClick={() => {
-                                    const next = page + 1;
-                                    setPage(next);
-                                    fetchPosts(next);
-                                }}
-                                disabled={loading}
-                            >
-                                {t('common.loadMore')}
+            )}
+
+            {/* Edit Post Modal */}
+            {editingPost && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-black">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('social.editPostTitle')}</h2>
+                            <button type="button" onClick={() => setEditingPost(null)}>
+                                <X className="h-5 w-5 text-gray-500" />
                             </button>
                         </div>
-                    )}
+
+                        <div className="mb-4 flex gap-2">
+                            <button
+                                type="button"
+                                className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm ${editForm.visibility === 'school' ? 'border-primary bg-primary/10 text-primary' : 'border-white-light text-gray-500 dark:border-[#1b2e4b]'}`}
+                                onClick={() => setEditForm((prev) => ({ ...prev, visibility: 'school', class_ids: [] }))}
+                            >
+                                <Globe className="h-4 w-4" /> {t('social.visibilitySchool')}
+                            </button>
+                            <button
+                                type="button"
+                                className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm ${editForm.visibility === 'class' ? 'border-primary bg-primary/10 text-primary' : 'border-white-light text-gray-500 dark:border-[#1b2e4b]'}`}
+                                onClick={() => setEditForm((prev) => ({ ...prev, visibility: 'class' }))}
+                            >
+                                <Users className="h-4 w-4" /> {t('social.visibilityClass')}
+                            </button>
+                        </div>
+
+                        {editForm.visibility === 'class' && (
+                            <div className="mb-4 max-h-36 overflow-y-auto rounded-lg border border-white-light p-3 dark:border-[#1b2e4b]">
+                                {schoolClasses.map((cls) => (
+                                    <label key={cls.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={editForm.class_ids.includes(cls.id)}
+                                            onChange={() => setEditForm((prev) => {
+                                                const ids = prev.class_ids.includes(cls.id)
+                                                    ? prev.class_ids.filter((x) => x !== cls.id)
+                                                    : [...prev.class_ids, cls.id];
+                                                return { ...prev, class_ids: ids };
+                                            })}
+                                            className="form-checkbox"
+                                        />
+                                        <span className="text-dark dark:text-white">{cls.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="mb-3">
+                            <input
+                                type="text"
+                                value={editForm.title}
+                                onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value.slice(0, 100) }))}
+                                placeholder={t('social.titlePlaceholder')}
+                                maxLength={100}
+                                className="form-input w-full"
+                            />
+                            <p className="mt-1 text-right text-xs text-gray-400">{editForm.title.length}/100</p>
+                        </div>
+
+                        <textarea
+                            rows={4}
+                            value={editForm.content}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, content: e.target.value }))}
+                            placeholder={t('social.contentPlaceholder')}
+                            className="form-textarea mb-3 w-full"
+                        />
+
+                        {editingPost.edit_history && editingPost.edit_history.length > 0 && (
+                            <div className="mb-3 rounded-lg border border-white-light p-3 dark:border-[#1b2e4b]">
+                                <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-gray-500">
+                                    <Clock className="h-3 w-3" /> {t('social.editHistory')} ({editingPost.edit_history.length})
+                                </p>
+                                <div className="max-h-28 space-y-1 overflow-y-auto">
+                                    {[...editingPost.edit_history].reverse().map((snap, i) => (
+                                        <div key={i} className="rounded bg-gray-50 px-2 py-1 text-xs text-gray-500 dark:bg-[#1b2e4b]">
+                                            <span className="font-medium">{new Date(snap.edited_at).toLocaleString('tr-TR')}</span>
+                                            {snap.title && <span className="ml-2 text-dark dark:text-white">{snap.title}</span>}
+                                            {snap.content && <span className="ml-1 text-gray-400">— {snap.content.slice(0, 60)}{snap.content.length > 60 ? '…' : ''}</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                            <label className="flex cursor-pointer items-center gap-1 rounded-lg border border-white-light px-2 py-1 text-xs dark:border-[#1b2e4b]">
+                                <input
+                                    type="checkbox"
+                                    checked={editForm.is_pinned}
+                                    onChange={(e) => setEditForm((prev) => ({ ...prev, is_pinned: e.target.checked }))}
+                                    className="form-checkbox"
+                                />
+                                <Pin className="h-3 w-3 text-primary" /> {t('social.pinLabel')}
+                            </label>
+                            <div className="flex gap-2">
+                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setEditingPost(null)}>
+                                    {t('common.cancel')}
+                                </button>
+                                <button type="button" className="btn btn-primary btn-sm" disabled={editSaving} onClick={handleEditSubmit}>
+                                    {editSaving ? t('common.saving') : t('social.saveBtn')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -523,33 +542,23 @@ export default function SocialPage() {
                             </button>
                         </div>
 
-                        {/* Visibility toggle */}
                         <div className="mb-4 flex gap-2">
                             <button
                                 type="button"
-                                className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm ${
-                                    form.visibility === 'school'
-                                        ? 'border-primary bg-primary/10 text-primary'
-                                        : 'border-white-light text-gray-500 dark:border-[#1b2e4b]'
-                                }`}
+                                className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm ${form.visibility === 'school' ? 'border-primary bg-primary/10 text-primary' : 'border-white-light text-gray-500 dark:border-[#1b2e4b]'}`}
                                 onClick={() => setForm((prev) => ({ ...prev, visibility: 'school', class_ids: [] }))}
                             >
                                 <Globe className="h-4 w-4" /> {t('social.visibilitySchool')}
                             </button>
                             <button
                                 type="button"
-                                className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm ${
-                                    form.visibility === 'class'
-                                        ? 'border-primary bg-primary/10 text-primary'
-                                        : 'border-white-light text-gray-500 dark:border-[#1b2e4b]'
-                                }`}
+                                className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm ${form.visibility === 'class' ? 'border-primary bg-primary/10 text-primary' : 'border-white-light text-gray-500 dark:border-[#1b2e4b]'}`}
                                 onClick={() => setForm((prev) => ({ ...prev, visibility: 'class' }))}
                             >
                                 <Users className="h-4 w-4" /> {t('social.visibilityClass')}
                             </button>
                         </div>
 
-                        {/* Class multi-select */}
                         {form.visibility === 'class' && (
                             <div className="mb-4 max-h-36 overflow-y-auto rounded-lg border border-white-light p-3 dark:border-[#1b2e4b]">
                                 {schoolClasses.length === 0 ? (
@@ -572,7 +581,18 @@ export default function SocialPage() {
                             </div>
                         )}
 
-                        {/* Content */}
+                        <div className="mb-3">
+                            <input
+                                type="text"
+                                value={form.title}
+                                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value.slice(0, 100) }))}
+                                placeholder={t('social.titlePlaceholder')}
+                                maxLength={100}
+                                className="form-input w-full"
+                            />
+                            <p className="mt-1 text-right text-xs text-gray-400">{form.title.length}/100</p>
+                        </div>
+
                         <textarea
                             rows={4}
                             value={form.content}
@@ -581,17 +601,12 @@ export default function SocialPage() {
                             className="form-textarea mb-3 w-full"
                         />
 
-                        {/* Media previews */}
                         {previewUrls.length > 0 && (
                             <div className="mb-3 flex flex-wrap gap-2">
                                 {form.media.map((file, idx) => (
                                     <div key={idx} className="relative">
                                         {file.type.startsWith('image/') ? (
-                                            <img
-                                                src={previewUrls[idx]}
-                                                alt={file.name}
-                                                className="h-16 w-16 rounded-lg object-cover"
-                                            />
+                                            <img src={previewUrls[idx]} alt={file.name} className="h-16 w-16 rounded-lg object-cover" />
                                         ) : (
                                             <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#1b2e4b]">
                                                 <File className="h-6 w-6 text-gray-500" />
@@ -609,24 +624,12 @@ export default function SocialPage() {
                             </div>
                         )}
 
-                        {/* Bottom toolbar */}
                         <div className="flex items-center justify-between">
                             <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-secondary btn-sm gap-1"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
+                                <button type="button" className="btn btn-outline-secondary btn-sm gap-1" onClick={() => fileInputRef.current?.click()}>
                                     <Image className="h-4 w-4" /> {t('social.mediaLabel')}
                                 </button>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    multiple
-                                    accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
-                                    className="hidden"
-                                    onChange={handleFileSelect}
-                                />
+                                <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
                                 <label className="flex cursor-pointer items-center gap-1 rounded-lg border border-white-light px-2 py-1 text-xs dark:border-[#1b2e4b]">
                                     <input
                                         type="checkbox"
@@ -637,12 +640,7 @@ export default function SocialPage() {
                                     <Pin className="h-3 w-3 text-primary" /> {t('social.pinLabel')}
                                 </label>
                             </div>
-                            <button
-                                type="button"
-                                className="btn btn-primary gap-1"
-                                disabled={saving}
-                                onClick={handleSubmit}
-                            >
+                            <button type="button" className="btn btn-primary gap-1" disabled={saving} onClick={handleSubmit}>
                                 {saving ? t('social.posting') : t('social.postBtn')}
                             </button>
                         </div>

@@ -1,5 +1,6 @@
 {
   "common.save": "Save",
+  "common.saving": "Saving...",
   "common.cancel": "Cancel",
   "common.delete": "Delete",
   "common.edit": "Edit",
@@ -1236,6 +1237,12 @@
   "social.postError": "Could not create post.",
   "social.contentRequired": "Content is required.",
   "social.classRequired": "Please select at least one class.",
+  "social.titlePlaceholder": "Title (optional, max 100 characters)",
+  "social.editPostTitle": "Edit Post",
+  "social.editSuccess": "Post updated.",
+  "social.editError": "Could not update post.",
+  "social.editHistory": "Edit History",
+  "social.saveBtn": "Save",
 
   "activityClasses.title": "Activity Classes",
   "activityClasses.subtitle": "Manage recurring activity classes",

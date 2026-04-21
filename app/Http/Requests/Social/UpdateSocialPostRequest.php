@@ -15,6 +15,7 @@ class UpdateSocialPostRequest extends FormRequest
     {
         return [
             'visibility' => ['sometimes', 'in:school,class'],
+            'title' => ['sometimes', 'nullable', 'string', 'max:100'],
             'content' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'class_ids' => ['sometimes', 'nullable', 'array'],
             'class_ids.*' => ['exists:classes,id'],

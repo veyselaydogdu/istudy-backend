@@ -4,6 +4,7 @@ namespace App\Models\Social;
 
 use App\Models\Base\BaseModel;
 use App\Models\User;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Sosyal Post Yorumu
@@ -12,6 +13,8 @@ use App\Models\User;
  */
 class SocialPostComment extends BaseModel
 {
+    use SoftDeletes;
+
     protected $table = 'social_post_comments';
 
     protected $fillable = [

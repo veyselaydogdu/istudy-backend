@@ -21,8 +21,10 @@ class SocialPost extends BaseModel
         'tenant_id', // nullable — global postlar için
         'school_id', // nullable — global postlar için
         'author_id',
+        'title',
         'visibility',
         'content',
+        'edit_history',
         'is_pinned',
         'is_global',
         'published_at',
@@ -36,6 +38,7 @@ class SocialPost extends BaseModel
             'is_pinned' => 'boolean',
             'is_global' => 'boolean',
             'published_at' => 'datetime',
+            'edit_history' => 'array',
         ];
     }
 

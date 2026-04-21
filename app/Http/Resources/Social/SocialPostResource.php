@@ -14,8 +14,10 @@ class SocialPostResource extends JsonResource
         return [
             'id' => $this->id,
             'school_id' => $this->school_id,
+            'title' => $this->title,
             'visibility' => $this->visibility,
             'content' => $this->content,
+            'edit_history' => $this->edit_history ?? [],
             'is_pinned' => $this->is_pinned,
             'published_at' => $this->published_at?->toDateTimeString(),
             'author' => [
@@ -35,6 +37,7 @@ class SocialPostResource extends JsonResource
             ),
             'comments_count' => $this->comments()->whereNull('parent_id')->count(),
             'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

@@ -11,18 +11,11 @@ class StoreSocialPostRequest extends FormRequest
         return true;
     }
 
-    protected function prepareForValidation(): void
-    {
-        if ($this->route('school_id')) {
-            $this->merge(['school_id' => $this->route('school_id')]);
-        }
-    }
-
     public function rules(): array
     {
         return [
-            'school_id' => ['required', 'exists:schools,id'],
             'visibility' => ['required', 'in:school,class'],
+            'title' => ['nullable', 'string', 'max:100'],
             'content' => ['nullable', 'string', 'max:10000'],
             'class_ids' => ['required_if:visibility,class', 'nullable', 'array'],
             'class_ids.*' => ['exists:classes,id'],

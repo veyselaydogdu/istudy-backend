@@ -32,6 +32,7 @@ interface SchoolDetail {
 
 interface Post {
   id: number;
+  title: string | null;
   content: string;
   visibility: string;
   is_pinned: boolean;
@@ -263,6 +264,7 @@ export default function SchoolDetailScreen() {
                 </Text>
               </View>
             </View>
+            {item.title ? <Text style={styles.postTitle}>{item.title}</Text> : null}
             <Text style={styles.postContent}>{item.content}</Text>
             <View style={styles.postFooter}>
               <Text style={styles.postStat}>👍 {item.reactions_count}</Text>
@@ -613,6 +615,7 @@ const styles = StyleSheet.create({
   postAvatarText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
   postAuthorName: { fontSize: 13, fontWeight: '600', color: AppColors.onSurface },
   postDate: { fontSize: 11, color: AppColors.onSurfaceVariant },
+  postTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface, marginBottom: 4 },
   postContent: { fontSize: 14, color: AppColors.onSurface, lineHeight: 21, marginBottom: 10 },
   postFooter: {
     flexDirection: 'row',
