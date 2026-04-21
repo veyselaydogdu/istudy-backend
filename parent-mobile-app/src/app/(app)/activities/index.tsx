@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { TabSelector } from '@/components/ui/TabSelector';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -255,14 +256,17 @@ function ActivityClassCard({ item }: { item: ActivityClass }) {
 
 // ─── Tab indicator ────────────────────────────────────────────────────────────
 
-const TABS = ['Etkinlikler', 'Etkinlik Sınıfları'] as const;
-type Tab = typeof TABS[number];
+type Tab = 'Etkinlikler' | 'Etkinlik Sınıfları';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'Etkinlikler', label: 'Etkinlikler' },
+  { key: 'Etkinlik Sınıfları', label: 'Etkinlik Sınıfları' },
+];
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ActivitiesScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('Etkinlikler');
-  const indicatorAnim = useRef(new Animated.Value(0)).current;
 
   // Activities state
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -282,17 +286,7 @@ export default function ActivitiesScreen() {
   const [acLoadingMore, setAcLoadingMore] = useState(false);
   const [acFetched, setAcFetched] = useState(false);
 
-  // ─── Tab switch ──────────────────────────────────────────────────────────────
-
-  const switchTab = (tab: Tab) => {
-    const idx = TABS.indexOf(tab);
-    Animated.timing(indicatorAnim, {
-      toValue: idx,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-    setActiveTab(tab);
-  };
+  const switchTab = (tab: Tab) => setActiveTab(tab);
 
   // ─── Activities load ──────────────────────────────────────────────────────────
 
@@ -349,11 +343,6 @@ export default function ActivitiesScreen() {
   }, [activeTab, acFetched, loadActivityClasses]);
 
   // ─── Render helpers ───────────────────────────────────────────────────────────
-
-  const indicatorLeft = indicatorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '50%'],
-  });
 
   // ─── Activities list ──────────────────────────────────────────────────────────
 
@@ -427,26 +416,15 @@ export default function ActivitiesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="dark" backgroundColor={AppColors.white} />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Etkinlikler</Text>
       </View>
 
       {/* Tab bar */}
-      <View style={styles.tabBar}>
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={styles.tabItem}
-            onPress={() => switchTab(tab)}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <Animated.View style={[styles.tabIndicator, { left: indicatorLeft }]} />
+      <View style={styles.tabWrap}>
+        <TabSelector tabs={TABS} activeKey={activeTab} onSelect={switchTab} />
       </View>
 
       {/* Content */}
@@ -460,7 +438,7 @@ export default function ActivitiesScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.white },
 
   header: {
     paddingHorizontal: 20,
@@ -472,39 +450,15 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
 
-  // Tab bar
-  tabBar: {
-    flexDirection: 'row',
+  tabWrap: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: AppColors.white,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.surfaceContainer,
-    position: 'relative',
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  tabLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppColors.onSurfaceVariant,
-  },
-  tabLabelActive: {
-    color: AppColors.primary,
-    fontWeight: '800',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    width: '50%',
-    height: 3,
-    backgroundColor: AppColors.primary,
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
   },
 
-  content: { flex: 1 },
+  content: { flex: 1, backgroundColor: AppColors.surface },
   listContent: { padding: 16, gap: 12 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
   moreLoader: { marginVertical: 16 },

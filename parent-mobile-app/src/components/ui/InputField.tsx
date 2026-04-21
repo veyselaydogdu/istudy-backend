@@ -92,6 +92,8 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.surfaceContainerLow,
     borderWidth: 2,
     borderColor: AppColors.surfaceContainer,
+    borderBottomWidth: 3,
+    borderBottomColor: '#CED4DA',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 13,
@@ -99,6 +101,7 @@ const styles = StyleSheet.create({
   },
   inputRowFocused: {
     borderColor: AppColors.primary,
+    borderBottomColor: AppColors.primaryDim,
     backgroundColor: AppColors.white,
   },
   inputRowError: {

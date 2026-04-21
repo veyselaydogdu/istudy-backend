@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -114,6 +115,7 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar style="dark" backgroundColor={AppColors.white} />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>İstatistikler</Text>
@@ -292,7 +294,7 @@ export default function StatsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.white },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   header: {
@@ -305,7 +307,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
 
-  container: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16 },
+  container: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16, backgroundColor: AppColors.surface },
 
   // Child pills
   childPills: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },

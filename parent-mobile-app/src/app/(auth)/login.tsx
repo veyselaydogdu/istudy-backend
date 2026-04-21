@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: AppColors.surfaceContainer,
-    borderBottomWidth: 4,
+    borderBottomWidth: 5,
     borderBottomColor: AppColors.surfaceContainer,
     shadowColor: AppColors.onSurface,
     shadowOffset: { width: 0, height: 2 },
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   outlineButtonText: {
-    color: AppColors.secondary,
+    color: AppColors.primary,
     fontSize: 16,
     fontWeight: '800',
   },

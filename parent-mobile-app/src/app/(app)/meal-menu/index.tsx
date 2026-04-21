@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -359,6 +360,7 @@ export default function MealMenuScreen() {
   if (!loadingChildren && childOptions.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea}>
+        <StatusBar style="dark" backgroundColor={AppColors.white} />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Yemek Listesi</Text>
         </View>
@@ -375,6 +377,7 @@ export default function MealMenuScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="dark" backgroundColor={AppColors.white} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Yemek Listesi</Text>
         {selectedChild && (
@@ -430,7 +433,7 @@ export default function MealMenuScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.white },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
 
   header: {
@@ -444,7 +447,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
   headerSub: { fontSize: 13, color: AppColors.onSurfaceVariant, marginTop: 2, fontWeight: '500' },
 
-  scroll: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: AppColors.surface },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
 
   // Child selector

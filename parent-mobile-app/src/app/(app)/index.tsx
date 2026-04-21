@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -273,6 +274,7 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar style="dark" backgroundColor={AppColors.white} />
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -355,7 +357,7 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.white },
 
   header: {
     flexDirection: 'row',
@@ -412,6 +414,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 24,
     gap: 12,
+    backgroundColor: AppColors.surface,
   },
 
   postCard: { borderRadius: 16, padding: 16 },

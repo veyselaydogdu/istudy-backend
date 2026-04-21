@@ -24,31 +24,43 @@ export const Colors = {
   },
 } as const;
 
-/** Material Design 3 inspired design tokens for the parent mobile app */
+/** Duolingo-inspired design tokens — Indigo palette */
 export const AppColors = {
-  primary: '#2a6900',
-  primaryContainer: '#84fb42',
-  primaryDim: '#235b00',
-  secondary: '#00628c',
-  secondaryContainer: '#a3d8ff',
-  secondaryDim: '#00557a',
-  tertiary: '#725800',
-  tertiaryContainer: '#fec700',
-  surface: '#f6f6f6',
-  surfaceContainer: '#e8e8e8',
-  surfaceContainerLow: '#f2f2f2',
-  onSurface: '#2d2f2f',
-  onSurfaceVariant: '#5a5c5c',
-  error: '#b02500',
-  errorContainer: '#f95630',
-  white: '#ffffff',
+  // Primary — Indigo #5E60CE
+  primary: '#5E60CE',
+  primaryContainer: '#ECEEFF',
+  primaryDim: '#4547A0',
+
+  // Accent — Blue (interactive); light blue #74C0FC used as container fill
+  secondary: '#4895EF',
+  secondaryContainer: '#E7F5FF',
+  secondaryDim: '#2E86E0',
+
+  // Tertiary — for "YENİ!" badges / highlights
+  tertiary: '#E67700',
+  tertiaryContainer: '#FFD43B',
+
+  // Surfaces
+  surface: '#F8F9FA',
+  surfaceContainer: '#E9ECEF',
+  surfaceContainerLow: '#F1F3F5',
+
+  // Text
+  onSurface: '#212529',
+  onSurfaceVariant: '#6C757D',
+
+  // States
+  error: '#E03131',
+  errorContainer: '#FFE3E3',
+  white: '#FFFFFF',
+
   // Semantic aliases
-  success: '#16a34a',
-  successContainer: '#dcfce7',
-  warning: '#d97706',
-  warningContainer: '#fef3c7',
-  info: '#2563eb',
-  infoContainer: '#dbeafe',
+  success: '#2F9E44',
+  successContainer: '#EBFBEE',
+  warning: '#F08C00',
+  warningContainer: '#FFF9DB',
+  info: '#1971C2',
+  infoContainer: '#E7F5FF',
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;

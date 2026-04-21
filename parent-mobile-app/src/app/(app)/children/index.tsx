@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -75,7 +77,11 @@ function ChildCard({ child, onPress }: { child: Child; onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       <View style={[styles.avatar, { backgroundColor: color }]}>
-        <Text style={styles.avatarText}>{initials}</Text>
+        {child.profile_photo ? (
+          <Image source={{ uri: child.profile_photo }} style={styles.avatarImage} />
+        ) : (
+          <Text style={styles.avatarText}>{initials}</Text>
+        )}
       </View>
       <View style={styles.cardInfo}>
         <Text style={styles.childName}>{child.full_name}</Text>
@@ -145,6 +151,7 @@ export default function ChildrenScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="dark" backgroundColor={AppColors.surface} />
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSub}>Takip Et</Text>
@@ -294,7 +301,8 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  avatar: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  avatar: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  avatarImage: { width: 52, height: 52, borderRadius: 16, resizeMode: 'cover' },
   avatarText: { color: AppColors.white, fontSize: 18, fontWeight: '800' },
   cardInfo: { flex: 1 },
   childName: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface, marginBottom: 5 },
