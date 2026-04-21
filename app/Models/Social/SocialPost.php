@@ -102,17 +102,28 @@ class SocialPost extends BaseModel
      */
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        $isParent = $user->roles()->where('name', 'parent')->exists();
-
-        if (! $isParent) {
+        if (! $user->isParent()) {
             return $query;
         }
 
+        // Velinin sahip olduğu + kabul edilmiş co-parent üyelikli aile profil ID'leri
+        $ownedFamilyIds = \App\Models\Child\FamilyProfile::withoutGlobalScope('tenant')
+            ->where('owner_user_id', $user->id)
+            ->pluck('id');
+
+        $memberFamilyIds = \App\Models\Child\FamilyMember::withoutGlobalScope('tenant')
+            ->where('user_id', $user->id)
+            ->where('invitation_status', 'accepted')
+            ->where('is_active', true)
+            ->pluck('family_profile_id');
+
+        $allFamilyIds = $ownedFamilyIds->merge($memberFamilyIds)->unique()->values();
+
         // Velinin çocuklarının kayıtlı olduğu sınıf ID'leri
-        $childClassIds = $user->familyProfiles()
-            ->with('children.classes')
+        $childClassIds = \App\Models\Child\Child::withoutGlobalScope('tenant')
+            ->whereIn('family_profile_id', $allFamilyIds)
+            ->with('classes:id')
             ->get()
-            ->flatMap(fn ($fp) => $fp->children)
             ->flatMap(fn ($child) => $child->classes->pluck('id'))
             ->unique()
             ->values();

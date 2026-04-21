@@ -280,6 +280,7 @@ class ParentSchoolController extends BaseParentController
 
             $posts = SocialPost::withoutGlobalScope('tenant')
                 ->where('school_id', $school)
+                ->visibleTo($this->user())
                 ->with(['author', 'media', 'reactions', 'comments'])
                 ->orderByDesc('is_pinned')
                 ->orderByDesc('published_at')
@@ -342,6 +343,7 @@ class ParentSchoolController extends BaseParentController
 
             $posts = SocialPost::withoutGlobalScope('tenant')
                 ->whereIn('school_id', $schoolIds)
+                ->visibleTo($this->user())
                 ->with(['author', 'media', 'reactions', 'comments'])
                 ->orderByDesc('is_pinned')
                 ->orderByDesc('published_at')

@@ -148,6 +148,26 @@ class ChildEnrollmentRequestController extends BaseSchoolController
                 if ($school?->tenant_id) {
                     $this->propagatePendingHealthItems($child, $school->tenant_id);
                 }
+
+                // Ailenin okula erişim kaydını oluştur / aktif et (social feed için)
+                if ($req->family_profile_id) {
+                    $reviewerId = $this->user()->id;
+                    DB::table('school_family_assignments')->upsert(
+                        [
+                            'family_profile_id' => $req->family_profile_id,
+                            'school_id' => $schoolId,
+                            'enrollment_request_id' => $req->id,
+                            'is_active' => true,
+                            'joined_at' => now(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                            'created_by' => $reviewerId,
+                            'updated_by' => $reviewerId,
+                        ],
+                        ['family_profile_id', 'school_id'],
+                        ['is_active' => true, 'joined_at' => now(), 'updated_at' => now(), 'updated_by' => $reviewerId]
+                    );
+                }
             }
 
             DB::commit();
