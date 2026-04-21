@@ -198,27 +198,22 @@ class ParentSchoolController extends BaseParentController
                 ->whereIn('status', ['pending', 'approved'])
                 ->first();
 
-            if ($existingRequest) {
-                $message = $existingRequest->status === 'approved'
-                    ? 'Bu okula zaten kayıtlısınız.'
-                    : 'Bu okul için zaten bekleyen bir başvurunuz bulunmaktadır.';
-
-                return $this->errorResponse($message, 409);
-            }
-
-            DB::transaction(function () use ($school, $user, $familyProfile, $child, $data) {
-                SchoolEnrollmentRequest::withoutGlobalScope('tenant')->create([
-                    'school_id' => $school->id,
-                    'user_id' => $user->id,
-                    'family_profile_id' => $familyProfile->id,
-                    'child_id' => $child->id,
-                    'parent_name' => $user->name,
-                    'parent_surname' => $user->surname,
-                    'parent_email' => $user->email,
-                    'parent_phone' => $user->phone,
-                    'invite_token' => $data['invite_token'] ?? null,
-                    'status' => 'pending',
-                ]);
+            DB::transaction(function () use ($school, $user, $familyProfile, $child, $data, $existingRequest) {
+                // Velinin bu okul için henüz talebi yoksa oluştur
+                if (! $existingRequest) {
+                    SchoolEnrollmentRequest::withoutGlobalScope('tenant')->create([
+                        'school_id' => $school->id,
+                        'user_id' => $user->id,
+                        'family_profile_id' => $familyProfile->id,
+                        'child_id' => $child->id,
+                        'parent_name' => $user->name,
+                        'parent_surname' => $user->surname,
+                        'parent_email' => $user->email,
+                        'parent_phone' => $user->phone,
+                        'invite_token' => $data['invite_token'] ?? null,
+                        'status' => 'pending',
+                    ]);
+                }
 
                 SchoolChildEnrollmentRequest::create([
                     'school_id' => $school->id,

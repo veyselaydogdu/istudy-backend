@@ -1994,6 +1994,12 @@ export default function SchoolDetailPage() {
                                     <p className="text-sm text-[#515365] dark:text-[#888ea8]">{selectedChildDetail.parent_notes}</p>
                                 </div>
                             )}
+                            {selectedChildDetail.special_notes && (
+                                <div className="pt-3">
+                                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.classDetail.specialNoteLabel')}</p>
+                                    <p className="text-sm text-[#515365] dark:text-[#888ea8]">{selectedChildDetail.special_notes}</p>
+                                </div>
+                            )}
                         </div>
                         <button type="button" className="btn btn-outline-secondary mt-4 w-full" onClick={() => setSelectedChildDetail(null)}>{t('common.close')}</button>
                     </div>

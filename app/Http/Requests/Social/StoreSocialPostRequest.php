@@ -18,7 +18,7 @@ class StoreSocialPostRequest extends FormRequest
             'title' => ['nullable', 'string', 'max:100'],
             'content' => ['nullable', 'string', 'max:10000'],
             'class_ids' => ['required_if:visibility,class', 'nullable', 'array'],
-            'class_ids.*' => ['exists:classes,id'],
+            'class_ids.*' => ['string'],
             'media' => ['nullable', 'array'],
             'media.*' => [
                 'nullable',

@@ -35,7 +35,12 @@ class ChildEnrollmentRequestController extends BaseSchoolController
                 ->where('school_id', $schoolId)
                 ->with([
                     'child' => fn ($q) => $q->withoutGlobalScope('tenant')
-                        ->with(['allergens', 'conditions', 'medications', 'nationality']),
+                        ->with([
+                            'allergens' => fn ($q) => $q->withoutGlobalScopes(),
+                            'conditions' => fn ($q) => $q->withoutGlobalScopes(),
+                            'medications' => fn ($q) => $q->withoutGlobalScopes(),
+                            'nationality',
+                        ]),
                     'requestedBy',
                     'familyProfile.owner',
                 ]);

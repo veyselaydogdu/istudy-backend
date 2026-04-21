@@ -8,6 +8,7 @@ use App\Http\Requests\Social\StoreSocialPostRequest;
 use App\Http\Requests\Social\UpdateSocialPostRequest;
 use App\Http\Resources\Social\SocialPostCommentResource;
 use App\Http\Resources\Social\SocialPostResource;
+use App\Models\Academic\SchoolClass;
 use App\Models\School\School;
 use App\Models\Social\SocialPost;
 use App\Models\Social\SocialPostComment;
@@ -72,6 +73,31 @@ class SocialPostController extends BaseController
     }
 
     /**
+     * ULID veya integer class_ids dizisini integer PK dizisine çözümle.
+     *
+     * @param  array<string|int>  $classIds
+     * @return array<int>
+     */
+    protected function resolveClassIds(array $classIds): array
+    {
+        if (empty($classIds)) {
+            return [];
+        }
+
+        $ulidIds = array_filter($classIds, fn ($v) => ! is_numeric($v));
+        $intIds = array_filter($classIds, fn ($v) => is_numeric($v));
+
+        $resolved = array_map('intval', $intIds);
+
+        if (! empty($ulidIds)) {
+            $fromUlid = SchoolClass::whereIn('ulid', $ulidIds)->pluck('id')->all();
+            $resolved = array_merge($resolved, $fromUlid);
+        }
+
+        return array_values(array_unique($resolved));
+    }
+
+    /**
      * Postları listele
      */
     public function index(Request $request, string $school_id): JsonResponse
@@ -124,7 +150,7 @@ class SocialPostController extends BaseController
                 'published_at' => $request->published_at ?? now(),
             ]);
 
-            $classIds = $request->class_ids ?? [];
+            $classIds = $this->resolveClassIds($request->class_ids ?? []);
             $mediaFiles = $request->file('media') ?? [];
 
             $post = $this->service->createPost($data, $classIds, $mediaFiles);
@@ -178,7 +204,7 @@ class SocialPostController extends BaseController
 
             DB::beginTransaction();
 
-            $classIds = $request->class_ids ?? [];
+            $classIds = $this->resolveClassIds($request->class_ids ?? []);
             $data = $request->validated();
 
             $updated = $this->service->updatePost($socialPost, $data, $classIds);

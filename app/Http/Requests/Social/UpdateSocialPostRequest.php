@@ -18,7 +18,7 @@ class UpdateSocialPostRequest extends FormRequest
             'title' => ['sometimes', 'nullable', 'string', 'max:100'],
             'content' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'class_ids' => ['sometimes', 'nullable', 'array'],
-            'class_ids.*' => ['exists:classes,id'],
+            'class_ids.*' => ['string'],
             'is_pinned' => ['sometimes', 'nullable', 'boolean'],
             'published_at' => ['sometimes', 'nullable', 'date'],
         ];
