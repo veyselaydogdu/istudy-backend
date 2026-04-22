@@ -24,6 +24,7 @@ import { getApiError } from '../../lib/auth';
 interface Post {
   title: string;
   id: number;
+  school_id: number;
   content: string;
   visibility: string;
   is_pinned: boolean;
@@ -67,7 +68,7 @@ function PostCard({ post }: { post: Post }) {
     : 'Bilinmiyor';
 
   return (
-      <TouchableOpacity onPress={() => router.push(`/(app)/posts/${post.id}` as never)} activeOpacity={0.88}>
+      <TouchableOpacity onPress={() => router.push(`/(app)/schools/${post.school_id}/post/${post.id}` as never)} activeOpacity={0.88}>
         <Card style={styles.postCard}>
       {post.is_pinned && (
         <View style={styles.pinnedRow}>
@@ -75,7 +76,14 @@ function PostCard({ post }: { post: Post }) {
           <Text style={styles.pinnedText}>Sabitlenmiş</Text>
         </View>
       )}
-      <View style={styles.authorRow}>
+            {post.media.length > 0 && (
+                <Image
+                    source={{ uri: post.media[0].url }}
+                    style={styles.postImage}
+                    resizeMode="cover"
+                />
+            )}
+            <View style={styles.authorRow}>
         <View style={styles.authorInfo}>
           <Text style={styles.authorName}>{post.title}</Text>
         </View>
@@ -86,13 +94,6 @@ function PostCard({ post }: { post: Post }) {
         )}
       </View>
       <Text style={styles.content}>{post.content}</Text>
-      {post.media.length > 0 && (
-        <Image
-          source={{ uri: post.media[0].url }}
-          style={styles.postImage}
-          resizeMode="cover"
-        />
-      )}
       <View style={styles.footer}>
           <View style={styles.footerInIcons}>
               <View style={styles.stat}>
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
   globalBadgeText: { fontSize: 10, color: AppColors.primary, fontWeight: '700' },
   blogTitle: { fontSize: 16, fontWeight: '800', color: AppColors.onSurface, marginBottom: 6 },
   content: { fontSize: 14, color: AppColors.onSurface, lineHeight: 22, marginBottom: 12, fontWeight: '500' },
-  postImage: { width: '100%', height: 190, borderRadius: 12, marginBottom: 12 },
+  postImage: { width: '100%', height: 190, borderRadius: 12, marginBottom: 12},
   footer: { flexDirection: 'row', gap: 18, borderTopWidth: 1, borderTopColor: AppColors.surfaceContainer, paddingTop: 10, marginTop: 4, justifyContent: "space-between" },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statText: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '600' },

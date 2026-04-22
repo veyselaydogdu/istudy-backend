@@ -537,7 +537,10 @@ class ParentSchoolController extends BaseParentController
                 ->findOrFail($post);
 
             $user = $this->user();
-            $existing = $socialPost->reactions()->where('user_id', $user->id)->first();
+            $existing = \App\Models\Social\SocialPostReaction::withoutGlobalScope('tenant')
+                ->where('post_id', $socialPost->id)
+                ->where('user_id', $user->id)
+                ->first();
 
             if ($existing) {
                 if ($existing->type === $data['type']) {
@@ -548,13 +551,14 @@ class ParentSchoolController extends BaseParentController
                     $action = 'updated';
                 }
             } else {
-                $socialPost->reactions()->create(['user_id' => $user->id, 'type' => $data['type']]);
+                \App\Models\Social\SocialPostReaction::withoutGlobalScope('tenant')
+                    ->create(['user_id' => $user->id, 'type' => $data['type'], 'post_id' => $socialPost->id]);
                 $action = 'added';
             }
 
             return $this->successResponse([
                 'action' => $action,
-                'reactions_count' => $socialPost->reactions()->count(),
+                'reactions_count' => \App\Models\Social\SocialPostReaction::withoutGlobalScope('tenant')->where('post_id', $socialPost->id)->count(),
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Post bulunamadı.', 404);

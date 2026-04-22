@@ -11,6 +11,7 @@ class ParentSocialPostResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'school_id' => $this->school_id,
             'title' => $this->title,
             'content' => $this->content,
             'visibility' => $this->visibility,
