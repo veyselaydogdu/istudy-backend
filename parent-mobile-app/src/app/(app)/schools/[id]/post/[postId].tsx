@@ -206,7 +206,16 @@ export default function PostDetailScreen() {
     <SafeAreaView style={styles.safeArea}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(app)' as never);
+            }
+          }}
+          activeOpacity={0.7}
+        >
           <Text style={styles.backText}>← Geri</Text>
         </TouchableOpacity>
         <Text style={styles.topBarTitle} numberOfLines={1}>Paylaşım</Text>

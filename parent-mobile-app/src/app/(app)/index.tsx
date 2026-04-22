@@ -25,6 +25,7 @@ interface Post {
   title: string;
   id: number;
   school_id: number;
+  school_name: string | null;
   content: string;
   visibility: string;
   is_pinned: boolean;
@@ -48,7 +49,7 @@ interface BlogPost {
   published_at: string | null;
 }
 
-type FeedTab = 'global' | 'schools' | 'teachers';
+type FeedTab = 'schools' | 'teachers';
 
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) { return ''; }
@@ -62,20 +63,28 @@ function timeAgo(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString('tr-TR');
 }
 
+const CONTENT_LIMIT = 200;
+
 function PostCard({ post }: { post: Post }) {
-  const authorName = post.author
-    ? `${post.author.name} ${post.author.surname}`
-    : 'Bilinmiyor';
+  const [expanded, setExpanded] = React.useState(false);
+  const isLong = post.content.length > CONTENT_LIMIT;
+  const displayContent = isLong && !expanded
+    ? post.content.slice(0, CONTENT_LIMIT) + '...'
+    : post.content;
 
   return (
-      <TouchableOpacity onPress={() => router.push(`/(app)/schools/${post.school_id}/post/${post.id}` as never)} activeOpacity={0.88}>
+      <TouchableOpacity onPress={() => router.replace(`/(app)/schools/${post.school_id}/post/${post.id}` as never)} activeOpacity={0.88}>
         <Card style={styles.postCard}>
-      {post.is_pinned && (
-        <View style={styles.pinnedRow}>
+            <View style={styles.pinnedRow}>
+                {post.is_pinned && (
           <Ionicons name="pin" size={12} color={AppColors.secondary} />
-          <Text style={styles.pinnedText}>Sabitlenmiş</Text>
-        </View>
       )}
+            {post.school_name ? (
+                <View style={styles.schoolBadge}>
+                    <Text style={styles.schoolBadgeText}>{post.school_name}</Text>
+                </View>
+            ) : null}
+        </View>
             {post.media.length > 0 && (
                 <Image
                     source={{ uri: post.media[0].url }}
@@ -93,7 +102,12 @@ function PostCard({ post }: { post: Post }) {
           </View>
         )}
       </View>
-      <Text style={styles.content}>{post.content}</Text>
+      <Text style={styles.content}>{displayContent}</Text>
+      {isLong && !expanded && (
+        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setExpanded(true); }} activeOpacity={0.7}>
+          <Text style={styles.readMore}>devamını oku</Text>
+        </TouchableOpacity>
+      )}
       <View style={styles.footer}>
           <View style={styles.footerInIcons}>
               <View style={styles.stat}>
@@ -170,7 +184,6 @@ function BlogPostCard({ post, onLike }: { post: BlogPost; onLike: (id: number) =
 }
 
 const FEED_TABS = [
-  { key: 'global' as FeedTab, label: 'Genel' },
   { key: 'schools' as FeedTab, label: 'Okullarım' },
   { key: 'teachers' as FeedTab, label: 'Öğretmenler' },
 ];
@@ -206,10 +219,7 @@ export default function FeedScreen() {
           setPage(meta.current_page);
           setLastPage(meta.last_page);
         } else {
-          const endpoint =
-            activeTab === 'global'
-              ? `/parent/feed/global?page=${currentPage}`
-              : `/parent/feed/schools?page=${currentPage}`;
+          const endpoint = `/parent/feed/schools?page=${currentPage}`;
           const response = await api.get<{
             data: Post[];
             meta: { current_page: number; last_page: number };
@@ -425,8 +435,9 @@ const styles = StyleSheet.create({
   },
 
   postCard: { borderRadius: 16, padding: 16 },
-  pinnedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
-  pinnedText: { fontSize: 11, color: AppColors.secondary, fontWeight: '700' },
+  pinnedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  schoolBadge: { backgroundColor: AppColors.primary, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  schoolBadgeText: { fontSize: 11, color: "white", fontWeight: '700' },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   authorInfo: { flex: 1 },
   authorName: { fontSize: 18, fontWeight: '600', color: AppColors.onSurface },
@@ -449,4 +460,5 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
   loader: { paddingVertical: 20 },
   footerInIcons: { flexDirection: 'row', gap: 18 },
+  readMore: { fontSize: 13, color: AppColors.primary, fontWeight: '600', marginBottom: 8, marginTop: -6 },
 });

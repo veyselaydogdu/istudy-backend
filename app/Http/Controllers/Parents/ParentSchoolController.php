@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class ParentSchoolController extends BaseParentController
 {
@@ -281,7 +282,7 @@ class ParentSchoolController extends BaseParentController
             $posts = SocialPost::withoutGlobalScope('tenant')
                 ->where('school_id', $school)
                 ->visibleTo($this->user())
-                ->with(['author', 'media', 'reactions', 'comments'])
+                ->with(['author', 'media', 'reactions', 'comments', 'school' => fn ($q) => $q->withoutGlobalScope('tenant')])
                 ->orderByDesc('is_pinned')
                 ->orderByDesc('published_at')
                 ->paginate(20);
@@ -304,7 +305,7 @@ class ParentSchoolController extends BaseParentController
         try {
             $posts = SocialPost::withoutGlobalScope('tenant')
                 ->where('is_global', true)
-                ->with(['author', 'media', 'reactions', 'comments'])
+                ->with(['author', 'media', 'reactions', 'comments', 'school' => fn ($q) => $q->withoutGlobalScope('tenant')])
                 ->orderByDesc('is_pinned')
                 ->orderByDesc('published_at')
                 ->paginate(20);
@@ -344,7 +345,7 @@ class ParentSchoolController extends BaseParentController
             $posts = SocialPost::withoutGlobalScope('tenant')
                 ->whereIn('school_id', $schoolIds)
                 ->visibleTo($this->user())
-                ->with(['author', 'media', 'reactions', 'comments'])
+                ->with(['author', 'media', 'reactions', 'comments', 'school' => fn ($q) => $q->withoutGlobalScope('tenant')])
                 ->orderByDesc('is_pinned')
                 ->orderByDesc('published_at')
                 ->paginate(20);
@@ -528,6 +529,13 @@ class ParentSchoolController extends BaseParentController
                 ->findOrFail($post);
 
             $user = $this->user();
+
+            $rateLimitKey = "post_react:{$user->id}:{$socialPost->id}";
+            if (RateLimiter::tooManyAttempts($rateLimitKey, 6)) {
+                return $this->errorResponse('Çok fazla işlem yaptınız. 1 dakika bekleyin.', 429);
+            }
+            RateLimiter::hit($rateLimitKey, 60);
+
             $existing = \App\Models\Social\SocialPostReaction::withoutGlobalScope('tenant')
                 ->where('post_id', $socialPost->id)
                 ->where('user_id', $user->id)
@@ -617,9 +625,29 @@ class ParentSchoolController extends BaseParentController
                 ->findOrFail($post);
 
             $user = $this->user();
+            $parentId = $data['parent_id'] ?? null;
+
+            // Kullanıcının aynı hedefte (post veya üst yorum) son yorumuna cevap gelmemişse 1 dk bekletme
+            $lastOwnComment = \App\Models\Social\SocialPostComment::where('post_id', $socialPost->id)
+                ->where('user_id', $user->id)
+                ->where('parent_id', $parentId)
+                ->whereDoesntHave('replies')
+                ->where('created_at', '>=', now()->subMinute())
+                ->latest()
+                ->first();
+
+            if ($lastOwnComment) {
+                $waitSeconds = (int) now()->diffInSeconds($lastOwnComment->created_at->addMinute(), false);
+
+                return $this->errorResponse(
+                    "Son yorumunuza henüz cevap gelmedi. {$waitSeconds} saniye bekleyin.",
+                    429
+                );
+            }
+
             $comment = $socialPost->comments()->create([
                 'user_id' => $user->id,
-                'parent_id' => $data['parent_id'] ?? null,
+                'parent_id' => $parentId,
                 'content' => $data['content'],
             ]);
 
@@ -648,6 +676,13 @@ class ParentSchoolController extends BaseParentController
 
             $commentModel = \App\Models\Social\SocialPostComment::where('post_id', $post)->findOrFail($comment);
             $user = $this->user();
+
+            $rateLimitKey = "comment_react:{$user->id}:{$commentModel->id}";
+            if (RateLimiter::tooManyAttempts($rateLimitKey, 6)) {
+                return $this->errorResponse('Çok fazla işlem yaptınız. 1 dakika bekleyin.', 429);
+            }
+            RateLimiter::hit($rateLimitKey, 60);
+
             $existing = \App\Models\Social\SocialPostCommentReaction::where('comment_id', $commentModel->id)
                 ->where('user_id', $user->id)
                 ->first();

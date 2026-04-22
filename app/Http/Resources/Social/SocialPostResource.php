@@ -14,11 +14,13 @@ class SocialPostResource extends JsonResource
         return [
             'id' => $this->id,
             'school_id' => $this->school_id,
+            'school_name' => $this->school->name ?? null,
             'title' => $this->title,
             'visibility' => $this->visibility,
             'content' => $this->content,
             'edit_history' => $this->edit_history ?? [],
             'is_pinned' => $this->is_pinned,
+            'is_global' => $this->is_global,
             'published_at' => $this->published_at?->toDateTimeString(),
             'author' => [
                 'id' => $this->author->id,
