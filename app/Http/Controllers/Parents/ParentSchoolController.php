@@ -489,7 +489,7 @@ class ParentSchoolController extends BaseParentController
             $socialPost = SocialPost::withoutGlobalScope('tenant')
                 ->where('school_id', $school)
                 ->visibleTo($this->user())
-                ->with(['author', 'media', 'reactions', 'comments.user'])
+                ->with(['author', 'media', 'reactions', 'comments' => fn ($q) => $q->with(['user', 'likes', 'replies.user', 'replies.likes'])->whereNull('parent_id')->orderBy('created_at')])
                 ->findOrFail($post);
 
             $user = $this->user();
@@ -498,16 +498,7 @@ class ParentSchoolController extends BaseParentController
             return $this->successResponse([
                 'post' => (new ParentSocialPostResource($socialPost))->toArray(request()),
                 'my_reaction' => $myReaction ? $myReaction->type : null,
-                'comments' => $socialPost->comments->map(fn ($c) => [
-                    'id' => $c->id,
-                    'content' => $c->content,
-                    'created_at' => $c->created_at?->toISOString(),
-                    'user' => $c->user ? [
-                        'id' => $c->user->id,
-                        'name' => $c->user->name,
-                        'surname' => $c->user->surname,
-                    ] : null,
-                ])->values(),
+                'comments' => $socialPost->comments->map(fn ($c) => $this->formatComment($c, $user->id))->values(),
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Post bulunamadı.', 404);
@@ -524,7 +515,7 @@ class ParentSchoolController extends BaseParentController
      */
     public function postReact(Request $request, int $school, int $post): JsonResponse
     {
-        $data = $request->validate(['type' => ['required', 'string', 'in:like,love,care,haha,wow,sad,angry']]);
+        $data = $request->validate(['type' => ['required', 'string', 'in:like,love,care,haha,wow,sad,angry,heart,clap']]);
 
         try {
             if (! $this->hasSchoolAccess($school)) {
@@ -570,7 +561,7 @@ class ParentSchoolController extends BaseParentController
     }
 
     /**
-     * Post yorumlarını listele.
+     * Post yorumlarını listele (sadece üst düzey, yanıtlar iç içe).
      * GET /parent/schools/{school}/posts/{post}/comments
      */
     public function postComments(int $school, int $post): JsonResponse
@@ -585,20 +576,14 @@ class ParentSchoolController extends BaseParentController
                 ->visibleTo($this->user())
                 ->findOrFail($post);
 
+            $userId = $this->user()->id;
             $comments = $socialPost->comments()
-                ->with('user')
+                ->with(['user', 'likes', 'replies.user', 'replies.likes'])
+                ->whereNull('parent_id')
                 ->orderBy('created_at')
                 ->get()
-                ->map(fn ($c) => [
-                    'id' => $c->id,
-                    'content' => $c->content,
-                    'created_at' => $c->created_at?->toISOString(),
-                    'user' => $c->user ? [
-                        'id' => $c->user->id,
-                        'name' => $c->user->name,
-                        'surname' => $c->user->surname,
-                    ] : null,
-                ])->values();
+                ->map(fn ($c) => $this->formatComment($c, $userId))
+                ->values();
 
             return $this->successResponse($comments);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
@@ -611,12 +596,15 @@ class ParentSchoolController extends BaseParentController
     }
 
     /**
-     * Post'a yorum ekle.
+     * Post'a yorum veya yanıt ekle.
      * POST /parent/schools/{school}/posts/{post}/comments
      */
     public function postAddComment(Request $request, int $school, int $post): JsonResponse
     {
-        $data = $request->validate(['content' => ['required', 'string', 'max:1000']]);
+        $data = $request->validate([
+            'content' => ['required', 'string', 'max:1000'],
+            'parent_id' => ['nullable', 'integer', 'exists:social_post_comments,id'],
+        ]);
 
         try {
             if (! $this->hasSchoolAccess($school)) {
@@ -631,21 +619,13 @@ class ParentSchoolController extends BaseParentController
             $user = $this->user();
             $comment = $socialPost->comments()->create([
                 'user_id' => $user->id,
+                'parent_id' => $data['parent_id'] ?? null,
                 'content' => $data['content'],
             ]);
 
-            $comment->load('user');
+            $comment->load(['user', 'likes']);
 
-            return $this->successResponse([
-                'id' => $comment->id,
-                'content' => $comment->content,
-                'created_at' => $comment->created_at?->toISOString(),
-                'user' => $comment->user ? [
-                    'id' => $comment->user->id,
-                    'name' => $comment->user->name,
-                    'surname' => $comment->user->surname,
-                ] : null,
-            ], 'Yorum eklendi.', 201);
+            return $this->successResponse($this->formatComment($comment, $user->id), 'Yorum eklendi.', 201);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Post bulunamadı.', 404);
         } catch (\Throwable $e) {
@@ -653,6 +633,82 @@ class ParentSchoolController extends BaseParentController
 
             return $this->errorResponse($e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Yorumu beğen / beğeniyi kaldır.
+     * POST /parent/schools/{school}/posts/{post}/comments/{comment}/like
+     */
+    public function postCommentLike(int $school, int $post, int $comment): JsonResponse
+    {
+        try {
+            if (! $this->hasSchoolAccess($school)) {
+                return $this->errorResponse('Bu okula erişim yetkiniz yok.', 403);
+            }
+
+            $commentModel = \App\Models\Social\SocialPostComment::where('post_id', $post)->findOrFail($comment);
+            $user = $this->user();
+            $existing = \App\Models\Social\SocialPostCommentReaction::where('comment_id', $commentModel->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($existing) {
+                $existing->delete();
+                $action = 'removed';
+            } else {
+                \App\Models\Social\SocialPostCommentReaction::create([
+                    'comment_id' => $commentModel->id,
+                    'user_id' => $user->id,
+                ]);
+                $action = 'added';
+            }
+
+            return $this->successResponse([
+                'action' => $action,
+                'likes_count' => \App\Models\Social\SocialPostCommentReaction::where('comment_id', $commentModel->id)->count(),
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Yorum bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::postCommentLike Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Yorum verisini yanıtlar ve beğeniler dahil formatlar.
+     */
+    private function formatComment(\App\Models\Social\SocialPostComment $c, int $userId): array
+    {
+        return [
+            'id' => $c->id,
+            'content' => $c->content,
+            'parent_id' => $c->parent_id,
+            'created_at' => $c->created_at?->toISOString(),
+            'likes_count' => $c->likes->count(),
+            'my_like' => $c->likes->contains('user_id', $userId),
+            'user' => $c->user ? [
+                'id' => $c->user->id,
+                'name' => $c->user->name,
+                'surname' => $c->user->surname,
+            ] : null,
+            'replies' => $c->replies
+                ? $c->replies->sortBy('created_at')->map(fn ($r) => [
+                    'id' => $r->id,
+                    'content' => $r->content,
+                    'parent_id' => $r->parent_id,
+                    'created_at' => $r->created_at?->toISOString(),
+                    'likes_count' => $r->likes ? $r->likes->count() : 0,
+                    'my_like' => $r->likes ? $r->likes->contains('user_id', $userId) : false,
+                    'user' => $r->user ? [
+                        'id' => $r->user->id,
+                        'name' => $r->user->name,
+                        'surname' => $r->user->surname,
+                    ] : null,
+                ])->values()->all()
+                : [],
+        ];
     }
 
     /**

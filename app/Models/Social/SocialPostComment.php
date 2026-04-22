@@ -51,4 +51,9 @@ class SocialPostComment extends BaseModel
     {
         return $this->hasMany(SocialPostComment::class, 'parent_id');
     }
+
+    public function likes()
+    {
+        return $this->hasMany(SocialPostCommentReaction::class, 'comment_id');
+    }
 }

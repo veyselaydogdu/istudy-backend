@@ -192,6 +192,7 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     Route::post('/schools/{school}/posts/{post}/react', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'postReact']);
     Route::get('/schools/{school}/posts/{post}/comments', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'postComments']);
     Route::post('/schools/{school}/posts/{post}/comments', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'postAddComment']);
+    Route::post('/schools/{school}/posts/{post}/comments/{comment}/like', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'postCommentLike']);
     Route::post('/schools/{school}/enroll-child', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'enrollChild']);
     Route::get('/schools/{school}/child-enrollments', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'myChildEnrollments']);
 

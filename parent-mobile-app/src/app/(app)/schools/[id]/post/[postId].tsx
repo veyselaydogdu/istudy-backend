@@ -26,11 +26,25 @@ interface MediaItem {
   sort_order: number;
 }
 
+interface Reply {
+  id: number;
+  content: string;
+  parent_id: number | null;
+  created_at: string | null;
+  likes_count: number;
+  my_like: boolean;
+  user: { id: number; name: string; surname: string | null } | null;
+}
+
 interface Comment {
   id: number;
   content: string;
+  parent_id: number | null;
   created_at: string | null;
+  likes_count: number;
+  my_like: boolean;
   user: { id: number; name: string; surname: string | null } | null;
+  replies: Reply[];
 }
 
 interface PostDetail {
@@ -46,15 +60,6 @@ interface PostDetail {
   media: MediaItem[];
 }
 
-const REACTIONS = [
-  { type: 'like', emoji: '👍' },
-  { type: 'love', emoji: '❤️' },
-  { type: 'care', emoji: '🤗' },
-  { type: 'haha', emoji: '😄' },
-  { type: 'wow', emoji: '😮' },
-  { type: 'sad', emoji: '😢' },
-];
-
 export default function PostDetailScreen() {
   const params = useLocalSearchParams();
   const id = String(params.id ?? '');
@@ -68,7 +73,7 @@ export default function PostDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [commenting, setCommenting] = useState(false);
   const [commentText, setCommentText] = useState('');
-  const [showReactions, setShowReactions] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
   const inputRef = useRef<TextInput>(null);
 
   const fetchPost = useCallback(async () => {
@@ -97,16 +102,15 @@ export default function PostDetailScreen() {
     void fetchPost();
   }, [fetchPost]);
 
-  const handleReact = async (type: string) => {
-    setShowReactions(false);
+  const handleReact = async () => {
     try {
       const res = await api.post<{ data: { action: string; reactions_count: number } }>(
         `/parent/schools/${id}/posts/${postId}/react`,
-        { type }
+        { type: 'heart' }
       );
       const d = res.data.data;
       setReactionsCount(d.reactions_count);
-      setMyReaction(d.action === 'removed' ? null : type);
+      setMyReaction(d.action === 'removed' ? null : 'heart');
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
     }
@@ -117,12 +121,27 @@ export default function PostDetailScreen() {
     if (!text) { return; }
     setCommenting(true);
     try {
+      const body: Record<string, unknown> = { content: text };
+      if (replyTo) { body.parent_id = replyTo.id; }
+
       const res = await api.post<{ data: Comment }>(
         `/parent/schools/${id}/posts/${postId}/comments`,
-        { content: text }
+        body
       );
-      setComments((prev) => [...prev, res.data.data]);
+      const newComment = res.data.data;
+      if (replyTo) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === replyTo.id
+              ? { ...c, replies: [...(c.replies ?? []), newComment as unknown as Reply] }
+              : c
+          )
+        );
+      } else {
+        setComments((prev) => [...prev, { ...newComment, replies: [] }]);
+      }
       setCommentText('');
+      setReplyTo(null);
     } catch (err: unknown) {
       Alert.alert('Hata', getApiError(err));
     } finally {
@@ -130,11 +149,58 @@ export default function PostDetailScreen() {
     }
   };
 
-  const myReactionEmoji = REACTIONS.find((r) => r.type === myReaction)?.emoji;
+  const handleCommentLike = async (commentId: number, isReply: boolean, parentId?: number) => {
+    try {
+      const res = await api.post<{ data: { action: string; likes_count: number } }>(
+        `/parent/schools/${id}/posts/${postId}/comments/${commentId}/like`
+      );
+      const { action, likes_count } = res.data.data;
+      if (isReply && parentId != null) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === parentId
+              ? {
+                  ...c,
+                  replies: c.replies.map((r) =>
+                    r.id === commentId
+                      ? { ...r, likes_count, my_like: action === 'added' }
+                      : r
+                  ),
+                }
+              : c
+          )
+        );
+      } else {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === commentId
+              ? { ...c, likes_count, my_like: action === 'added' }
+              : c
+          )
+        );
+      }
+    } catch (err: unknown) {
+      Alert.alert('Hata', getApiError(err));
+    }
+  };
+
+  const startReply = (comment: Comment | Reply, parentId?: number) => {
+    const name = comment.user
+      ? [comment.user.name, comment.user.surname].filter(Boolean).join(' ')
+      : 'Bilinmiyor';
+    const targetId = parentId ?? comment.id;
+    setReplyTo({ id: targetId, name });
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
 
   const authorLabel = post?.author
     ? [post.author.name, post.author.surname].filter(Boolean).join(' ')
     : 'Bilinmiyor';
+
+  const totalComments = comments.reduce((sum, c) => sum + 1 + (c.replies?.length ?? 0), 0);
+
+  const renderCommentUser = (user: Comment['user']) =>
+    user ? [user.name, user.surname].filter(Boolean).join(' ') : 'Bilinmiyor';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -151,14 +217,12 @@ export default function PostDetailScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Loading */}
         {loading && (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={AppColors.primary} />
           </View>
         )}
 
-        {/* Error */}
         {!loading && error && (
           <View style={styles.center}>
             <Text style={styles.errorText}>{error}</Text>
@@ -168,7 +232,6 @@ export default function PostDetailScreen() {
           </View>
         )}
 
-        {/* Content */}
         {!loading && !error && post && (
           <ScrollView
             style={{ flex: 1 }}
@@ -202,7 +265,6 @@ export default function PostDetailScreen() {
               {!!post.title && <Text style={styles.title}>{post.title}</Text>}
               <Text style={styles.content}>{post.content}</Text>
 
-              {/* Medya */}
               {post.media.length > 0 && (
                 <ScrollView
                   horizontal
@@ -222,47 +284,24 @@ export default function PostDetailScreen() {
                 </ScrollView>
               )}
 
-              {/* Tepki / yorum bar */}
+              {/* Beğeni / yorum bar */}
               <View style={styles.actionBar}>
-                <View>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, myReaction ? styles.actionBtnActive : null]}
-                    onLongPress={() => setShowReactions(true)}
-                    onPress={() => {
-                      if (myReaction) {
-                        void handleReact(myReaction);
-                      } else {
-                        setShowReactions((v) => !v);
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.actionBtnText}>
-                      {myReactionEmoji ?? '👍'} {reactionsCount}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {showReactions && (
-                    <View style={styles.reactionPicker}>
-                      {REACTIONS.map((r) => (
-                        <TouchableOpacity
-                          key={r.type}
-                          style={styles.reactionOption}
-                          onPress={() => void handleReact(r.type)}
-                        >
-                          <Text style={styles.reactionEmoji}>{r.emoji}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
+                <TouchableOpacity
+                  style={[styles.actionBtn, myReaction ? styles.actionBtnActive : null]}
+                  onPress={() => void handleReact()}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.actionBtnText}>
+                    {myReaction ? '❤️' : '🤍'} {reactionsCount}
+                  </Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.actionBtn}
                   onPress={() => inputRef.current?.focus()}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.actionBtnText}>💬 {comments.length}</Text>
+                  <Text style={styles.actionBtnText}>💬 {totalComments}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -275,60 +314,133 @@ export default function PostDetailScreen() {
             )}
 
             {comments.map((item) => (
-              <View key={item.id} style={styles.commentItem}>
-                <View style={styles.commentAvatar}>
-                  <Text style={styles.commentAvatarText}>
-                    {item.user ? item.user.name.charAt(0).toUpperCase() : '?'}
-                  </Text>
-                </View>
-                <View style={styles.commentBubble}>
-                  <Text style={styles.commentAuthor}>
-                    {item.user
-                      ? [item.user.name, item.user.surname].filter(Boolean).join(' ')
-                      : 'Bilinmiyor'}
-                  </Text>
-                  <Text style={styles.commentContent}>{item.content}</Text>
-                  {item.created_at && (
-                    <Text style={styles.commentDate}>
-                      {new Date(item.created_at).toLocaleDateString('tr-TR', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+              <View key={item.id}>
+                {/* Ana yorum */}
+                <View style={styles.commentItem}>
+                  <View style={styles.commentAvatar}>
+                    <Text style={styles.commentAvatarText}>
+                      {item.user ? item.user.name.charAt(0).toUpperCase() : '?'}
                     </Text>
-                  )}
+                  </View>
+                  <View style={styles.commentBubble}>
+                    <Text style={styles.commentAuthor}>{renderCommentUser(item.user)}</Text>
+                    <Text style={styles.commentContent}>{item.content}</Text>
+                    <View style={styles.commentActions}>
+                      {item.created_at && (
+                        <Text style={styles.commentDate}>
+                          {new Date(item.created_at).toLocaleDateString('tr-TR', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                      )}
+                      <TouchableOpacity
+                        style={styles.commentActionBtn}
+                        onPress={() => void handleCommentLike(item.id, false)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.commentActionText, item.my_like ? styles.commentActionActive : null]}>
+                          {item.my_like ? '❤️' : '🤍'} {item.likes_count > 0 ? item.likes_count : ''}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.commentActionBtn}
+                        onPress={() => startReply(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.commentActionText}>Yanıtla</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
+
+                {/* Yanıtlar */}
+                {item.replies?.map((reply) => (
+                  <View key={reply.id} style={styles.replyItem}>
+                    <View style={styles.replyConnector} />
+                    <View style={styles.commentAvatar}>
+                      <Text style={styles.commentAvatarText}>
+                        {reply.user ? reply.user.name.charAt(0).toUpperCase() : '?'}
+                      </Text>
+                    </View>
+                    <View style={[styles.commentBubble, styles.replyBubble]}>
+                      <Text style={styles.commentAuthor}>{renderCommentUser(reply.user)}</Text>
+                      <Text style={styles.commentContent}>{reply.content}</Text>
+                      <View style={styles.commentActions}>
+                        {reply.created_at && (
+                          <Text style={styles.commentDate}>
+                            {new Date(reply.created_at).toLocaleDateString('tr-TR', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </Text>
+                        )}
+                        <TouchableOpacity
+                          style={styles.commentActionBtn}
+                          onPress={() => void handleCommentLike(reply.id, true, item.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.commentActionText, reply.my_like ? styles.commentActionActive : null]}>
+                            {reply.my_like ? '❤️' : '🤍'} {reply.likes_count > 0 ? reply.likes_count : ''}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.commentActionBtn}
+                          onPress={() => startReply(reply, item.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.commentActionText}>Yanıtla</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                ))}
               </View>
             ))}
           </ScrollView>
         )}
 
-        {/* Yorum girişi */}
+        {/* Yorum / yanıt girişi */}
         {!loading && !error && post && (
-          <View style={styles.inputBar}>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              placeholder="Yorum yaz..."
-              placeholderTextColor={AppColors.onSurfaceVariant}
-              value={commentText}
-              onChangeText={setCommentText}
-              multiline
-              maxLength={1000}
-            />
-            <TouchableOpacity
-              style={[styles.sendBtn, !commentText.trim() ? styles.sendBtnDisabled : null]}
-              onPress={() => void handleComment()}
-              disabled={commenting || !commentText.trim()}
-              activeOpacity={0.7}
-            >
-              {commenting ? (
-                <ActivityIndicator color={AppColors.white} size="small" />
-              ) : (
-                <Text style={styles.sendBtnText}>Gönder</Text>
-              )}
-            </TouchableOpacity>
+          <View style={styles.inputWrapper}>
+            {replyTo && (
+              <View style={styles.replyBanner}>
+                <Text style={styles.replyBannerText} numberOfLines={1}>
+                  ↩ {replyTo.name} kişisine yanıt
+                </Text>
+                <TouchableOpacity onPress={() => setReplyTo(null)} activeOpacity={0.7}>
+                  <Text style={styles.replyBannerClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            <View style={styles.inputBar}>
+              <TextInput
+                ref={inputRef}
+                style={styles.input}
+                placeholder={replyTo ? 'Yanıt yaz...' : 'Yorum yaz...'}
+                placeholderTextColor={AppColors.onSurfaceVariant}
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+                maxLength={1000}
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, !commentText.trim() ? styles.sendBtnDisabled : null]}
+                onPress={() => void handleComment()}
+                disabled={commenting || !commentText.trim()}
+                activeOpacity={0.7}
+              >
+                {commenting ? (
+                  <ActivityIndicator color={AppColors.white} size="small" />
+                ) : (
+                  <Text style={styles.sendBtnText}>Gönder</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </KeyboardAvoidingView>
@@ -403,25 +515,6 @@ const styles = StyleSheet.create({
   },
   actionBtnActive: { backgroundColor: AppColors.primaryContainer },
   actionBtnText: { fontSize: 14, color: AppColors.onSurface, fontWeight: '600' },
-  reactionPicker: {
-    position: 'absolute',
-    bottom: 44,
-    left: 0,
-    flexDirection: 'row',
-    backgroundColor: AppColors.white,
-    borderRadius: 30,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-    zIndex: 100,
-  },
-  reactionOption: { padding: 4 },
-  reactionEmoji: { fontSize: 24 },
   commentsTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -435,7 +528,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 20,
   },
-  commentItem: { flexDirection: 'row', gap: 10, marginBottom: 12, alignItems: 'flex-start' },
+  commentItem: { flexDirection: 'row', gap: 10, marginBottom: 4, alignItems: 'flex-start' },
   commentAvatar: {
     width: 32,
     height: 32,
@@ -444,6 +537,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 2,
+    flexShrink: 0,
   },
   commentAvatarText: { color: AppColors.white, fontSize: 12, fontWeight: '700' },
   commentBubble: {
@@ -454,16 +548,35 @@ const styles = StyleSheet.create({
   },
   commentAuthor: { fontSize: 12, fontWeight: '700', color: AppColors.onSurface, marginBottom: 2 },
   commentContent: { fontSize: 14, color: AppColors.onSurface, lineHeight: 19 },
-  commentDate: { fontSize: 11, color: AppColors.onSurfaceVariant, marginTop: 4 },
+  commentActions: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 12, flexWrap: 'wrap' },
+  commentDate: { fontSize: 11, color: AppColors.onSurfaceVariant },
+  commentActionBtn: { paddingVertical: 2 },
+  commentActionText: { fontSize: 12, color: AppColors.onSurfaceVariant, fontWeight: '500' },
+  commentActionActive: { color: '#E53935' },
+  replyItem: { flexDirection: 'row', gap: 10, marginBottom: 4, alignItems: 'flex-start', marginLeft: 42 },
+  replyConnector: { position: 'absolute', left: -26, top: 0, bottom: 0, width: 2, backgroundColor: AppColors.surfaceContainerLow },
+  replyBubble: { backgroundColor: AppColors.surfaceContainerLow },
+  inputWrapper: {
+    backgroundColor: AppColors.white,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.surfaceContainerLow,
+  },
+  replyBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    backgroundColor: AppColors.primaryContainer,
+  },
+  replyBannerText: { fontSize: 12, color: AppColors.primary, fontWeight: '500', flex: 1 },
+  replyBannerClose: { fontSize: 14, color: AppColors.primary, fontWeight: '700', paddingLeft: 8 },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: AppColors.white,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.surfaceContainerLow,
   },
   input: {
     flex: 1,
