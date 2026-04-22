@@ -76,12 +76,14 @@ Route::prefix('countries')->group(function () {
 // ═══════════════════════════════════════════════════════════
 // MEDYA SUNUCU — Tüm private dosyalar auth:sanctum zorunlu
 // ═══════════════════════════════════════════════════════════
-// Çocuk profil fotoğrafı — sadece imzalı URL (mobil <Image> header gönderemez)
+// Mobil <Image> token gönderemez — sadece imzalı URL yeterli
 Route::middleware(['signed'])->group(function () {
     Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
         ->name('parent.child.photo');
     Route::get('/parent/profile/photo/{user}', [\App\Http\Controllers\Parents\ParentAuthController::class, 'serveProfilePhoto'])
         ->name('parent.profile.photo');
+    Route::get('/social-media/{media}/serve', [\App\Http\Controllers\Media\SocialMediaController::class, 'serve'])
+        ->name('social-media.serve');
 });
 
 Route::middleware(['auth:sanctum', 'signed'])->group(function () {
@@ -104,10 +106,6 @@ Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     // Sınıf logosu
     Route::get('/class-logo/{class}', [\App\Http\Controllers\Media\ClassLogoController::class, 'serve'])
         ->name('class.logo');
-
-    // Sosyal post medyası
-    Route::get('/social-media/{media}/serve', [\App\Http\Controllers\Media\SocialMediaController::class, 'serve'])
-        ->name('social-media.serve');
 
     // Yemek fotoğrafı
     Route::get('/meal-photo/{meal}', [\App\Http\Controllers\Media\MealPhotoController::class, 'serve'])
@@ -190,6 +188,10 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     Route::get('/my-enrollment-requests', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'myEnrollmentRequests']);
     Route::get('/schools/{school}', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'schoolDetail']);
     Route::get('/schools/{school}/feed', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'socialFeed']);
+    Route::get('/schools/{school}/posts/{post}', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'postDetail']);
+    Route::post('/schools/{school}/posts/{post}/react', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'postReact']);
+    Route::get('/schools/{school}/posts/{post}/comments', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'postComments']);
+    Route::post('/schools/{school}/posts/{post}/comments', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'postAddComment']);
     Route::post('/schools/{school}/enroll-child', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'enrollChild']);
     Route::get('/schools/{school}/child-enrollments', [\App\Http\Controllers\Parents\ParentSchoolController::class, 'myChildEnrollments']);
 

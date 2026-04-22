@@ -29,7 +29,7 @@ class ParentSocialPostResource extends JsonResource
                 return $this->media->map(fn ($media) => [
                     'id' => $media->id,
                     'type' => $media->type ?? null,
-                    'url' => $media->url ?? null,
+                    'url' => \Illuminate\Support\Facades\URL::signedRoute('social-media.serve', ['media' => $media->id], now()->addHours(2)),
                     'sort_order' => $media->sort_order ?? 0,
                 ]);
             }),

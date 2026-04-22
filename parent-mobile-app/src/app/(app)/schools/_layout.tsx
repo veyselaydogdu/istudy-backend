@@ -14,6 +14,7 @@ export default function SchoolsLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="join" />
       <Stack.Screen name="[id]/index" />
+      <Stack.Screen name="[id]/post/[postId]" />
     </Stack>
   );
 }

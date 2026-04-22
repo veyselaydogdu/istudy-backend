@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -30,6 +31,13 @@ interface SchoolDetail {
   current_academic_year: { id: number; name: string } | null;
 }
 
+interface PostMedia {
+  id: number;
+  type: string | null;
+  url: string | null;
+  sort_order: number;
+}
+
 interface Post {
   id: number;
   title: string | null;
@@ -40,6 +48,7 @@ interface Post {
   author: { id: number; name: string; surname: string } | null;
   reactions_count: number;
   comments_count: number;
+  media: PostMedia[];
 }
 
 interface FamilyChild {
@@ -238,40 +247,65 @@ export default function SchoolDetailScreen() {
       <FlatList
         data={posts}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => (
-          <View style={styles.postCard}>
-            {item.is_pinned && (
-              <Text style={styles.pinned}>📌 Sabitlenmiş</Text>
-            )}
-            <View style={styles.postAuthor}>
-              <View style={styles.postAvatar}>
-                <Text style={styles.postAvatarText}>
-                  {item.author
-                    ? item.author.name.charAt(0).toUpperCase()
-                    : '?'}
-                </Text>
+        renderItem={({ item }) => {
+          const PREVIEW_LIMIT = 100;
+          const isTruncated = item.content.length > PREVIEW_LIMIT;
+          const preview = isTruncated
+            ? item.content.slice(0, PREVIEW_LIMIT).trimEnd() + '...'
+            : item.content;
+          const firstImage = item.media?.find((m) => m.type === 'image' && m.url);
+
+          return (
+            <TouchableOpacity
+              style={styles.postCard}
+              activeOpacity={0.85}
+              onPress={() => router.push(`/(app)/schools/${id}/post/${item.id}` as never)}
+            >
+              {item.is_pinned && (
+                <Text style={styles.pinned}>📌 Sabitlenmiş</Text>
+              )}
+              <View style={styles.postAuthor}>
+                <View style={styles.postAvatar}>
+                  <Text style={styles.postAvatarText}>
+                    {item.author ? item.author.name.charAt(0).toUpperCase() : '?'}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.postAuthorName}>
+                    {item.author
+                      ? `${item.author.name} ${item.author.surname}`
+                      : 'Bilinmiyor'}
+                  </Text>
+                  <Text style={styles.postDate}>
+                    {item.published_at
+                      ? new Date(item.published_at).toLocaleDateString('tr-TR')
+                      : ''}
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.postAuthorName}>
-                  {item.author
-                    ? `${item.author.name} ${item.author.surname}`
-                    : 'Bilinmiyor'}
-                </Text>
-                <Text style={styles.postDate}>
-                  {item.published_at
-                    ? new Date(item.published_at).toLocaleDateString('tr-TR')
-                    : ''}
-                </Text>
+
+              {item.title ? <Text style={styles.postTitle}>{item.title}</Text> : null}
+
+              {firstImage && (
+                <Image
+                  source={{ uri: firstImage.url! }}
+                  style={styles.postThumb}
+                  resizeMode="cover"
+                />
+              )}
+
+              <Text style={styles.postContent}>{preview}</Text>
+              {isTruncated && (
+                <Text style={styles.readMore}>Devamını görüntüle →</Text>
+              )}
+
+              <View style={styles.postFooter}>
+                <Text style={styles.postStat}>👍 {item.reactions_count}</Text>
+                <Text style={styles.postStat}>💬 {item.comments_count}</Text>
               </View>
-            </View>
-            {item.title ? <Text style={styles.postTitle}>{item.title}</Text> : null}
-            <Text style={styles.postContent}>{item.content}</Text>
-            <View style={styles.postFooter}>
-              <Text style={styles.postStat}>👍 {item.reactions_count}</Text>
-              <Text style={styles.postStat}>💬 {item.comments_count}</Text>
-            </View>
-          </View>
-        )}
+            </TouchableOpacity>
+          );
+        }}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           school ? (
@@ -615,8 +649,16 @@ const styles = StyleSheet.create({
   postAvatarText: { color: AppColors.white, fontSize: 14, fontWeight: '700' },
   postAuthorName: { fontSize: 13, fontWeight: '600', color: AppColors.onSurface },
   postDate: { fontSize: 11, color: AppColors.onSurfaceVariant },
-  postTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface, marginBottom: 4 },
-  postContent: { fontSize: 14, color: AppColors.onSurface, lineHeight: 21, marginBottom: 10 },
+  postTitle: { fontSize: 16, fontWeight: '800', color: AppColors.primary, marginBottom: 6 },
+  postThumb: {
+    width: '100%',
+    height: 180,
+    borderRadius: 10,
+    marginBottom: 10,
+    backgroundColor: AppColors.surfaceContainerLow,
+  },
+  postContent: { fontSize: 14, color: AppColors.onSurface, lineHeight: 21, marginBottom: 6 },
+  readMore: { fontSize: 13, color: AppColors.primary, fontWeight: '600', marginBottom: 6 },
   postFooter: {
     flexDirection: 'row',
     gap: 12,

@@ -476,6 +476,182 @@ class ParentSchoolController extends BaseParentController
     }
 
     /**
+     * Tek post detayı.
+     * GET /parent/schools/{school}/posts/{post}
+     */
+    public function postDetail(int $school, int $post): JsonResponse
+    {
+        try {
+            if (! $this->hasSchoolAccess($school)) {
+                return $this->errorResponse('Bu okula erişim yetkiniz yok.', 403);
+            }
+
+            $socialPost = SocialPost::withoutGlobalScope('tenant')
+                ->where('school_id', $school)
+                ->visibleTo($this->user())
+                ->with(['author', 'media', 'reactions', 'comments.user'])
+                ->findOrFail($post);
+
+            $user = $this->user();
+            $myReaction = $socialPost->reactions->firstWhere('user_id', $user->id);
+
+            return $this->successResponse([
+                'post' => (new ParentSocialPostResource($socialPost))->toArray(request()),
+                'my_reaction' => $myReaction ? $myReaction->type : null,
+                'comments' => $socialPost->comments->map(fn ($c) => [
+                    'id' => $c->id,
+                    'content' => $c->content,
+                    'created_at' => $c->created_at?->toISOString(),
+                    'user' => $c->user ? [
+                        'id' => $c->user->id,
+                        'name' => $c->user->name,
+                        'surname' => $c->user->surname,
+                    ] : null,
+                ])->values(),
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Post bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::postDetail Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Post'a tepki ekle / kaldır.
+     * POST /parent/schools/{school}/posts/{post}/react
+     */
+    public function postReact(Request $request, int $school, int $post): JsonResponse
+    {
+        $data = $request->validate(['type' => ['required', 'string', 'in:like,love,care,haha,wow,sad,angry']]);
+
+        try {
+            if (! $this->hasSchoolAccess($school)) {
+                return $this->errorResponse('Bu okula erişim yetkiniz yok.', 403);
+            }
+
+            $socialPost = SocialPost::withoutGlobalScope('tenant')
+                ->where('school_id', $school)
+                ->visibleTo($this->user())
+                ->findOrFail($post);
+
+            $user = $this->user();
+            $existing = $socialPost->reactions()->where('user_id', $user->id)->first();
+
+            if ($existing) {
+                if ($existing->type === $data['type']) {
+                    $existing->delete();
+                    $action = 'removed';
+                } else {
+                    $existing->update(['type' => $data['type']]);
+                    $action = 'updated';
+                }
+            } else {
+                $socialPost->reactions()->create(['user_id' => $user->id, 'type' => $data['type']]);
+                $action = 'added';
+            }
+
+            return $this->successResponse([
+                'action' => $action,
+                'reactions_count' => $socialPost->reactions()->count(),
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Post bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::postReact Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Post yorumlarını listele.
+     * GET /parent/schools/{school}/posts/{post}/comments
+     */
+    public function postComments(int $school, int $post): JsonResponse
+    {
+        try {
+            if (! $this->hasSchoolAccess($school)) {
+                return $this->errorResponse('Bu okula erişim yetkiniz yok.', 403);
+            }
+
+            $socialPost = SocialPost::withoutGlobalScope('tenant')
+                ->where('school_id', $school)
+                ->visibleTo($this->user())
+                ->findOrFail($post);
+
+            $comments = $socialPost->comments()
+                ->with('user')
+                ->orderBy('created_at')
+                ->get()
+                ->map(fn ($c) => [
+                    'id' => $c->id,
+                    'content' => $c->content,
+                    'created_at' => $c->created_at?->toISOString(),
+                    'user' => $c->user ? [
+                        'id' => $c->user->id,
+                        'name' => $c->user->name,
+                        'surname' => $c->user->surname,
+                    ] : null,
+                ])->values();
+
+            return $this->successResponse($comments);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Post bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::postComments Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Post'a yorum ekle.
+     * POST /parent/schools/{school}/posts/{post}/comments
+     */
+    public function postAddComment(Request $request, int $school, int $post): JsonResponse
+    {
+        $data = $request->validate(['content' => ['required', 'string', 'max:1000']]);
+
+        try {
+            if (! $this->hasSchoolAccess($school)) {
+                return $this->errorResponse('Bu okula erişim yetkiniz yok.', 403);
+            }
+
+            $socialPost = SocialPost::withoutGlobalScope('tenant')
+                ->where('school_id', $school)
+                ->visibleTo($this->user())
+                ->findOrFail($post);
+
+            $user = $this->user();
+            $comment = $socialPost->comments()->create([
+                'user_id' => $user->id,
+                'content' => $data['content'],
+            ]);
+
+            $comment->load('user');
+
+            return $this->successResponse([
+                'id' => $comment->id,
+                'content' => $comment->content,
+                'created_at' => $comment->created_at?->toISOString(),
+                'user' => $comment->user ? [
+                    'id' => $comment->user->id,
+                    'name' => $comment->user->name,
+                    'surname' => $comment->user->surname,
+                ] : null,
+            ], 'Yorum eklendi.', 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Post bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ParentSchoolController::postAddComment Error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Velinin (owner veya co-parent) belirtilen okula erişim hakkı var mı?
      */
     private function hasSchoolAccess(int $schoolId): bool

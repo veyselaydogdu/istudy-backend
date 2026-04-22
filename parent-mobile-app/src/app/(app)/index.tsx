@@ -22,6 +22,7 @@ import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
 
 interface Post {
+  title: string;
   id: number;
   content: string;
   visibility: string;
@@ -66,7 +67,8 @@ function PostCard({ post }: { post: Post }) {
     : 'Bilinmiyor';
 
   return (
-    <Card style={styles.postCard}>
+      <TouchableOpacity onPress={() => router.push(`/(app)/posts/${post.id}` as never)} activeOpacity={0.88}>
+        <Card style={styles.postCard}>
       {post.is_pinned && (
         <View style={styles.pinnedRow}>
           <Ionicons name="pin" size={12} color={AppColors.secondary} />
@@ -74,10 +76,8 @@ function PostCard({ post }: { post: Post }) {
         </View>
       )}
       <View style={styles.authorRow}>
-        <Avatar name={authorName} size={48} shape="rounded" />
         <View style={styles.authorInfo}>
-          <Text style={styles.authorName}>{authorName}</Text>
-          <Text style={styles.publishedAt}>{timeAgo(post.published_at)}</Text>
+          <Text style={styles.authorName}>{post.title}</Text>
         </View>
         {post.is_global && (
           <View style={styles.globalBadge}>
@@ -94,16 +94,22 @@ function PostCard({ post }: { post: Post }) {
         />
       )}
       <View style={styles.footer}>
-        <View style={styles.stat}>
-          <Ionicons name="heart-outline" size={18} color={AppColors.onSurfaceVariant} />
-          <Text style={styles.statText}>{post.reactions_count}</Text>
-        </View>
-        <View style={styles.stat}>
-          <Ionicons name="chatbubble-outline" size={18} color={AppColors.onSurfaceVariant} />
-          <Text style={styles.statText}>{post.comments_count}</Text>
+          <View style={styles.footerInIcons}>
+              <View style={styles.stat}>
+                  <Ionicons name="heart-outline" size={18} color={AppColors.onSurfaceVariant} />
+                  <Text style={styles.statText}>{post.reactions_count}</Text>
+              </View>
+              <View style={styles.stat}>
+                  <Ionicons name="chatbubble-outline" size={18} color={AppColors.onSurfaceVariant} />
+                  <Text style={styles.statText}>{post.comments_count}</Text>
+              </View>
+          </View>
+        <View style={styles.publishedAt}>
+          <Text style={styles.publishedAt}>{timeAgo(post.published_at)}</Text>
         </View>
       </View>
     </Card>
+      </TouchableOpacity>
   );
 }
 
@@ -422,14 +428,14 @@ const styles = StyleSheet.create({
   pinnedText: { fontSize: 11, color: AppColors.secondary, fontWeight: '700' },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   authorInfo: { flex: 1 },
-  authorName: { fontSize: 14, fontWeight: '800', color: AppColors.onSurface },
-  publishedAt: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500', marginTop: 1 },
+  authorName: { fontSize: 18, fontWeight: '600', color: AppColors.onSurface },
+  publishedAt: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500', marginTop: 1},
   globalBadge: { backgroundColor: AppColors.primaryContainer, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   globalBadgeText: { fontSize: 10, color: AppColors.primary, fontWeight: '700' },
   blogTitle: { fontSize: 16, fontWeight: '800', color: AppColors.onSurface, marginBottom: 6 },
   content: { fontSize: 14, color: AppColors.onSurface, lineHeight: 22, marginBottom: 12, fontWeight: '500' },
   postImage: { width: '100%', height: 190, borderRadius: 12, marginBottom: 12 },
-  footer: { flexDirection: 'row', gap: 18, borderTopWidth: 1, borderTopColor: AppColors.surfaceContainer, paddingTop: 10, marginTop: 4 },
+  footer: { flexDirection: 'row', gap: 18, borderTopWidth: 1, borderTopColor: AppColors.surfaceContainer, paddingTop: 10, marginTop: 4, justifyContent: "space-between" },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statText: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '600' },
 
@@ -441,4 +447,5 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 17, fontWeight: '800', color: AppColors.onSurface },
   emptyText: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
   loader: { paddingVertical: 20 },
+  footerInIcons: { flexDirection: 'row', gap: 18 },
 });
