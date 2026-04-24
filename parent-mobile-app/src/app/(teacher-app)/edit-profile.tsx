@@ -79,6 +79,273 @@ interface Skill {
   proficiency?: number | null;
 }
 
+// ─── Yardımcılar ─────────────────────────────────────────────────────────────
+
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) { return ''; }
+  const datePart = dateStr.slice(0, 10);
+  const [year, month, day] = datePart.split('-');
+  if (year && month && day) { return `${day}.${month}.${year}`; }
+  if (year && month) { return `${month}.${year}`; }
+  return dateStr;
+}
+
+
+const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const _currentYear = new Date().getFullYear();
+const DP_YEARS = Array.from({ length: _currentYear - 1949 }, (_, i) => 1950 + i).reverse();
+
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+function DatePickerField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  optional,
+}: {
+  label: string;
+  value: string | null | undefined;
+  onChange: (v: string | null) => void;
+  placeholder?: string;
+  optional?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const parseValue = () => {
+    if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [y, m, d] = value.split('-').map(Number);
+      return { year: y, month: m, day: d };
+    }
+    return { year: _currentYear - 5, month: 1, day: 1 };
+  };
+
+  const [pickerYear, setPickerYear] = useState(parseValue().year);
+  const [pickerMonth, setPickerMonth] = useState(parseValue().month);
+  const [pickerDay, setPickerDay] = useState(parseValue().day);
+
+  const handleOpen = () => {
+    const parsed = parseValue();
+    setPickerYear(parsed.year);
+    setPickerMonth(parsed.month);
+    setPickerDay(parsed.day);
+    setOpen(true);
+  };
+
+  const handleConfirm = () => {
+    const maxDay = getDaysInMonth(pickerYear, pickerMonth);
+    const safeDay = Math.min(pickerDay, maxDay);
+    const mm = String(pickerMonth).padStart(2, '0');
+    const dd = String(safeDay).padStart(2, '0');
+    onChange(`${pickerYear}-${mm}-${dd}`);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    onChange(null);
+    setOpen(false);
+  };
+
+  const maxDay = getDaysInMonth(pickerYear, pickerMonth);
+
+  return (
+    <View style={dpStyles.group}>
+      <Text style={dpStyles.label}>{label}</Text>
+      <TouchableOpacity style={dpStyles.trigger} onPress={handleOpen}>
+        <Ionicons name="calendar-outline" size={16} color={AppColors.onSurfaceVariant} />
+        <Text style={[dpStyles.triggerText, !value && dpStyles.triggerPlaceholder]}>
+          {value ? formatDate(value) : (placeholder ?? 'Tarih seçin')}
+        </Text>
+        <Ionicons name="chevron-down" size={14} color={AppColors.onSurfaceVariant} />
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <View style={dpStyles.overlay}>
+          <View style={dpStyles.sheet}>
+            <View style={dpStyles.handle} />
+            <View style={dpStyles.sheetHeader}>
+              <Text style={dpStyles.sheetTitle}>{label}</Text>
+              {optional && (
+                <TouchableOpacity onPress={handleClear}>
+                  <Text style={dpStyles.clearBtn}>Temizle</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={dpStyles.columns}>
+              {/* YIL */}
+              <View style={dpStyles.colWrap}>
+                <Text style={dpStyles.colLabel}>Yıl</Text>
+                <ScrollView style={dpStyles.colScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                  {DP_YEARS.map(y => (
+                    <TouchableOpacity
+                      key={y}
+                      style={[dpStyles.colItem, pickerYear === y && dpStyles.colItemActive]}
+                      onPress={() => setPickerYear(y)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[dpStyles.colItemText, pickerYear === y && dpStyles.colItemTextActive]}>{y}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* AY */}
+              <View style={dpStyles.colWrap}>
+                <Text style={dpStyles.colLabel}>Ay</Text>
+                <ScrollView style={dpStyles.colScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                  {MONTHS_TR.map((name, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[dpStyles.colItem, pickerMonth === idx + 1 && dpStyles.colItemActive]}
+                      onPress={() => setPickerMonth(idx + 1)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[dpStyles.colItemText, pickerMonth === idx + 1 && dpStyles.colItemTextActive]}>{name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* GÜN */}
+              <View style={dpStyles.colWrap}>
+                <Text style={dpStyles.colLabel}>Gün</Text>
+                <ScrollView style={dpStyles.colScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                  {Array.from({ length: maxDay }, (_, i) => i + 1).map(d => (
+                    <TouchableOpacity
+                      key={d}
+                      style={[dpStyles.colItem, pickerDay === d && dpStyles.colItemActive]}
+                      onPress={() => setPickerDay(d)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[dpStyles.colItemText, pickerDay === d && dpStyles.colItemTextActive]}>
+                        {String(d).padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={dpStyles.preview}>
+              <Text style={dpStyles.previewText}>
+                Seçilen: {String(Math.min(pickerDay, maxDay)).padStart(2, '0')}.{String(pickerMonth).padStart(2, '0')}.{pickerYear}
+              </Text>
+            </View>
+
+            <View style={dpStyles.sheetFooter}>
+              <TouchableOpacity style={dpStyles.cancelBtn} onPress={() => setOpen(false)} activeOpacity={0.7}>
+                <Text style={dpStyles.cancelText}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={dpStyles.confirmBtn} onPress={handleConfirm} activeOpacity={0.8}>
+                <Text style={dpStyles.confirmText}>Tamam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const dpStyles = StyleSheet.create({
+  group: { marginBottom: 14 },
+  label: { fontSize: 13, fontWeight: '600', color: AppColors.onSurface, marginBottom: 6 },
+  trigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: AppColors.white,
+    borderWidth: 1,
+    borderColor: AppColors.surfaceContainerLow,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  triggerText: { flex: 1, fontSize: 14, color: AppColors.onSurface },
+  triggerPlaceholder: { color: AppColors.onSurfaceVariant },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: AppColors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    gap: 16,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: AppColors.surfaceContainer,
+    alignSelf: 'center',
+    marginBottom: 4,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sheetTitle: { fontSize: 18, fontWeight: '700', color: AppColors.onSurface },
+  clearBtn: { fontSize: 13, color: AppColors.error, fontWeight: '600' },
+  columns: { flexDirection: 'row', gap: 8 },
+  colWrap: { flex: 1, alignItems: 'center', gap: 6 },
+  colLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: AppColors.onSurfaceVariant,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  colScroll: {
+    height: 180,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: AppColors.surfaceContainer,
+    borderRadius: 10,
+  },
+  colItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.surfaceContainerLow,
+  },
+  colItemActive: { backgroundColor: AppColors.primaryContainer },
+  colItemText: { fontSize: 14, color: AppColors.onSurface },
+  colItemTextActive: { color: AppColors.primary, fontWeight: '700' },
+  preview: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: AppColors.infoContainer,
+    borderRadius: 10,
+  },
+  previewText: { fontSize: 15, fontWeight: '600', color: AppColors.primary },
+  sheetFooter: { flexDirection: 'row', gap: 12 },
+  cancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: AppColors.surfaceContainer,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelText: { fontSize: 14, fontWeight: '600', color: AppColors.onSurface },
+  confirmBtn: {
+    flex: 2,
+    backgroundColor: AppColors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  confirmText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+});
+
 // ─── Sabitler ────────────────────────────────────────────────────────────────
 
 const GENDER_OPTIONS = [
@@ -313,6 +580,10 @@ export default function EditProfileScreen() {
       Alert.alert('Hata', 'Okul, derece, alan ve başlangıç tarihi zorunludur.');
       return;
     }
+    if (eduForm.end_date && eduForm.end_date <= eduForm.start_date) {
+      Alert.alert('Hata', 'Bitiş tarihi başlangıç tarihinden sonra olmalıdır.');
+      return;
+    }
     setModalSaving(true);
     try {
       if (editingId) {
@@ -538,11 +809,11 @@ export default function EditProfileScreen() {
         options={GENDER_OPTIONS}
         onSelect={v => setBasic(b => ({ ...b, gender: v }))}
       />
-      <FormField
+      <DatePickerField
         label="Doğum Tarihi"
-        value={basic.date_of_birth ?? ''}
-        onChangeText={v => setBasic(b => ({ ...b, date_of_birth: v }))}
-        placeholder="YYYY-MM-DD"
+        value={basic.date_of_birth}
+        onChange={v => setBasic(b => ({ ...b, date_of_birth: v }))}
+        optional
       />
       <FormField
         label="LinkedIn URL"
@@ -591,9 +862,9 @@ export default function EditProfileScreen() {
             </View>
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle}>{edu.institution}</Text>
-              <Text style={styles.cardSub}>{edu.degree} — {edu.field_of_study}</Text>
+              <Text style={styles.cardSub}>{DEGREE_OPTIONS.find(d => d.value === edu.degree)?.label ?? edu.degree} — {edu.field_of_study}</Text>
               <Text style={styles.cardDate}>
-                {edu.start_date} — {edu.is_current ? 'Devam Ediyor' : (edu.end_date ?? '?')}
+                {formatDate(edu.start_date)} — {edu.is_current ? 'Devam Ediyor' : (edu.end_date ? formatDate(edu.end_date) : '?')}
               </Text>
             </View>
             <View style={styles.cardActions}>
@@ -633,7 +904,7 @@ export default function EditProfileScreen() {
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle}>{cert.name}</Text>
               <Text style={styles.cardSub}>{cert.issuing_organization}</Text>
-              <Text style={styles.cardDate}>{cert.issue_date}</Text>
+              <Text style={styles.cardDate}>{formatDate(cert.issue_date)}{cert.expiry_date ? ` — ${formatDate(cert.expiry_date)}` : ''}</Text>
               {cert.status && cert.status !== 'approved' && (
                 <View style={[styles.statusBadge, cert.status === 'pending' && styles.statusPending]}>
                   <Text style={styles.statusBadgeText}>
@@ -679,7 +950,7 @@ export default function EditProfileScreen() {
                 {COURSE_TYPE_OPTIONS.find(t => t.value === course.type)?.label ?? course.type} — {course.provider}
               </Text>
               <Text style={styles.cardDate}>
-                {course.start_date}{course.end_date ? ` — ${course.end_date}` : ''}
+                {formatDate(course.start_date)}{course.end_date ? ` — ${formatDate(course.end_date)}` : ''}
                 {course.duration_hours ? ` (${course.duration_hours} saat)` : ''}
               </Text>
               {course.is_online && (
@@ -833,17 +1104,17 @@ export default function EditProfileScreen() {
               onChangeText={v => setEduForm(f => ({ ...f, field_of_study: v }))}
               placeholder="Ör: Bilgisayar Mühendisliği"
             />
-            <FormField
+            <DatePickerField
               label="Başlangıç Tarihi *"
-              value={eduForm.start_date ?? ''}
-              onChangeText={v => setEduForm(f => ({ ...f, start_date: v }))}
-              placeholder="YYYY-MM-DD"
+              value={eduForm.start_date}
+              onChange={v => setEduForm(f => ({ ...f, start_date: v ?? '' }))}
             />
-            <FormField
+            <DatePickerField
               label="Bitiş Tarihi"
-              value={eduForm.end_date ?? ''}
-              onChangeText={v => setEduForm(f => ({ ...f, end_date: v || null }))}
+              value={eduForm.end_date}
+              onChange={v => setEduForm(f => ({ ...f, end_date: v }))}
               placeholder="Devam ediyorsa boş bırakın"
+              optional
             />
             <FormField
               label="GPA (0-4)"
@@ -896,17 +1167,17 @@ export default function EditProfileScreen() {
               value={certForm.issuing_organization ?? ''}
               onChangeText={v => setCertForm(f => ({ ...f, issuing_organization: v }))}
             />
-            <FormField
+            <DatePickerField
               label="Veriliş Tarihi *"
-              value={certForm.issue_date ?? ''}
-              onChangeText={v => setCertForm(f => ({ ...f, issue_date: v }))}
-              placeholder="YYYY-MM-DD"
+              value={certForm.issue_date}
+              onChange={v => setCertForm(f => ({ ...f, issue_date: v ?? '' }))}
             />
-            <FormField
+            <DatePickerField
               label="Geçerlilik Tarihi"
-              value={certForm.expiry_date ?? ''}
-              onChangeText={v => setCertForm(f => ({ ...f, expiry_date: v || null }))}
-              placeholder="YYYY-MM-DD (opsiyonel)"
+              value={certForm.expiry_date}
+              onChange={v => setCertForm(f => ({ ...f, expiry_date: v }))}
+              placeholder="Opsiyonel"
+              optional
             />
             <FormField
               label="Sertifika ID"
@@ -970,17 +1241,17 @@ export default function EditProfileScreen() {
               value={courseForm.provider ?? ''}
               onChangeText={v => setCourseForm(f => ({ ...f, provider: v }))}
             />
-            <FormField
+            <DatePickerField
               label="Başlangıç Tarihi *"
-              value={courseForm.start_date ?? ''}
-              onChangeText={v => setCourseForm(f => ({ ...f, start_date: v }))}
-              placeholder="YYYY-MM-DD"
+              value={courseForm.start_date}
+              onChange={v => setCourseForm(f => ({ ...f, start_date: v ?? '' }))}
             />
-            <FormField
+            <DatePickerField
               label="Bitiş Tarihi"
-              value={courseForm.end_date ?? ''}
-              onChangeText={v => setCourseForm(f => ({ ...f, end_date: v || null }))}
-              placeholder="YYYY-MM-DD (opsiyonel)"
+              value={courseForm.end_date}
+              onChange={v => setCourseForm(f => ({ ...f, end_date: v }))}
+              placeholder="Opsiyonel"
+              optional
             />
             <FormField
               label="Süre (Saat)"
@@ -1099,7 +1370,7 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: AppColors.surface,
   },
   header: {
     flexDirection: 'row',
@@ -1417,7 +1688,7 @@ const styles = StyleSheet.create({
   // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: AppColors.surface,
   },
   modalHeader: {
     flexDirection: 'row',
