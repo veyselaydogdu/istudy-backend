@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Schools;
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Teacher\UpdateTeacherRequest;
 use App\Models\School\School;
+use App\Models\School\TeacherCredentialTenantApproval;
 use App\Models\School\TeacherProfile;
 use App\Models\School\TeacherRoleType;
 use App\Models\School\TeacherTenantMembership;
@@ -125,27 +126,33 @@ class TenantTeacherController extends BaseController
                         'country' => $e->country ? ['id' => $e->country->id, 'name' => $e->country->name] : null,
                         'description' => $e->description,
                     ]),
-                    'certificates' => $teacher->certificates->where('approval_status', 'approved')->values()->map(fn ($c) => [
-                        'id' => $c->id,
-                        'name' => $c->name,
-                        'issuing_organization' => $c->issuing_organization,
-                        'issue_date' => $c->issue_date?->toDateString(),
-                        'expiry_date' => $c->expiry_date?->toDateString(),
-                        'credential_url' => $c->credential_url,
-                        'description' => $c->description,
-                    ]),
-                    'courses' => $teacher->courses->where('approval_status', 'approved')->values()->map(fn ($c) => [
-                        'id' => $c->id,
-                        'title' => $c->title,
-                        'type' => $c->type,
-                        'provider' => $c->provider,
-                        'start_date' => $c->start_date?->toDateString(),
-                        'end_date' => $c->end_date?->toDateString(),
-                        'duration_hours' => $c->duration_hours,
-                        'location' => $c->location,
-                        'is_online' => (bool) $c->is_online,
-                        'description' => $c->description,
-                    ]),
+                    'certificates' => $this->credentialsWithApprovalStatus('certificate', $teacher->certificates, $tenantId)
+                        ->map(fn ($c, $approval) => [
+                            'id' => $c->id,
+                            'name' => $c->name,
+                            'issuing_organization' => $c->issuing_organization,
+                            'issue_date' => $c->issue_date?->toDateString(),
+                            'expiry_date' => $c->expiry_date?->toDateString(),
+                            'credential_url' => $c->credential_url,
+                            'description' => $c->description,
+                            'approval_status' => $c->_approval_status,
+                            'rejection_reason' => $c->_rejection_reason,
+                        ]),
+                    'courses' => $this->credentialsWithApprovalStatus('course', $teacher->courses, $tenantId)
+                        ->map(fn ($c) => [
+                            'id' => $c->id,
+                            'title' => $c->title,
+                            'type' => $c->type,
+                            'provider' => $c->provider,
+                            'start_date' => $c->start_date?->toDateString(),
+                            'end_date' => $c->end_date?->toDateString(),
+                            'duration_hours' => $c->duration_hours,
+                            'location' => $c->location,
+                            'is_online' => (bool) $c->is_online,
+                            'description' => $c->description,
+                            'approval_status' => $c->_approval_status,
+                            'rejection_reason' => $c->_rejection_reason,
+                        ]),
                     'skills' => $teacher->skills->map(fn ($s) => [
                         'id' => $s->id,
                         'name' => $s->name,
@@ -723,5 +730,36 @@ class TenantTeacherController extends BaseController
 
             return $this->errorResponse('Şifre güncellenemedi.', 500);
         }
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // HELPERS
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Tüm credential'lara bu tenant'ın onay durumunu ekler (_approval_status, _rejection_reason geçici alanlar).
+     * pending = approval kaydı yok, approved/rejected = kayıt var.
+     *
+     * @param  \Illuminate\Database\Eloquent\Collection  $items
+     */
+    private function credentialsWithApprovalStatus(string $type, $items, int $tenantId): \Illuminate\Support\Collection
+    {
+        if ($items->isEmpty()) {
+            return collect();
+        }
+
+        $approvals = TeacherCredentialTenantApproval::where('credential_type', $type)
+            ->whereIn('credential_id', $items->pluck('id'))
+            ->where('tenant_id', $tenantId)
+            ->get()
+            ->keyBy('credential_id');
+
+        return $items->map(function ($item) use ($approvals) {
+            $approval = $approvals->get($item->id);
+            $item->_approval_status = $approval?->status ?? 'pending';
+            $item->_rejection_reason = $approval?->rejection_reason;
+
+            return $item;
+        });
     }
 }

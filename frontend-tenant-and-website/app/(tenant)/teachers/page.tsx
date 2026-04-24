@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { TeacherProfile, TeacherRoleType, School } from '@/types';
-import { Eye, X, Users, Building2, BookOpen, Tag, Mail, UserCheck, UserX, UserMinus, Check, GraduationCap, Award, BookOpen as CourseIcon, Zap, FileText, Phone, Globe, Pencil } from 'lucide-react';
+import { Eye, X, Users, Building2, BookOpen, Tag, Mail, UserCheck, UserX, UserMinus, Check, GraduationCap, Award, BookOpen as CourseIcon, Zap, FileText, Phone, Globe, Pencil, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -39,8 +39,8 @@ type TeacherDetail = TeacherWithMembership & {
     linkedin_url: string | null;
     website_url: string | null;
     educations: { id: number; institution: string; degree: string; field_of_study: string; start_date: string | null; end_date: string | null; is_current: boolean; country: { id: number; name: string } | null; description: string | null }[];
-    certificates: { id: number; name: string; issuing_organization: string | null; issue_date: string | null; expiry_date: string | null; credential_url: string | null; description: string | null }[];
-    courses: { id: number; title: string; type: string; provider: string | null; start_date: string | null; end_date: string | null; duration_hours: number | null; location: string | null; is_online: boolean; description: string | null }[];
+    certificates: { id: number; name: string; issuing_organization: string | null; issue_date: string | null; expiry_date: string | null; credential_url: string | null; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null }[];
+    courses: { id: number; title: string; type: string; provider: string | null; start_date: string | null; end_date: string | null; duration_hours: number | null; location: string | null; is_online: boolean; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null }[];
     skills: { id: number; name: string; level: string; category: string; proficiency: number }[];
     blog_posts: { id: number; title: string; description: string | null; likes_count: number; comments_count: number; published_at: string | null; created_at: string | null }[];
 };
@@ -93,6 +93,7 @@ export default function TeachersPage() {
     const [viewingTeacher, setViewingTeacher] = useState<TeacherDetail | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [detailTab, setDetailTab] = useState<'info' | 'education' | 'certificates' | 'courses' | 'skills' | 'blogs'>('info');
+    const [approvingId, setApprovingId] = useState<string | null>(null); // "cert-{id}" | "course-{id}"
 
     // ── Katılma Talepleri ─────────────────────────────────────
     const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
@@ -178,6 +179,65 @@ export default function TeachersPage() {
             setViewingTeacher(res.data?.data as TeacherDetail);
         } catch { toast.error(t('teachers.detailError')); }
         finally { setLoadingDetail(false); }
+    };
+
+    // ── Credential Onay / Red ─────────────────────────────────
+    const handleApproveCredential = async (type: 'certificate' | 'course', id: number) => {
+        const key = `${type}-${id}`;
+        setApprovingId(key);
+        try {
+            const path = type === 'certificate'
+                ? `/teacher-approvals/certificates/${id}/approve`
+                : `/teacher-approvals/courses/${id}/approve`;
+            await apiClient.patch(path);
+            toast.success('Onaylandı.');
+            if (viewingTeacher) {
+                setViewingTeacher(prev => {
+                    if (!prev) { return prev; }
+                    if (type === 'certificate') {
+                        return { ...prev, certificates: prev.certificates.map(c => c.id === id ? { ...c, approval_status: 'approved' as const, rejection_reason: null } : c) };
+                    }
+                    return { ...prev, courses: prev.courses.map(c => c.id === id ? { ...c, approval_status: 'approved' as const, rejection_reason: null } : c) };
+                });
+            }
+        } catch { toast.error('Onay işlemi başarısız.'); }
+        finally { setApprovingId(null); }
+    };
+
+    const handleRejectCredential = async (type: 'certificate' | 'course', id: number) => {
+        const { value: reason } = await Swal.fire({
+            title: 'Red Sebebi',
+            input: 'textarea',
+            inputLabel: 'Lütfen red sebebini yazın',
+            inputPlaceholder: 'Red sebebi...',
+            inputAttributes: { maxlength: '1000' },
+            showCancelButton: true,
+            confirmButtonText: 'Reddet',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+            inputValidator: (v) => { if (!v?.trim()) { return 'Red sebebi zorunludur.'; } },
+        });
+        if (!reason) { return; }
+
+        const key = `${type}-${id}`;
+        setApprovingId(key);
+        try {
+            const path = type === 'certificate'
+                ? `/teacher-approvals/certificates/${id}/reject`
+                : `/teacher-approvals/courses/${id}/reject`;
+            await apiClient.patch(path, { rejection_reason: reason });
+            toast.success('Reddedildi.');
+            if (viewingTeacher) {
+                setViewingTeacher(prev => {
+                    if (!prev) { return prev; }
+                    if (type === 'certificate') {
+                        return { ...prev, certificates: prev.certificates.map(c => c.id === id ? { ...c, approval_status: 'rejected' as const, rejection_reason: reason } : c) };
+                    }
+                    return { ...prev, courses: prev.courses.map(c => c.id === id ? { ...c, approval_status: 'rejected' as const, rejection_reason: reason } : c) };
+                });
+            }
+        } catch { toast.error('Red işlemi başarısız.'); }
+        finally { setApprovingId(null); }
     };
 
     // ── Öğretmen Düzenle (DEVRE DIŞI — tenant düzenleyemez) ──
@@ -1005,15 +1065,49 @@ export default function TeachersPage() {
                                         <EmptyState icon={<Award />} text={t('teachers.noCertificate')} />
                                     ) : viewingTeacher.certificates.map(c => (
                                         <div key={c.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
-                                            <div className="flex items-start justify-between">
-                                                <div>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
                                                     <p className="font-semibold text-dark dark:text-white">{c.name}</p>
                                                     {c.issuing_organization && <p className="text-sm text-[#888ea8]">{c.issuing_organization}</p>}
+                                                    {c.approval_status === 'pending' && (
+                                                        <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-warning text-xs"><Clock className="h-3 w-3" />Onay Bekliyor</span>
+                                                    )}
+                                                    {c.approval_status === 'approved' && (
+                                                        <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-success text-xs"><CheckCircle className="h-3 w-3" />Onaylandı</span>
+                                                    )}
+                                                    {c.approval_status === 'rejected' && (
+                                                        <div>
+                                                            <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-danger text-xs"><XCircle className="h-3 w-3" />Reddedildi</span>
+                                                            {c.rejection_reason && <p className="mt-1 text-xs text-danger italic">"{c.rejection_reason}"</p>}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <span className="text-xs text-[#888ea8] whitespace-nowrap">
-                                                    {c.issue_date ? new Date(c.issue_date).toLocaleDateString('tr-TR') : '—'}
-                                                    {c.expiry_date && ` — ${new Date(c.expiry_date).toLocaleDateString('tr-TR')}`}
-                                                </span>
+                                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                                    <span className="text-xs text-[#888ea8] whitespace-nowrap">
+                                                        {c.issue_date ? new Date(c.issue_date).toLocaleDateString('tr-TR') : '—'}
+                                                        {c.expiry_date && ` — ${new Date(c.expiry_date).toLocaleDateString('tr-TR')}`}
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        {c.approval_status !== 'approved' && (
+                                                            <button
+                                                                onClick={() => handleApproveCredential('certificate', c.id)}
+                                                                disabled={approvingId === `certificate-${c.id}`}
+                                                                className="btn btn-success btn-sm h-7 min-h-0 px-2 text-xs gap-1"
+                                                            >
+                                                                <CheckCircle className="h-3.5 w-3.5" />Onayla
+                                                            </button>
+                                                        )}
+                                                        {c.approval_status !== 'rejected' && (
+                                                            <button
+                                                                onClick={() => handleRejectCredential('certificate', c.id)}
+                                                                disabled={approvingId === `certificate-${c.id}`}
+                                                                className="btn btn-danger btn-sm h-7 min-h-0 px-2 text-xs gap-1"
+                                                            >
+                                                                <XCircle className="h-3.5 w-3.5" />Reddet
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                             {c.credential_url && (
                                                 <a href={c.credential_url} target="_blank" rel="noreferrer" className="mt-1 text-xs text-primary hover:underline">{t('teachers.viewCredential')}</a>
@@ -1030,8 +1124,8 @@ export default function TeachersPage() {
                                         <EmptyState icon={<CourseIcon />} text={t('teachers.noCourse')} />
                                     ) : viewingTeacher.courses.map(c => (
                                         <div key={c.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
-                                            <div className="flex items-start justify-between">
-                                                <div>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
                                                     <p className="font-semibold text-dark dark:text-white">{c.title}</p>
                                                     <div className="mt-0.5 flex flex-wrap items-center gap-2">
                                                         <span className="badge badge-outline-primary text-xs">{getCourseTypeLabel(c.type)}</span>
@@ -1039,11 +1133,45 @@ export default function TeachersPage() {
                                                         {c.is_online && <span className="badge badge-outline-info text-xs">Online</span>}
                                                         {c.duration_hours && <span className="text-xs text-[#888ea8]">{c.duration_hours} {t('teachers.hoursUnit')}</span>}
                                                     </div>
+                                                    {c.approval_status === 'pending' && (
+                                                        <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-warning text-xs"><Clock className="h-3 w-3" />Onay Bekliyor</span>
+                                                    )}
+                                                    {c.approval_status === 'approved' && (
+                                                        <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-success text-xs"><CheckCircle className="h-3 w-3" />Onaylandı</span>
+                                                    )}
+                                                    {c.approval_status === 'rejected' && (
+                                                        <div>
+                                                            <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-danger text-xs"><XCircle className="h-3 w-3" />Reddedildi</span>
+                                                            {c.rejection_reason && <p className="mt-1 text-xs text-danger italic">"{c.rejection_reason}"</p>}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <span className="text-xs text-[#888ea8] whitespace-nowrap">
-                                                    {c.start_date ? new Date(c.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
-                                                    {c.end_date && ` — ${new Date(c.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' })}`}
-                                                </span>
+                                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                                    <span className="text-xs text-[#888ea8] whitespace-nowrap">
+                                                        {c.start_date ? new Date(c.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
+                                                        {c.end_date && ` — ${new Date(c.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' })}`}
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        {c.approval_status !== 'approved' && (
+                                                            <button
+                                                                onClick={() => handleApproveCredential('course', c.id)}
+                                                                disabled={approvingId === `course-${c.id}`}
+                                                                className="btn btn-success btn-sm h-7 min-h-0 px-2 text-xs gap-1"
+                                                            >
+                                                                <CheckCircle className="h-3.5 w-3.5" />Onayla
+                                                            </button>
+                                                        )}
+                                                        {c.approval_status !== 'rejected' && (
+                                                            <button
+                                                                onClick={() => handleRejectCredential('course', c.id)}
+                                                                disabled={approvingId === `course-${c.id}`}
+                                                                className="btn btn-danger btn-sm h-7 min-h-0 px-2 text-xs gap-1"
+                                                            >
+                                                                <XCircle className="h-3.5 w-3.5" />Reddet
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                             {c.location && <p className="mt-1 text-xs text-[#888ea8]">📍 {c.location}</p>}
                                             {c.description && <p className="mt-2 text-xs text-[#888ea8]">{c.description}</p>}

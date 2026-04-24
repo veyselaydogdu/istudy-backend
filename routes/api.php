@@ -391,6 +391,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/skills', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'storeSkill']);
             Route::put('/skills/{skillId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'updateSkill']);
             Route::delete('/skills/{skillId}', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'destroySkill']);
+
+            Route::get('/certificates/{certificateId}/approvals', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'certificateApprovals']);
+            Route::get('/courses/{courseId}/approvals', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'courseApprovals']);
         });
 
         // ÖĞRETMEN AUTH
@@ -825,6 +828,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // ÖĞRETMEN ONAY İŞLEMLERİ (Okul Admin)
         // ───────────────────────────────────────────────────
         Route::prefix('teacher-approvals')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'pendingApprovals']);
             Route::get('/pending', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'pendingApprovals']);
             Route::patch('/certificates/{certificateId}/approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'approveCertificate']);
             Route::patch('/certificates/{certificateId}/reject', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'rejectCertificate']);

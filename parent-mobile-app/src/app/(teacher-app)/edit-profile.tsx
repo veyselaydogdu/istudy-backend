@@ -18,7 +18,149 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
 
-// ─── Tipler ──────────────────────────────────────────────────────────────────
+// ─── Tipler ─────────────────────────────────────────────────────────────────
+
+interface TenantApproval {
+  tenant_id: number;
+  tenant_name: string;
+  membership_status: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+}
+
+// ─── Onay Durumu BottomSheet ──────────────────────────────────────────────────
+
+function ApprovalBottomSheet({
+  visible,
+  title,
+  approvals,
+  loading,
+  onClose,
+}: {
+  visible: boolean;
+  title: string;
+  approvals: TenantApproval[];
+  loading: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={bsStyles.overlay}>
+        <TouchableOpacity style={bsStyles.backdrop} onPress={onClose} activeOpacity={1} />
+        <View style={bsStyles.sheet}>
+          <View style={bsStyles.handle} />
+          <View style={bsStyles.header}>
+            <Text style={bsStyles.title} numberOfLines={2}>{title}</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={22} color={AppColors.onSurface} />
+            </TouchableOpacity>
+          </View>
+          <Text style={bsStyles.subtitle}>Kurumların onay durumu</Text>
+
+          {loading ? (
+            <View style={bsStyles.center}>
+              <ActivityIndicator size="small" color={AppColors.primary} />
+            </View>
+          ) : approvals.length === 0 ? (
+            <View style={bsStyles.center}>
+              <Text style={bsStyles.emptyText}>Herhangi bir kuruma kayıtlı değilsiniz.</Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {approvals.map((item) => {
+                const isApproved = item.status === 'approved';
+                const isRejected = item.status === 'rejected';
+                const statusColor = isApproved ? AppColors.success : isRejected ? AppColors.error : '#F59E0B';
+                const statusBg = isApproved ? AppColors.successContainer : isRejected ? '#FEE2E2' : '#FEF3C7';
+                const statusIcon: 'checkmark-circle' | 'close-circle' | 'time' = isApproved
+                  ? 'checkmark-circle'
+                  : isRejected
+                  ? 'close-circle'
+                  : 'time';
+                const statusLabel = isApproved ? 'Onaylandı' : isRejected ? 'Reddedildi' : 'Henüz İncelenmedi';
+
+                return (
+                  <View key={item.tenant_id} style={bsStyles.row}>
+                    <View style={[bsStyles.iconWrap, { backgroundColor: statusBg }]}>
+                      <Ionicons name={statusIcon} size={22} color={statusColor} />
+                    </View>
+                    <View style={bsStyles.rowContent}>
+                      <Text style={bsStyles.tenantName}>{item.tenant_name}</Text>
+                      <View style={[bsStyles.badge, { backgroundColor: statusBg }]}>
+                        <Text style={[bsStyles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+                      </View>
+                      {isRejected && item.rejection_reason ? (
+                        <Text style={bsStyles.rejectionReason}>"{item.rejection_reason}"</Text>
+                      ) : null}
+                      {(isApproved || isRejected) && item.reviewed_by ? (
+                        <Text style={bsStyles.reviewedBy}>
+                          {item.reviewed_by}
+                          {item.reviewed_at ? ` · ${new Date(item.reviewed_at).toLocaleDateString('tr-TR')}` : ''}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const bsStyles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheet: {
+    backgroundColor: AppColors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    paddingTop: 12,
+    maxHeight: '80%',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: AppColors.surfaceContainer,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 4 },
+  title: { flex: 1, fontSize: 17, fontWeight: '800', color: AppColors.onSurface },
+  subtitle: { fontSize: 13, color: AppColors.onSurfaceVariant, marginBottom: 16 },
+  center: { paddingVertical: 32, alignItems: 'center' },
+  emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.surfaceContainerLow,
+    gap: 12,
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rowContent: { flex: 1, gap: 4 },
+  tenantName: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
+  badge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeText: { fontSize: 12, fontWeight: '700' },
+  rejectionReason: { fontSize: 13, color: AppColors.error, fontStyle: 'italic', marginTop: 2 },
+  reviewedBy: { fontSize: 12, color: AppColors.onSurfaceVariant },
+});
+
+// ─── Esas Tipler ──────────────────────────────────────────────────────────────
 
 interface BasicProfile {
   title?: string | null;
@@ -490,6 +632,16 @@ export default function EditProfileScreen() {
   const [courseModal, setCourseModal] = useState(false);
   const [skillModal, setSkillModal] = useState(false);
 
+  // Onay durumu bottomsheet
+  const [approvalSheet, setApprovalSheet] = useState<{
+    visible: boolean;
+    title: string;
+    type: 'certificate' | 'course';
+    id: number;
+  } | null>(null);
+  const [approvals, setApprovals] = useState<TenantApproval[]>([]);
+  const [approvalsLoading, setApprovalsLoading] = useState(false);
+
   // Form state'leri
   const [eduForm, setEduForm] = useState<Partial<Education>>({});
   const [certForm, setCertForm] = useState<Partial<Certificate>>({});
@@ -716,6 +868,25 @@ export default function EditProfileScreen() {
     ]);
   };
 
+  // ─── Onay Durumu ─────────────────────────────────────────────────────────
+
+  const openApprovalSheet = async (type: 'certificate' | 'course', id: number, title: string) => {
+    setApprovals([]);
+    setApprovalSheet({ visible: true, title, type, id });
+    setApprovalsLoading(true);
+    try {
+      const path = type === 'certificate'
+        ? `/teacher/profile/certificates/${id}/approvals`
+        : `/teacher/profile/courses/${id}/approvals`;
+      const res = await api.get<{ data: TenantApproval[] }>(path);
+      setApprovals(res.data.data ?? []);
+    } catch {
+      // Hata durumunda boş liste
+    } finally {
+      setApprovalsLoading(false);
+    }
+  };
+
   // ─── Yetenek CRUD ────────────────────────────────────────────────────────
 
   const openSkillModal = (skill?: Skill) => {
@@ -914,6 +1085,12 @@ export default function EditProfileScreen() {
               )}
             </View>
             <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => openApprovalSheet('certificate', cert.id, cert.name)}
+              >
+                <Ionicons name="people-outline" size={18} color="#8b5cf6" />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.iconBtn} onPress={() => openCertModal(cert)}>
                 <Ionicons name="pencil-outline" size={18} color={AppColors.primary} />
               </TouchableOpacity>
@@ -965,6 +1142,12 @@ export default function EditProfileScreen() {
               )}
             </View>
             <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => openApprovalSheet('course', course.id, course.title)}
+              >
+                <Ionicons name="people-outline" size={18} color="#8b5cf6" />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.iconBtn} onPress={() => openCourseModal(course)}>
                 <Ionicons name="pencil-outline" size={18} color={AppColors.primary} />
               </TouchableOpacity>
@@ -1361,6 +1544,16 @@ export default function EditProfileScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {approvalSheet ? (
+        <ApprovalBottomSheet
+          visible={approvalSheet.visible}
+          title={approvalSheet.title}
+          approvals={approvals}
+          loading={approvalsLoading}
+          onClose={() => setApprovalSheet(null)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

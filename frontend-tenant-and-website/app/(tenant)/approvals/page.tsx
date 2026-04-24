@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
-import { CheckCircle, XCircle, Clock, Users, UserMinus, Edit3, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Users, UserMinus, Edit3, RefreshCw, Award } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type EnrollmentRequest = {
@@ -53,7 +53,17 @@ type ApprovalsData = {
     };
 };
 
-type ActiveTab = 'enrollment' | 'removal' | 'field_change';
+type CredentialItem = {
+    type: 'certificate' | 'course';
+    id: number;
+    title: string;
+    subtitle: string | null;
+    date: string | null;
+    teacher_name: string;
+    teacher_profile_id: number;
+};
+
+type ActiveTab = 'enrollment' | 'removal' | 'field_change' | 'credentials';
 
 export default function ApprovalsPage() {
     const { t } = useTranslation();
@@ -63,6 +73,11 @@ export default function ApprovalsPage() {
     const [rejectModal, setRejectModal] = useState<{ open: boolean; type: ActiveTab; id: number; schoolId: number } | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const [processing, setProcessing] = useState(false);
+
+    // Öğretmen belgeleri
+    const [credentials, setCredentials] = useState<CredentialItem[]>([]);
+    const [credentialsLoading, setCredentialsLoading] = useState(false);
+    const [credentialProcessing, setCredentialProcessing] = useState<string | null>(null);
 
     const fetchApprovals = useCallback(async () => {
         setLoading(true);
@@ -76,9 +91,67 @@ export default function ApprovalsPage() {
         }
     }, []);
 
+    const fetchCredentials = useCallback(async () => {
+        setCredentialsLoading(true);
+        try {
+            const res = await apiClient.get('/teacher-approvals');
+            setCredentials(res.data?.data ?? []);
+        } catch {
+            toast.error('Öğretmen belgeleri yüklenemedi.');
+        } finally {
+            setCredentialsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         fetchApprovals();
     }, [fetchApprovals]);
+
+    useEffect(() => {
+        if (activeTab === 'credentials') { fetchCredentials(); }
+    }, [activeTab, fetchCredentials]);
+
+    const handleApproveCredential = async (item: CredentialItem) => {
+        const key = `${item.type}-${item.id}`;
+        setCredentialProcessing(key);
+        try {
+            const path = item.type === 'certificate'
+                ? `/teacher-approvals/certificates/${item.id}/approve`
+                : `/teacher-approvals/courses/${item.id}/approve`;
+            await apiClient.patch(path);
+            toast.success('Onaylandı.');
+            setCredentials(prev => prev.filter(c => !(c.type === item.type && c.id === item.id)));
+        } catch { toast.error('Onay işlemi başarısız.'); }
+        finally { setCredentialProcessing(null); }
+    };
+
+    const handleRejectCredential = async (item: CredentialItem) => {
+        const { value: reason } = await Swal.fire({
+            title: 'Red Sebebi',
+            input: 'textarea',
+            inputLabel: 'Lütfen red sebebini yazın',
+            inputPlaceholder: 'Red sebebi...',
+            inputAttributes: { maxlength: '1000' },
+            showCancelButton: true,
+            confirmButtonText: 'Reddet',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#e7515a',
+            inputValidator: (v) => { if (!v?.trim()) { return 'Red sebebi zorunludur.'; } },
+        });
+        if (!reason) { return; }
+
+        const key = `${item.type}-${item.id}`;
+        setCredentialProcessing(key);
+        try {
+            const path = item.type === 'certificate'
+                ? `/teacher-approvals/certificates/${item.id}/reject`
+                : `/teacher-approvals/courses/${item.id}/reject`;
+            await apiClient.patch(path, { rejection_reason: reason });
+            toast.success('Reddedildi.');
+            setCredentials(prev => prev.filter(c => !(c.type === item.type && c.id === item.id)));
+        } catch { toast.error('Red işlemi başarısız.'); }
+        finally { setCredentialProcessing(null); }
+    };
 
     const handleApproveEnrollment = async (req: EnrollmentRequest) => {
         const result = await Swal.fire({
@@ -201,6 +274,13 @@ export default function ApprovalsPage() {
             count: data?.counts.field_change ?? 0,
             color: 'text-orange-600',
         },
+        {
+            key: 'credentials',
+            label: 'Öğretmen Belgesi',
+            icon: <Award size={16} />,
+            count: credentials.length,
+            color: 'text-purple-600',
+        },
     ];
 
     return (
@@ -241,7 +321,7 @@ export default function ApprovalsPage() {
                             {tab.label}
                             {tab.count > 0 && (
                                 <span className={`ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold text-white ${
-                                    tab.key === 'removal' ? 'bg-red-500' : tab.key === 'field_change' ? 'bg-orange-500' : 'bg-blue-500'
+                                    tab.key === 'removal' ? 'bg-red-500' : tab.key === 'field_change' ? 'bg-orange-500' : tab.key === 'credentials' ? 'bg-purple-500' : 'bg-blue-500'
                                 }`}>
                                     {tab.count}
                                 </span>
@@ -437,6 +517,75 @@ export default function ApprovalsPage() {
                                                             </td>
                                                         </tr>
                                                     ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {/* Teacher Credentials */}
+                            {activeTab === 'credentials' && (
+                                <div>
+                                    {credentialsLoading ? (
+                                        <div className="flex justify-center py-12">
+                                            <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                                        </div>
+                                    ) : credentials.length === 0 ? (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <Award size={40} className="mx-auto mb-2 text-gray-300" />
+                                            <p>Onay bekleyen öğretmen belgesi yok.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="table-responsive">
+                                            <table className="table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Belge Türü</th>
+                                                        <th>Başlık</th>
+                                                        <th>Kurum / Sağlayıcı</th>
+                                                        <th>Öğretmen</th>
+                                                        <th>Tarih</th>
+                                                        <th className="text-center">İşlem</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {credentials.map(item => {
+                                                        const key = `${item.type}-${item.id}`;
+                                                        const isBusy = credentialProcessing === key;
+                                                        return (
+                                                            <tr key={key}>
+                                                                <td>
+                                                                    <span className={`badge ${item.type === 'certificate' ? 'badge-outline-warning' : 'badge-outline-info'} text-xs`}>
+                                                                        {item.type === 'certificate' ? 'Sertifika' : 'Kurs/Seminer'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="font-medium">{item.title}</td>
+                                                                <td className="text-sm text-gray-500">{item.subtitle ?? '—'}</td>
+                                                                <td className="text-sm">{item.teacher_name}</td>
+                                                                <td className="text-sm text-gray-500">
+                                                                    {item.date ? new Date(item.date).toLocaleDateString('tr-TR') : '—'}
+                                                                </td>
+                                                                <td>
+                                                                    <div className="flex items-center justify-center gap-2">
+                                                                        <button
+                                                                            onClick={() => handleApproveCredential(item)}
+                                                                            disabled={isBusy}
+                                                                            className="btn btn-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
+                                                                        >
+                                                                            <CheckCircle size={14} />Onayla
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleRejectCredential(item)}
+                                                                            disabled={isBusy}
+                                                                            className="btn btn-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
+                                                                        >
+                                                                            <XCircle size={14} />Reddet
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>

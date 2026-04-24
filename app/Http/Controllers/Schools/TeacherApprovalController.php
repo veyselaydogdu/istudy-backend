@@ -5,44 +5,74 @@ namespace App\Http\Controllers\Schools;
 use App\Http\Controllers\Base\BaseController;
 use App\Models\School\TeacherCertificate;
 use App\Models\School\TeacherCourse;
-use App\Services\TeacherProfileService;
+use App\Models\School\TeacherCredentialTenantApproval;
+use App\Models\School\TeacherTenantMembership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * TeacherApprovalController — Öğretmen Onay İşlemleri (Okul Admin)
+ * TeacherApprovalController — Per-Tenant Öğretmen Onay İşlemleri
  *
- * Okul yöneticisinin öğretmen sertifika ve kurs/seminer onay/red işlemleri.
- * Workflow: Öğretmen ekler → pending → Okul admin onaylar/reddeder
+ * Her tenant, kayıtlı öğretmenin sertifika ve kurslarını bağımsız onaylayıp reddedebilir.
+ * Red işleminde sebep zorunludur.
  */
 class TeacherApprovalController extends BaseController
 {
-    public function __construct(
-        private readonly TeacherProfileService $teacherProfileService
-    ) {}
-
     /**
-     * Onay bekleyen tüm öğeleri listele (okul bazında)
+     * Tenant'ın onaylamadığı (kayıt yok) sertifika + kurs listesi
      */
     public function pendingApprovals(Request $request): JsonResponse
     {
         try {
-            $user = $this->user();
+            $tenantId = $this->user()->tenant_id;
 
-            // Kullanıcının yönettiği okul(lar)ı bul
-            $schoolId = $request->input('school_id');
-            if (! $schoolId) {
-                return $this->errorResponse('Okul ID\'si gereklidir.', 422);
-            }
+            $approvedCertIds = TeacherCredentialTenantApproval::where('credential_type', 'certificate')
+                ->where('tenant_id', $tenantId)
+                ->pluck('credential_id');
 
-            $approvals = $this->teacherProfileService->getPendingApprovals(
-                (int) $schoolId,
-                $request->integer('per_page', 20)
-            );
+            $approvedCourseIds = TeacherCredentialTenantApproval::where('credential_type', 'course')
+                ->where('tenant_id', $tenantId)
+                ->pluck('credential_id');
 
-            return $this->paginatedResponse($approvals);
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
+
+            $perPage = $request->integer('per_page', 20);
+
+            $certificates = TeacherCertificate::whereIn('teacher_profile_id', $teacherProfileIds)
+                ->whereNotIn('id', $approvedCertIds)
+                ->with(['teacherProfile.user'])
+                ->get()
+                ->map(fn ($c) => [
+                    'type' => 'certificate',
+                    'id' => $c->id,
+                    'title' => $c->name,
+                    'subtitle' => $c->issuing_organization,
+                    'date' => $c->issue_date?->toDateString(),
+                    'teacher_name' => trim(($c->teacherProfile?->user?->name ?? '').' '.($c->teacherProfile?->user?->surname ?? '')),
+                    'teacher_profile_id' => $c->teacher_profile_id,
+                ]);
+
+            $courses = TeacherCourse::whereIn('teacher_profile_id', $teacherProfileIds)
+                ->whereNotIn('id', $approvedCourseIds)
+                ->with(['teacherProfile.user'])
+                ->get()
+                ->map(fn ($c) => [
+                    'type' => 'course',
+                    'id' => $c->id,
+                    'title' => $c->title,
+                    'subtitle' => $c->provider,
+                    'date' => $c->start_date?->toDateString(),
+                    'teacher_name' => trim(($c->teacherProfile?->user?->name ?? '').' '.($c->teacherProfile?->user?->surname ?? '')),
+                    'teacher_profile_id' => $c->teacher_profile_id,
+                ]);
+
+            $all = $certificates->merge($courses)->values();
+
+            return $this->successResponse($all);
         } catch (\Throwable $e) {
             Log::error('Onay listesi hatası', ['error' => $e->getMessage()]);
 
@@ -56,17 +86,29 @@ class TeacherApprovalController extends BaseController
     public function approveCertificate(int $certificateId): JsonResponse
     {
         try {
-            $certificate = TeacherCertificate::with('teacherProfile')->findOrFail($certificateId);
+            $tenantId = $this->user()->tenant_id;
 
-            if (! $certificate->isPending()) {
-                return $this->errorResponse('Bu sertifika zaten işlem görmüş.', 422);
-            }
+            $certificate = TeacherCertificate::with('teacherProfile')
+                ->whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+                ->findOrFail($certificateId);
 
             DB::beginTransaction();
-            $certificate = $this->teacherProfileService->approveCertificate($certificate, $this->user()->id);
+
+            TeacherCredentialTenantApproval::updateOrCreate(
+                ['credential_type' => 'certificate', 'credential_id' => $certificateId, 'tenant_id' => $tenantId],
+                [
+                    'status' => 'approved',
+                    'reviewed_by' => $this->user()->id,
+                    'reviewed_at' => now(),
+                    'rejection_reason' => null,
+                ]
+            );
+
             DB::commit();
 
-            return $this->successResponse($certificate, 'Sertifika onaylandı.');
+            return $this->successResponse(null, 'Sertifika onaylandı.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Sertifika bulunamadı.', 404);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Sertifika onay hatası', ['id' => $certificateId, 'error' => $e->getMessage()]);
@@ -76,30 +118,38 @@ class TeacherApprovalController extends BaseController
     }
 
     /**
-     * Sertifika reddet
+     * Sertifika reddet (sebep zorunlu)
      */
     public function rejectCertificate(Request $request, int $certificateId): JsonResponse
     {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
         try {
-            $request->validate([
-                'rejection_reason' => 'required|string|max:1000',
-            ]);
+            $tenantId = $this->user()->tenant_id;
 
-            $certificate = TeacherCertificate::with('teacherProfile')->findOrFail($certificateId);
-
-            if (! $certificate->isPending()) {
-                return $this->errorResponse('Bu sertifika zaten işlem görmüş.', 422);
-            }
+            TeacherCertificate::with('teacherProfile')
+                ->whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+                ->findOrFail($certificateId);
 
             DB::beginTransaction();
-            $certificate = $this->teacherProfileService->rejectCertificate(
-                $certificate,
-                $this->user()->id,
-                $request->input('rejection_reason')
+
+            TeacherCredentialTenantApproval::updateOrCreate(
+                ['credential_type' => 'certificate', 'credential_id' => $certificateId, 'tenant_id' => $tenantId],
+                [
+                    'status' => 'rejected',
+                    'reviewed_by' => $this->user()->id,
+                    'reviewed_at' => now(),
+                    'rejection_reason' => $request->input('rejection_reason'),
+                ]
             );
+
             DB::commit();
 
-            return $this->successResponse($certificate, 'Sertifika reddedildi.');
+            return $this->successResponse(null, 'Sertifika reddedildi.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Sertifika bulunamadı.', 404);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Sertifika red hatası', ['id' => $certificateId, 'error' => $e->getMessage()]);
@@ -114,17 +164,29 @@ class TeacherApprovalController extends BaseController
     public function approveCourse(int $courseId): JsonResponse
     {
         try {
-            $course = TeacherCourse::with('teacherProfile')->findOrFail($courseId);
+            $tenantId = $this->user()->tenant_id;
 
-            if (! $course->isPending()) {
-                return $this->errorResponse('Bu kurs/seminer zaten işlem görmüş.', 422);
-            }
+            TeacherCourse::with('teacherProfile')
+                ->whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+                ->findOrFail($courseId);
 
             DB::beginTransaction();
-            $course = $this->teacherProfileService->approveCourse($course, $this->user()->id);
+
+            TeacherCredentialTenantApproval::updateOrCreate(
+                ['credential_type' => 'course', 'credential_id' => $courseId, 'tenant_id' => $tenantId],
+                [
+                    'status' => 'approved',
+                    'reviewed_by' => $this->user()->id,
+                    'reviewed_at' => now(),
+                    'rejection_reason' => null,
+                ]
+            );
+
             DB::commit();
 
-            return $this->successResponse($course, 'Kurs/Seminer onaylandı.');
+            return $this->successResponse(null, 'Kurs/Seminer onaylandı.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Kurs bulunamadı.', 404);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Kurs onay hatası', ['id' => $courseId, 'error' => $e->getMessage()]);
@@ -134,63 +196,43 @@ class TeacherApprovalController extends BaseController
     }
 
     /**
-     * Kurs/Seminer reddet
+     * Kurs/Seminer reddet (sebep zorunlu)
      */
     public function rejectCourse(Request $request, int $courseId): JsonResponse
     {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
         try {
-            $request->validate([
-                'rejection_reason' => 'required|string|max:1000',
-            ]);
+            $tenantId = $this->user()->tenant_id;
 
-            $course = TeacherCourse::with('teacherProfile')->findOrFail($courseId);
-
-            if (! $course->isPending()) {
-                return $this->errorResponse('Bu kurs/seminer zaten işlem görmüş.', 422);
-            }
+            TeacherCourse::with('teacherProfile')
+                ->whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+                ->findOrFail($courseId);
 
             DB::beginTransaction();
-            $course = $this->teacherProfileService->rejectCourse(
-                $course,
-                $this->user()->id,
-                $request->input('rejection_reason')
+
+            TeacherCredentialTenantApproval::updateOrCreate(
+                ['credential_type' => 'course', 'credential_id' => $courseId, 'tenant_id' => $tenantId],
+                [
+                    'status' => 'rejected',
+                    'reviewed_by' => $this->user()->id,
+                    'reviewed_at' => now(),
+                    'rejection_reason' => $request->input('rejection_reason'),
+                ]
             );
+
             DB::commit();
 
-            return $this->successResponse($course, 'Kurs/Seminer reddedildi.');
+            return $this->successResponse(null, 'Kurs/Seminer reddedildi.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Kurs bulunamadı.', 404);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Kurs red hatası', ['id' => $courseId, 'error' => $e->getMessage()]);
 
             return $this->errorResponse('Red işlemi başarısız.', 500);
-        }
-    }
-
-    /**
-     * Toplu onay
-     */
-    public function bulkApprove(Request $request): JsonResponse
-    {
-        try {
-            $request->validate([
-                'items'        => 'required|array|min:1|max:50',
-                'items.*.id'   => 'required|integer',
-                'items.*.type' => 'required|in:certificate,course',
-            ]);
-
-            DB::beginTransaction();
-            $results = $this->teacherProfileService->bulkApprove(
-                $request->input('items'),
-                $this->user()->id
-            );
-            DB::commit();
-
-            return $this->successResponse($results, "{$results['approved']} öğe onaylandı.");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Toplu onay hatası', ['error' => $e->getMessage()]);
-
-            return $this->errorResponse('Toplu onay işlemi başarısız.', 500);
         }
     }
 }
