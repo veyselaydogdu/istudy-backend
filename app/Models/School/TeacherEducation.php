@@ -25,6 +25,7 @@ class TeacherEducation extends BaseModel
         'is_current',
         'gpa',
         'description',
+        'file_path',
         'country_id',
         'created_by',
         'updated_by',
@@ -32,23 +33,23 @@ class TeacherEducation extends BaseModel
 
     protected $casts = [
         'start_date' => 'date',
-        'end_date'   => 'date',
+        'end_date' => 'date',
         'is_current' => 'boolean',
-        'gpa'        => 'decimal:2',
+        'gpa' => 'decimal:2',
     ];
 
     /**
      * Eğitim dereceleri
      */
     public const DEGREES = [
-        'high_school'    => 'Lise',
-        'associate'      => 'Ön Lisans',
-        'bachelor'       => 'Lisans',
-        'master'         => 'Yüksek Lisans',
-        'doctorate'      => 'Doktora',
-        'postdoctoral'   => 'Post-Doktora',
-        'certificate'    => 'Sertifika Programı',
-        'other'          => 'Diğer',
+        'high_school' => 'Lise',
+        'associate' => 'Ön Lisans',
+        'bachelor' => 'Lisans',
+        'master' => 'Yüksek Lisans',
+        'doctorate' => 'Doktora',
+        'postdoctoral' => 'Post-Doktora',
+        'certificate' => 'Sertifika Programı',
+        'other' => 'Diğer',
     ];
 
     /*

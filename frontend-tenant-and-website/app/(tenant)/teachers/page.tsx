@@ -38,9 +38,9 @@ type TeacherDetail = TeacherWithMembership & {
     bio: string | null;
     linkedin_url: string | null;
     website_url: string | null;
-    educations: { id: number; institution: string; degree: string; field_of_study: string; start_date: string | null; end_date: string | null; is_current: boolean; country: { id: number; name: string } | null; description: string | null }[];
-    certificates: { id: number; name: string; issuing_organization: string | null; issue_date: string | null; expiry_date: string | null; credential_url: string | null; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null }[];
-    courses: { id: number; title: string; type: string; provider: string | null; start_date: string | null; end_date: string | null; duration_hours: number | null; location: string | null; is_online: boolean; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null }[];
+    educations: { id: number; institution: string; degree: string; field_of_study: string; start_date: string | null; end_date: string | null; is_current: boolean; country: { id: number; name: string } | null; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null; document_url: string | null }[];
+    certificates: { id: number; name: string; issuing_organization: string | null; issue_date: string | null; expiry_date: string | null; credential_url: string | null; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null; document_url: string | null }[];
+    courses: { id: number; title: string; type: string; provider: string | null; start_date: string | null; end_date: string | null; duration_hours: number | null; location: string | null; is_online: boolean; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null; document_url: string | null }[];
     skills: { id: number; name: string; level: string; category: string; proficiency: number }[];
     blog_posts: { id: number; title: string; description: string | null; likes_count: number; comments_count: number; published_at: string | null; created_at: string | null }[];
 };
@@ -182,20 +182,21 @@ export default function TeachersPage() {
     };
 
     // ── Credential Onay / Red ─────────────────────────────────
-    const handleApproveCredential = async (type: 'certificate' | 'course', id: number) => {
+    const handleApproveCredential = async (type: 'certificate' | 'course' | 'education', id: number) => {
         const key = `${type}-${id}`;
         setApprovingId(key);
         try {
-            const path = type === 'certificate'
-                ? `/teacher-approvals/certificates/${id}/approve`
-                : `/teacher-approvals/courses/${id}/approve`;
-            await apiClient.patch(path);
+            const pathMap = { certificate: 'certificates', course: 'courses', education: 'educations' };
+            await apiClient.patch(`/teacher-approvals/${pathMap[type]}/${id}/approve`);
             toast.success('Onaylandı.');
             if (viewingTeacher) {
                 setViewingTeacher(prev => {
                     if (!prev) { return prev; }
                     if (type === 'certificate') {
                         return { ...prev, certificates: prev.certificates.map(c => c.id === id ? { ...c, approval_status: 'approved' as const, rejection_reason: null } : c) };
+                    }
+                    if (type === 'education') {
+                        return { ...prev, educations: prev.educations.map(e => e.id === id ? { ...e, approval_status: 'approved' as const, rejection_reason: null } : e) };
                     }
                     return { ...prev, courses: prev.courses.map(c => c.id === id ? { ...c, approval_status: 'approved' as const, rejection_reason: null } : c) };
                 });
@@ -204,7 +205,7 @@ export default function TeachersPage() {
         finally { setApprovingId(null); }
     };
 
-    const handleRejectCredential = async (type: 'certificate' | 'course', id: number) => {
+    const handleRejectCredential = async (type: 'certificate' | 'course' | 'education', id: number) => {
         const { value: reason } = await Swal.fire({
             title: 'Red Sebebi',
             input: 'textarea',
@@ -222,16 +223,17 @@ export default function TeachersPage() {
         const key = `${type}-${id}`;
         setApprovingId(key);
         try {
-            const path = type === 'certificate'
-                ? `/teacher-approvals/certificates/${id}/reject`
-                : `/teacher-approvals/courses/${id}/reject`;
-            await apiClient.patch(path, { rejection_reason: reason });
+            const pathMap = { certificate: 'certificates', course: 'courses', education: 'educations' };
+            await apiClient.patch(`/teacher-approvals/${pathMap[type]}/${id}/reject`, { rejection_reason: reason });
             toast.success('Reddedildi.');
             if (viewingTeacher) {
                 setViewingTeacher(prev => {
                     if (!prev) { return prev; }
                     if (type === 'certificate') {
                         return { ...prev, certificates: prev.certificates.map(c => c.id === id ? { ...c, approval_status: 'rejected' as const, rejection_reason: reason } : c) };
+                    }
+                    if (type === 'education') {
+                        return { ...prev, educations: prev.educations.map(e => e.id === id ? { ...e, approval_status: 'rejected' as const, rejection_reason: reason } : e) };
                     }
                     return { ...prev, courses: prev.courses.map(c => c.id === id ? { ...c, approval_status: 'rejected' as const, rejection_reason: reason } : c) };
                 });
@@ -1041,19 +1043,58 @@ export default function TeachersPage() {
                                         <EmptyState icon={<GraduationCap />} text={t('teachers.noEducation')} />
                                     ) : viewingTeacher.educations.map(e => (
                                         <div key={e.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
-                                            <div className="flex items-start justify-between">
-                                                <div>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
                                                     <p className="font-semibold text-dark dark:text-white">{e.institution}</p>
                                                     <p className="text-sm">{e.degree} {e.field_of_study && `— ${e.field_of_study}`}</p>
+                                                    {e.approval_status === 'pending' && (
+                                                        <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-warning text-xs"><Clock className="h-3 w-3" />Onay Bekliyor</span>
+                                                    )}
+                                                    {e.approval_status === 'approved' && (
+                                                        <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-success text-xs"><CheckCircle className="h-3 w-3" />Onaylandı</span>
+                                                    )}
+                                                    {e.approval_status === 'rejected' && (
+                                                        <div>
+                                                            <span className="inline-flex items-center gap-1 mt-1 badge badge-outline-danger text-xs"><XCircle className="h-3 w-3" />Reddedildi</span>
+                                                            {e.rejection_reason && <p className="mt-1 text-xs text-danger italic">"{e.rejection_reason}"</p>}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <span className="text-xs text-[#888ea8] whitespace-nowrap">
-                                                    {e.start_date ? new Date(e.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
-                                                    {' — '}
-                                                    {e.is_current ? t('teachers.ongoing') : e.end_date ? new Date(e.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
-                                                </span>
+                                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                                    <span className="text-xs text-[#888ea8] whitespace-nowrap">
+                                                        {e.start_date ? new Date(e.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
+                                                        {' — '}
+                                                        {e.is_current ? t('teachers.ongoing') : e.end_date ? new Date(e.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        {e.approval_status !== 'approved' && (
+                                                            <button
+                                                                onClick={() => handleApproveCredential('education', e.id)}
+                                                                disabled={approvingId === `education-${e.id}`}
+                                                                className="btn btn-success btn-sm h-7 min-h-0 px-2 text-xs gap-1"
+                                                            >
+                                                                <CheckCircle className="h-3.5 w-3.5" />Onayla
+                                                            </button>
+                                                        )}
+                                                        {e.approval_status !== 'rejected' && (
+                                                            <button
+                                                                onClick={() => handleRejectCredential('education', e.id)}
+                                                                disabled={approvingId === `education-${e.id}`}
+                                                                className="btn btn-danger btn-sm h-7 min-h-0 px-2 text-xs gap-1"
+                                                            >
+                                                                <XCircle className="h-3.5 w-3.5" />Reddet
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                             {e.country && <p className="mt-1 text-xs text-[#888ea8]">{e.country.name}</p>}
                                             {e.description && <p className="mt-2 text-xs text-[#888ea8]">{e.description}</p>}
+                                            {e.document_url && (
+                                                <a href={e.document_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                                    <FileText className="h-3 w-3" />Belgeyi Görüntüle
+                                                </a>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -1109,9 +1150,16 @@ export default function TeachersPage() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            {c.credential_url && (
-                                                <a href={c.credential_url} target="_blank" rel="noreferrer" className="mt-1 text-xs text-primary hover:underline">{t('teachers.viewCredential')}</a>
-                                            )}
+                                            <div className="mt-1 flex flex-wrap gap-3">
+                                                {c.credential_url && (
+                                                    <a href={c.credential_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">{t('teachers.viewCredential')}</a>
+                                                )}
+                                                {c.document_url && (
+                                                    <a href={c.document_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                                        <FileText className="h-3 w-3" />Belgeyi Görüntüle
+                                                    </a>
+                                                )}
+                                            </div>
                                             {c.description && <p className="mt-2 text-xs text-[#888ea8]">{c.description}</p>}
                                         </div>
                                     ))}
@@ -1174,6 +1222,11 @@ export default function TeachersPage() {
                                                 </div>
                                             </div>
                                             {c.location && <p className="mt-1 text-xs text-[#888ea8]">📍 {c.location}</p>}
+                                            {c.document_url && (
+                                                <a href={c.document_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                                    <FileText className="h-3 w-3" />Belgeyi Görüntüle
+                                                </a>
+                                            )}
                                             {c.description && <p className="mt-2 text-xs text-[#888ea8]">{c.description}</p>}
                                         </div>
                                     ))}

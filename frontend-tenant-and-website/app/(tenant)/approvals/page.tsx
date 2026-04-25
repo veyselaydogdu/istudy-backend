@@ -54,13 +54,14 @@ type ApprovalsData = {
 };
 
 type CredentialItem = {
-    type: 'certificate' | 'course';
+    type: 'certificate' | 'course' | 'education';
     id: number;
     title: string;
     subtitle: string | null;
     date: string | null;
     teacher_name: string;
     teacher_profile_id: number;
+    has_document: boolean;
 };
 
 type ActiveTab = 'enrollment' | 'removal' | 'field_change' | 'credentials';
@@ -115,10 +116,8 @@ export default function ApprovalsPage() {
         const key = `${item.type}-${item.id}`;
         setCredentialProcessing(key);
         try {
-            const path = item.type === 'certificate'
-                ? `/teacher-approvals/certificates/${item.id}/approve`
-                : `/teacher-approvals/courses/${item.id}/approve`;
-            await apiClient.patch(path);
+            const pathMap = { certificate: 'certificates', course: 'courses', education: 'educations' };
+            await apiClient.patch(`/teacher-approvals/${pathMap[item.type]}/${item.id}/approve`);
             toast.success('Onaylandı.');
             setCredentials(prev => prev.filter(c => !(c.type === item.type && c.id === item.id)));
         } catch { toast.error('Onay işlemi başarısız.'); }
@@ -143,10 +142,8 @@ export default function ApprovalsPage() {
         const key = `${item.type}-${item.id}`;
         setCredentialProcessing(key);
         try {
-            const path = item.type === 'certificate'
-                ? `/teacher-approvals/certificates/${item.id}/reject`
-                : `/teacher-approvals/courses/${item.id}/reject`;
-            await apiClient.patch(path, { rejection_reason: reason });
+            const pathMap = { certificate: 'certificates', course: 'courses', education: 'educations' };
+            await apiClient.patch(`/teacher-approvals/${pathMap[item.type]}/${item.id}/reject`, { rejection_reason: reason });
             toast.success('Reddedildi.');
             setCredentials(prev => prev.filter(c => !(c.type === item.type && c.id === item.id)));
         } catch { toast.error('Red işlemi başarısız.'); }
@@ -555,8 +552,8 @@ export default function ApprovalsPage() {
                                                         return (
                                                             <tr key={key}>
                                                                 <td>
-                                                                    <span className={`badge ${item.type === 'certificate' ? 'badge-outline-warning' : 'badge-outline-info'} text-xs`}>
-                                                                        {item.type === 'certificate' ? 'Sertifika' : 'Kurs/Seminer'}
+                                                                    <span className={`badge ${item.type === 'certificate' ? 'badge-outline-warning' : item.type === 'education' ? 'badge-outline-success' : 'badge-outline-info'} text-xs`}>
+                                                                        {item.type === 'certificate' ? 'Sertifika' : item.type === 'education' ? 'Eğitim' : 'Kurs/Seminer'}
                                                                     </span>
                                                                 </td>
                                                                 <td className="font-medium">{item.title}</td>

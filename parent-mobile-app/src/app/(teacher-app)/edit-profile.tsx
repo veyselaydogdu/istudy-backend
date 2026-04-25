@@ -1,5 +1,6 @@
 import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -184,6 +185,7 @@ interface Education {
   is_current?: boolean;
   gpa?: number | null;
   description?: string | null;
+  file_path?: string | null;
 }
 
 interface Certificate {
@@ -196,6 +198,7 @@ interface Certificate {
   credential_url?: string | null;
   description?: string | null;
   status?: string;
+  file_path?: string | null;
 }
 
 interface Course {
@@ -211,6 +214,7 @@ interface Course {
   certificate_url?: string | null;
   description?: string | null;
   status?: string;
+  file_path?: string | null;
 }
 
 interface Skill {
@@ -636,11 +640,16 @@ export default function EditProfileScreen() {
   const [approvalSheet, setApprovalSheet] = useState<{
     visible: boolean;
     title: string;
-    type: 'certificate' | 'course';
+    type: 'certificate' | 'course' | 'education';
     id: number;
   } | null>(null);
   const [approvals, setApprovals] = useState<TenantApproval[]>([]);
   const [approvalsLoading, setApprovalsLoading] = useState(false);
+
+  // Belge seçimi (yeni kayıt için)
+  const [eduDocument, setEduDocument] = useState<{ uri: string; name: string; mimeType: string; base64: string } | null>(null);
+  const [certDocument, setCertDocument] = useState<{ uri: string; name: string; mimeType: string; base64: string } | null>(null);
+  const [courseDocument, setCourseDocument] = useState<{ uri: string; name: string; mimeType: string; base64: string } | null>(null);
 
   // Form state'leri
   const [eduForm, setEduForm] = useState<Partial<Education>>({});
@@ -716,6 +725,36 @@ export default function EditProfileScreen() {
 
   // ─── Eğitim CRUD ─────────────────────────────────────────────────────────
 
+  const pickDocument = async (onPicked: (doc: { uri: string; name: string; mimeType: string; base64: string }) => void) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('İzin Gerekli', 'Fotoğraf seçmek için galeri erişim izni gereklidir.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      quality: 0.7,
+      base64: true,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      const asset = result.assets[0];
+      const mime = asset.mimeType ?? 'image/jpeg';
+      const name = asset.fileName ?? `photo_${Date.now()}.jpg`;
+      if (!asset.base64) {
+        Alert.alert('Hata', 'Görsel okunamadı. Lütfen tekrar deneyin.');
+        return;
+      }
+      onPicked({ uri: asset.uri, name, mimeType: mime, base64: asset.base64 });
+    }
+  };
+
+  const uploadDocument = async (type: 'educations' | 'courses' | 'certificates', id: number, doc: { uri: string; name: string; mimeType: string; base64: string }) => {
+    await api.post(`/teacher/profile/${type}/${id}/document`, {
+      photo: doc.base64,
+      mime_type: doc.mimeType,
+    });
+  };
+
   const openEduModal = (edu?: Education) => {
     if (edu) {
       setEduForm({ ...edu });
@@ -724,6 +763,7 @@ export default function EditProfileScreen() {
       setEduForm({ degree: 'bachelor' });
       setEditingId(null);
     }
+    setEduDocument(null);
     setEduModal(true);
   };
 
@@ -736,12 +776,31 @@ export default function EditProfileScreen() {
       Alert.alert('Hata', 'Bitiş tarihi başlangıç tarihinden sonra olmalıdır.');
       return;
     }
+    // Yeni kayıt için belge zorunlu
+    if (!editingId && !eduDocument) {
+      Alert.alert('Belge Gerekli', 'Eğitim kaydı eklemek için belge (PDF veya görsel) yüklemeniz zorunludur.');
+      return;
+    }
     setModalSaving(true);
     try {
       if (editingId) {
         await api.put(`/teacher/profile/educations/${editingId}`, eduForm);
+        if (eduDocument && !eduForm.file_path) {
+          await uploadDocument('educations', editingId, eduDocument);
+        }
       } else {
-        await api.post('/teacher/profile/educations', eduForm);
+        const res = await api.post('/teacher/profile/educations', eduForm);
+        const newId = res.data?.data?.id;
+        if (newId && eduDocument) {
+          try {
+            await uploadDocument('educations', newId, eduDocument);
+          } catch (uploadErr: unknown) {
+            await api.delete(`/teacher/profile/educations/${newId}`).catch(() => null);
+            Alert.alert('Hata', getApiError(uploadErr));
+            setModalSaving(false);
+            return;
+          }
+        }
       }
       setEduModal(false);
       fetchAll();
@@ -778,6 +837,7 @@ export default function EditProfileScreen() {
       setCertForm({});
       setEditingId(null);
     }
+    setCertDocument(null);
     setCertModal(true);
   };
 
@@ -790,8 +850,22 @@ export default function EditProfileScreen() {
     try {
       if (editingId) {
         await api.put(`/teacher/profile/certificates/${editingId}`, certForm);
+        if (certDocument && !certForm.file_path) {
+          await uploadDocument('certificates', editingId, certDocument);
+        }
       } else {
-        await api.post('/teacher/profile/certificates', certForm);
+        const res = await api.post('/teacher/profile/certificates', certForm);
+        const newId = res.data?.data?.id;
+        if (newId && certDocument) {
+          try {
+            await uploadDocument('certificates', newId, certDocument);
+          } catch (uploadErr: unknown) {
+            await api.delete(`/teacher/profile/certificates/${newId}`).catch(() => null);
+            Alert.alert('Hata', getApiError(uploadErr));
+            setModalSaving(false);
+            return;
+          }
+        }
       }
       setCertModal(false);
       fetchAll();
@@ -828,6 +902,7 @@ export default function EditProfileScreen() {
       setCourseForm({ type: 'course', is_online: false });
       setEditingId(null);
     }
+    setCourseDocument(null);
     setCourseModal(true);
   };
 
@@ -836,12 +911,30 @@ export default function EditProfileScreen() {
       Alert.alert('Hata', 'Başlık, sağlayıcı ve başlangıç tarihi zorunludur.');
       return;
     }
+    if (!editingId && !courseDocument) {
+      Alert.alert('Belge Gerekli', 'Kurs/Seminer eklemek için belge (PDF veya görsel) yüklemeniz zorunludur.');
+      return;
+    }
     setModalSaving(true);
     try {
       if (editingId) {
         await api.put(`/teacher/profile/courses/${editingId}`, courseForm);
+        if (courseDocument && !courseForm.file_path) {
+          await uploadDocument('courses', editingId, courseDocument);
+        }
       } else {
-        await api.post('/teacher/profile/courses', courseForm);
+        const res = await api.post('/teacher/profile/courses', courseForm);
+        const newId = res.data?.data?.id;
+        if (newId && courseDocument) {
+          try {
+            await uploadDocument('courses', newId, courseDocument);
+          } catch (uploadErr: unknown) {
+            await api.delete(`/teacher/profile/courses/${newId}`).catch(() => null);
+            Alert.alert('Hata', getApiError(uploadErr));
+            setModalSaving(false);
+            return;
+          }
+        }
       }
       setCourseModal(false);
       fetchAll();
@@ -870,15 +963,13 @@ export default function EditProfileScreen() {
 
   // ─── Onay Durumu ─────────────────────────────────────────────────────────
 
-  const openApprovalSheet = async (type: 'certificate' | 'course', id: number, title: string) => {
+  const openApprovalSheet = async (type: 'certificate' | 'course' | 'education', id: number, title: string) => {
     setApprovals([]);
     setApprovalSheet({ visible: true, title, type, id });
     setApprovalsLoading(true);
     try {
-      const path = type === 'certificate'
-        ? `/teacher/profile/certificates/${id}/approvals`
-        : `/teacher/profile/courses/${id}/approvals`;
-      const res = await api.get<{ data: TenantApproval[] }>(path);
+      const pathMap = { certificate: 'certificates', course: 'courses', education: 'educations' };
+      const res = await api.get<{ data: TenantApproval[] }>(`/teacher/profile/${pathMap[type]}/${id}/approvals`);
       setApprovals(res.data.data ?? []);
     } catch {
       // Hata durumunda boş liste
@@ -1039,6 +1130,12 @@ export default function EditProfileScreen() {
               </Text>
             </View>
             <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => openApprovalSheet('education', edu.id, edu.institution)}
+              >
+                <Ionicons name="people-outline" size={18} color="#8b5cf6" />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.iconBtn} onPress={() => openEduModal(edu)}>
                 <Ionicons name="pencil-outline" size={18} color={AppColors.primary} />
               </TouchableOpacity>
@@ -1049,6 +1146,12 @@ export default function EditProfileScreen() {
           </View>
           {edu.description ? (
             <Text style={styles.cardDesc}>{edu.description}</Text>
+          ) : null}
+          {edu.file_path ? (
+            <View style={styles.docBadge}>
+              <Ionicons name="document-attach-outline" size={13} color={AppColors.primary} />
+              <Text style={styles.docBadgeText}>Belge yüklendi</Text>
+            </View>
           ) : null}
         </View>
       ))}
@@ -1083,6 +1186,12 @@ export default function EditProfileScreen() {
                   </Text>
                 </View>
               )}
+              {cert.file_path ? (
+                <View style={styles.docBadge}>
+                  <Ionicons name="document-attach-outline" size={13} color={AppColors.primary} />
+                  <Text style={styles.docBadgeText}>Belge yüklendi</Text>
+                </View>
+              ) : null}
             </View>
             <View style={styles.cardActions}>
               <TouchableOpacity
@@ -1140,6 +1249,12 @@ export default function EditProfileScreen() {
                   </Text>
                 </View>
               )}
+              {course.file_path ? (
+                <View style={styles.docBadge}>
+                  <Ionicons name="document-attach-outline" size={13} color={AppColors.primary} />
+                  <Text style={styles.docBadgeText}>Belge yüklendi</Text>
+                </View>
+              ) : null}
             </View>
             <View style={styles.cardActions}>
               <TouchableOpacity
@@ -1311,6 +1426,33 @@ export default function EditProfileScreen() {
               onChangeText={v => setEduForm(f => ({ ...f, description: v }))}
               multiline
             />
+
+            {/* Belge yükleme */}
+            <View style={docStyles.section}>
+              <Text style={docStyles.label}>Görsel {!editingId && <Text style={docStyles.required}>*</Text>}</Text>
+              {eduForm.file_path ? (
+                <View style={docStyles.uploadedBox}>
+                  <Ionicons name="document-attach" size={18} color={AppColors.primary} />
+                  <Text style={docStyles.uploadedText}>Belge mevcut — değiştirilemez</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={docStyles.warningBox}>
+                    <Ionicons name="information-circle-outline" size={15} color="#92400e" />
+                    <Text style={docStyles.warningText}>Yüklenen görseller sonradan değiştirilemez.</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[docStyles.pickBtn, eduDocument && docStyles.pickBtnSelected]}
+                    onPress={() => pickDocument(setEduDocument)}
+                  >
+                    <Ionicons name={eduDocument ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={eduDocument ? AppColors.success : AppColors.primary} />
+                    <Text style={[docStyles.pickBtnText, eduDocument && docStyles.pickBtnTextSelected]}>
+                      {eduDocument ? eduDocument.name : 'Belge Seç'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </ScrollView>
           <View style={styles.modalFooter}>
             <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEduModal(false)}>
@@ -1379,6 +1521,33 @@ export default function EditProfileScreen() {
               onChangeText={v => setCertForm(f => ({ ...f, description: v }))}
               multiline
             />
+
+            {/* Belge yükleme */}
+            <View style={docStyles.section}>
+              <Text style={docStyles.label}>Görsel</Text>
+              {certForm.file_path ? (
+                <View style={docStyles.uploadedBox}>
+                  <Ionicons name="document-attach" size={18} color={AppColors.primary} />
+                  <Text style={docStyles.uploadedText}>Belge mevcut — değiştirilemez</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={docStyles.warningBox}>
+                    <Ionicons name="information-circle-outline" size={15} color="#92400e" />
+                    <Text style={docStyles.warningText}>Yüklenen görseller sonradan değiştirilemez.</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[docStyles.pickBtn, certDocument && docStyles.pickBtnSelected]}
+                    onPress={() => pickDocument(setCertDocument)}
+                  >
+                    <Ionicons name={certDocument ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={certDocument ? AppColors.success : AppColors.primary} />
+                    <Text style={[docStyles.pickBtnText, certDocument && docStyles.pickBtnTextSelected]}>
+                      {certDocument ? certDocument.name : 'Belge Seç'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </ScrollView>
           <View style={styles.modalFooter}>
             <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setCertModal(false)}>
@@ -1472,6 +1641,33 @@ export default function EditProfileScreen() {
               onChangeText={v => setCourseForm(f => ({ ...f, description: v }))}
               multiline
             />
+
+            {/* Belge yükleme */}
+            <View style={docStyles.section}>
+              <Text style={docStyles.label}>Görsel {!editingId && <Text style={docStyles.required}>*</Text>}</Text>
+              {courseForm.file_path ? (
+                <View style={docStyles.uploadedBox}>
+                  <Ionicons name="document-attach" size={18} color={AppColors.primary} />
+                  <Text style={docStyles.uploadedText}>Belge mevcut — değiştirilemez</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={docStyles.warningBox}>
+                    <Ionicons name="information-circle-outline" size={15} color="#92400e" />
+                    <Text style={docStyles.warningText}>Yüklenen görseller sonradan değiştirilemez.</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[docStyles.pickBtn, courseDocument && docStyles.pickBtnSelected]}
+                    onPress={() => pickDocument(setCourseDocument)}
+                  >
+                    <Ionicons name={courseDocument ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={courseDocument ? AppColors.success : AppColors.primary} />
+                    <Text style={[docStyles.pickBtnText, courseDocument && docStyles.pickBtnTextSelected]}>
+                      {courseDocument ? courseDocument.name : 'Belge Seç'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </ScrollView>
           <View style={styles.modalFooter}>
             <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setCourseModal(false)}>
@@ -1804,6 +2000,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
+  docBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  docBadgeText: {
+    fontSize: 11,
+    color: AppColors.primary,
+  },
   skillsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1933,5 +2139,73 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+});
+
+const docStyles = StyleSheet.create({
+  section: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: AppColors.onSurface,
+    marginBottom: 8,
+  },
+  required: {
+    color: AppColors.error,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#92400e',
+    flex: 1,
+  },
+  pickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: AppColors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  pickBtnSelected: {
+    borderStyle: 'solid',
+    borderColor: AppColors.success,
+    backgroundColor: AppColors.successContainer,
+  },
+  pickBtnText: {
+    fontSize: 13,
+    color: AppColors.primary,
+    flex: 1,
+  },
+  pickBtnTextSelected: {
+    color: AppColors.success,
+  },
+  uploadedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: AppColors.surfaceContainerLow,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  uploadedText: {
+    fontSize: 13,
+    color: AppColors.onSurfaceVariant,
   },
 });

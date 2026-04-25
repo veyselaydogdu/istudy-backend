@@ -9,6 +9,7 @@ services:
     working_dir: /var/www/html
     volumes:
       - ../:/var/www/html
+      - ./php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
     environment:
       DB_CONNECTION: mysql
       DB_HOST: db

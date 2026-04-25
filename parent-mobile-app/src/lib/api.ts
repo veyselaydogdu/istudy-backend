@@ -21,7 +21,7 @@ const DEFAULT_URL =
     ? 'http://10.0.2.2:8000/api'
     : 'http://localhost:8000/api';
 
-const API_URL = configuredUrl ?? DEFAULT_URL;
+export const API_URL = configuredUrl ?? DEFAULT_URL;
 
 // In-memory token cache — avoids AsyncStorage read on every request
 // UNINIT sentinel: not yet loaded from storage. null means "no token".

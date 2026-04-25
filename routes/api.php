@@ -110,6 +110,14 @@ Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     // Yemek fotoğrafı
     Route::get('/meal-photo/{meal}', [\App\Http\Controllers\Media\MealPhotoController::class, 'serve'])
         ->name('meal.photo');
+
+    // Öğretmen belge sunumu (öğretmen kendi belgesi)
+    Route::get('/teacher/profile/{type}/{id}/document', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'serveDocument'])
+        ->name('teacher.document.serve');
+
+    // Tenant — öğretmen belge sunumu
+    Route::get('/teacher-approvals/document/{type}/{id}', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'serveCredentialDocument'])
+        ->name('tenant.credential.document');
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -394,6 +402,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::get('/certificates/{certificateId}/approvals', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'certificateApprovals']);
             Route::get('/courses/{courseId}/approvals', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'courseApprovals']);
+            Route::get('/educations/{educationId}/approvals', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'educationApprovals']);
+
+            Route::post('/educations/{educationId}/document', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'uploadEducationDocument']);
+            Route::post('/courses/{courseId}/document', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'uploadCourseDocument']);
+            Route::post('/certificates/{certificateId}/document', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'uploadCertificateDocument']);
+
+            Route::get('/{type}/{id}/document-url', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'documentSignedUrl']);
         });
 
         // ÖĞRETMEN AUTH
@@ -834,7 +849,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/certificates/{certificateId}/reject', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'rejectCertificate']);
             Route::patch('/courses/{courseId}/approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'approveCourse']);
             Route::patch('/courses/{courseId}/reject', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'rejectCourse']);
-            Route::post('/bulk-approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'bulkApprove']);
+            Route::patch('/educations/{educationId}/approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'approveEducation']);
+            Route::patch('/educations/{educationId}/reject', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'rejectEducation']);
         });
     });
 

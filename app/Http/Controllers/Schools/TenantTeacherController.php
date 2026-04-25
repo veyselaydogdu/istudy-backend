@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Tenant düzeyinde öğretmen yönetimi.
@@ -115,19 +116,23 @@ class TenantTeacherController extends BaseController
                 [
                     'membership_id' => $membership?->id,
                     'membership_status' => $membership?->status,
-                    'educations' => $teacher->educations->map(fn ($e) => [
-                        'id' => $e->id,
-                        'institution' => $e->institution,
-                        'degree' => $e->degree,
-                        'field_of_study' => $e->field_of_study,
-                        'start_date' => $e->start_date?->toDateString(),
-                        'end_date' => $e->end_date?->toDateString(),
-                        'is_current' => (bool) $e->is_current,
-                        'country' => $e->country ? ['id' => $e->country->id, 'name' => $e->country->name] : null,
-                        'description' => $e->description,
-                    ]),
+                    'educations' => $this->credentialsWithApprovalStatus('education', $teacher->educations, $tenantId)
+                        ->map(fn ($e) => [
+                            'id' => $e->id,
+                            'institution' => $e->institution,
+                            'degree' => $e->degree,
+                            'field_of_study' => $e->field_of_study,
+                            'start_date' => $e->start_date?->toDateString(),
+                            'end_date' => $e->end_date?->toDateString(),
+                            'is_current' => (bool) $e->is_current,
+                            'country' => $e->country ? ['id' => $e->country->id, 'name' => $e->country->name] : null,
+                            'description' => $e->description,
+                            'approval_status' => $e->_approval_status,
+                            'rejection_reason' => $e->_rejection_reason,
+                            'document_url' => $e->file_path ? URL::temporarySignedRoute('tenant.credential.document', now()->addMinutes(60), ['type' => 'educations', 'id' => $e->id]) : null,
+                        ]),
                     'certificates' => $this->credentialsWithApprovalStatus('certificate', $teacher->certificates, $tenantId)
-                        ->map(fn ($c, $approval) => [
+                        ->map(fn ($c) => [
                             'id' => $c->id,
                             'name' => $c->name,
                             'issuing_organization' => $c->issuing_organization,
@@ -137,6 +142,7 @@ class TenantTeacherController extends BaseController
                             'description' => $c->description,
                             'approval_status' => $c->_approval_status,
                             'rejection_reason' => $c->_rejection_reason,
+                            'document_url' => $c->file_path ? URL::temporarySignedRoute('tenant.credential.document', now()->addMinutes(60), ['type' => 'certificates', 'id' => $c->id]) : null,
                         ]),
                     'courses' => $this->credentialsWithApprovalStatus('course', $teacher->courses, $tenantId)
                         ->map(fn ($c) => [
@@ -152,6 +158,7 @@ class TenantTeacherController extends BaseController
                             'description' => $c->description,
                             'approval_status' => $c->_approval_status,
                             'rejection_reason' => $c->_rejection_reason,
+                            'document_url' => $c->file_path ? URL::temporarySignedRoute('tenant.credential.document', now()->addMinutes(60), ['type' => 'courses', 'id' => $c->id]) : null,
                         ]),
                     'skills' => $teacher->skills->map(fn ($s) => [
                         'id' => $s->id,

@@ -12,8 +12,12 @@ use App\Models\School\TeacherTenantMembership;
 use App\Services\TeacherProfileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 /**
  * TeacherProfileController — Öğretmen Profil Yönetimi
@@ -547,6 +551,24 @@ class TeacherProfileController extends BaseTeacherController
     }
 
     /**
+     * Eğitimin tüm tenant onay durumlarını getir
+     */
+    public function educationApprovals(int $educationId): JsonResponse
+    {
+        try {
+            $profile = $this->teacherProfile();
+
+            TeacherEducation::where('teacher_profile_id', $profile->id)->findOrFail($educationId);
+
+            return $this->successResponse($this->buildApprovalStatus('education', $educationId, $profile->id));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Eğitim bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Onay durumları alınamadı.', 500);
+        }
+    }
+
+    /**
      * Kursun tüm tenant onay durumlarını getir
      */
     public function courseApprovals(int $courseId): JsonResponse
@@ -561,6 +583,272 @@ class TeacherProfileController extends BaseTeacherController
             return $this->errorResponse('Kurs bulunamadı.', 404);
         } catch (\Throwable $e) {
             return $this->errorResponse('Onay durumları alınamadı.', 500);
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BELGE YÜKLEME & SERVİS (signed URL)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Eğitim belgesi yükle
+     * POST /teacher/profile/educations/{id}/document
+     */
+    public function uploadEducationDocument(Request $request, int $educationId): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|string',
+            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif',
+        ]);
+
+        try {
+            $profile = $this->teacherProfile();
+            $education = TeacherEducation::where('teacher_profile_id', $profile->id)->findOrFail($educationId);
+
+            if ($education->file_path) {
+                Storage::disk('local')->delete($education->file_path);
+            }
+
+            $ext = match (true) {
+                str_contains($request->mime_type, 'png') => 'png',
+                str_contains($request->mime_type, 'webp') => 'webp',
+                str_contains($request->mime_type, 'heic') => 'heic',
+                str_contains($request->mime_type, 'heif') => 'heif',
+                default => 'jpg',
+            };
+            $path = "teachers/{$profile->id}/educations/".Str::uuid().".{$ext}";
+            Storage::disk('local')->put($path, base64_decode($request->photo));
+            $education->update(['file_path' => $path]);
+
+            return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Eğitim bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('Eğitim belge yükleme hatası', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Görsel yüklenemedi.', 500);
+        }
+    }
+
+    /**
+     * Kurs/Seminer belgesi yükle
+     * POST /teacher/profile/courses/{id}/document
+     */
+    public function uploadCourseDocument(Request $request, int $courseId): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|string',
+            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif',
+        ]);
+
+        try {
+            $profile = $this->teacherProfile();
+            $course = TeacherCourse::where('teacher_profile_id', $profile->id)->findOrFail($courseId);
+
+            if ($course->file_path) {
+                Storage::disk('local')->delete($course->file_path);
+            }
+
+            $ext = match (true) {
+                str_contains($request->mime_type, 'png') => 'png',
+                str_contains($request->mime_type, 'webp') => 'webp',
+                str_contains($request->mime_type, 'heic') => 'heic',
+                str_contains($request->mime_type, 'heif') => 'heif',
+                default => 'jpg',
+            };
+            $path = "teachers/{$profile->id}/courses/".Str::uuid().".{$ext}";
+            Storage::disk('local')->put($path, base64_decode($request->photo));
+            $course->update(['file_path' => $path]);
+
+            return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Kurs bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('Kurs belge yükleme hatası', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Görsel yüklenemedi.', 500);
+        }
+    }
+
+    /**
+     * Sertifika belgesi yükle
+     * POST /teacher/profile/certificates/{id}/document
+     */
+    public function uploadCertificateDocument(Request $request, int $certificateId): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|string',
+            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif',
+        ]);
+
+        try {
+            $profile = $this->teacherProfile();
+            $certificate = TeacherCertificate::where('teacher_profile_id', $profile->id)->findOrFail($certificateId);
+
+            if ($certificate->file_path) {
+                Storage::disk('local')->delete($certificate->file_path);
+            }
+
+            $ext = match (true) {
+                str_contains($request->mime_type, 'png') => 'png',
+                str_contains($request->mime_type, 'webp') => 'webp',
+                str_contains($request->mime_type, 'heic') => 'heic',
+                str_contains($request->mime_type, 'heif') => 'heif',
+                default => 'jpg',
+            };
+            $path = "teachers/{$profile->id}/certificates/".Str::uuid().".{$ext}";
+            Storage::disk('local')->put($path, base64_decode($request->photo));
+            $certificate->update(['file_path' => $path]);
+
+            return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Sertifika bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('Sertifika belge yükleme hatası', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Görsel yüklenemedi.', 500);
+        }
+    }
+
+    /**
+     * Eğitim belgesini signed URL ile sun (öğretmen kendi belgesi)
+     * GET /teacher/profile/educations/{id}/document  — middleware: auth:sanctum + signed
+     */
+    public function serveEducationDocument(Request $request, int $educationId): Response|JsonResponse
+    {
+        try {
+            $profile = $this->teacherProfile();
+            $education = TeacherEducation::where('teacher_profile_id', $profile->id)->findOrFail($educationId);
+
+            if (! $education->file_path || ! Storage::disk('local')->exists($education->file_path)) {
+                return $this->errorResponse('Belge bulunamadı.', 404);
+            }
+
+            $mime = Storage::disk('local')->mimeType($education->file_path);
+
+            return response(Storage::disk('local')->get($education->file_path), 200, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline',
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Eğitim bulunamadı.', 404);
+        }
+    }
+
+    /**
+     * Kurs belgesini signed URL ile sun (öğretmen kendi belgesi)
+     * GET /teacher/profile/courses/{id}/document
+     */
+    public function serveCourseDocument(Request $request, int $courseId): Response|JsonResponse
+    {
+        try {
+            $profile = $this->teacherProfile();
+            $course = TeacherCourse::where('teacher_profile_id', $profile->id)->findOrFail($courseId);
+
+            if (! $course->file_path || ! Storage::disk('local')->exists($course->file_path)) {
+                return $this->errorResponse('Belge bulunamadı.', 404);
+            }
+
+            $mime = Storage::disk('local')->mimeType($course->file_path);
+
+            return response(Storage::disk('local')->get($course->file_path), 200, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline',
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Kurs bulunamadı.', 404);
+        }
+    }
+
+    /**
+     * Sertifika belgesini signed URL ile sun (öğretmen kendi belgesi)
+     * GET /teacher/profile/certificates/{id}/document
+     */
+    public function serveCertificateDocument(Request $request, int $certificateId): Response|JsonResponse
+    {
+        try {
+            $profile = $this->teacherProfile();
+            $certificate = TeacherCertificate::where('teacher_profile_id', $profile->id)->findOrFail($certificateId);
+
+            if (! $certificate->file_path || ! Storage::disk('local')->exists($certificate->file_path)) {
+                return $this->errorResponse('Belge bulunamadı.', 404);
+            }
+
+            $mime = Storage::disk('local')->mimeType($certificate->file_path);
+
+            return response(Storage::disk('local')->get($certificate->file_path), 200, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline',
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Sertifika bulunamadı.', 404);
+        }
+    }
+
+    /**
+     * Signed URL üret — öğretmen kendi belgesi için (mobil RN Image için)
+     * GET /teacher/profile/{type}/{id}/document-url
+     */
+    public function documentSignedUrl(Request $request, string $type, int $id): JsonResponse
+    {
+        try {
+            $profile = $this->teacherProfile();
+
+            $model = match ($type) {
+                'educations' => TeacherEducation::where('teacher_profile_id', $profile->id)->findOrFail($id),
+                'courses' => TeacherCourse::where('teacher_profile_id', $profile->id)->findOrFail($id),
+                'certificates' => TeacherCertificate::where('teacher_profile_id', $profile->id)->findOrFail($id),
+                default => null,
+            };
+
+            if (! $model || ! $model->file_path) {
+                return $this->errorResponse('Belge bulunamadı.', 404);
+            }
+
+            $url = URL::temporarySignedRoute(
+                'teacher.document.serve',
+                now()->addMinutes(60),
+                ['type' => $type, 'id' => $id]
+            );
+
+            return $this->successResponse(['url' => $url]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Kayıt bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            return $this->errorResponse('URL üretilemedi.', 500);
+        }
+    }
+
+    /**
+     * Belge sun (öğretmen kendi belgesi) — signed route: teacher.document.serve
+     * GET /teacher/profile/{type}/{id}/document
+     */
+    public function serveDocument(Request $request, string $type, int $id): Response|JsonResponse
+    {
+        try {
+            $profile = $this->teacherProfile();
+
+            $model = match ($type) {
+                'educations' => TeacherEducation::where('teacher_profile_id', $profile->id)->findOrFail($id),
+                'courses' => TeacherCourse::where('teacher_profile_id', $profile->id)->findOrFail($id),
+                'certificates' => TeacherCertificate::where('teacher_profile_id', $profile->id)->findOrFail($id),
+                default => null,
+            };
+
+            if (! $model || ! $model->file_path || ! Storage::disk('local')->exists($model->file_path)) {
+                return $this->errorResponse('Belge bulunamadı.', 404);
+            }
+
+            $mime = Storage::disk('local')->mimeType($model->file_path);
+
+            return response(Storage::disk('local')->get($model->file_path), 200, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline',
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Kayıt bulunamadı.', 404);
         }
     }
 

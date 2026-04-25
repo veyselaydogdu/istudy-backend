@@ -26,6 +26,7 @@ class TeacherCourse extends BaseModel
         'location',
         'is_online',
         'certificate_file',
+        'file_path',
         'certificate_url',
         'description',
         'approval_status',
@@ -37,10 +38,10 @@ class TeacherCourse extends BaseModel
     ];
 
     protected $casts = [
-        'start_date'     => 'date',
-        'end_date'       => 'date',
-        'approved_at'    => 'datetime',
-        'is_online'      => 'boolean',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'approved_at' => 'datetime',
+        'is_online' => 'boolean',
         'duration_hours' => 'integer',
     ];
 
@@ -48,13 +49,13 @@ class TeacherCourse extends BaseModel
      * Kurs/Seminer türleri
      */
     public const TYPES = [
-        'course'     => 'Kurs',
-        'seminar'    => 'Seminer',
-        'workshop'   => 'Atölye',
+        'course' => 'Kurs',
+        'seminar' => 'Seminer',
+        'workshop' => 'Atölye',
         'conference' => 'Konferans',
-        'training'   => 'Eğitim',
-        'webinar'    => 'Webinar',
-        'other'      => 'Diğer',
+        'training' => 'Eğitim',
+        'webinar' => 'Webinar',
+        'other' => 'Diğer',
     ];
 
     /*
@@ -114,8 +115,8 @@ class TeacherCourse extends BaseModel
     {
         $this->update([
             'approval_status' => 'approved',
-            'approved_by'     => $userId,
-            'approved_at'     => now(),
+            'approved_by' => $userId,
+            'approved_at' => now(),
             'rejection_reason' => null,
         ]);
 
@@ -125,9 +126,9 @@ class TeacherCourse extends BaseModel
     public function reject(int $userId, string $reason): self
     {
         $this->update([
-            'approval_status'  => 'rejected',
-            'approved_by'      => $userId,
-            'approved_at'      => now(),
+            'approval_status' => 'rejected',
+            'approved_by' => $userId,
+            'approved_at' => now(),
             'rejection_reason' => $reason,
         ]);
 
@@ -152,10 +153,10 @@ class TeacherCourse extends BaseModel
     public function getStatusLabelAttribute(): string
     {
         return match ($this->approval_status) {
-            'pending'  => 'Onay Bekliyor',
+            'pending' => 'Onay Bekliyor',
             'approved' => 'Onaylandı',
             'rejected' => 'Reddedildi',
-            default    => $this->approval_status,
+            default => $this->approval_status,
         };
     }
 }
