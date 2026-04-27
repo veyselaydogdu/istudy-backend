@@ -94,6 +94,8 @@ export default function TeachersPage() {
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [detailTab, setDetailTab] = useState<'info' | 'education' | 'certificates' | 'courses' | 'skills' | 'blogs'>('info');
     const [approvingId, setApprovingId] = useState<string | null>(null); // "cert-{id}" | "course-{id}"
+    const [docBlobUrls, setDocBlobUrls] = useState<Record<string, { blobUrl: string; mimeType: string }>>({});
+    const [docModal, setDocModal] = useState<{ blobUrl: string; mimeType: string; name: string } | null>(null);
 
     // ── Katılma Talepleri ─────────────────────────────────────
     const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
@@ -168,15 +170,45 @@ export default function TeachersPage() {
     };
 
     // ── Öğretmen Detay Görüntüle ──────────────────────────────
+    const preloadDocuments = useCallback((detail: TeacherDetail) => {
+        const urls = [
+            ...detail.educations.map(e => e.document_url),
+            ...detail.certificates.map(c => c.document_url),
+            ...detail.courses.map(c => c.document_url),
+        ].filter((u): u is string => !!u);
+
+        urls.forEach(url => {
+            apiClient.get(url, { responseType: 'blob', baseURL: '' })
+                .then(res => {
+                    const mimeType = (res.headers['content-type'] as string | undefined)?.split(';')[0] ?? 'application/octet-stream';
+                    const blobUrl = URL.createObjectURL(res.data as Blob);
+                    setDocBlobUrls(prev => ({ ...prev, [url]: { blobUrl, mimeType } }));
+                })
+                .catch(() => {});
+        });
+    }, []);
+
+    const closeDetail = useCallback(() => {
+        setViewingTeacher(null);
+        setDocModal(null);
+        setDocBlobUrls(prev => {
+            Object.values(prev).forEach(({ blobUrl }) => URL.revokeObjectURL(blobUrl));
+            return {};
+        });
+    }, []);
+
     const openDetail = async (teacher: TeacherWithMembership) => {
         setDetailTab('info');
         setLoadingDetail(true);
+        setDocBlobUrls({});
         setViewingTeacher(null);
         // optimistic: show modal immediately, load data
         setViewingTeacher({ ...teacher, bio: null, linkedin_url: null, website_url: null, educations: [], certificates: [], courses: [], skills: [], blog_posts: [] } as unknown as TeacherDetail);
         try {
             const res = await apiClient.get(`/teachers/${teacher.id}`);
-            setViewingTeacher(res.data?.data as TeacherDetail);
+            const detail = res.data?.data as TeacherDetail;
+            setViewingTeacher(detail);
+            preloadDocuments(detail);
         } catch { toast.error(t('teachers.detailError')); }
         finally { setLoadingDetail(false); }
     };
@@ -951,6 +983,27 @@ export default function TeachersPage() {
                 </div>
             )}
 
+            {/* ── Belge Görüntüleyici Modal ─────────────────────────── */}
+            {docModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={() => setDocModal(null)}>
+                    <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-xl bg-white shadow-2xl dark:bg-[#0e1726]" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between border-b border-[#ebedf2] px-5 py-3 dark:border-[#1b2e4b]">
+                            <p className="text-sm font-semibold text-dark dark:text-white">{docModal.name}</p>
+                            <button type="button" onClick={() => setDocModal(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-2">
+                            {docModal.mimeType.startsWith('image/') ? (
+                                <img src={docModal.blobUrl} alt={docModal.name} className="mx-auto max-h-[80vh] max-w-full object-contain rounded" />
+                            ) : (
+                                <iframe src={docModal.blobUrl} className="h-[80vh] w-full rounded border-0" title={docModal.name} />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Öğretmen Detay Modal ──────────────────────────────── */}
             {viewingTeacher && (
                 <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-10">
@@ -972,7 +1025,7 @@ export default function TeachersPage() {
                                     </div>
                                 </div>
                             </div>
-                            <button type="button" onClick={() => setViewingTeacher(null)} className="text-[#888ea8] hover:text-danger">
+                            <button type="button" onClick={closeDetail} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
@@ -1091,9 +1144,14 @@ export default function TeachersPage() {
                                             {e.country && <p className="mt-1 text-xs text-[#888ea8]">{e.country.name}</p>}
                                             {e.description && <p className="mt-2 text-xs text-[#888ea8]">{e.description}</p>}
                                             {e.document_url && (
-                                                <a href={e.document_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                                                    <FileText className="h-3 w-3" />Belgeyi Görüntüle
-                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { const d = docBlobUrls[e.document_url!]; if (d) { setDocModal({ ...d, name: `${e.institution} Belgesi` }); } }}
+                                                    disabled={!docBlobUrls[e.document_url]}
+                                                    className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:cursor-wait disabled:opacity-50"
+                                                >
+                                                    <FileText className="h-3 w-3" />{docBlobUrls[e.document_url] ? 'Belgeyi Görüntüle' : 'Yükleniyor...'}
+                                                </button>
                                             )}
                                         </div>
                                     ))}
@@ -1155,9 +1213,14 @@ export default function TeachersPage() {
                                                     <a href={c.credential_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">{t('teachers.viewCredential')}</a>
                                                 )}
                                                 {c.document_url && (
-                                                    <a href={c.document_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                                                        <FileText className="h-3 w-3" />Belgeyi Görüntüle
-                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { const d = docBlobUrls[c.document_url!]; if (d) { setDocModal({ ...d, name: `${c.name} Belgesi` }); } }}
+                                                        disabled={!docBlobUrls[c.document_url]}
+                                                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:cursor-wait disabled:opacity-50"
+                                                    >
+                                                        <FileText className="h-3 w-3" />{docBlobUrls[c.document_url] ? 'Belgeyi Görüntüle' : 'Yükleniyor...'}
+                                                    </button>
                                                 )}
                                             </div>
                                             {c.description && <p className="mt-2 text-xs text-[#888ea8]">{c.description}</p>}
@@ -1223,9 +1286,14 @@ export default function TeachersPage() {
                                             </div>
                                             {c.location && <p className="mt-1 text-xs text-[#888ea8]">📍 {c.location}</p>}
                                             {c.document_url && (
-                                                <a href={c.document_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                                                    <FileText className="h-3 w-3" />Belgeyi Görüntüle
-                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { const d = docBlobUrls[c.document_url!]; if (d) { setDocModal({ ...d, name: `${c.title} Belgesi` }); } }}
+                                                    disabled={!docBlobUrls[c.document_url]}
+                                                    className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:cursor-wait disabled:opacity-50"
+                                                >
+                                                    <FileText className="h-3 w-3" />{docBlobUrls[c.document_url] ? 'Belgeyi Görüntüle' : 'Yükleniyor...'}
+                                                </button>
                                             )}
                                             {c.description && <p className="mt-2 text-xs text-[#888ea8]">{c.description}</p>}
                                         </div>
@@ -1274,7 +1342,7 @@ export default function TeachersPage() {
                         </div>
 
                         <div className="border-t border-[#ebedf2] p-4 dark:border-[#1b2e4b]">
-                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setViewingTeacher(null)}>{t('teachers.closeBtn')}</button>
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={closeDetail}>{t('teachers.closeBtn')}</button>
                         </div>
                     </div>
                 </div>
