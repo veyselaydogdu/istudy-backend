@@ -14,6 +14,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * TeacherApprovalController — Per-Tenant Öğretmen Onay İşlemleri
@@ -94,7 +95,7 @@ class TeacherApprovalController extends BaseController
                     'has_document' => (bool) $e->file_path,
                 ]);
 
-            $all = $certificates->merge($courses)->merge($educations)->values();
+            $all = collect($certificates)->merge($courses)->merge($educations)->values();
 
             return $this->successResponse($all);
         } catch (\Throwable $e) {
@@ -112,8 +113,11 @@ class TeacherApprovalController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            $certificate = TeacherCertificate::with('teacherProfile')
-                ->whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
+
+            TeacherCertificate::whereIn('teacher_profile_id', $teacherProfileIds)
                 ->findOrFail($certificateId);
 
             DB::beginTransaction();
@@ -153,8 +157,11 @@ class TeacherApprovalController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            TeacherCertificate::with('teacherProfile')
-                ->whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
+
+            TeacherCertificate::whereIn('teacher_profile_id', $teacherProfileIds)
                 ->findOrFail($certificateId);
 
             DB::beginTransaction();
@@ -190,8 +197,11 @@ class TeacherApprovalController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            TeacherCourse::with('teacherProfile')
-                ->whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
+
+            TeacherCourse::whereIn('teacher_profile_id', $teacherProfileIds)
                 ->findOrFail($courseId);
 
             DB::beginTransaction();
@@ -231,8 +241,11 @@ class TeacherApprovalController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            TeacherCourse::with('teacherProfile')
-                ->whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
+
+            TeacherCourse::whereIn('teacher_profile_id', $teacherProfileIds)
                 ->findOrFail($courseId);
 
             DB::beginTransaction();
@@ -268,7 +281,11 @@ class TeacherApprovalController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            TeacherEducation::whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
+
+            TeacherEducation::whereIn('teacher_profile_id', $teacherProfileIds)
                 ->findOrFail($educationId);
 
             DB::beginTransaction();
@@ -308,7 +325,11 @@ class TeacherApprovalController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            TeacherEducation::whereHas('teacherProfile.memberships', fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']))
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
+
+            TeacherEducation::whereIn('teacher_profile_id', $teacherProfileIds)
                 ->findOrFail($educationId);
 
             DB::beginTransaction();
@@ -337,6 +358,104 @@ class TeacherApprovalController extends BaseController
     }
 
     /**
+     * Tek credential'ın tüm detaylarını döndür
+     */
+    public function show(string $type, int $id): JsonResponse
+    {
+        try {
+            $tenantId = $this->user()->tenant_id;
+
+            // teacherProfile global scope'u (tenant_id filtresi) atlatmak için
+            // pendingApprovals ile aynı yaklaşım: önce üye teacher_profile_id'leri çek
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
+
+            $withProfile = ['teacherProfile' => fn ($q) => $q->withoutGlobalScope('tenant'), 'teacherProfile.user'];
+
+            $model = match ($type) {
+                'certificates' => TeacherCertificate::with($withProfile)
+                    ->whereIn('teacher_profile_id', $teacherProfileIds)
+                    ->findOrFail($id),
+                'courses' => TeacherCourse::with($withProfile)
+                    ->whereIn('teacher_profile_id', $teacherProfileIds)
+                    ->findOrFail($id),
+                'educations' => TeacherEducation::with($withProfile)
+                    ->whereIn('teacher_profile_id', $teacherProfileIds)
+                    ->findOrFail($id),
+                default => null,
+            };
+
+            if (! $model) {
+                return $this->errorResponse('Geçersiz tür.', 400);
+            }
+
+            $teacherName = trim(($model->teacherProfile?->user?->name ?? '').' '.($model->teacherProfile?->user?->surname ?? ''));
+
+            $documentUrl = $model->file_path
+                ? URL::temporarySignedRoute('tenant.credential.document', now()->addMinutes(60), ['type' => $type, 'id' => $model->id])
+                : null;
+
+            $data = match ($type) {
+                'certificates' => [
+                    'type' => 'certificate',
+                    'id' => $model->id,
+                    'teacher_name' => $teacherName,
+                    'name' => $model->name,
+                    'issuing_organization' => $model->issuing_organization,
+                    'issue_date' => $model->issue_date?->toDateString(),
+                    'expiry_date' => $model->expiry_date?->toDateString(),
+                    'credential_id' => $model->credential_id,
+                    'credential_url' => $model->credential_url,
+                    'description' => $model->description,
+                    'has_document' => (bool) $model->file_path,
+                    'document_url' => $documentUrl,
+                ],
+                'courses' => [
+                    'type' => 'course',
+                    'id' => $model->id,
+                    'teacher_name' => $teacherName,
+                    'title' => $model->title,
+                    'course_type' => $model->type,
+                    'provider' => $model->provider,
+                    'start_date' => $model->start_date?->toDateString(),
+                    'end_date' => $model->end_date?->toDateString(),
+                    'duration_hours' => $model->duration_hours,
+                    'location' => $model->location,
+                    'is_online' => $model->is_online,
+                    'certificate_url' => $model->certificate_url,
+                    'description' => $model->description,
+                    'has_document' => (bool) $model->file_path,
+                    'document_url' => $documentUrl,
+                ],
+                'educations' => [
+                    'type' => 'education',
+                    'id' => $model->id,
+                    'teacher_name' => $teacherName,
+                    'institution' => $model->institution,
+                    'degree' => $model->degree,
+                    'field_of_study' => $model->field_of_study,
+                    'start_date' => $model->start_date?->toDateString(),
+                    'end_date' => $model->end_date?->toDateString(),
+                    'is_current' => $model->is_current,
+                    'gpa' => $model->gpa,
+                    'description' => $model->description,
+                    'has_document' => (bool) $model->file_path,
+                    'document_url' => $documentUrl,
+                ],
+            };
+
+            return $this->successResponse($data);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Kayıt bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('Credential detay hatası', ['type' => $type, 'id' => $id, 'error' => $e->getMessage()]);
+
+            return $this->errorResponse('Detay alınamadı.', 500);
+        }
+    }
+
+    /**
      * Öğretmenin yüklediği belgeyi tenant için sun
      * GET /teacher-approvals/document/{type}/{id}  — middleware: auth:sanctum + signed
      */
@@ -345,12 +464,14 @@ class TeacherApprovalController extends BaseController
         try {
             $tenantId = $this->user()->tenant_id;
 
-            $membershipCheck = fn ($q) => $q->where('tenant_id', $tenantId)->whereIn('status', ['active', 'inactive']);
+            $teacherProfileIds = TeacherTenantMembership::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'inactive'])
+                ->pluck('teacher_profile_id');
 
             $model = match ($type) {
-                'educations' => TeacherEducation::whereHas('teacherProfile.memberships', $membershipCheck)->findOrFail($id),
-                'courses' => TeacherCourse::whereHas('teacherProfile.memberships', $membershipCheck)->findOrFail($id),
-                'certificates' => TeacherCertificate::whereHas('teacherProfile.memberships', $membershipCheck)->findOrFail($id),
+                'educations' => TeacherEducation::whereIn('teacher_profile_id', $teacherProfileIds)->findOrFail($id),
+                'courses' => TeacherCourse::whereIn('teacher_profile_id', $teacherProfileIds)->findOrFail($id),
+                'certificates' => TeacherCertificate::whereIn('teacher_profile_id', $teacherProfileIds)->findOrFail($id),
                 default => null,
             };
 

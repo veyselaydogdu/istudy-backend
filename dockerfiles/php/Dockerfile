@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
+    libmagickwand-dev \
     locales \
     zip \
     unzip \
@@ -31,9 +32,9 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         intl \
         opcache
 
-# Install Redis extension via PECL
-RUN pecl install redis \
-    && docker-php-ext-enable redis
+# Install Redis + Imagick (HEIC desteği için) via PECL
+RUN pecl install redis imagick \
+    && docker-php-ext-enable redis imagick
 
 # Configure OPcache
 RUN { \

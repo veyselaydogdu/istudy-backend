@@ -3,7 +3,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
-import { CheckCircle, XCircle, Clock, Users, UserMinus, Edit3, RefreshCw, Award } from 'lucide-react';
+import { useApprovalsCount } from '@/contexts/ApprovalsCountContext';
+import { CheckCircle, XCircle, Clock, Users, UserMinus, Edit3, RefreshCw, Award, Eye, ExternalLink } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type EnrollmentRequest = {
@@ -64,10 +65,59 @@ type CredentialItem = {
     has_document: boolean;
 };
 
+type CredentialDetail = {
+    type: 'certificate' | 'course' | 'education';
+    id: number;
+    teacher_name: string;
+    has_document: boolean;
+    // certificate
+    name?: string;
+    issuing_organization?: string;
+    issue_date?: string | null;
+    expiry_date?: string | null;
+    credential_id?: string | null;
+    credential_url?: string | null;
+    // course
+    title?: string;
+    course_type?: string;
+    provider?: string;
+    start_date?: string | null;
+    end_date?: string | null;
+    duration_hours?: number | null;
+    location?: string | null;
+    is_online?: boolean;
+    certificate_url?: string | null;
+    // education
+    institution?: string;
+    degree?: string;
+    field_of_study?: string;
+    is_current?: boolean;
+    gpa?: number | null;
+    // shared
+    description?: string | null;
+    document_url?: string | null;
+};
+
 type ActiveTab = 'enrollment' | 'removal' | 'field_change' | 'credentials';
+
+function formatDate(dateStr?: string | null): string {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('tr-TR');
+}
+
+function DetailRow({ label, value, span }: { label: string; value?: string | null; span?: boolean }) {
+    if (!value) return null;
+    return (
+        <div className={span ? 'col-span-2' : ''}>
+            <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</dt>
+            <dd className="text-gray-800">{value}</dd>
+        </div>
+    );
+}
 
 export default function ApprovalsPage() {
     const { t } = useTranslation();
+    const { refresh: refreshSidebarCount } = useApprovalsCount();
     const [data, setData] = useState<ApprovalsData | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<ActiveTab>('enrollment');
@@ -80,11 +130,20 @@ export default function ApprovalsPage() {
     const [credentialsLoading, setCredentialsLoading] = useState(false);
     const [credentialProcessing, setCredentialProcessing] = useState<string | null>(null);
 
+    // Detail modal
+    const [detailItem, setDetailItem] = useState<CredentialDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [documentBlobUrl, setDocumentBlobUrl] = useState<string | null>(null);
+
     const fetchApprovals = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await apiClient.get('/pending-approvals');
-            setData(res.data?.data ?? null);
+            const [approvalsRes, credentialsRes] = await Promise.all([
+                apiClient.get('/pending-approvals'),
+                apiClient.get('/teacher-approvals'),
+            ]);
+            setData(approvalsRes.data?.data ?? null);
+            setCredentials(credentialsRes.data?.data ?? []);
         } catch {
             toast.error(t('approvals.loadError'));
         } finally {
@@ -92,27 +151,46 @@ export default function ApprovalsPage() {
         }
     }, []);
 
-    const fetchCredentials = useCallback(async () => {
-        setCredentialsLoading(true);
-        try {
-            const res = await apiClient.get('/teacher-approvals');
-            setCredentials(res.data?.data ?? []);
-        } catch {
-            toast.error('Öğretmen belgeleri yüklenemedi.');
-        } finally {
-            setCredentialsLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
         fetchApprovals();
     }, [fetchApprovals]);
 
-    useEffect(() => {
-        if (activeTab === 'credentials') { fetchCredentials(); }
-    }, [activeTab, fetchCredentials]);
+    const openDetail = async (item: CredentialItem) => {
+        setDetailLoading(true);
+        setDetailItem(null);
+        if (documentBlobUrl) {
+            URL.revokeObjectURL(documentBlobUrl);
+            setDocumentBlobUrl(null);
+        }
+        try {
+            const pathMap = { certificate: 'certificates', course: 'courses', education: 'educations' };
+            const res = await apiClient.get<{ data: CredentialDetail }>(`/teacher-approvals/${pathMap[item.type]}/${item.id}`);
+            const detail = res.data.data;
+            setDetailItem(detail);
+
+            if (detail.document_url) {
+                const blobRes = await apiClient.get(detail.document_url, { responseType: 'blob' });
+                setDocumentBlobUrl(URL.createObjectURL(blobRes.data));
+            }
+        } catch {
+            toast.error('Detay yüklenemedi.');
+        } finally {
+            setDetailLoading(false);
+        }
+    };
 
     const handleApproveCredential = async (item: CredentialItem) => {
+        const result = await Swal.fire({
+            title: 'Emin misiniz?',
+            text: 'Bu işlem geri alınamayacaktır.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Onayla',
+            cancelButtonText: 'İptal',
+            confirmButtonColor: '#16a34a',
+        });
+        if (!result.isConfirmed) return;
+
         const key = `${item.type}-${item.id}`;
         setCredentialProcessing(key);
         try {
@@ -120,6 +198,8 @@ export default function ApprovalsPage() {
             await apiClient.patch(`/teacher-approvals/${pathMap[item.type]}/${item.id}/approve`);
             toast.success('Onaylandı.');
             setCredentials(prev => prev.filter(c => !(c.type === item.type && c.id === item.id)));
+            setDetailItem(null);
+            refreshSidebarCount();
         } catch { toast.error('Onay işlemi başarısız.'); }
         finally { setCredentialProcessing(null); }
     };
@@ -146,6 +226,8 @@ export default function ApprovalsPage() {
             await apiClient.patch(`/teacher-approvals/${pathMap[item.type]}/${item.id}/reject`, { rejection_reason: reason });
             toast.success('Reddedildi.');
             setCredentials(prev => prev.filter(c => !(c.type === item.type && c.id === item.id)));
+            setDetailItem(null);
+            refreshSidebarCount();
         } catch { toast.error('Red işlemi başarısız.'); }
         finally { setCredentialProcessing(null); }
     };
@@ -166,6 +248,7 @@ export default function ApprovalsPage() {
             await apiClient.patch(`/schools/${req.school_id}/child-enrollment-requests/${req.id}/approve`);
             toast.success(t('approvals.approveEnrollmentSuccess'));
             fetchApprovals();
+            refreshSidebarCount();
         } catch (err: unknown) {
             toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('approvals.approveError'));
         } finally {
@@ -189,6 +272,7 @@ export default function ApprovalsPage() {
             await apiClient.patch(`/schools/${req.school_id}/child-removal-requests/${req.id}/approve`);
             toast.success(t('approvals.approveRemovalSuccess'));
             fetchApprovals();
+            refreshSidebarCount();
         } catch (err: unknown) {
             toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('approvals.approveError'));
         } finally {
@@ -212,6 +296,7 @@ export default function ApprovalsPage() {
             await apiClient.patch(`/schools/${req.school_id}/child-field-change-requests/${req.id}/approve`);
             toast.success(t('approvals.approveFieldChangeSuccess'));
             fetchApprovals();
+            refreshSidebarCount();
         } catch (err: unknown) {
             toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('approvals.approveError'));
         } finally {
@@ -242,6 +327,7 @@ export default function ApprovalsPage() {
             toast.success(t('approvals.rejectSuccess'));
             setRejectModal(null);
             fetchApprovals();
+            refreshSidebarCount();
         } catch (err: unknown) {
             toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('approvals.rejectError'));
         } finally {
@@ -547,10 +633,8 @@ export default function ApprovalsPage() {
                                                 </thead>
                                                 <tbody>
                                                     {credentials.map(item => {
-                                                        const key = `${item.type}-${item.id}`;
-                                                        const isBusy = credentialProcessing === key;
                                                         return (
-                                                            <tr key={key}>
+                                                            <tr key={`${item.type}-${item.id}`}>
                                                                 <td>
                                                                     <span className={`badge ${item.type === 'certificate' ? 'badge-outline-warning' : item.type === 'education' ? 'badge-outline-success' : 'badge-outline-info'} text-xs`}>
                                                                         {item.type === 'certificate' ? 'Sertifika' : item.type === 'education' ? 'Eğitim' : 'Kurs/Seminer'}
@@ -563,20 +647,12 @@ export default function ApprovalsPage() {
                                                                     {item.date ? new Date(item.date).toLocaleDateString('tr-TR') : '—'}
                                                                 </td>
                                                                 <td>
-                                                                    <div className="flex items-center justify-center gap-2">
+                                                                    <div className="flex items-center justify-center">
                                                                         <button
-                                                                            onClick={() => handleApproveCredential(item)}
-                                                                            disabled={isBusy}
-                                                                            className="btn btn-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
+                                                                            onClick={() => openDetail(item)}
+                                                                            className="btn btn-sm bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-1"
                                                                         >
-                                                                            <CheckCircle size={14} />Onayla
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleRejectCredential(item)}
-                                                                            disabled={isBusy}
-                                                                            className="btn btn-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
-                                                                        >
-                                                                            <XCircle size={14} />Reddet
+                                                                            <Eye size={14} />Detay
                                                                         </button>
                                                                     </div>
                                                                 </td>
@@ -605,6 +681,140 @@ export default function ApprovalsPage() {
                     {t('approvals.statusLegend2')}
                 </span>
             </div>
+
+            {/* Credential Detail Modal */}
+            {(detailLoading || detailItem) && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-800">Belge Detayı</h3>
+                            <button onClick={() => { setDetailItem(null); if (documentBlobUrl) { URL.revokeObjectURL(documentBlobUrl); setDocumentBlobUrl(null); } }} className="text-gray-400 hover:text-gray-600">
+                                <XCircle size={22} />
+                            </button>
+                        </div>
+
+                        {detailLoading ? (
+                            <div className="flex justify-center py-12">
+                                <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                            </div>
+                        ) : detailItem && (
+                            <div className="p-6 space-y-4">
+                                {/* Öğretmen & tür */}
+                                <div className="flex items-center gap-3">
+                                    <span className={`badge text-xs ${detailItem.type === 'certificate' ? 'badge-outline-warning' : detailItem.type === 'education' ? 'badge-outline-success' : 'badge-outline-info'}`}>
+                                        {detailItem.type === 'certificate' ? 'Sertifika' : detailItem.type === 'education' ? 'Eğitim' : 'Kurs/Seminer'}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-700">{detailItem.teacher_name}</span>
+                                </div>
+
+                                {/* Sertifika alanları */}
+                                {detailItem.type === 'certificate' && (
+                                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                                        <DetailRow label="Sertifika Adı" value={detailItem.name} />
+                                        <DetailRow label="Veren Kuruluş" value={detailItem.issuing_organization} />
+                                        <DetailRow label="Veriliş Tarihi" value={formatDate(detailItem.issue_date)} />
+                                        <DetailRow label="Geçerlilik Tarihi" value={formatDate(detailItem.expiry_date) || 'Belirsiz'} />
+                                        <DetailRow label="Sertifika ID" value={detailItem.credential_id} />
+                                        {detailItem.credential_url && (
+                                            <div className="col-span-2">
+                                                <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Sertifika URL</dt>
+                                                <a href={detailItem.credential_url} target="_blank" rel="noreferrer" className="text-primary flex items-center gap-1 hover:underline">
+                                                    <ExternalLink size={13} />Görüntüle
+                                                </a>
+                                            </div>
+                                        )}
+                                        <DetailRow label="Açıklama" value={detailItem.description} span />
+                                    </dl>
+                                )}
+
+                                {/* Kurs alanları */}
+                                {detailItem.type === 'course' && (
+                                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                                        <DetailRow label="Başlık" value={detailItem.title} />
+                                        <DetailRow label="Tür" value={detailItem.course_type} />
+                                        <DetailRow label="Sağlayıcı / Kurum" value={detailItem.provider} />
+                                        <DetailRow label="Başlangıç Tarihi" value={formatDate(detailItem.start_date)} />
+                                        <DetailRow label="Bitiş Tarihi" value={formatDate(detailItem.end_date) || '—'} />
+                                        <DetailRow label="Süre (Saat)" value={detailItem.duration_hours?.toString()} />
+                                        <DetailRow label="Konum" value={detailItem.location} />
+                                        <DetailRow label="Çevrimiçi" value={detailItem.is_online ? 'Evet' : 'Hayır'} />
+                                        {detailItem.certificate_url && (
+                                            <div className="col-span-2">
+                                                <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Sertifika URL</dt>
+                                                <a href={detailItem.certificate_url} target="_blank" rel="noreferrer" className="text-primary flex items-center gap-1 hover:underline">
+                                                    <ExternalLink size={13} />Görüntüle
+                                                </a>
+                                            </div>
+                                        )}
+                                        <DetailRow label="Açıklama" value={detailItem.description} span />
+                                    </dl>
+                                )}
+
+                                {/* Eğitim alanları */}
+                                {detailItem.type === 'education' && (
+                                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                                        <DetailRow label="Okul / Üniversite" value={detailItem.institution} />
+                                        <DetailRow label="Derece" value={detailItem.degree} />
+                                        <DetailRow label="Bölüm / Alan" value={detailItem.field_of_study} />
+                                        <DetailRow label="Başlangıç Tarihi" value={formatDate(detailItem.start_date)} />
+                                        <DetailRow label="Bitiş Tarihi" value={detailItem.is_current ? 'Devam Ediyor' : (formatDate(detailItem.end_date) || '—')} />
+                                        <DetailRow label="GPA" value={detailItem.gpa?.toString()} />
+                                        <DetailRow label="Açıklama" value={detailItem.description} span />
+                                    </dl>
+                                )}
+
+                                {/* Belge */}
+                                {detailItem.has_document ? (
+                                    documentBlobUrl ? (
+                                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 py-2 bg-gray-50 border-b border-gray-200">
+                                                Yüklenen Belge
+                                            </p>
+                                            <img
+                                                src={documentBlobUrl}
+                                                alt="Belge"
+                                                className="w-full object-contain max-h-96"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-center py-4">
+                                            <div className="animate-spin h-6 w-6 rounded-full border-4 border-primary border-t-transparent" />
+                                        </div>
+                                    )
+                                ) : (
+                                    <p className="text-sm text-gray-400 italic">Belge yüklenmemiş.</p>
+                                )}
+
+                                {/* Aksiyonlar */}
+                                <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                                    {credentials.find(c => c.type === detailItem.type && c.id === detailItem.id) && (() => {
+                                        const item = credentials.find(c => c.type === detailItem.type && c.id === detailItem.id)!;
+                                        const isBusy = credentialProcessing === `${item.type}-${item.id}`;
+                                        return (
+                                            <>
+                                                <button
+                                                    onClick={() => handleApproveCredential(item)}
+                                                    disabled={isBusy}
+                                                    className="btn bg-green-600 text-white hover:bg-green-700 flex items-center gap-2"
+                                                >
+                                                    <CheckCircle size={16} />Onayla
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectCredential(item)}
+                                                    disabled={isBusy}
+                                                    className="btn bg-red-600 text-white hover:bg-red-700 flex items-center gap-2"
+                                                >
+                                                    <XCircle size={16} />Reddet
+                                                </button>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Reject Modal */}
             {rejectModal?.open && (

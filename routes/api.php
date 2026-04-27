@@ -115,9 +115,10 @@ Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     Route::get('/teacher/profile/{type}/{id}/document', [\App\Http\Controllers\Teachers\TeacherProfileController::class, 'serveDocument'])
         ->name('teacher.document.serve');
 
-    // Tenant — öğretmen belge sunumu
+    // Tenant — öğretmen belge sunumu (resmi evrak, auth+signed zorunlu)
     Route::get('/teacher-approvals/document/{type}/{id}', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'serveCredentialDocument'])
         ->name('tenant.credential.document');
+
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -845,6 +846,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('teacher-approvals')->group(function () {
             Route::get('/', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'pendingApprovals']);
             Route::get('/pending', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'pendingApprovals']);
+            Route::get('/{type}/{id}', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'show']);
             Route::patch('/certificates/{certificateId}/approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'approveCertificate']);
             Route::patch('/certificates/{certificateId}/reject', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'rejectCertificate']);
             Route::patch('/courses/{courseId}/approve', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'approveCourse']);

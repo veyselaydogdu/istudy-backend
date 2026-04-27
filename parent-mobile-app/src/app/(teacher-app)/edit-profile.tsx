@@ -1,5 +1,6 @@
 import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -725,6 +726,8 @@ export default function EditProfileScreen() {
 
   // ─── Eğitim CRUD ─────────────────────────────────────────────────────────
 
+  const ALLOWED_MIME_TYPES = ['image/heic', 'image/heif', 'image/png', 'image/jpeg', 'image/jpg', 'image/bmp'];
+
   const pickDocument = async (onPicked: (doc: { uri: string; name: string; mimeType: string; base64: string }) => void) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -733,18 +736,39 @@ export default function EditProfileScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
-      quality: 0.7,
+      quality: 1,
       base64: true,
     });
     if (!result.canceled && result.assets?.[0]) {
       const asset = result.assets[0];
-      const mime = asset.mimeType ?? 'image/jpeg';
-      const name = asset.fileName ?? `photo_${Date.now()}.jpg`;
+      const mime = (asset.mimeType ?? 'image/jpeg').toLowerCase();
+      if (!ALLOWED_MIME_TYPES.includes(mime)) {
+        Alert.alert('Desteklenmeyen Format', 'Lütfen HEIC, PNG, JPG, JPEG veya BMP formatında bir görsel seçin.');
+        return;
+      }
+
+      // HEIC/HEIF: backend GD kütüphanesi desteklemez, frontend'de JPEG'e çevir
+      const isHeic = mime === 'image/heic' || mime === 'image/heif';
+      if (isHeic) {
+        const converted = await ImageManipulator.manipulateAsync(
+          asset.uri,
+          [],
+          { format: ImageManipulator.SaveFormat.JPEG, base64: true, compress: 0.9 },
+        );
+        if (!converted.base64) {
+          Alert.alert('Hata', 'HEIC görsel dönüştürülemedi. Lütfen tekrar deneyin.');
+          return;
+        }
+        onPicked({ uri: converted.uri, name: `photo_${Date.now()}.jpg`, mimeType: 'image/jpeg', base64: converted.base64 });
+        return;
+      }
+
       if (!asset.base64) {
         Alert.alert('Hata', 'Görsel okunamadı. Lütfen tekrar deneyin.');
         return;
       }
-      onPicked({ uri: asset.uri, name, mimeType: mime, base64: asset.base64 });
+      const ext = mime.split('/')[1] ?? 'jpg';
+      onPicked({ uri: asset.uri, name: `photo_${Date.now()}.${ext}`, mimeType: mime, base64: asset.base64 });
     }
   };
 

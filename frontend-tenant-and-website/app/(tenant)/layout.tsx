@@ -10,6 +10,7 @@ import Overlay from '@/components/layouts/overlay';
 import ScrollToTop from '@/components/layouts/scroll-to-top';
 import Setting from '@/components/layouts/setting';
 import Sidebar from '@/components/layouts/sidebar';
+import { ApprovalsCountProvider } from '@/contexts/ApprovalsCountContext';
 import { Loader2 } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 
@@ -49,7 +50,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     }
 
     return (
-        <>
+        <ApprovalsCountProvider>
             <Overlay />
             <ScrollToTop />
             <Setting />
@@ -62,6 +63,6 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
                     <Footer />
                 </div>
             </MainContainer>
-        </>
+        </ApprovalsCountProvider>
     );
 }

@@ -10,6 +10,7 @@ use App\Models\School\TeacherEducation;
 use App\Models\School\TeacherSkill;
 use App\Models\School\TeacherTenantMembership;
 use App\Services\TeacherProfileService;
+use App\Traits\ConvertsImageToPng;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -27,6 +28,8 @@ use Illuminate\Support\Str;
  */
 class TeacherProfileController extends BaseTeacherController
 {
+    use ConvertsImageToPng;
+
     public function __construct(
         private readonly TeacherProfileService $teacherProfileService
     ) {}
@@ -600,7 +603,7 @@ class TeacherProfileController extends BaseTeacherController
     {
         $request->validate([
             'photo' => 'required|string',
-            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif',
+            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/bmp',
         ]);
 
         try {
@@ -611,20 +614,16 @@ class TeacherProfileController extends BaseTeacherController
                 Storage::disk('local')->delete($education->file_path);
             }
 
-            $ext = match (true) {
-                str_contains($request->mime_type, 'png') => 'png',
-                str_contains($request->mime_type, 'webp') => 'webp',
-                str_contains($request->mime_type, 'heic') => 'heic',
-                str_contains($request->mime_type, 'heif') => 'heif',
-                default => 'jpg',
-            };
-            $path = "teachers/{$profile->id}/educations/".Str::uuid().".{$ext}";
-            Storage::disk('local')->put($path, base64_decode($request->photo));
+            $png = $this->convertBase64ToPng($request->photo);
+            $path = "teachers/{$profile->id}/educations/".Str::uuid().'.png';
+            Storage::disk('local')->put($path, $png);
             $education->update(['file_path' => $path]);
 
             return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Eğitim bulunamadı.', 404);
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         } catch (\Throwable $e) {
             Log::error('Eğitim belge yükleme hatası', ['error' => $e->getMessage()]);
 
@@ -640,7 +639,7 @@ class TeacherProfileController extends BaseTeacherController
     {
         $request->validate([
             'photo' => 'required|string',
-            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif',
+            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/bmp',
         ]);
 
         try {
@@ -651,20 +650,16 @@ class TeacherProfileController extends BaseTeacherController
                 Storage::disk('local')->delete($course->file_path);
             }
 
-            $ext = match (true) {
-                str_contains($request->mime_type, 'png') => 'png',
-                str_contains($request->mime_type, 'webp') => 'webp',
-                str_contains($request->mime_type, 'heic') => 'heic',
-                str_contains($request->mime_type, 'heif') => 'heif',
-                default => 'jpg',
-            };
-            $path = "teachers/{$profile->id}/courses/".Str::uuid().".{$ext}";
-            Storage::disk('local')->put($path, base64_decode($request->photo));
+            $png = $this->convertBase64ToPng($request->photo);
+            $path = "teachers/{$profile->id}/courses/".Str::uuid().'.png';
+            Storage::disk('local')->put($path, $png);
             $course->update(['file_path' => $path]);
 
             return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Kurs bulunamadı.', 404);
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         } catch (\Throwable $e) {
             Log::error('Kurs belge yükleme hatası', ['error' => $e->getMessage()]);
 
@@ -680,7 +675,7 @@ class TeacherProfileController extends BaseTeacherController
     {
         $request->validate([
             'photo' => 'required|string',
-            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif',
+            'mime_type' => 'required|in:image/jpeg,image/jpg,image/png,image/bmp',
         ]);
 
         try {
@@ -691,20 +686,16 @@ class TeacherProfileController extends BaseTeacherController
                 Storage::disk('local')->delete($certificate->file_path);
             }
 
-            $ext = match (true) {
-                str_contains($request->mime_type, 'png') => 'png',
-                str_contains($request->mime_type, 'webp') => 'webp',
-                str_contains($request->mime_type, 'heic') => 'heic',
-                str_contains($request->mime_type, 'heif') => 'heif',
-                default => 'jpg',
-            };
-            $path = "teachers/{$profile->id}/certificates/".Str::uuid().".{$ext}";
-            Storage::disk('local')->put($path, base64_decode($request->photo));
+            $png = $this->convertBase64ToPng($request->photo);
+            $path = "teachers/{$profile->id}/certificates/".Str::uuid().'.png';
+            Storage::disk('local')->put($path, $png);
             $certificate->update(['file_path' => $path]);
 
             return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Sertifika bulunamadı.', 404);
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         } catch (\Throwable $e) {
             Log::error('Sertifika belge yükleme hatası', ['error' => $e->getMessage()]);
 

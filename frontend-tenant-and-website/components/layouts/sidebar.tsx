@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { toggleSidebar } from '@/store/themeConfigSlice';
 import { IRootState } from '@/store';
+import { useApprovalsCount } from '@/contexts/ApprovalsCountContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
     LayoutDashboard,
@@ -71,6 +72,7 @@ const navGroups: NavGroup[] = [
 
 const Sidebar = () => {
     const { t } = useTranslation();
+    const { totalCount } = useApprovalsCount();
     const pathname = usePathname();
     const dispatch = useDispatch();
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -131,11 +133,18 @@ const Sidebar = () => {
                                                             }
                                                         }}
                                                     >
-                                                        <div className="flex items-center">
-                                                            <Icon className="h-5 w-5 shrink-0 group-hover:!text-primary" />
-                                                            <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
-                                                                {t(item.titleKey)}
-                                                            </span>
+                                                        <div className="flex items-center justify-between w-full">
+                                                            <div className="flex items-center">
+                                                                <Icon className="h-5 w-5 shrink-0 group-hover:!text-primary" />
+                                                                <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
+                                                                    {t(item.titleKey)}
+                                                                </span>
+                                                            </div>
+                                                            {item.href === '/approvals' && totalCount > 0 && (
+                                                                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold text-white bg-red-500">
+                                                                    {totalCount}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </Link>
                                                 </li>
