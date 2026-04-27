@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { PrivateImage } from '@/components/ui/PrivateImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import api from '../../../../lib/api';
@@ -35,6 +36,7 @@ interface PickupLog {
   picked_by_name: string;
   picked_at: string;
   notes: string | null;
+  picked_by_photo_url: string | null;
 }
 
 export default function PickupScreen() {
@@ -237,6 +239,12 @@ export default function PickupScreen() {
                 </View>
                 {log.notes && (
                   <Text style={styles.logNotes}>{log.notes}</Text>
+                )}
+                {log.picked_by_photo_url && (
+                  <PrivateImage
+                    uri={log.picked_by_photo_url}
+                    style={styles.logPhoto}
+                  />
                 )}
               </View>
             ))}
@@ -537,6 +545,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: AppColors.onSurfaceVariant,
     fontStyle: 'italic',
+  },
+  logPhoto: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    marginTop: 8,
   },
   // Modal
   modalContainer: {

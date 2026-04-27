@@ -256,9 +256,23 @@ Modal içinde Modal açılamaz (iOS). Ülke/uyruk seçiciler gibi iç seçimler 
 
 ### Private Dosya + Signed URL (KRİTİK)
 - `Storage::disk('private')` → **HATA** (Laravel 12 bu adda disk yok)
-- `Storage::disk('local')` kullan
-- Mobil `<Image>` auth header gönderemez → `middleware: ['auth:sanctum', 'signed']`
-- Signed URL backend'de `URL::temporarySignedRoute(...)` ile üretilir
+- `Storage::disk('local')` kullan — `HandlesMediaStorage` trait wrapper metotları kullan
+- Tüm private serve rotaları `middleware: ['auth:sanctum', 'signed']` — ikisi birden zorunlu
+- **UYARI**: `signed` ALONE artık kullanılmıyor — auth:sanctum olmadan 401 döner
+- Signed URL backend'de `URL::signedRoute(routeName, params, now()->addMinutes(X))` ile üretilir (default: 5dk)
+
+### Mobil Private Görsel — PrivateImage Bileşeni (KRİTİK)
+- React Native `<Image>` Authorization header gönderemez → her zaman **başarısız olur**
+- Tüm private API görsel URL'leri için `PrivateImage` bileşeni kullan:
+  ```tsx
+  import { PrivateImage } from '@/components/ui/PrivateImage';
+  <PrivateImage uri={signedUrl} style={styles.photo} />
+  ```
+- `PrivateImage` → `expo-image` + `useAuth()` context → `Authorization: Bearer {token}` header otomatik
+- `useAuth()` hem `token` (veli) hem `teacherToken` (öğretmen) döner — aktif olanı alır
+- `Avatar` bileşeni zaten `PrivateImage` kullanıyor
+- Etkilenen ekranlar: `children/[id]/index`, `feed/index`, `teachers/[id]/blog/[blogId]`, `pickup` (log fotoğrafı)
+- Pickup log: `PickupLog.picked_by_photo_url` alanı artık signed URL döner (daha önce raw path dönerdi)
 
 ### Çocuk Profil Fotoğrafı
 - `POST /api/parent/children/{id}/profile-photo` (auth:sanctum) — multipart/form-data
@@ -335,3 +349,15 @@ $child->load([
 
 ### social_post_media + social_post_reactions
 SoftDeletes aktif → `deleted_at` kolonu zorunlu (migration mevcut).
+
+### Pickup Log Fotoğrafı
+- `TeacherPickupController::recordPickup()` → `picked_by_photo_url` (signed URL) döner, artık raw path yok
+- `TeacherPickupController::pickupLogs()` → `picked_by_photo_url` alanı signed URL (null ise null)
+- Mobil `PickupLog` interface: `picked_by_photo_url: string | null` alanı mevcut
+- Fotoğraf serve route: `GET /api/teacher/pickup-logs/{log}/photo` (`teacher.pickup.photo`) — `auth:sanctum + signed`
+
+### HandlesMediaStorage Trait
+Tüm backend private medya işlemleri `App\Traits\HandlesMediaStorage` üzerinden yapılır.
+Etkilenen controller'lar: `ParentChildController`, `ParentAuthController`, `TeacherBlogController`,
+`TeacherPickupController`, `TeacherProfileController`, `ActivityClassGalleryController`,
+`ClassLogoController`, `MealPhotoController`, `SocialMediaController`.

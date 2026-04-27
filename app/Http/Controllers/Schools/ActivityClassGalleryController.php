@@ -4,14 +4,15 @@ namespace App\Http\Controllers\Schools;
 
 use App\Models\ActivityClass\ActivityClass;
 use App\Models\ActivityClass\ActivityClassGalleryItem;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 
 class ActivityClassGalleryController extends BaseSchoolController
 {
+    use HandlesMediaStorage;
+
     public function index(int $school_id, int $activity_class_id): JsonResponse
     {
         try {
@@ -41,7 +42,7 @@ class ActivityClassGalleryController extends BaseSchoolController
 
             $file = $request->file('image');
             $tenantId = $this->user()->tenant_id;
-            $path = $file->store("tenants/{$tenantId}/activity-classes/{$activityClass->id}/gallery", 'local');
+            $path = $this->storePrivate($file, "tenants/{$tenantId}/activity-classes/{$activityClass->id}/gallery");
 
             $item = $activityClass->gallery()->create([
                 'file_path' => $path,
@@ -64,7 +65,7 @@ class ActivityClassGalleryController extends BaseSchoolController
     public function destroy(int $school_id, int $activity_class_id, ActivityClassGalleryItem $galleryItem): JsonResponse
     {
         try {
-            Storage::disk('local')->delete($galleryItem->file_path);
+            $this->deletePrivate($galleryItem->file_path);
             $galleryItem->delete();
 
             return $this->successResponse(null, 'Fotoğraf silindi.');
@@ -76,16 +77,11 @@ class ActivityClassGalleryController extends BaseSchoolController
     }
 
     /**
-     * Serve a gallery image via signed URL (called from signed route — no auth middleware).
+     * Galeri görselini auth:sanctum + signed URL ile sunar.
      */
     public function serve(ActivityClassGalleryItem $galleryItem): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
     {
-        abort_unless(Storage::disk('local')->exists($galleryItem->file_path), 404);
-
-        return Storage::disk('local')->response($galleryItem->file_path, null, [
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma' => 'no-cache',
-        ]);
+        return $this->servePrivate($galleryItem->file_path);
     }
 
     private function formatGalleryItem(ActivityClassGalleryItem $item): array
@@ -97,7 +93,7 @@ class ActivityClassGalleryController extends BaseSchoolController
             'original_name' => $item->original_name,
             'mime_type' => $item->mime_type,
             'file_size' => $item->file_size,
-            'url' => URL::signedRoute('activity-class-gallery.serve', ['galleryItem' => $item->id], now()->addHour()), // M-2: 2h -> 1h
+            'url' => $this->privateSignedUrl('activity-class-gallery.serve', ['galleryItem' => $item->id], 60),
             'created_at' => $item->created_at,
         ];
     }

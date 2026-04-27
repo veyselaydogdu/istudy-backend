@@ -187,6 +187,18 @@ const [subRes, usageRes] = await Promise.all([
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 ```
 
+### Private Görsel — AuthImg (KRİTİK)
+Tüm backend private medya URL'leri `auth:sanctum + signed` middleware gerektirir.
+Tenant frontend'de her zaman `AuthImg` bileşeni kullan — raw `<img>` veya Next.js `<Image>` YAZMA:
+```tsx
+import AuthImg from '@/components/AuthImg';
+<AuthImg src={cls.logo_url} alt="logo" className="h-10 w-10 rounded-xl object-cover"
+         fallback={<span>?</span>} />
+```
+- `AuthImg` → `useAuthImage` hook → `apiClient.get(url, { responseType: 'blob', baseURL: '' })` → blob URL
+- `apiClient` otomatik `Authorization: Bearer {tenant_token}` ekler
+- Kullanılan sayfalar: `social/`, `meals/`, `schools/[id]/` (logo + galeri)
+
 ---
 
 ## 6. Kritik Bug Fix'ler

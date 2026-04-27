@@ -11,15 +11,16 @@ use App\Models\Child\ChildRemovalRequest;
 use App\Models\Health\Allergen;
 use App\Models\Health\MedicalCondition;
 use App\Models\Health\Medication;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 
 class ParentChildController extends BaseParentController
 {
+    use HandlesMediaStorage;
+
     public function index(): JsonResponse
     {
         try {
@@ -676,17 +677,13 @@ class ParentChildController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı.', 404);
             }
 
-            // Eski fotoğrafı private diskten sil
-            if ($childModel->profile_photo && Storage::disk('local')->exists($childModel->profile_photo)) {
-                Storage::disk('local')->delete($childModel->profile_photo);
-            }
+            $this->deletePrivate($childModel->profile_photo);
 
             $parentId = $this->user()->id;
-            $path = $request->file('photo')->store("parents/{$parentId}/children/{$childModel->id}", 'local');
+            $path = $this->storePrivate($request->file('photo'), "parents/{$parentId}/children/{$childModel->id}");
             $childModel->update(['profile_photo' => $path]);
 
-            // M-2: İmzalı URL süresi 1h → 30 dakika
-            $signedUrl = URL::signedRoute('parent.child.photo', ['child' => $childModel->id], now()->addMinutes(30));
+            $signedUrl = $this->privateSignedUrl('parent.child.photo', ['child' => $childModel->ulid], 30);
 
             return $this->successResponse(['profile_photo' => $signedUrl], 'Profil fotoğrafı güncellendi.');
         } catch (\Throwable $e) {
@@ -697,13 +694,10 @@ class ParentChildController extends BaseParentController
     }
 
     /**
-     * İmzalı URL ile çocuğun profil fotoğrafını private diskten sunar.
-     *
-     * H-6: Cache-Control: no-store eklendi — tarayıcı/proxy cache'lemesin.
+     * İmzalı URL + auth:sanctum ile çocuğun profil fotoğrafını private diskten sunar.
      */
     public function servePhoto(string $child): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
     {
-        // Resolve by ULID or integer PK
         $query = Child::withoutGlobalScope('tenant');
         $childModel = is_numeric($child)
             ? $query->find((int) $child)
@@ -713,14 +707,7 @@ class ParentChildController extends BaseParentController
             abort(404);
         }
 
-        if (! Storage::disk('local')->exists($childModel->profile_photo)) {
-            abort(404);
-        }
-
-        return Storage::disk('local')->response($childModel->profile_photo, null, [
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma' => 'no-cache',
-        ]);
+        return $this->servePrivate($childModel->profile_photo);
     }
 
     /**

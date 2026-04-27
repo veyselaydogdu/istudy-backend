@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Models\Base\Role;
 use App\Models\Base\UserRole;
 use App\Models\User;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,11 +17,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 
 class ParentAuthController extends BaseController
 {
+    use HandlesMediaStorage;
+
     /**
      * Veli kaydı — yalnızca User oluşturur.
      * Aile profili giriş sonrası parent tarafından ayrıca oluşturulmalıdır.
@@ -261,14 +262,12 @@ class ParentAuthController extends BaseController
         try {
             $user = $this->user();
 
-            if ($user->profile_photo && Storage::disk('local')->exists($user->profile_photo)) {
-                Storage::disk('local')->delete($user->profile_photo);
-            }
+            $this->deletePrivate($user->profile_photo);
 
-            $path = $request->file('photo')->store("parents/profile-photos/{$user->id}", 'local');
+            $path = $this->storePrivate($request->file('photo'), "parents/profile-photos/{$user->id}");
             $user->update(['profile_photo' => $path]);
 
-            $signedUrl = URL::signedRoute('parent.profile.photo', ['user' => $user->id], now()->addMinutes(30));
+            $signedUrl = $this->privateSignedUrl('parent.profile.photo', ['user' => $user->id], 30);
 
             return $this->successResponse(['profile_photo' => $signedUrl], 'Profil fotoğrafı güncellendi.');
         } catch (\Throwable $e) {
@@ -279,8 +278,7 @@ class ParentAuthController extends BaseController
     }
 
     /**
-     * İmzalı URL ile velinin profil fotoğrafını private diskten sunar.
-     * Route: GET /api/parent/profile/photo/{user} — auth:sanctum + signed
+     * İmzalı URL + auth:sanctum ile velinin profil fotoğrafını private diskten sunar.
      */
     public function serveProfilePhoto(int $user): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
     {
@@ -290,14 +288,7 @@ class ParentAuthController extends BaseController
             abort(404);
         }
 
-        if (! Storage::disk('local')->exists($userModel->profile_photo)) {
-            abort(404);
-        }
-
-        return Storage::disk('local')->response($userModel->profile_photo, null, [
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma' => 'no-cache',
-        ]);
+        return $this->servePrivate($userModel->profile_photo);
     }
 
     /**

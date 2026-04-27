@@ -74,19 +74,27 @@ Route::prefix('countries')->group(function () {
 });
 
 // ═══════════════════════════════════════════════════════════
-// MEDYA SUNUCU — Tüm private dosyalar auth:sanctum zorunlu
+// MEDYA SUNUCU — Tüm private dosyalar auth:sanctum + signed zorunlu
+// Telif ve kişisel görseller: anonim/bot erişimi tamamen engellenir.
+// Mobil taraf expo-image headers prop veya fetch+base64 ile token gönderir.
 // ═══════════════════════════════════════════════════════════
-// Mobil <Image> token gönderemez — sadece imzalı URL yeterli
-Route::middleware(['signed'])->group(function () {
+Route::middleware(['auth:sanctum', 'signed'])->group(function () {
+    // Çocuk profil fotoğrafı
     Route::get('/parent/children/{child}/photo', [\App\Http\Controllers\Parents\ParentChildController::class, 'servePhoto'])
         ->name('parent.child.photo');
+
+    // Veli profil fotoğrafı
     Route::get('/parent/profile/photo/{user}', [\App\Http\Controllers\Parents\ParentAuthController::class, 'serveProfilePhoto'])
         ->name('parent.profile.photo');
+
+    // Sosyal post medyası
     Route::get('/social-media/{media}/serve', [\App\Http\Controllers\Media\SocialMediaController::class, 'serve'])
         ->name('social-media.serve');
-});
 
-Route::middleware(['auth:sanctum', 'signed'])->group(function () {
+    // Teslim (pickup) log fotoğrafı
+    Route::get('/teacher/pickup-logs/{log}/photo', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'servePickupPhoto'])
+        ->name('teacher.pickup.photo');
+
     // Etkinlik sınıfı galerisi
     Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'serve'])
         ->name('activity-class-gallery.serve');
@@ -118,7 +126,6 @@ Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     // Tenant — öğretmen belge sunumu (resmi evrak, auth+signed zorunlu)
     Route::get('/teacher-approvals/document/{type}/{id}', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'serveCredentialDocument'])
         ->name('tenant.credential.document');
-
 });
 
 // ═══════════════════════════════════════════════════════════

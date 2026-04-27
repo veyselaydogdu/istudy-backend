@@ -324,6 +324,20 @@ Storage::disk('private') // HATA — Laravel 12'de bu disk yok
 // Private dosya için signed route zorunlu
 ```
 
+### HandlesMediaStorage Trait (KRİTİK)
+Tüm private medya işlemleri `App\Traits\HandlesMediaStorage` trait'i üzerinden yapılmalıdır:
+```php
+use HandlesMediaStorage;
+
+$path = $this->storePrivate($file, 'folder');        // Kayıt
+$this->deletePrivate($path);                          // Silme
+$url  = $this->privateSignedUrl('route.name', [...], $minutes);  // URL üretimi (default: 5dk)
+return $this->servePrivate($path);                    // HTTP response
+```
+- Tüm private serve route'ları `['auth:sanctum', 'signed']` middleware gerektiriyor — **ikisi birden zorunlu**
+- `signed` ALONE yetmez: auth:sanctum olmadan 401 döner
+- Yeni controller'da private medya varsa mutlaka `use HandlesMediaStorage;` ekle
+
 ### validate() Pozisyonu
 `$request->validate()` / FormRequest → try-catch DIŞINDA (422 garantisi için)
 
@@ -366,8 +380,16 @@ vendor/bin/pint --dirty   # Her PHP değişikliği sonrası
 
 - **Expo Router Stack Layout:** Alt ekranların ayrı tab olmaması için `_layout.tsx` ile Stack navigator ekle
 - **iOS Nested Modal:** Modal içinde Modal açılamaz → inline dropdown pattern kullan
-- **Signed URL:** Mobil `<Image>` auth header gönderemez → `middleware: ['auth:sanctum', 'signed']` kullan (her ikisi birden)
 - **API prefix:** Tüm veli endpoint'leri `/parent/` prefix'li (ör: `/parent/activity-classes`)
+- **Private Image (KRİTİK):** React Native `<Image>` auth header gönderemez. Tüm private görsel URL'leri için `PrivateImage` bileşeni kullan:
+  ```tsx
+  import { PrivateImage } from '@/components/ui/PrivateImage';
+  // Kullanım:
+  <PrivateImage uri={signedUrl} style={styles.photo} />
+  ```
+  `PrivateImage` → `expo-image` + `useAuth()` token → `Authorization: Bearer {token}` header
+- **`Avatar` bileşeni** `uri` prop'u için zaten `PrivateImage` kullanıyor — ek bir şey yapma
+- **Tenant frontend:** `AuthImg` bileşeni + `useAuthImage` hook → `apiClient` ile Bearer token + blob URL. Yeni private görsel için `<AuthImg src={url} />` kullan
 
 ---
 

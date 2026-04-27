@@ -41,7 +41,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiUrl": "http://192.168.0.179:8000/api"
+      "apiUrl": "http://192.168.128.73:8000/api"
     }
   }
 }

@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { PrivateImage } from '@/components/ui/PrivateImage';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -78,7 +78,7 @@ function ChildCard({ child, onPress }: { child: Child; onPress: () => void }) {
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       <View style={[styles.avatar, { backgroundColor: color }]}>
         {child.profile_photo ? (
-          <Image source={{ uri: child.profile_photo }} style={styles.avatarImage} />
+          <PrivateImage uri={child.profile_photo} style={styles.avatarImage} />
         ) : (
           <Text style={styles.avatarText}>{initials}</Text>
         )}

@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\Teachers;
 
 use App\Models\School\TeacherBlogPost;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * TeacherBlogController — Öğretmen Blog Yönetimi
  */
 class TeacherBlogController extends BaseTeacherController
 {
+    use HandlesMediaStorage;
+
     /**
      * Öğretmenin kendi blog yazıları
      */
@@ -65,8 +66,7 @@ class TeacherBlogController extends BaseTeacherController
             ]);
 
             if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store("teachers/{$profile->id}/blogs/{$post->id}", 'local');
-                $post->update(['image' => $imagePath]);
+                $post->update(['image' => $this->storePrivate($request->file('image'), "teachers/{$profile->id}/blogs/{$post->id}")]);
             }
 
             return $this->successResponse($this->formatPost($post), 'Blog yazısı oluşturuldu.', 201);
@@ -100,10 +100,8 @@ class TeacherBlogController extends BaseTeacherController
             $data = $request->only(['title', 'description', 'published_at']);
 
             if ($request->hasFile('image')) {
-                if ($post->image) {
-                    Storage::disk('local')->delete($post->image);
-                }
-                $data['image'] = $request->file('image')->store("teachers/{$profile->id}/blogs/{$post->id}", 'local');
+                $this->deletePrivate($post->image);
+                $data['image'] = $this->storePrivate($request->file('image'), "teachers/{$profile->id}/blogs/{$post->id}");
             }
 
             $post->update($data);
@@ -143,15 +141,17 @@ class TeacherBlogController extends BaseTeacherController
     }
 
     /**
-     * Blog görselini sun (imzalı URL ile erişilir)
+     * Blog görselini sun (auth:sanctum + signed ile erişilir)
      */
-    public function serveImage(int $id): Response
+    public function serveImage(int $id): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
     {
         $post = TeacherBlogPost::findOrFail($id);
 
-        abort_unless($post->image && Storage::disk('local')->exists($post->image), 404);
+        if (! $post->image) {
+            abort(404);
+        }
 
-        return Storage::disk('local')->response($post->image);
+        return $this->servePrivate($post->image);
     }
 
     private function formatPost(TeacherBlogPost $post): array
@@ -161,7 +161,7 @@ class TeacherBlogController extends BaseTeacherController
             'title' => $post->title,
             'description' => $post->description,
             'image_url' => $post->image
-                ? \Illuminate\Support\Facades\URL::signedRoute('teacher.blog.image', ['id' => $post->id], now()->addHours(2))
+                ? $this->privateSignedUrl('teacher.blog.image', ['id' => $post->id], 120)
                 : null,
             'is_published' => $post->is_published,
             'published_at' => $post->published_at?->toISOString(),

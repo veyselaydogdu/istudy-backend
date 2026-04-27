@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Teachers;
 use App\Models\Academic\SchoolClass;
 use App\Models\Child\AuthorizedPickup;
 use App\Models\Child\ChildPickupLog;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,21 @@ use Illuminate\Support\Facades\Log;
  */
 class TeacherPickupController extends BaseTeacherController
 {
+    use HandlesMediaStorage;
+
+    /**
+     * Teslim log fotoğrafını auth:sanctum + signed URL ile sunar.
+     * Öğretmen kendi sınıfındaki çocuğa ait log'a erişebilir.
+     */
+    public function servePickupPhoto(ChildPickupLog $log): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
+    {
+        if (! $log->picked_by_photo) {
+            abort(404);
+        }
+
+        return $this->servePrivate($log->picked_by_photo);
+    }
+
     /**
      * Öğretmenin atandığı bir sınıfta kayıtlı çocuk olup olmadığını doğrular.
      * C-3 / C-7 güvenlik kontrolü.
@@ -96,8 +112,10 @@ class TeacherPickupController extends BaseTeacherController
             $photoPath = null;
 
             if ($request->hasFile('picked_by_photo')) {
-                $photoPath = $request->file('picked_by_photo')
-                    ->store("teachers/{$profile->id}/pickups/{$childId}", 'local');
+                $photoPath = $this->storePrivate(
+                    $request->file('picked_by_photo'),
+                    "teachers/{$profile->id}/pickups/{$childId}"
+                );
             }
 
             $log = ChildPickupLog::create([
@@ -114,6 +132,9 @@ class TeacherPickupController extends BaseTeacherController
                 'id' => $log->id,
                 'child_id' => $log->child_id,
                 'picked_by_name' => $log->picked_by_name,
+                'picked_by_photo_url' => $photoPath
+                    ? $this->privateSignedUrl('teacher.pickup.photo', ['log' => $log->id], 60)
+                    : null,
                 'picked_at' => $log->picked_at->toISOString(),
             ], 'Teslim kaydı oluşturuldu.', 201);
         } catch (\Throwable $e) {
@@ -146,7 +167,9 @@ class TeacherPickupController extends BaseTeacherController
                 ->map(fn ($log) => [
                     'id' => $log->id,
                     'picked_by_name' => $log->picked_by_name,
-                    'picked_by_photo' => $log->picked_by_photo,
+                    'picked_by_photo_url' => $log->picked_by_photo
+                        ? $this->privateSignedUrl('teacher.pickup.photo', ['log' => $log->id], 60)
+                        : null,
                     'picked_at' => $log->picked_at->toISOString(),
                     'notes' => $log->notes,
                     'authorized_pickup' => $log->authorizedPickup ? [

@@ -4,19 +4,23 @@ namespace App\Http\Controllers\Media;
 
 use App\Http\Controllers\Controller;
 use App\Models\Social\SocialPostMedia;
-use Illuminate\Support\Facades\Storage;
+use App\Traits\HandlesMediaStorage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * İmzalı URL + auth:sanctum ile sosyal post medyasını private diskten sunar.
+ * auth:sanctum + signed URL ile sosyal post medyasını private diskten sunar.
  */
 class SocialMediaController extends Controller
 {
-    public function serve(SocialPostMedia $media): StreamedResponse
-    {
-        abort_unless($media->path && Storage::disk('local')->exists($media->path), 404);
+    use HandlesMediaStorage;
 
-        return Storage::disk('local')->response($media->path, $media->original_name, [
+    public function serve(SocialPostMedia $media): StreamedResponse|\Illuminate\Http\Response
+    {
+        if (! $media->path) {
+            abort(404);
+        }
+
+        return $this->servePrivate($media->path, $media->original_name, [
             'Content-Type' => $media->mime_type ?? 'application/octet-stream',
         ]);
     }

@@ -5,7 +5,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppColors } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
+import { PrivateImage } from '@/components/ui/PrivateImage';
 import { TabSelector } from '@/components/ui/TabSelector';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
@@ -86,11 +86,7 @@ function PostCard({ post }: { post: Post }) {
             ) : null}
         </View>
             {post.media.length > 0 && (
-                <Image
-                    source={{ uri: post.media[0].url }}
-                    style={styles.postImage}
-                    resizeMode="cover"
-                />
+                <PrivateImage uri={post.media[0].url} style={styles.postImage} />
             )}
             <View style={styles.authorRow}>
         <View style={styles.authorInfo}>
@@ -158,11 +154,7 @@ function BlogPostCard({ post, onLike }: { post: BlogPost; onLike: (id: number) =
           </Text>
         ) : null}
         {post.image_url ? (
-          <Image
-            source={{ uri: post.image_url }}
-            style={styles.postImage}
-            resizeMode="cover"
-          />
+          <PrivateImage uri={post.image_url} style={styles.postImage} />
         ) : null}
         <View style={styles.footer}>
           <TouchableOpacity style={styles.stat} onPress={() => onLike(post.id)}>

@@ -4,7 +4,6 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { PrivateImage } from '@/components/ui/PrivateImage';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -288,7 +288,7 @@ export default function ChildDetailScreen() {
           <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.8} disabled={uploadingPhoto}>
             <View style={styles.avatarContainer}>
               {child.profile_photo ? (
-                <Image source={{ uri: child.profile_photo }} style={styles.avatarImage} />
+                <PrivateImage uri={child.profile_photo} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{initials}</Text>

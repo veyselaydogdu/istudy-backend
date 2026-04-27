@@ -1,7 +1,8 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppColors } from '@/constants/theme';
+import { PrivateImage } from './PrivateImage';
 
 const PALETTE = [
   AppColors.primary,
@@ -45,9 +46,9 @@ export function Avatar({ name, size = 44, shape = 'circle', color, uri }: Avatar
       ]}
     >
       {uri ? (
-        <Image
-          source={{ uri }}
-          style={[styles.image, { width: size, height: size, borderRadius }]}
+        <PrivateImage
+          uri={uri}
+          style={{ width: size, height: size, borderRadius }}
         />
       ) : (
         <Text style={[styles.text, { fontSize }]}>{initial}</Text>
@@ -61,9 +62,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-  },
-  image: {
-    resizeMode: 'cover',
   },
   text: {
     color: AppColors.white,

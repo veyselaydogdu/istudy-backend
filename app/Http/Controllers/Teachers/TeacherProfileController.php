@@ -11,13 +11,12 @@ use App\Models\School\TeacherSkill;
 use App\Models\School\TeacherTenantMembership;
 use App\Services\TeacherProfileService;
 use App\Traits\ConvertsImageToPng;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 /**
@@ -28,7 +27,7 @@ use Illuminate\Support\Str;
  */
 class TeacherProfileController extends BaseTeacherController
 {
-    use ConvertsImageToPng;
+    use ConvertsImageToPng, HandlesMediaStorage;
 
     public function __construct(
         private readonly TeacherProfileService $teacherProfileService
@@ -610,13 +609,11 @@ class TeacherProfileController extends BaseTeacherController
             $profile = $this->teacherProfile();
             $education = TeacherEducation::where('teacher_profile_id', $profile->id)->findOrFail($educationId);
 
-            if ($education->file_path) {
-                Storage::disk('local')->delete($education->file_path);
-            }
+            $this->deletePrivate($education->file_path);
 
             $png = $this->convertBase64ToPng($request->photo);
             $path = "teachers/{$profile->id}/educations/".Str::uuid().'.png';
-            Storage::disk('local')->put($path, $png);
+            \Illuminate\Support\Facades\Storage::disk('local')->put($path, $png);
             $education->update(['file_path' => $path]);
 
             return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
@@ -646,13 +643,11 @@ class TeacherProfileController extends BaseTeacherController
             $profile = $this->teacherProfile();
             $course = TeacherCourse::where('teacher_profile_id', $profile->id)->findOrFail($courseId);
 
-            if ($course->file_path) {
-                Storage::disk('local')->delete($course->file_path);
-            }
+            $this->deletePrivate($course->file_path);
 
             $png = $this->convertBase64ToPng($request->photo);
             $path = "teachers/{$profile->id}/courses/".Str::uuid().'.png';
-            Storage::disk('local')->put($path, $png);
+            \Illuminate\Support\Facades\Storage::disk('local')->put($path, $png);
             $course->update(['file_path' => $path]);
 
             return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
@@ -682,13 +677,11 @@ class TeacherProfileController extends BaseTeacherController
             $profile = $this->teacherProfile();
             $certificate = TeacherCertificate::where('teacher_profile_id', $profile->id)->findOrFail($certificateId);
 
-            if ($certificate->file_path) {
-                Storage::disk('local')->delete($certificate->file_path);
-            }
+            $this->deletePrivate($certificate->file_path);
 
             $png = $this->convertBase64ToPng($request->photo);
             $path = "teachers/{$profile->id}/certificates/".Str::uuid().'.png';
-            Storage::disk('local')->put($path, $png);
+            \Illuminate\Support\Facades\Storage::disk('local')->put($path, $png);
             $certificate->update(['file_path' => $path]);
 
             return $this->successResponse(['file_path' => $path], 'Görsel yüklendi.', 201);
@@ -707,22 +700,17 @@ class TeacherProfileController extends BaseTeacherController
      * Eğitim belgesini signed URL ile sun (öğretmen kendi belgesi)
      * GET /teacher/profile/educations/{id}/document  — middleware: auth:sanctum + signed
      */
-    public function serveEducationDocument(Request $request, int $educationId): Response|JsonResponse
+    public function serveEducationDocument(Request $request, int $educationId): Response|JsonResponse|\Symfony\Component\HttpFoundation\StreamedResponse
     {
         try {
             $profile = $this->teacherProfile();
             $education = TeacherEducation::where('teacher_profile_id', $profile->id)->findOrFail($educationId);
 
-            if (! $education->file_path || ! Storage::disk('local')->exists($education->file_path)) {
+            if (! $education->file_path) {
                 return $this->errorResponse('Belge bulunamadı.', 404);
             }
 
-            $mime = Storage::disk('local')->mimeType($education->file_path);
-
-            return response(Storage::disk('local')->get($education->file_path), 200, [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline',
-            ]);
+            return $this->servePrivate($education->file_path, null, ['Content-Disposition' => 'inline']);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Eğitim bulunamadı.', 404);
         }
@@ -732,22 +720,17 @@ class TeacherProfileController extends BaseTeacherController
      * Kurs belgesini signed URL ile sun (öğretmen kendi belgesi)
      * GET /teacher/profile/courses/{id}/document
      */
-    public function serveCourseDocument(Request $request, int $courseId): Response|JsonResponse
+    public function serveCourseDocument(Request $request, int $courseId): Response|JsonResponse|\Symfony\Component\HttpFoundation\StreamedResponse
     {
         try {
             $profile = $this->teacherProfile();
             $course = TeacherCourse::where('teacher_profile_id', $profile->id)->findOrFail($courseId);
 
-            if (! $course->file_path || ! Storage::disk('local')->exists($course->file_path)) {
+            if (! $course->file_path) {
                 return $this->errorResponse('Belge bulunamadı.', 404);
             }
 
-            $mime = Storage::disk('local')->mimeType($course->file_path);
-
-            return response(Storage::disk('local')->get($course->file_path), 200, [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline',
-            ]);
+            return $this->servePrivate($course->file_path, null, ['Content-Disposition' => 'inline']);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Kurs bulunamadı.', 404);
         }
@@ -757,22 +740,17 @@ class TeacherProfileController extends BaseTeacherController
      * Sertifika belgesini signed URL ile sun (öğretmen kendi belgesi)
      * GET /teacher/profile/certificates/{id}/document
      */
-    public function serveCertificateDocument(Request $request, int $certificateId): Response|JsonResponse
+    public function serveCertificateDocument(Request $request, int $certificateId): Response|JsonResponse|\Symfony\Component\HttpFoundation\StreamedResponse
     {
         try {
             $profile = $this->teacherProfile();
             $certificate = TeacherCertificate::where('teacher_profile_id', $profile->id)->findOrFail($certificateId);
 
-            if (! $certificate->file_path || ! Storage::disk('local')->exists($certificate->file_path)) {
+            if (! $certificate->file_path) {
                 return $this->errorResponse('Belge bulunamadı.', 404);
             }
 
-            $mime = Storage::disk('local')->mimeType($certificate->file_path);
-
-            return response(Storage::disk('local')->get($certificate->file_path), 200, [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline',
-            ]);
+            return $this->servePrivate($certificate->file_path, null, ['Content-Disposition' => 'inline']);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Sertifika bulunamadı.', 404);
         }
@@ -798,11 +776,7 @@ class TeacherProfileController extends BaseTeacherController
                 return $this->errorResponse('Belge bulunamadı.', 404);
             }
 
-            $url = URL::temporarySignedRoute(
-                'teacher.document.serve',
-                now()->addMinutes(60),
-                ['type' => $type, 'id' => $id]
-            );
+            $url = $this->privateSignedUrl('teacher.document.serve', ['type' => $type, 'id' => $id], 60);
 
             return $this->successResponse(['url' => $url]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
@@ -828,16 +802,11 @@ class TeacherProfileController extends BaseTeacherController
                 default => null,
             };
 
-            if (! $model || ! $model->file_path || ! Storage::disk('local')->exists($model->file_path)) {
+            if (! $model || ! $model->file_path) {
                 return $this->errorResponse('Belge bulunamadı.', 404);
             }
 
-            $mime = Storage::disk('local')->mimeType($model->file_path);
-
-            return response(Storage::disk('local')->get($model->file_path), 200, [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline',
-            ]);
+            return $this->servePrivate($model->file_path, null, ['Content-Disposition' => 'inline']);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Kayıt bulunamadı.', 404);
         }

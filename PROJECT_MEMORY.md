@@ -350,18 +350,34 @@ Veli kullanıcılar `tenant_id=NULL` → FamilyProfile + health verileri yüklen
 ### 8.4 Laravel 12 Filesystem (KRİTİK)
 - `Storage::disk('local')` = `storage/app/private/` — web'den erişilemez ✓
 - `Storage::disk('private')` → **HATA** — bu isimde disk yok
-- Private dosya: `Storage::disk('local')->response($path)` + signed route
+- Private dosya: trait `HandlesMediaStorage` + signed route
 
-**Signed URL Pattern — auth:sanctum + signed kombinasyonu:**
+**Medya Güvenlik Standardı (2026-04-27):**
+- Tüm private görseller `['auth:sanctum', 'signed']` middleware grubundadır
+- `signed` ALONE yeterli değil — auth:sanctum DA zorunlu
+- `HandlesMediaStorage` trait (`app/Traits/`) tüm controller'larda kullanılır:
+  - `storePrivate(file, folder)` → local disk kayıt
+  - `deletePrivate(?path)` → null-safe silme
+  - `privateSignedUrl(routeName, params, minutes)` → URL::signedRoute wrapper
+  - `servePrivate(path)` → Cache-Control: no-store + X-Content-Type-Options header ile serve
+
 ```php
-$signedUrl = URL::temporarySignedRoute('route.name', now()->addHours(2), ['param' => $id]);
+// STANDART PATTERN:
+use HandlesMediaStorage;
+// Upload:
+$path = $this->storePrivate($file, 'folder/sub');
+$url  = $this->privateSignedUrl('route.name', ['id' => $id], 30);
+// Serve:
+return $this->servePrivate($path);
+// Route:
 Route::middleware(['auth:sanctum', 'signed'])->group(function () {
-    Route::get('/parent/children/{child}/photo', [ParentChildController::class, 'servePhoto'])
-        ->name('parent.child.photo');
+    Route::get('/resource/{id}/serve', [Controller::class, 'serve'])->name('route.name');
 });
 ```
 
 **BaseSchoolController extends eden controller'larda** serveLogo/serveImage gibi auth dışı metodlar OLAMAZ (constructor'da validateSchoolAccess → unauthenticated context'te 500). Ayrı `app/Http/Controllers/Media/` controller kullan.
+
+**Pickup log fotoğrafı:** `picked_by_photo` DB'de path olarak saklanır. API yanıtında ham path DEĞİL, signed URL (`teacher.pickup.photo` route) döner. `picked_by_photo_url` field adı kullanılır.
 
 ### 8.5 BelongsToMany Pivot Accessor Bug
 Constraint callback'li eager load'da `->pivot` çalışmaz:

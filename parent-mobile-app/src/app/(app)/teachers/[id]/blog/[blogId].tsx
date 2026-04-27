@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -16,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { PrivateImage } from '@/components/ui/PrivateImage';
 import api from '../../../../../lib/api';
 import { getApiError } from '../../../../../lib/auth';
 
@@ -298,11 +298,7 @@ export default function BlogDetailScreen() {
             post ? (
               <View style={styles.postCard}>
                 {post.image_url ? (
-                  <Image
-                    source={{ uri: post.image_url }}
-                    style={styles.postImage}
-                    resizeMode="cover"
-                  />
+                  <PrivateImage uri={post.image_url} style={styles.postImage} />
                 ) : null}
                 <Text style={styles.postTitle}>{post.title}</Text>
                 {post.teacher ? (
