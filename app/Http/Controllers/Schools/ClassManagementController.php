@@ -306,7 +306,7 @@ class ClassManagementController extends BaseController
     public function assignChild(Request $request): JsonResponse
     {
         $request->validate([
-            'child_id' => ['required', 'integer', 'exists:children,id'],
+            'child_id' => ['required', 'string'],
         ]);
 
         $schoolId = $this->resolveSchoolId();
@@ -324,8 +324,9 @@ class ClassManagementController extends BaseController
                 return $this->errorResponse('Pasif sınıfa öğrenci ataması yapılamaz.', 422);
             }
 
+            $childId = $request->child_id;
             $child = Child::withoutGlobalScope('tenant')
-                ->where('id', $request->child_id)
+                ->where(is_numeric($childId) ? 'id' : 'ulid', $childId)
                 ->where('school_id', $schoolId)
                 ->first();
 

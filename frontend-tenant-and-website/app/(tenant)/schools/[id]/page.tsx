@@ -239,7 +239,7 @@ export default function SchoolDetailPage() {
         setAssigningStudentToClass(true);
         try {
             await apiClient.post(`/schools/${id}/classes/${classForStudentAssign.id}/children`, {
-                child_id: Number(studentAssignChildId),
+                child_id: studentAssignChildId,
             });
             toast.success(t('schools.detail.studentAssignedToClass'));
             setShowClassStudentModal(false);
