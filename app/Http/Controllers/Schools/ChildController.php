@@ -37,6 +37,8 @@ class ChildController extends BaseSchoolController
                 ->with([
                     'familyProfile' => fn ($q) => $q->withoutGlobalScope('tenant')->with('owner'),
                     'classes',
+                    'allergens' => fn ($q) => $q->withoutGlobalScope('tenant'),
+                    'medications' => fn ($q) => $q->withoutGlobalScope('tenant'),
                 ]);
 
             $perPage = request('per_page', 15);

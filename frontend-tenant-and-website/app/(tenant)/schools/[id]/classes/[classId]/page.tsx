@@ -1255,7 +1255,7 @@ function MealCalendar({
     getConflicts?: (s: MealSchedule) => AllergenConflict[];
 }) {
     const { t } = useTranslation();
-    const [expandedSchedule, setExpandedSchedule] = useState<number | null>(null);
+    const [allergenModal, setAllergenModal] = useState<{ mealName: string; conflicts: AllergenConflict[] } | null>(null);
     const MONTHS_TR = [
         t('schools.detail.classDetail.calMonthJan'), t('schools.detail.classDetail.calMonthFeb'),
         t('schools.detail.classDetail.calMonthMar'), t('schools.detail.classDetail.calMonthApr'),
@@ -1285,6 +1285,15 @@ function MealCalendar({
     const todayD = new Date().getDate();
     const todayM = new Date().getMonth() + 1;
     const todayY = new Date().getFullYear();
+
+    // Group conflicts by child for modal display
+    const groupedConflicts = allergenModal
+        ? allergenModal.conflicts.reduce<Record<string, string[]>>((acc, c) => {
+            if (!acc[c.childName]) { acc[c.childName] = []; }
+            acc[c.childName].push(c.allergenName);
+            return acc;
+        }, {})
+        : {};
 
     return (
         <div>
@@ -1322,14 +1331,19 @@ function MealCalendar({
                                                 <div
                                                     className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${hasConflict ? 'bg-danger/10 text-danger' : 'bg-primary/10 text-primary'}`}
                                                 >
-                                                    <button
-                                                        type="button"
-                                                        className="min-w-0 flex-1 truncate text-left"
-                                                        title={s.meal?.name}
-                                                        onClick={() => setExpandedSchedule(expandedSchedule === s.id ? null : s.id)}
-                                                    >
-                                                        {hasConflict && '⚠ '}{s.meal?.name}
-                                                    </button>
+                                                    <span className="min-w-0 flex-1 truncate" title={s.meal?.name}>
+                                                        {s.meal?.name}
+                                                    </span>
+                                                    {hasConflict && (
+                                                        <button
+                                                            type="button"
+                                                            className="ml-0.5 shrink-0 rounded bg-danger/20 px-0.5 font-bold text-danger hover:bg-danger/40"
+                                                            title={t('schools.detail.classDetail.allergenConflictsTitle')}
+                                                            onClick={() => setAllergenModal({ mealName: s.meal?.name ?? '', conflicts })}
+                                                        >
+                                                            ⚠
+                                                        </button>
+                                                    )}
                                                     {onDelete && (
                                                         <button
                                                             type="button"
@@ -1341,16 +1355,6 @@ function MealCalendar({
                                                         </button>
                                                     )}
                                                 </div>
-                                                {expandedSchedule === s.id && hasConflict && (
-                                                    <div className="mt-0.5 rounded border border-danger/20 bg-danger/5 p-1 text-[10px]">
-                                                        <p className="mb-0.5 font-semibold text-danger">{t('schools.detail.classDetail.allergenConflictsTitle')}</p>
-                                                        {conflicts.map((c, ci) => (
-                                                            <p key={ci} className="text-danger">
-                                                                {c.childName}: {c.allergenName}
-                                                            </p>
-                                                        ))}
-                                                    </div>
-                                                )}
                                             </div>
                                         );
                                     })}
@@ -1362,6 +1366,46 @@ function MealCalendar({
             </div>
             {mealSchedules.length === 0 && (
                 <p className="mt-4 text-center text-sm text-[#888ea8]">{t('schools.detail.classDetail.noMenuThisMonth')}</p>
+            )}
+
+            {/* Alerjen Uyarı Modalı */}
+            {allergenModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-sm rounded-lg bg-white dark:bg-[#0e1726]">
+                        <div className="flex items-center justify-between border-b border-[#ebedf2] px-5 py-4 dark:border-[#1b2e4b]">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg text-danger">⚠</span>
+                                <h3 className="font-bold text-dark dark:text-white">{t('schools.detail.classDetail.allergenConflictsTitle')}</h3>
+                            </div>
+                            <button type="button" onClick={() => setAllergenModal(null)} className="text-[#888ea8] hover:text-danger">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="p-5">
+                            <p className="mb-4 text-sm text-[#888ea8]">
+                                <span className="font-semibold text-dark dark:text-white">{allergenModal.mealName}</span>
+                                {' '}{t('schools.detail.classDetail.allergenWarningDesc')}
+                            </p>
+                            <div className="space-y-3">
+                                {Object.entries(groupedConflicts).map(([childName, allergens]) => (
+                                    <div key={childName} className="rounded-lg border border-danger/20 bg-danger/5 p-3">
+                                        <p className="mb-1.5 font-semibold text-dark dark:text-white">{childName}</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {allergens.map(allergen => (
+                                                <span key={allergen} className="badge badge-outline-danger text-xs">{allergen}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="border-t border-[#ebedf2] p-4 dark:border-[#1b2e4b]">
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setAllergenModal(null)}>
+                                {t('common.close')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
