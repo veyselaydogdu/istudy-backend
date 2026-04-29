@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/theme';
+import { PrivateImage } from '@/components/ui/PrivateImage';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -24,10 +25,18 @@ interface ChildDetail {
   birth_date: string | null;
   blood_type: string | null;
   gender: string | null;
-  school_name: string | null;
-  class_name: string | null;
+  profile_photo?: string | null;
+  school?: { id: number; name: string } | null;
+  classes?: Array<{ id: number; name: string }>;
   allergens: Array<{ id: number; name: string }>;
-  medications: Array<{ id: number; name: string; dose: string | null }>;
+  conditions: Array<{ id: number; name: string }>;
+  medications: Array<{
+    id: number;
+    name: string;
+    dose: string | null;
+    usage_time: string | null;
+    usage_days: string[] | null;
+  }>;
   family_profile: {
     owner: {
       id: number;
@@ -137,9 +146,13 @@ export default function TeacherChildDetailScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Profile card */}
         <View style={styles.profileCard}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          {child.profile_photo ? (
+            <PrivateImage uri={child.profile_photo} style={styles.avatarPhoto} contentFit="cover" />
+          ) : (
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          )}
           <Text style={styles.childName}>{child.full_name}</Text>
           {child.birth_date && (
             <Text style={styles.childMeta}>{getAge(child.birth_date)}</Text>
@@ -150,29 +163,21 @@ export default function TeacherChildDetailScreen() {
                 <Text style={styles.metaBadgeText}>{child.blood_type}</Text>
               </View>
             )}
-            {child.school_name && (
+            {child.school?.name && (
               <View style={styles.metaBadge}>
-                <Text style={styles.metaBadgeText}>{child.school_name}</Text>
+                <Text style={styles.metaBadgeText}>{child.school.name}</Text>
               </View>
             )}
-            {child.class_name && (
-              <View style={styles.metaBadge}>
-                <Text style={styles.metaBadgeText}>{child.class_name}</Text>
+            {(child.classes ?? []).map((c) => (
+              <View key={c.id} style={styles.metaBadge}>
+                <Text style={styles.metaBadgeText}>{c.name}</Text>
               </View>
-            )}
+            ))}
           </View>
         </View>
 
-        {/* Action buttons */}
+        {/* Action button - only pickup */}
         <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => router.push(`/(teacher-app)/children/${childId}/health`)}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="heart-outline" size={20} color="#EF4444" />
-            <Text style={styles.actionBtnText}>Sağlık Bilgileri</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => router.push(`/(teacher-app)/children/${childId}/pickup`)}
@@ -203,6 +208,61 @@ export default function TeacherChildDetailScreen() {
             </View>
           </View>
         )}
+
+        {/* Health info */}
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="heart-outline" size={18} color="#EF4444" />
+            <Text style={styles.sectionTitle}>Sağlık Bilgileri</Text>
+          </View>
+
+          {/* Allergens */}
+          <Text style={styles.healthSubtitle}>Alerjenler</Text>
+          {child.allergens.length === 0 ? (
+            <Text style={styles.healthEmpty}>Kayıtlı alerjen yok.</Text>
+          ) : (
+            <View style={styles.chipWrap}>
+              {child.allergens.map((a) => (
+                <View key={a.id} style={styles.allergenChip}>
+                  <Text style={styles.allergenChipText}>{a.name}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Conditions */}
+          <Text style={[styles.healthSubtitle, { marginTop: 12 }]}>Hastalıklar / Rahatsızlıklar</Text>
+          {child.conditions.length === 0 ? (
+            <Text style={styles.healthEmpty}>Kayıtlı hastalık yok.</Text>
+          ) : (
+            <View style={styles.chipWrap}>
+              {child.conditions.map((c) => (
+                <View key={c.id} style={styles.conditionChip}>
+                  <Text style={styles.conditionChipText}>{c.name}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Medications */}
+          <Text style={[styles.healthSubtitle, { marginTop: 12 }]}>İlaçlar</Text>
+          {child.medications.length === 0 ? (
+            <Text style={styles.healthEmpty}>Kayıtlı ilaç yok.</Text>
+          ) : (
+            child.medications.map((med) => (
+              <View key={med.id} style={styles.healthMedCard}>
+                <Text style={styles.healthMedName}>{med.name}</Text>
+                {med.dose && <Text style={styles.healthMedDetail}>Doz: {med.dose}</Text>}
+                {(med.usage_days ?? []).length > 0 && (
+                  <Text style={styles.healthMedDetail}>Günler: {(med.usage_days ?? []).join(', ')}</Text>
+                )}
+                {med.usage_time && (
+                  <Text style={styles.healthMedDetail}>Saat: {med.usage_time}</Text>
+                )}
+              </View>
+            ))
+          )}
+        </View>
 
         {/* Emergency contacts */}
         {(child.emergency_contacts?.length ?? 0) > 0 && (
@@ -331,6 +391,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
+  avatarPhoto: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    marginBottom: 4,
+  },
   avatarText: {
     color: AppColors.white,
     fontSize: 28,
@@ -390,11 +456,82 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 16,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: AppColors.onSurface,
     marginBottom: 8,
+  },
+  healthSubtitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: AppColors.onSurfaceVariant,
+    marginBottom: 6,
+  },
+  healthEmpty: {
+    fontSize: 13,
+    color: AppColors.onSurfaceVariant,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  allergenChip: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  allergenChipText: {
+    fontSize: 13,
+    color: AppColors.error,
+    fontWeight: '600',
+  },
+  conditionChip: {
+    backgroundColor: AppColors.warningContainer,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: AppColors.tertiaryContainer,
+  },
+  conditionChipText: {
+    fontSize: 13,
+    color: AppColors.warning,
+    fontWeight: '600',
+  },
+  healthMedCard: {
+    backgroundColor: AppColors.white,
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#7C3AED',
+    shadowColor: AppColors.onSurface,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  healthMedName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: AppColors.onSurface,
+    marginBottom: 2,
+  },
+  healthMedDetail: {
+    fontSize: 13,
+    color: AppColors.onSurfaceVariant,
   },
   infoCard: {
     backgroundColor: AppColors.white,

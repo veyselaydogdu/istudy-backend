@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Teachers;
 use App\Models\Academic\SchoolClass;
 use App\Models\Child\Child;
 use App\Models\Child\ChildMedicationLog;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Log;
  */
 class TeacherChildController extends BaseTeacherController
 {
+    use HandlesMediaStorage;
+
     /**
      * Öğretmenin atandığı bir sınıfta kayıtlı çocuk olup olmadığını doğrular.
      * C-4 güvenlik kontrolü.
@@ -66,7 +69,9 @@ class TeacherChildController extends BaseTeacherController
                 'birth_date' => $child->birth_date?->format('Y-m-d'),
                 'gender' => $child->gender,
                 'blood_type' => $child->blood_type,
-                'profile_photo' => $child->profile_photo,
+                'profile_photo' => $child->profile_photo
+                    ? $this->privateSignedUrl('teacher.child.photo', ['child' => $child->ulid], 30)
+                    : null,
                 'status' => $child->status,
                 'special_notes' => $child->special_notes,
                 'school' => $child->school,
@@ -106,6 +111,23 @@ class TeacherChildController extends BaseTeacherController
 
             return $this->errorResponse('Öğrenci bulunamadı.', 404);
         }
+    }
+
+    /**
+     * Öğrenci profil fotoğrafını private diskten sunar (signed + auth:sanctum zorunlu)
+     */
+    public function servePhoto(string $child): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
+    {
+        $query = Child::withoutGlobalScope('tenant');
+        $childModel = is_numeric($child)
+            ? $query->find((int) $child)
+            : $query->where('ulid', $child)->first();
+
+        if (! $childModel || ! $childModel->profile_photo) {
+            abort(404);
+        }
+
+        return $this->servePrivate($childModel->profile_photo);
     }
 
     /**

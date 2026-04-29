@@ -1,4 +1,5 @@
 import { AppColors } from '@/constants/theme';
+import { PrivateImage } from '@/components/ui/PrivateImage';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -44,6 +45,7 @@ interface ClassChild {
   last_name: string;
   full_name: string;
   birth_date: string | null;
+  profile_photo?: string | null;
   allergens: Array<{ id: number; name: string }>;
   medications: Array<{ id: number; name: string }>;
 }
@@ -570,9 +572,13 @@ function ChildRow({ child }: { child: ClassChild }) {
       onPress={() => router.push({ pathname: '/(teacher-app)/children/[childId]', params: { childId: String(child.id) } })}
       activeOpacity={0.75}
     >
-      <View style={[styles.avatar, { backgroundColor: color }]}>
-        <Text style={styles.avatarText}>{initials}</Text>
-      </View>
+      {child.profile_photo ? (
+        <PrivateImage uri={child.profile_photo} style={styles.avatarPhoto} contentFit="cover" />
+      ) : (
+        <View style={[styles.avatar, { backgroundColor: color }]}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+      )}
       <View style={styles.childInfo}>
         <Text style={styles.childCardName}>{child.full_name}</Text>
         <View style={styles.badgeRow}>
@@ -891,6 +897,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarPhoto: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
   },
   avatarText: {
     color: AppColors.white,

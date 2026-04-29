@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Teachers;
 
 use App\Models\Academic\SchoolClass;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Log;
  */
 class TeacherClassController extends BaseTeacherController
 {
+    use HandlesMediaStorage;
+
     /**
      * Öğretmenin atandığı sınıfları listeler
      */
@@ -62,7 +65,7 @@ class TeacherClassController extends BaseTeacherController
             $class = SchoolClass::with([
                 'school:id,name',
                 'academicYear:id,name',
-                'children' => fn ($q) => $q->active()->select('children.id', 'children.first_name', 'children.last_name', 'children.profile_photo'),
+                'children' => fn ($q) => $q->active()->select('children.id', 'children.ulid', 'children.first_name', 'children.last_name', 'children.profile_photo'),
             ])
                 ->whereHas('teachers', fn ($q) => $q->where('teacher_profile_id', $profile->id))
                 ->findOrFail($classId);
@@ -78,7 +81,9 @@ class TeacherClassController extends BaseTeacherController
                 'children' => $class->children->map(fn ($child) => [
                     'id' => $child->id,
                     'full_name' => $child->full_name,
-                    'profile_photo' => $child->profile_photo,
+                    'profile_photo' => $child->profile_photo
+                        ? $this->privateSignedUrl('teacher.child.photo', ['child' => $child->ulid], 30)
+                        : null,
                 ]),
             ];
 
@@ -123,7 +128,9 @@ class TeacherClassController extends BaseTeacherController
                     'first_name' => $child->first_name,
                     'last_name' => $child->last_name,
                     'full_name' => $child->full_name,
-                    'profile_photo' => $child->profile_photo,
+                    'profile_photo' => $child->profile_photo
+                        ? $this->privateSignedUrl('teacher.child.photo', ['child' => $child->ulid], 30)
+                        : null,
                     'birth_date' => $child->birth_date?->format('Y-m-d'),
                     'blood_type' => $child->blood_type,
                     'allergen_count' => $child->allergens->count(),

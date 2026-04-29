@@ -95,6 +95,10 @@ Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     Route::get('/teacher/pickup-logs/{log}/photo', [\App\Http\Controllers\Teachers\TeacherPickupController::class, 'servePickupPhoto'])
         ->name('teacher.pickup.photo');
 
+    // Öğrenci profil fotoğrafı (öğretmen erişimi)
+    Route::get('/teacher/children/{child}/photo', [\App\Http\Controllers\Teachers\TeacherChildController::class, 'servePhoto'])
+        ->name('teacher.child.photo');
+
     // Etkinlik sınıfı galerisi
     Route::get('/activity-class-gallery/{galleryItem}/serve', [\App\Http\Controllers\Schools\ActivityClassGalleryController::class, 'serve'])
         ->name('activity-class-gallery.serve');
