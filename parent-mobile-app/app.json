@@ -45,3 +45,5 @@
     }
   }
 }
+//tenant sınıfa yemek eklediğinde yemek menüsü listesinde alerjen olan çocuk ile çakışma varsa mutlaka orada alerjen uyarısı verilmeli ve üstüne basılınca modalda hangi çocuğun olduğu neye
+//  alerjisi olduğu gözükmeli

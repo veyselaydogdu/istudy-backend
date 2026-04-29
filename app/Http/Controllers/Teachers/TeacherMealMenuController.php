@@ -58,7 +58,7 @@ class TeacherMealMenuController extends BaseTeacherController
                 ->get();
 
             // Sınıf öğrencilerinin alerjenlerini yükle
-            $children = Child::whereHas('classes', fn ($q) => $q->where('school_classes.id', $classId))
+            $children = Child::whereHas('classes', fn ($q) => $q->where('classes.id', $classId))
                 ->active()
                 ->with(['allergens' => fn ($q) => $q->withoutGlobalScope('tenant')])
                 ->get();

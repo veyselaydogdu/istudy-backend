@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Teachers;
 
-use App\Http\Controllers\Schools\BaseSchoolController;
+use App\Models\Activity\Attendance;
 use App\Models\Activity\DailyChildReport;
 use App\Models\Activity\ReportInputValue;
 use App\Models\Activity\ReportTemplate;
@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class TeacherDailyReportController extends BaseSchoolController
+class TeacherDailyReportController extends BaseTeacherController
 {
     /**
      * Öğretmenin sınıfındaki öğrencilerin o günkü rapor durumunu listele
@@ -31,7 +31,7 @@ class TeacherDailyReportController extends BaseSchoolController
 
         if ($request->class_id) {
             $query->whereHas('classes', function ($q) use ($request) {
-                $q->where('school_classes.id', $request->class_id);
+                $q->where('classes.id', $request->class_id);
             });
         }
 
@@ -41,6 +41,7 @@ class TeacherDailyReportController extends BaseSchoolController
 
         $summary = $children->map(function ($child) {
             $report = $child->dailyReports->first();
+
             return [
                 'child_id' => $child->id,
                 'child_name' => $child->full_name,
@@ -72,7 +73,7 @@ class TeacherDailyReportController extends BaseSchoolController
             ->orderBy('sort_order')
             ->first();
 
-        if (!$template) {
+        if (! $template) {
             return $this->errorResponse('Bu okul için tanımlı aktif bir rapor şablonu bulunamadı.', 404);
         }
 
@@ -102,7 +103,7 @@ class TeacherDailyReportController extends BaseSchoolController
             'mood' => $report?->mood,
             'appetite' => $report?->appetite,
             'notes' => $report?->notes,
-            'values' => (object)$filledValues, // Boş dizi [] yerine obje {} dönsün
+            'values' => (object) $filledValues, // Boş dizi [] yerine obje {} dönsün
         ], 'Rapor şablonu ve mevcut veriler getirildi.');
     }
 
@@ -113,14 +114,32 @@ class TeacherDailyReportController extends BaseSchoolController
     {
         $request->validate([
             'child_id' => 'required|exists:children,id',
+            'class_id' => 'required|exists:classes,id',
             'school_id' => 'required|exists:schools,id',
-            'report_template_id' => 'required|exists:report_templates,id',
+            'report_template_id' => 'nullable|exists:report_templates,id',
             'date' => 'required|date',
             'mood' => 'nullable|string',
             'appetite' => 'nullable|string',
             'notes' => 'nullable|string',
-            'values' => 'nullable|array', // { "input_id": "value" }
+            'values' => 'nullable|array',
         ]);
+
+        if ($request->date !== now()->toDateString()) {
+            return $this->errorResponse('Rapor yalnızca bugün için kaydedilebilir.', 422);
+        }
+
+        $attendance = Attendance::where('child_id', $request->child_id)
+            ->where('class_id', $request->class_id)
+            ->whereDate('attendance_date', $request->date)
+            ->first();
+
+        if (! $attendance) {
+            return $this->errorResponse('Bu öğrenci için devamsızlık kaydı girilmemiş.', 422);
+        }
+
+        if (in_array($attendance->status, ['absent', 'excused'], true)) {
+            return $this->errorResponse('Devamsız veya mazeretli öğrenci için rapor düzenlenemez.', 422);
+        }
 
         DB::beginTransaction();
         try {
@@ -160,10 +179,12 @@ class TeacherDailyReportController extends BaseSchoolController
             }
 
             DB::commit();
+
             return $this->successResponse(null, 'Rapor başarıyla kaydedildi.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Rapor kayıt hatası: ' . $e->getMessage());
+            Log::error('Rapor kayıt hatası: '.$e->getMessage());
+
             return $this->errorResponse('Kayıt sırasında hata oluştu.', 500);
         }
     }
@@ -176,17 +197,36 @@ class TeacherDailyReportController extends BaseSchoolController
         $request->validate([
             'child_ids' => 'required|array',
             'child_ids.*' => 'exists:children,id',
+            'class_id' => 'required|exists:classes,id',
             'school_id' => 'required|exists:schools,id',
-            'report_template_id' => 'required|exists:report_templates,id',
+            'report_template_id' => 'nullable|exists:report_templates,id',
             'date' => 'required|date',
             'mood' => 'nullable|string',
             'values' => 'nullable|array',
         ]);
 
+        if ($request->date !== now()->toDateString()) {
+            return $this->errorResponse('Rapor yalnızca bugün için kaydedilebilir.', 422);
+        }
+
+        // Devamsız veya kayıtsız öğrencileri filtrele
+        $attendances = Attendance::whereIn('child_id', $request->child_ids)
+            ->where('class_id', $request->class_id)
+            ->whereDate('attendance_date', $request->date)
+            ->whereIn('status', ['present', 'late'])
+            ->pluck('child_id')
+            ->toArray();
+
+        $eligibleChildIds = array_intersect($request->child_ids, $attendances);
+
+        if (empty($eligibleChildIds)) {
+            return $this->errorResponse('Rapor düzenlenebilecek öğrenci bulunamadı.', 422);
+        }
+
         DB::beginTransaction();
         try {
             $count = 0;
-            foreach ($request->child_ids as $childId) {
+            foreach ($eligibleChildIds as $childId) {
                 // Raporu bul veya oluştur
                 $report = DailyChildReport::firstOrCreate(
                     ['child_id' => $childId, 'report_date' => $request->date],
@@ -199,16 +239,22 @@ class TeacherDailyReportController extends BaseSchoolController
                 );
 
                 // Gelen alanları güncelle
-                if ($request->has('mood')) $report->mood = $request->mood;
-                if ($request->has('appetite')) $report->appetite = $request->appetite;
-                if ($request->has('notes')) $report->notes = $request->notes;
+                if ($request->has('mood')) {
+                    $report->mood = $request->mood;
+                }
+                if ($request->has('appetite')) {
+                    $report->appetite = $request->appetite;
+                }
+                if ($request->has('notes')) {
+                    $report->notes = $request->notes;
+                }
                 $report->updated_by = $this->user()->id;
                 $report->save();
 
                 // Dinamik değerler
                 if ($request->has('values')) {
                     foreach ($request->values as $inputId => $value) {
-                         $finalValue = is_array($value) ? json_encode($value) : $value;
+                        $finalValue = is_array($value) ? json_encode($value) : $value;
                         ReportInputValue::updateOrCreate(
                             [
                                 'daily_child_report_id' => $report->id,
@@ -226,10 +272,12 @@ class TeacherDailyReportController extends BaseSchoolController
             }
 
             DB::commit();
+
             return $this->successResponse(null, "$count öğrenci için rapor güncellendi.");
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Toplu rapor hatası: ' . $e->getMessage());
+            Log::error('Toplu rapor hatası: '.$e->getMessage());
+
             return $this->errorResponse('Toplu işlem hatası.', 500);
         }
     }

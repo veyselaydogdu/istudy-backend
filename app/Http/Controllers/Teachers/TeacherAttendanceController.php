@@ -47,7 +47,7 @@ class TeacherAttendanceController extends BaseTeacherController
             }
 
             // Sınıftaki tüm aktif çocukları getir
-            $children = Child::whereHas('classes', fn ($q) => $q->where('school_classes.id', $classId))
+            $children = Child::whereHas('classes', fn ($q) => $q->where('classes.id', $classId))
                 ->active()
                 ->get();
 
@@ -65,7 +65,7 @@ class TeacherAttendanceController extends BaseTeacherController
                     'child_id' => $child->id,
                     'child_name' => $child->full_name,
                     'photo' => $child->profile_photo,
-                    'status' => $attendance ? $attendance->status : 'present',
+                    'status' => $attendance ? $attendance->status : null,
                     'notes' => $attendance ? $attendance->notes : null,
                     'is_recorded' => (bool) $attendance,
                 ];
@@ -93,6 +93,10 @@ class TeacherAttendanceController extends BaseTeacherController
             'attendances.*.notes' => ['nullable', 'string'],
         ]);
 
+        if ($request->date !== now()->toDateString()) {
+            return $this->errorResponse('Yoklama yalnızca bugün için kaydedilebilir.', 422);
+        }
+
         try {
             $profile = $this->teacherProfile();
 
@@ -115,7 +119,7 @@ class TeacherAttendanceController extends BaseTeacherController
 
             // M-5: Yalnızca bu sınıfa ait çocuk ID'lerini al — yabancı çocuk kaydını engelle
             $validChildIds = Child::whereHas(
-                'classes', fn ($q) => $q->where('school_classes.id', $classId)
+                'classes', fn ($q) => $q->where('classes.id', $classId)
             )->pluck('id')->toArray();
 
             foreach ($request->attendances as $item) {

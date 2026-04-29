@@ -92,9 +92,8 @@ class TeacherPickupController extends BaseTeacherController
     public function recordPickup(int $childId, Request $request): JsonResponse
     {
         $request->validate([
-            'picked_by_name' => ['required', 'string', 'max:255'],
+            'authorized_pickup_id' => ['required', 'integer', 'exists:authorized_pickups,id'],
             'picked_by_photo' => ['nullable', 'image', 'max:5120'],
-            'authorized_pickup_id' => ['nullable', 'integer', 'exists:authorized_pickups,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -106,6 +105,16 @@ class TeacherPickupController extends BaseTeacherController
         // C-3: Öğretmen yalnızca kendi sınıfındaki çocuğu teslim edebilir
         if (! $this->isChildInTeacherClass($profile->id, $childId)) {
             return $this->errorResponse('Bu öğrenciye erişim yetkiniz yok.', 403);
+        }
+
+        // Yetkili alıcının bu çocuğa ait ve aktif olduğunu doğrula
+        $authorizedPickup = AuthorizedPickup::where('id', $request->authorized_pickup_id)
+            ->where('child_id', $childId)
+            ->active()
+            ->first();
+
+        if (! $authorizedPickup) {
+            return $this->errorResponse('Geçersiz veya yetkisiz alıcı.', 422);
         }
 
         try {
@@ -120,8 +129,8 @@ class TeacherPickupController extends BaseTeacherController
 
             $log = ChildPickupLog::create([
                 'child_id' => $childId,
-                'authorized_pickup_id' => $request->authorized_pickup_id,
-                'picked_by_name' => $request->picked_by_name,
+                'authorized_pickup_id' => $authorizedPickup->id,
+                'picked_by_name' => $authorizedPickup->full_name,
                 'picked_by_photo' => $photoPath,
                 'picked_at' => now(),
                 'notes' => $request->notes,

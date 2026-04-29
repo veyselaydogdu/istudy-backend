@@ -111,15 +111,17 @@ class TeacherClassController extends BaseTeacherController
                 return $this->errorResponse('Bu sınıfa erişim yetkiniz yok.', 403);
             }
 
-            $children = \App\Models\Child\Child::whereHas('classes', fn ($q) => $q->where('school_classes.id', $classId))
+            $children = \App\Models\Child\Child::whereHas('classes', fn ($q) => $q->where('classes.id', $classId))
                 ->active()
                 ->with([
-                    'allergens:id,name' => fn ($q) => $q->withoutGlobalScope('tenant'),
-                    'medications:id,name' => fn ($q) => $q->withoutGlobalScope('tenant'),
+                    'allergens' => fn ($q) => $q->withoutGlobalScope('tenant'),
+                    'medications' => fn ($q) => $q->withoutGlobalScope('tenant'),
                 ])
                 ->get()
                 ->map(fn ($child) => [
                     'id' => $child->id,
+                    'first_name' => $child->first_name,
+                    'last_name' => $child->last_name,
                     'full_name' => $child->full_name,
                     'profile_photo' => $child->profile_photo,
                     'birth_date' => $child->birth_date?->format('Y-m-d'),

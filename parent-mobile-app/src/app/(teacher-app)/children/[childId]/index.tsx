@@ -36,7 +36,7 @@ interface ChildDetail {
       phone: string | null;
     } | null;
   } | null;
-  emergency_contacts: Array<{
+  emergency_contacts?: Array<{
     id: number;
     name: string;
     phone: string;
@@ -205,7 +205,7 @@ export default function TeacherChildDetailScreen() {
         )}
 
         {/* Emergency contacts */}
-        {child.emergency_contacts.length > 0 && (
+        {(child.emergency_contacts?.length ?? 0) > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Acil Durum Kişileri</Text>
             {child.emergency_contacts.map((ec) => (

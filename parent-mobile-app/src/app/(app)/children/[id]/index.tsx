@@ -506,6 +506,16 @@ export default function ChildDetailScreen() {
         )}
 
         <View style={styles.actions}>
+          {child.school_id && (
+            <TouchableOpacity
+              style={styles.healthButton}
+              onPress={() => router.push(`/(app)/children/${id}/reports`)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.healthButtonText}>📋 Günlük Raporlar</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.healthButton}
             onPress={() => router.push(`/(app)/children/${id}/health`)}

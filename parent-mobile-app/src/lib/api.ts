@@ -47,7 +47,8 @@ const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   if (cachedToken === UNINIT) {
-    cachedToken = await AsyncStorage.getItem('parent_token');
+    const parentToken = await AsyncStorage.getItem('parent_token');
+    cachedToken = parentToken ?? await AsyncStorage.getItem('teacher_token');
   }
   if (cachedToken) {
     config.headers.Authorization = `Bearer ${cachedToken}`;

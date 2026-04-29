@@ -6,7 +6,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -48,9 +47,7 @@ export default function PickupScreen() {
 
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
-  const [useListedPerson, setUseListedPerson] = useState(true);
   const [selectedPickupId, setSelectedPickupId] = useState<number | null>(null);
-  const [customName, setCustomName] = useState('');
   const [notes, setNotes] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -94,22 +91,15 @@ export default function PickupScreen() {
   };
 
   const handlePickup = async () => {
-    const pickedByName = useListedPerson
-      ? authorizedPickups.find((p) => p.id === selectedPickupId)?.name
-      : customName.trim();
-
-    if (!pickedByName) {
-      Alert.alert('Hata', 'Lütfen teslim eden kişiyi seçin veya girin.');
+    if (!selectedPickupId) {
+      Alert.alert('Hata', 'Lütfen teslim eden kişiyi listeden seçin.');
       return;
     }
 
     setSaving(true);
     try {
       const formData = new FormData();
-      formData.append('picked_by_name', pickedByName);
-      if (useListedPerson && selectedPickupId) {
-        formData.append('authorized_pickup_id', String(selectedPickupId));
-      }
+      formData.append('authorized_pickup_id', String(selectedPickupId));
       if (notes.trim()) {
         formData.append('notes', notes.trim());
       }
@@ -142,9 +132,7 @@ export default function PickupScreen() {
   };
 
   const resetModal = () => {
-    setUseListedPerson(true);
     setSelectedPickupId(null);
-    setCustomName('');
     setNotes('');
     setPhotoUri(null);
   };
@@ -207,9 +195,10 @@ export default function PickupScreen() {
 
         {/* Teslim et button */}
         <TouchableOpacity
-          style={styles.pickupBtn}
+          style={[styles.pickupBtn, authorizedPickups.length === 0 && styles.pickupBtnDisabled]}
           onPress={() => setModalVisible(true)}
           activeOpacity={0.85}
+          disabled={authorizedPickups.length === 0}
         >
           <Ionicons name="car" size={20} color="#FFFFFF" />
           <Text style={styles.pickupBtnText}>Teslim Et</Text>
@@ -279,65 +268,30 @@ export default function PickupScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Toggle */}
-            <View style={styles.toggleRow}>
-              <TouchableOpacity
-                style={[styles.toggleBtn, useListedPerson && styles.toggleBtnActive]}
-                onPress={() => setUseListedPerson(true)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.toggleBtnText, useListedPerson && styles.toggleBtnTextActive]}>
-                  Listeden Seç
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleBtn, !useListedPerson && styles.toggleBtnActive]}
-                onPress={() => setUseListedPerson(false)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.toggleBtnText, !useListedPerson && styles.toggleBtnTextActive]}>
-                  Listedeki Kişi Değil
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {useListedPerson ? (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Alıcı Seç</Text>
-                {authorizedPickups.map((pickup) => (
-                  <TouchableOpacity
-                    key={pickup.id}
-                    style={[
-                      styles.pickupSelectRow,
-                      selectedPickupId === pickup.id && styles.pickupSelectRowActive,
-                    ]}
-                    onPress={() => setSelectedPickupId(pickup.id)}
-                    activeOpacity={0.75}
-                  >
-                    <View style={styles.pickupSelectRadio}>
-                      {selectedPickupId === pickup.id && (
-                        <View style={styles.pickupSelectRadioInner} />
-                      )}
-                    </View>
-                    <Text style={styles.pickupSelectName}>{pickup.name}</Text>
-                    {pickup.relationship && (
-                      <Text style={styles.pickupSelectRelation}>{pickup.relationship}</Text>
+            <View style={styles.modalSection}>
+              <Text style={styles.modalLabel}>Alıcı Seç</Text>
+              {authorizedPickups.map((pickup) => (
+                <TouchableOpacity
+                  key={pickup.id}
+                  style={[
+                    styles.pickupSelectRow,
+                    selectedPickupId === pickup.id && styles.pickupSelectRowActive,
+                  ]}
+                  onPress={() => setSelectedPickupId(pickup.id)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.pickupSelectRadio}>
+                    {selectedPickupId === pickup.id && (
+                      <View style={styles.pickupSelectRadioInner} />
                     )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Kişi Adı</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={customName}
-                  onChangeText={setCustomName}
-                  placeholder="Ad Soyad"
-                  placeholderTextColor="#C4C9D4"
-                />
-              </View>
-            )}
+                  </View>
+                  <Text style={styles.pickupSelectName}>{pickup.name}</Text>
+                  {pickup.relationship && (
+                    <Text style={styles.pickupSelectRelation}>{pickup.relationship}</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <View style={styles.modalSection}>
               <Text style={styles.modalLabel}>Notlar</Text>
@@ -510,6 +464,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  pickupBtnDisabled: {
+    opacity: 0.4,
+  },
   pickupBtnText: {
     color: AppColors.white,
     fontSize: 16,
@@ -571,31 +528,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: AppColors.onSurface,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    backgroundColor: AppColors.white,
-    borderRadius: 14,
-    padding: 4,
-    gap: 4,
-    marginBottom: 20,
-  },
-  toggleBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 11,
-  },
-  toggleBtnActive: {
-    backgroundColor: AppColors.primary,
-  },
-  toggleBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: AppColors.onSurfaceVariant,
-  },
-  toggleBtnTextActive: {
-    color: AppColors.white,
   },
   modalSection: {
     marginBottom: 18,

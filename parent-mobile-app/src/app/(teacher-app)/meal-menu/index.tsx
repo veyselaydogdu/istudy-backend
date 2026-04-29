@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -22,15 +21,29 @@ interface TeacherClass {
   school_id: number;
 }
 
+interface MealIngredient {
+  name: string;
+  allergens: Array<{ name: string; risk_level: string | null }>;
+}
+
 interface MealItem {
   id: number;
   name: string;
   meal_type: string;
-  ingredients: string | null;
-  allergen_warnings: Array<{
-    child_name: string;
-    allergen_name: string;
-  }>;
+  ingredients: MealIngredient[];
+}
+
+interface MealAlert {
+  child_id: number;
+  child_name: string;
+  allergens: string[];
+  warned_meals: string[];
+}
+
+interface MealMenuResponse {
+  date: string;
+  meals: MealItem[];
+  alerts: MealAlert[];
 }
 
 function formatDate(date: Date): string {
@@ -51,6 +64,7 @@ export default function TeacherMealMenuScreen() {
   const [selectedClass, setSelectedClass] = useState<TeacherClass | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [meals, setMeals] = useState<MealItem[]>([]);
+  const [alerts, setAlerts] = useState<MealAlert[]>([]);
   const [loading, setLoading] = useState(false);
   const [classesLoading, setClassesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,12 +93,15 @@ export default function TeacherMealMenuScreen() {
       setError(null);
       try {
         const dateStr = formatDate(date);
-        const response = await api.get<{ data: MealItem[] }>(
+        const response = await api.get<{ data: MealMenuResponse }>(
           `/teacher/meal-menus?class_id=${cls.id}&date=${dateStr}`
         );
-        setMeals(response.data.data);
+        setMeals(response.data.data.meals);
+        setAlerts(response.data.data.alerts);
       } catch (err: unknown) {
         setError(getApiError(err));
+        setMeals([]);
+        setAlerts([]);
       } finally {
         setLoading(false);
       }
@@ -101,9 +118,6 @@ export default function TeacherMealMenuScreen() {
     newDate.setDate(newDate.getDate() + delta);
     setSelectedDate(newDate);
   };
-
-  // All allergen warnings across all meals
-  const allWarnings = meals.flatMap((m) => m.allergen_warnings);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -177,14 +191,14 @@ export default function TeacherMealMenuScreen() {
         </View>
       )}
 
-      {/* Allergen warnings banner */}
-      {allWarnings.length > 0 && (
+      {/* Allergen alerts banner */}
+      {alerts.length > 0 && (
         <View style={styles.warningBanner}>
           <Ionicons name="warning" size={18} color="#FFFFFF" />
           <View style={styles.warningContent}>
-            {allWarnings.map((w, i) => (
+            {alerts.map((a, i) => (
               <Text key={i} style={styles.warningText}>
-                {w.child_name}: {w.allergen_name} içeriyor
+                {a.child_name}: {a.warned_meals.join(', ')} içeriyor
               </Text>
             ))}
           </View>
@@ -200,32 +214,42 @@ export default function TeacherMealMenuScreen() {
           <Ionicons name="book-outline" size={40} color="#D1D5DB" />
           <Text style={styles.placeholderText}>Yemek listesini görmek için sınıf seçin</Text>
         </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <Ionicons name="warning-outline" size={40} color="#D1D5DB" />
+          <Text style={styles.placeholderText}>Yemek listesi yüklenemedi</Text>
+        </View>
       ) : (
         <FlatList
           data={meals}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <View style={styles.mealCard}>
-              <View style={styles.mealHeader}>
-                <Text style={styles.mealName}>{item.name}</Text>
-                <View style={styles.mealTypeBadge}>
-                  <Text style={styles.mealTypeText}>{item.meal_type}</Text>
+          renderItem={({ item }) => {
+            const mealAlerts = alerts.filter((a) => a.warned_meals.includes(item.name));
+            return (
+              <View style={styles.mealCard}>
+                <View style={styles.mealHeader}>
+                  <Text style={styles.mealName}>{item.name}</Text>
+                  <View style={styles.mealTypeBadge}>
+                    <Text style={styles.mealTypeText}>{item.meal_type}</Text>
+                  </View>
                 </View>
-              </View>
-              {item.ingredients && (
-                <Text style={styles.mealIngredients}>{item.ingredients}</Text>
-              )}
-              {item.allergen_warnings.length > 0 && (
-                <View style={styles.mealWarningRow}>
-                  <Ionicons name="warning-outline" size={14} color="#D97706" />
-                  <Text style={styles.mealWarningText}>
-                    {item.allergen_warnings.length} öğrenci için alerjen uyarısı
+                {item.ingredients.length > 0 && (
+                  <Text style={styles.mealIngredients}>
+                    {item.ingredients.map((i) => i.name).join(', ')}
                   </Text>
-                </View>
-              )}
-            </View>
-          )}
+                )}
+                {mealAlerts.length > 0 && (
+                  <View style={styles.mealWarningRow}>
+                    <Ionicons name="warning-outline" size={14} color="#D97706" />
+                    <Text style={styles.mealWarningText}>
+                      {mealAlerts.length} öğrenci için alerjen uyarısı
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="restaurant-outline" size={40} color="#D1D5DB" />

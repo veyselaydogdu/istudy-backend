@@ -18,6 +18,7 @@ class DailyChildReport extends BaseModel
         'mood',
         'appetite',
         'notes',
+        'parent_notes',
         'created_by',
         'updated_by',
     ];

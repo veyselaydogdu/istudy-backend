@@ -235,6 +235,13 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     Route::get('/children/{child}/stats', [\App\Http\Controllers\Parents\ParentChildController::class, 'stats']);
 
     // ───────────────────────────────────────────────────
+    // GÜNLÜK RAPORLAR (Veli — sadece görüntüleme + bugün notu)
+    // ───────────────────────────────────────────────────
+    Route::get('/children/{child}/reports', [\App\Http\Controllers\Parents\ParentDailyReportController::class, 'index']);
+    Route::get('/children/{child}/reports/{date}', [\App\Http\Controllers\Parents\ParentDailyReportController::class, 'show']);
+    Route::put('/children/{child}/reports/{date}', [\App\Http\Controllers\Parents\ParentDailyReportController::class, 'update']);
+
+    // ───────────────────────────────────────────────────
     // ETKİNLİKLER (Veli)
     // ───────────────────────────────────────────────────
     Route::prefix('activities')->group(function () {
