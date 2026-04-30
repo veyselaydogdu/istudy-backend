@@ -7,7 +7,6 @@ use App\Models\School\TeacherFollow;
 use App\Models\School\TeacherProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
 
 /**
  * ParentTeacherController — Veli tarafından öğretmen profil görüntüleme, takip ve akış
@@ -122,7 +121,7 @@ class ParentTeacherController extends BaseParentController
     }
 
     /**
-     * Takip edilen öğretmenlerin blog yazıları (akış)
+     * Takip edilen veya çocuğun sınıfında atanmış öğretmenlerin blog yazıları (akış)
      */
     public function teacherFeed(): JsonResponse
     {
@@ -132,14 +131,33 @@ class ParentTeacherController extends BaseParentController
             $followedTeacherIds = TeacherFollow::where('user_id', $userId)
                 ->pluck('teacher_profile_id');
 
-            if ($followedTeacherIds->isEmpty()) {
+            // Çocukların sınıflarındaki öğretmenleri de ekle
+            $familyProfiles = $this->getFamilyProfiles();
+            $childIds = $this->collectAccessibleChildIds($familyProfiles);
+
+            $classTeacherIds = collect();
+            if ($childIds->isNotEmpty()) {
+                $classIds = \Illuminate\Support\Facades\DB::table('child_class_assignments')
+                    ->whereIn('child_id', $childIds)
+                    ->pluck('class_id');
+
+                if ($classIds->isNotEmpty()) {
+                    $classTeacherIds = \Illuminate\Support\Facades\DB::table('class_teacher_assignments')
+                        ->whereIn('class_id', $classIds)
+                        ->pluck('teacher_profile_id');
+                }
+            }
+
+            $allTeacherIds = $followedTeacherIds->merge($classTeacherIds)->unique()->values();
+
+            if ($allTeacherIds->isEmpty()) {
                 return $this->paginatedResponse(
                     (new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15))->setPath(request()->url())
                 );
             }
 
             $posts = TeacherBlogPost::published()
-                ->whereIn('teacher_profile_id', $followedTeacherIds)
+                ->whereIn('teacher_profile_id', $allTeacherIds)
                 ->with(['teacher.user:id,name,surname'])
                 ->withCount(['likes', 'comments'])
                 ->latest('published_at')
@@ -197,7 +215,7 @@ class ParentTeacherController extends BaseParentController
             'title' => $post->title,
             'description' => $post->description,
             'image_url' => $post->image
-                ? URL::signedRoute('teacher.blog.image', ['id' => $post->id], now()->addHours(2))
+                ? \Illuminate\Support\Facades\Storage::disk('public')->url($post->image)
                 : null,
             'teacher' => $post->teacher ? [
                 'id' => $post->teacher->id,
