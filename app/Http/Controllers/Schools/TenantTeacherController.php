@@ -98,6 +98,7 @@ class TenantTeacherController extends BaseController
             $membership = $teacher->memberships()->where('tenant_id', $tenantId)->first();
 
             $blogPosts = \App\Models\School\TeacherBlogPost::where('teacher_profile_id', $id)
+                ->withCount(['likes', 'comments'])
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
                 ->get()
@@ -105,6 +106,7 @@ class TenantTeacherController extends BaseController
                     'id' => $p->id,
                     'title' => $p->title,
                     'description' => $p->description,
+                    'image_url' => $p->image ? \Illuminate\Support\Facades\Storage::disk('public')->url($p->image) : null,
                     'likes_count' => $p->likes_count ?? 0,
                     'comments_count' => $p->comments_count ?? 0,
                     'published_at' => $p->published_at?->toDateString(),

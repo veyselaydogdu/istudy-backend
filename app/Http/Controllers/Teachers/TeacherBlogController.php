@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Teachers;
 
+use App\Models\School\TeacherBlogComment;
 use App\Models\School\TeacherBlogPost;
 use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * TeacherBlogController — Öğretmen Blog Yönetimi
@@ -66,7 +68,7 @@ class TeacherBlogController extends BaseTeacherController
             ]);
 
             if ($request->hasFile('image')) {
-                $post->update(['image' => $this->storePrivate($request->file('image'), "teachers/{$profile->id}/blogs/{$post->id}")]);
+                $post->update(['image' => $this->storePublic($request->file('image'), "teachers/{$profile->id}/blogs/{$post->id}")]);
             }
 
             return $this->successResponse($this->formatPost($post), 'Blog yazısı oluşturuldu.', 201);
@@ -100,8 +102,8 @@ class TeacherBlogController extends BaseTeacherController
             $data = $request->only(['title', 'description', 'published_at']);
 
             if ($request->hasFile('image')) {
-                $this->deletePrivate($post->image);
-                $data['image'] = $this->storePrivate($request->file('image'), "teachers/{$profile->id}/blogs/{$post->id}");
+                $this->deletePublic($post->image);
+                $data['image'] = $this->storePublic($request->file('image'), "teachers/{$profile->id}/blogs/{$post->id}");
             }
 
             $post->update($data);
@@ -141,17 +143,112 @@ class TeacherBlogController extends BaseTeacherController
     }
 
     /**
-     * Blog görselini sun (auth:sanctum + signed ile erişilir)
+     * Tek blog yazısı detayı
      */
-    public function serveImage(int $id): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
+    public function show(int $id): JsonResponse
     {
-        $post = TeacherBlogPost::findOrFail($id);
+        try {
+            $profile = $this->teacherProfile();
+            if ($profile instanceof JsonResponse) {
+                return $profile;
+            }
 
-        if (! $post->image) {
-            abort(404);
+            $post = TeacherBlogPost::where('teacher_profile_id', $profile->id)
+                ->withCount(['likes', 'comments'])
+                ->findOrFail($id);
+
+            return $this->successResponse($this->formatPost($post));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Blog yazısı bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('TeacherBlogController::show', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Blog yazısı alınamadı.', 500);
+        }
+    }
+
+    /**
+     * Blog yazısının yorumları (kendi yazıları için)
+     */
+    public function comments(int $id): JsonResponse
+    {
+        try {
+            $profile = $this->teacherProfile();
+            if ($profile instanceof JsonResponse) {
+                return $profile;
+            }
+
+            $post = TeacherBlogPost::where('teacher_profile_id', $profile->id)->findOrFail($id);
+
+            $comments = TeacherBlogComment::where('blog_post_id', $post->id)
+                ->whereNull('parent_comment_id')
+                ->with([
+                    'user:id,name,surname',
+                    'replies' => fn ($q) => $q->with('user:id,name,surname')->latest(),
+                ])
+                ->latest()
+                ->paginate(20);
+
+            return $this->paginatedResponse(
+                $comments->through(fn ($c) => $this->formatComment($c, true))
+            );
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Blog yazısı bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('TeacherBlogController::comments', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Yorumlar alınamadı.', 500);
+        }
+    }
+
+    /**
+     * Kendi blog yazısından yorum sil (herhangi bir kullanıcının yorumunu silebilir)
+     */
+    public function deleteComment(int $id, int $commentId): JsonResponse
+    {
+        try {
+            $profile = $this->teacherProfile();
+            if ($profile instanceof JsonResponse) {
+                return $profile;
+            }
+
+            TeacherBlogPost::where('teacher_profile_id', $profile->id)->findOrFail($id);
+
+            $comment = TeacherBlogComment::where('id', $commentId)
+                ->where('blog_post_id', $id)
+                ->firstOrFail();
+
+            $comment->delete();
+
+            return $this->successResponse(null, 'Yorum silindi.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Yorum bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('TeacherBlogController::deleteComment', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Yorum silinemedi.', 500);
+        }
+    }
+
+    private function formatComment(TeacherBlogComment $comment, bool $withReplies = false): array
+    {
+        $data = [
+            'id' => $comment->id,
+            'content' => $comment->content,
+            'quoted_content' => $comment->quoted_content,
+            'parent_comment_id' => $comment->parent_comment_id,
+            'user' => $comment->user ? [
+                'id' => $comment->user->id,
+                'name' => $comment->user->name.' '.$comment->user->surname,
+            ] : null,
+            'created_at' => $comment->created_at?->toISOString(),
+        ];
+
+        if ($withReplies && $comment->relationLoaded('replies')) {
+            $data['replies'] = $comment->replies->map(fn ($r) => $this->formatComment($r))->values();
         }
 
-        return $this->servePrivate($post->image);
+        return $data;
     }
 
     private function formatPost(TeacherBlogPost $post): array
@@ -161,7 +258,7 @@ class TeacherBlogController extends BaseTeacherController
             'title' => $post->title,
             'description' => $post->description,
             'image_url' => $post->image
-                ? $this->privateSignedUrl('teacher.blog.image', ['id' => $post->id], 120)
+                ? Storage::disk('public')->url($post->image)
                 : null,
             'is_published' => $post->is_published,
             'published_at' => $post->published_at?->toISOString(),

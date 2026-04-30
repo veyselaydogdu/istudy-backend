@@ -111,10 +111,6 @@ Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     Route::get('/parent/activity-gallery/{galleryItem}/serve', [\App\Http\Controllers\Parents\ParentActivityController::class, 'serveGalleryItem'])
         ->name('parent.activity-gallery.serve');
 
-    // Öğretmen blog görseli
-    Route::get('/teacher/blogs/{id}/image', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'serveImage'])
-        ->name('teacher.blog.image');
-
     // Sınıf logosu
     Route::get('/class-logo/{class}', [\App\Http\Controllers\Media\ClassLogoController::class, 'serve'])
         ->name('class.logo');
@@ -455,8 +451,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('teacher/blogs')->group(function () {
             Route::get('/', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'index']);
             Route::post('/', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'store']);
+            Route::get('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'show']);
             Route::put('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'update']);
             Route::delete('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'destroy']);
+            Route::get('/{id}/comments', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'comments']);
+            Route::delete('/{id}/comments/{commentId}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'deleteComment']);
         });
 
         // ───────────────────────────────────────────────────

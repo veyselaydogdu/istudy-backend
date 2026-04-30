@@ -45,3 +45,8 @@
     }
   }
 }
+
+//etkinlik ve bloglar için global paylaşım alanı veli globaldekileri görebilir. globaller loginsiz ana sayfada gözükebilir
+//aile detayında çocuklarda gözüksün
+//tenant okul detay aileler sekmesi aile detayında sorun var
+//etkinlik sınıfı oluştururken sınıfa özel oluşturuldu ama tüm öğrenciler eklenebilir oldu ve öğrenci kayıt edilirken hata verdi

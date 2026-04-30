@@ -42,7 +42,7 @@ type TeacherDetail = TeacherWithMembership & {
     certificates: { id: number; name: string; issuing_organization: string | null; issue_date: string | null; expiry_date: string | null; credential_url: string | null; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null; document_url: string | null }[];
     courses: { id: number; title: string; type: string; provider: string | null; start_date: string | null; end_date: string | null; duration_hours: number | null; location: string | null; is_online: boolean; description: string | null; approval_status: 'pending' | 'approved' | 'rejected'; rejection_reason: string | null; document_url: string | null }[];
     skills: { id: number; name: string; level: string; category: string; proficiency: number }[];
-    blog_posts: { id: number; title: string; description: string | null; likes_count: number; comments_count: number; published_at: string | null; created_at: string | null }[];
+    blog_posts: { id: number; title: string; description: string | null; image_url: string | null; likes_count: number; comments_count: number; published_at: string | null; created_at: string | null }[];
 };
 
 type UpdateForm = {
@@ -1325,15 +1325,24 @@ export default function TeachersPage() {
                                     {viewingTeacher.blog_posts.length === 0 ? (
                                         <EmptyState icon={<FileText />} text={t('teachers.noBlog')} />
                                     ) : viewingTeacher.blog_posts.map(p => (
-                                        <div key={p.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <p className="font-semibold text-dark dark:text-white">{p.title}</p>
-                                                <span className="text-xs text-[#888ea8] whitespace-nowrap">{p.published_at ? new Date(p.published_at).toLocaleDateString('tr-TR') : p.created_at ? new Date(p.created_at).toLocaleDateString('tr-TR') : '—'}</span>
-                                            </div>
-                                            {p.description && <p className="mt-1 line-clamp-2 text-xs text-[#888ea8]">{p.description}</p>}
-                                            <div className="mt-2 flex gap-4 text-xs text-[#888ea8]">
-                                                <span>❤ {p.likes_count}</span>
-                                                <span>💬 {p.comments_count}</span>
+                                        <div key={p.id} className="rounded border border-[#ebedf2] dark:border-[#1b2e4b] overflow-hidden">
+                                            {p.image_url && (
+                                                <img
+                                                    src={p.image_url}
+                                                    alt={p.title}
+                                                    className="h-40 w-full object-cover"
+                                                />
+                                            )}
+                                            <div className="p-3">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <p className="font-semibold text-dark dark:text-white">{p.title}</p>
+                                                    <span className="text-xs text-[#888ea8] whitespace-nowrap">{p.published_at ? new Date(p.published_at).toLocaleDateString('tr-TR') : p.created_at ? new Date(p.created_at).toLocaleDateString('tr-TR') : '—'}</span>
+                                                </div>
+                                                {p.description && <p className="mt-1 line-clamp-2 text-xs text-[#888ea8]">{p.description}</p>}
+                                                <div className="mt-2 flex gap-4 text-xs text-[#888ea8]">
+                                                    <span>❤ {p.likes_count}</span>
+                                                    <span>💬 {p.comments_count}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}

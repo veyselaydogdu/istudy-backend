@@ -1,10 +1,12 @@
 import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -57,6 +59,7 @@ interface JoinRequestGroup {
 interface BlogPost {
   id: number;
   title: string;
+  image_url: string | null;
   is_published: boolean;
   likes_count: number;
   comments_count: number;
@@ -83,6 +86,7 @@ export default function TeacherProfileScreen() {
   const [blogModalVisible, setBlogModalVisible] = useState(false);
   const [blogTitle, setBlogTitle] = useState('');
   const [blogDescription, setBlogDescription] = useState('');
+  const [blogImage, setBlogImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [blogLoading, setBlogLoading] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -191,6 +195,17 @@ export default function TeacherProfileScreen() {
     }
   };
 
+  const handlePickBlogImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setBlogImage(result.assets[0]);
+    }
+  };
+
   const handleCreateBlog = async () => {
     if (!blogTitle.trim()) {
       Alert.alert('Hata', 'Başlık zorunludur.');
@@ -198,13 +213,26 @@ export default function TeacherProfileScreen() {
     }
     setBlogLoading(true);
     try {
-      await api.post('/teacher/blogs', {
-        title: blogTitle.trim(),
-        description: blogDescription.trim() || undefined,
-        published_at: new Date().toISOString(),
+      const formData = new FormData();
+      formData.append('title', blogTitle.trim());
+      if (blogDescription.trim()) {
+        formData.append('description', blogDescription.trim());
+      }
+      formData.append('published_at', new Date().toISOString());
+      if (blogImage) {
+        const ext = (blogImage.uri.split('.').pop() ?? 'jpg').toLowerCase();
+        formData.append('image', {
+          uri: blogImage.uri,
+          name: `blog.${ext}`,
+          type: blogImage.mimeType ?? `image/${ext}`,
+        } as never);
+      }
+      await api.post('/teacher/blogs', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setBlogTitle('');
       setBlogDescription('');
+      setBlogImage(null);
       setBlogModalVisible(false);
       void loadData();
     } catch (err: unknown) {
@@ -488,7 +516,12 @@ export default function TeacherProfileScreen() {
             </View>
           ) : (
             blogPosts.map((post) => (
-              <View key={post.id} style={styles.blogCard}>
+              <TouchableOpacity
+                key={post.id}
+                style={styles.blogCard}
+                onPress={() => router.push(`/(teacher-app)/blogs/${post.id}` as never)}
+                activeOpacity={0.8}
+              >
                 <View style={styles.blogInfo}>
                   <Text style={styles.blogTitle} numberOfLines={2}>
                     {post.title}
@@ -525,7 +558,7 @@ export default function TeacherProfileScreen() {
                 >
                   <Ionicons name="trash-outline" size={16} color="#EF4444" />
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
@@ -601,12 +634,31 @@ export default function TeacherProfileScreen() {
               multiline
               numberOfLines={4}
             />
+            <TouchableOpacity style={styles.imagePickerBtn} onPress={handlePickBlogImage}>
+              <Ionicons name="image-outline" size={18} color={AppColors.primary} />
+              <Text style={styles.imagePickerText}>
+                {blogImage ? 'Görsel Seçildi' : 'Görsel Ekle (opsiyonel)'}
+              </Text>
+              {blogImage ? (
+                <TouchableOpacity onPress={() => setBlogImage(null)}>
+                  <Ionicons name="close-circle" size={18} color={AppColors.error} />
+                </TouchableOpacity>
+              ) : null}
+            </TouchableOpacity>
+            {blogImage ? (
+              <Image
+                source={{ uri: blogImage.uri }}
+                style={styles.imagePreview}
+                resizeMode="cover"
+              />
+            ) : null}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
                 onPress={() => {
                   setBlogTitle('');
                   setBlogDescription('');
+                  setBlogImage(null);
                   setBlogModalVisible(false);
                 }}
               >
@@ -952,6 +1004,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   textArea: { height: 100, textAlignVertical: 'top' },
+  imagePickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: AppColors.primaryContainer,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  imagePickerText: { fontSize: 14, color: AppColors.primary, fontWeight: '600', flex: 1 },
+  imagePreview: { width: '100%', height: 160, borderRadius: 12, marginBottom: 10 },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
   modalCancelBtn: {
     flex: 1,
