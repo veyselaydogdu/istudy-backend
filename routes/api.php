@@ -455,6 +455,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'update']);
             Route::delete('/{id}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'destroy']);
             Route::get('/{id}/comments', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'comments']);
+            Route::post('/{id}/comments', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'addComment']);
             Route::delete('/{id}/comments/{commentId}', [\App\Http\Controllers\Teachers\TeacherBlogController::class, 'deleteComment']);
         });
 

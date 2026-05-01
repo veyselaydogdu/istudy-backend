@@ -168,6 +168,75 @@ class TeacherBlogController extends BaseTeacherController
     }
 
     /**
+     * Kendi blog yazısına yorum ekle
+     */
+    public function addComment(int $id, Request $request): JsonResponse
+    {
+        $request->validate([
+            'content' => 'required|string|max:2000',
+            'parent_comment_id' => 'nullable|integer|exists:teacher_blog_comments,id',
+            'quoted_content' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $userId = $this->user()->id;
+
+            $recentComment = TeacherBlogComment::where('user_id', $userId)
+                ->where('created_at', '>=', now()->subSeconds(60))
+                ->latest()
+                ->first();
+
+            if ($recentComment) {
+                $waitSeconds = (int) now()->diffInSeconds($recentComment->created_at->addSeconds(60), false);
+
+                return $this->errorResponse(
+                    "Çok sık yorum yapıyorsunuz. {$waitSeconds} saniye bekleyin.",
+                    429
+                );
+            }
+
+            $profile = $this->teacherProfile();
+            if ($profile instanceof JsonResponse) {
+                return $profile;
+            }
+
+            $post = TeacherBlogPost::where('teacher_profile_id', $profile->id)->findOrFail($id);
+
+            if ($request->parent_comment_id) {
+                $parentComment = TeacherBlogComment::where('id', $request->parent_comment_id)
+                    ->where('blog_post_id', $post->id)
+                    ->first();
+
+                if (! $parentComment) {
+                    return $this->errorResponse('Yanıtlanacak yorum bulunamadı.', 404);
+                }
+            }
+
+            $comment = TeacherBlogComment::create([
+                'blog_post_id' => $post->id,
+                'user_id' => $userId,
+                'parent_comment_id' => $request->parent_comment_id,
+                'quoted_content' => $request->quoted_content,
+                'content' => $request->content,
+            ]);
+
+            $comment->load('user:id,name,surname');
+
+            return $this->successResponse(
+                $this->formatComment($comment),
+                'Yorum eklendi.',
+                201
+            );
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Blog yazısı bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('TeacherBlogController::addComment', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Yorum eklenemedi.', 500);
+        }
+    }
+
+    /**
      * Blog yazısının yorumları (kendi yazıları için)
      */
     public function comments(int $id): JsonResponse

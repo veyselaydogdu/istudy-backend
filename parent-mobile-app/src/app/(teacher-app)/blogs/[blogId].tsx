@@ -189,9 +189,8 @@ export default function TeacherBlogDetailScreen() {
         payload.parent_comment_id = replyTo.id;
         payload.quoted_content = replyTo.content.substring(0, 200);
       }
-      // Öğretmen kendi blog yazısına yorum eklemek için parent endpoint'i kullan
       const res = await api.post<{ data: Comment }>(
-        `/parent/teacher-blogs/${postId}/comments`,
+        `/teacher/blogs/${postId}/comments`,
         payload
       );
       const newComment = res.data.data;

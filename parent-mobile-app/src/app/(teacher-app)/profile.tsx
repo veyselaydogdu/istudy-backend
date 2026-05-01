@@ -1,8 +1,8 @@
 import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -113,6 +113,19 @@ export default function TeacherProfileScreen() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const isFirstRender = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+      }
+      api.get<{ data: BlogPost[]; meta: unknown }>('/teacher/blogs?per_page=5')
+        .then((res) => setBlogPosts(res.data.data))
+        .catch(() => {});
+    }, [])
+  );
 
   const handleLogout = () => {
     Alert.alert('Çıkış Yap', 'Hesabınızdan çıkmak istediğinize emin misiniz?', [

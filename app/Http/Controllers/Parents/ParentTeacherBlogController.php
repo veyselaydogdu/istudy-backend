@@ -116,6 +116,22 @@ class ParentTeacherBlogController extends BaseParentController
         ]);
 
         try {
+            $userId = $this->user()->id;
+
+            $recentComment = TeacherBlogComment::where('user_id', $userId)
+                ->where('created_at', '>=', now()->subSeconds(60))
+                ->latest()
+                ->first();
+
+            if ($recentComment) {
+                $waitSeconds = (int) now()->diffInSeconds($recentComment->created_at->addSeconds(60), false);
+
+                return $this->errorResponse(
+                    "Çok sık yorum yapıyorsunuz. {$waitSeconds} saniye bekleyin.",
+                    429
+                );
+            }
+
             $post = TeacherBlogPost::published()->findOrFail($blogPostId);
 
             // Eğer parent_comment_id verilmişse aynı post'a ait olmalı
@@ -131,7 +147,7 @@ class ParentTeacherBlogController extends BaseParentController
 
             $comment = TeacherBlogComment::create([
                 'blog_post_id' => $post->id,
-                'user_id' => $this->user()->id,
+                'user_id' => $userId,
                 'parent_comment_id' => $request->parent_comment_id,
                 'quoted_content' => $request->quoted_content,
                 'content' => $request->content,

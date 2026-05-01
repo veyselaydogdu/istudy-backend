@@ -313,7 +313,23 @@ class SocialPostController extends BaseController
             $this->resolveSchoolId($school_id);
             $this->authorize('comment', $socialPost);
 
-            $comment = $this->service->addComment($socialPost, $this->user(), $request->validated());
+            $user = $this->user();
+
+            $recentComment = SocialPostComment::where('user_id', $user->id)
+                ->where('created_at', '>=', now()->subSeconds(60))
+                ->latest()
+                ->first();
+
+            if ($recentComment) {
+                $waitSeconds = (int) now()->diffInSeconds($recentComment->created_at->addSeconds(60), false);
+
+                return $this->errorResponse(
+                    "Çok sık yorum yapıyorsunuz. {$waitSeconds} saniye bekleyin.",
+                    429
+                );
+            }
+
+            $comment = $this->service->addComment($socialPost, $user, $request->validated());
             $comment->load('user');
 
             return $this->successResponse(
