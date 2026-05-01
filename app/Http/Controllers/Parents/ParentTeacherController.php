@@ -159,7 +159,7 @@ class ParentTeacherController extends BaseParentController
             $posts = TeacherBlogPost::published()
                 ->whereIn('teacher_profile_id', $allTeacherIds)
                 ->with(['teacher.user:id,name,surname'])
-                ->withCount(['likes', 'comments' => fn ($q) => $q->whereNull('parent_comment_id')])
+                ->withCount(['likes', 'comments'])
                 ->latest('published_at')
                 ->paginate(15);
 
@@ -189,7 +189,7 @@ class ParentTeacherController extends BaseParentController
             $posts = TeacherBlogPost::published()
                 ->where('teacher_profile_id', $teacherProfileId)
                 ->with(['teacher.user:id,name,surname'])
-                ->withCount(['likes', 'comments' => fn ($q) => $q->whereNull('parent_comment_id')])
+                ->withCount(['likes', 'comments'])
                 ->latest('published_at')
                 ->paginate(15);
 

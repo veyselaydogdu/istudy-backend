@@ -15,6 +15,33 @@ use Illuminate\Support\Facades\Log;
 class ParentTeacherBlogController extends BaseParentController
 {
     /**
+     * Tek blog yazısı detayı
+     */
+    public function show(int $blogPostId): JsonResponse
+    {
+        try {
+            $userId = $this->user()->id;
+
+            $post = TeacherBlogPost::published()
+                ->with(['teacher.user:id,name,surname'])
+                ->withCount(['likes', 'comments'])
+                ->findOrFail($blogPostId);
+
+            $isLiked = TeacherBlogLike::where('blog_post_id', $blogPostId)
+                ->where('user_id', $userId)
+                ->exists();
+
+            return $this->successResponse($this->formatPost($post, $isLiked));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return $this->errorResponse('Blog yazısı bulunamadı.', 404);
+        } catch (\Throwable $e) {
+            Log::error('ParentTeacherBlogController::show', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Blog yazısı alınamadı.', 500);
+        }
+    }
+
+    /**
      * Blog yazısını beğen
      */
     public function like(int $blogPostId): JsonResponse
@@ -180,6 +207,10 @@ class ParentTeacherBlogController extends BaseParentController
                 ->where('user_id', $this->user()->id)
                 ->firstOrFail();
 
+            // Cascade: parent silinirse yanıtları da soft-delete
+            if (is_null($comment->parent_comment_id)) {
+                $comment->replies()->update(['deleted_at' => now()]);
+            }
             $comment->delete();
 
             return $this->successResponse(null, 'Yorum silindi.');
@@ -190,6 +221,27 @@ class ParentTeacherBlogController extends BaseParentController
 
             return $this->errorResponse('Yorum silinemedi.', 500);
         }
+    }
+
+    private function formatPost(TeacherBlogPost $post, bool $isLiked = false): array
+    {
+        return [
+            'id' => $post->id,
+            'title' => $post->title,
+            'description' => $post->description,
+            'image_url' => $post->image
+                ? \Illuminate\Support\Facades\Storage::disk('public')->url($post->image)
+                : null,
+            'teacher' => $post->teacher ? [
+                'id' => $post->teacher->id,
+                'name' => $post->teacher->user->name.' '.$post->teacher->user->surname,
+                'title' => $post->teacher->title,
+            ] : null,
+            'likes_count' => $post->likes_count ?? $post->likes()->count(),
+            'comments_count' => $post->comments_count ?? $post->comments()->count(),
+            'is_liked' => $isLiked,
+            'published_at' => $post->published_at?->toISOString(),
+        ];
     }
 
     private function formatComment(TeacherBlogComment $comment, bool $withReplies = false): array

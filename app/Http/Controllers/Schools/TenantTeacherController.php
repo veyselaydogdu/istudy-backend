@@ -98,7 +98,7 @@ class TenantTeacherController extends BaseController
             $membership = $teacher->memberships()->where('tenant_id', $tenantId)->first();
 
             $blogPosts = \App\Models\School\TeacherBlogPost::where('teacher_profile_id', $id)
-                ->withCount(['likes', 'comments' => fn ($q) => $q->whereNull('parent_comment_id')])
+                ->withCount(['likes', 'comments'])
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
                 ->get()

@@ -29,7 +29,7 @@ class TeacherBlogController extends BaseTeacherController
             }
 
             $posts = TeacherBlogPost::where('teacher_profile_id', $profile->id)
-                ->withCount(['likes', 'comments' => fn ($q) => $q->whereNull('parent_comment_id')])
+                ->withCount(['likes', 'comments'])
                 ->latest()
                 ->paginate(15);
 
@@ -154,7 +154,7 @@ class TeacherBlogController extends BaseTeacherController
             }
 
             $post = TeacherBlogPost::where('teacher_profile_id', $profile->id)
-                ->withCount(['likes', 'comments' => fn ($q) => $q->whereNull('parent_comment_id')])
+                ->withCount(['likes', 'comments'])
                 ->findOrFail($id);
 
             return $this->successResponse($this->formatPost($post));
@@ -287,6 +287,10 @@ class TeacherBlogController extends BaseTeacherController
                 ->where('blog_post_id', $id)
                 ->firstOrFail();
 
+            // Cascade: parent silinirse yanıtları da soft-delete
+            if (is_null($comment->parent_comment_id)) {
+                $comment->replies()->update(['deleted_at' => now()]);
+            }
             $comment->delete();
 
             return $this->successResponse(null, 'Yorum silindi.');
@@ -332,7 +336,7 @@ class TeacherBlogController extends BaseTeacherController
             'is_published' => $post->is_published,
             'published_at' => $post->published_at?->toISOString(),
             'likes_count' => $post->likes_count ?? $post->likes()->count(),
-            'comments_count' => $post->comments_count ?? $post->comments()->whereNull('parent_comment_id')->count(),
+            'comments_count' => $post->comments_count ?? $post->comments()->count(),
             'created_at' => $post->created_at?->toISOString(),
         ];
     }

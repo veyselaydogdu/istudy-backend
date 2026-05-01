@@ -297,6 +297,7 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     Route::get('/teacher-feed', [\App\Http\Controllers\Parents\ParentTeacherController::class, 'teacherFeed']);
 
     Route::prefix('teacher-blogs')->group(function () {
+        Route::get('/{blogPostId}', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'show']);
         Route::post('/{blogPostId}/like', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'like']);
         Route::delete('/{blogPostId}/like', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'unlike']);
         Route::get('/{blogPostId}/comments', [\App\Http\Controllers\Parents\ParentTeacherBlogController::class, 'comments']);

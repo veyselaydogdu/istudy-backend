@@ -36,7 +36,7 @@ class ParentSocialPostResource extends JsonResource
                 ]);
             }),
             'reactions_count' => $this->whenLoaded('reactions', fn () => $this->reactions->count()),
-            'comments_count' => $this->comments()->whereNull('parent_id')->count(),
+            'comments_count' => $this->whenLoaded('comments', fn () => $this->comments->count(), $this->comments()->count()),
         ];
     }
 }
