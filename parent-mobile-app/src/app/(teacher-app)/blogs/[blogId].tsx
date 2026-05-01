@@ -1,7 +1,7 @@
 import { AppColors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -143,11 +143,13 @@ export default function TeacherBlogDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    void loadPost();
-    void loadComments(1);
+  useFocusEffect(
+    useCallback(() => {
+      void loadPost();
+      void loadComments(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId]);
+    }, [postId])
+  );
 
   const loadPost = async () => {
     try {

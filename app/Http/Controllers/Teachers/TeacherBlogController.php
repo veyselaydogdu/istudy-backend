@@ -29,7 +29,7 @@ class TeacherBlogController extends BaseTeacherController
             }
 
             $posts = TeacherBlogPost::where('teacher_profile_id', $profile->id)
-                ->withCount(['likes', 'comments'])
+                ->withCount(['likes', 'comments' => fn ($q) => $q->whereNull('parent_comment_id')])
                 ->latest()
                 ->paginate(15);
 
@@ -154,7 +154,7 @@ class TeacherBlogController extends BaseTeacherController
             }
 
             $post = TeacherBlogPost::where('teacher_profile_id', $profile->id)
-                ->withCount(['likes', 'comments'])
+                ->withCount(['likes', 'comments' => fn ($q) => $q->whereNull('parent_comment_id')])
                 ->findOrFail($id);
 
             return $this->successResponse($this->formatPost($post));
@@ -332,7 +332,7 @@ class TeacherBlogController extends BaseTeacherController
             'is_published' => $post->is_published,
             'published_at' => $post->published_at?->toISOString(),
             'likes_count' => $post->likes_count ?? $post->likes()->count(),
-            'comments_count' => $post->comments_count ?? $post->comments()->count(),
+            'comments_count' => $post->comments_count ?? $post->comments()->whereNull('parent_comment_id')->count(),
             'created_at' => $post->created_at?->toISOString(),
         ];
     }

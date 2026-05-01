@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -98,9 +98,11 @@ export default function PostDetailScreen() {
     }
   }, [id, postId]);
 
-  useEffect(() => {
-    void fetchPost();
-  }, [fetchPost]);
+  useFocusEffect(
+    useCallback(() => {
+      void fetchPost();
+    }, [fetchPost])
+  );
 
   const handleReact = async () => {
     try {
