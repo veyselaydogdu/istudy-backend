@@ -41,11 +41,16 @@ class SchoolParentController extends BaseController
                 'email' => $fp->owner?->email,
                 'phone' => $fp->owner?->phone,
                 'children' => $fp->children->map(fn ($c) => [
-                    'id' => $c->id,
-                    'name' => trim(($c->name ?? '').' '.($c->surname ?? '')),
+                    'id' => $c->ulid,
+                    'name' => trim(($c->first_name ?? '').' '.($c->last_name ?? '')),
                     'birth_date' => $c->birth_date,
                     'gender' => $c->gender,
                     'status' => $c->status,
+                    'special_notes' => $c->special_notes,
+                    'parent_notes' => $c->parent_notes,
+                    'allergens' => $c->allergens->map(fn ($a) => ['id' => $a->id, 'name' => $a->name, 'risk_level' => $a->risk_level])->values(),
+                    'conditions' => $c->conditions->map(fn ($cd) => ['id' => $cd->id, 'name' => $cd->name])->values(),
+                    'medications' => $c->medications->map(fn ($m) => ['id' => $m->id, 'name' => $m->name])->values(),
                 ]),
             ]);
 

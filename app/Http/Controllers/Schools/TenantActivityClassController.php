@@ -76,6 +76,7 @@ class TenantActivityClassController extends BaseController
             'location' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string',
+            'is_global' => 'boolean',
             'school_class_ids' => 'nullable|array',
             'school_class_ids.*' => 'string',
         ]);
@@ -83,12 +84,16 @@ class TenantActivityClassController extends BaseController
         try {
             DB::beginTransaction();
 
+            $isGlobal = (bool) ($validated['is_global'] ?? false);
+
             $activityClass = ActivityClass::create(array_merge($validated, [
                 'tenant_id' => $this->user()->tenant_id,
-                'school_id' => $validated['school_id'] ?? null,
+                'school_id' => $isGlobal ? null : ($validated['school_id'] ?? null),
+                'is_global' => $isGlobal,
             ]));
 
-            if (! ($validated['is_school_wide'] ?? true) && ! empty($validated['school_class_ids'])) {
+            // Global etkinlik sınıflarında sınıf ataması yapılmaz
+            if (! $isGlobal && ! ($validated['is_school_wide'] ?? true) && ! empty($validated['school_class_ids'])) {
                 $activityClass->schoolClasses()->sync($this->resolveClassIds($validated['school_class_ids']));
             }
 
@@ -140,6 +145,7 @@ class TenantActivityClassController extends BaseController
             'capacity' => 'nullable|integer|min:1',
             'school_id' => 'nullable|integer|exists:schools,id',
             'is_school_wide' => 'boolean',
+            'is_global' => 'boolean',
             'is_active' => 'boolean',
             'is_paid' => 'boolean',
             'price' => 'nullable|numeric|min:0',
@@ -159,10 +165,16 @@ class TenantActivityClassController extends BaseController
             DB::beginTransaction();
 
             $this->authorizeOwnership($activityClass);
+
+            $isGlobal = $validated['is_global'] ?? $activityClass->is_global;
+            if ($isGlobal) {
+                $validated['school_id'] = null;
+            }
+
             $activityClass->update($validated);
 
             if (array_key_exists('school_class_ids', $validated)) {
-                if ($validated['is_school_wide'] ?? $activityClass->is_school_wide) {
+                if ($isGlobal || ($validated['is_school_wide'] ?? $activityClass->is_school_wide)) {
                     $activityClass->schoolClasses()->detach();
                 } else {
                     $activityClass->schoolClasses()->sync($this->resolveClassIds($validated['school_class_ids'] ?? []));

@@ -247,6 +247,8 @@ export type Attendance = {
 export type Activity = {
     id: number
     school_id: number
+    tenant_id?: number | null
+    is_global?: boolean
     academic_year_id?: number
     name: string
     description?: string
@@ -462,7 +464,18 @@ export type SchoolParent = {
     owner_name: string
     email?: string | null
     phone?: string | null
-    children: { id: number; name: string; birth_date?: string | null; gender?: string | null; status?: string | null }[]
+    children: {
+        id: string
+        name: string
+        birth_date?: string | null
+        gender?: string | null
+        status?: string | null
+        special_notes?: string | null
+        parent_notes?: string | null
+        allergens?: { id: number; name: string; risk_level?: string | null }[]
+        conditions?: { id: number; name: string }[]
+        medications?: { id: number; name: string }[]
+    }[]
 }
 
 // ─── Social Network ──────────────────────────────────────────────────────────
@@ -547,6 +560,7 @@ export type ActivityClass = {
     capacity?: number | null
     active_enrollments_count?: number
     is_school_wide: boolean
+    is_global?: boolean
     is_active: boolean
     is_paid: boolean
     price?: string | null

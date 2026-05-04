@@ -27,12 +27,15 @@ interface Activity {
   description: string | null;
   is_paid: boolean;
   is_enrollment_required: boolean;
+  is_global?: boolean;
   price: string | null;
   capacity: number | null;
   address: string | null;
   start_date: string | null;
   end_date: string | null;
   school: { id: number; name: string } | null;
+  tenant?: { id: number; name: string } | null;
+  tenant_name?: string | null;
   classes: Array<{ id: number; name: string }>;
   enrollments_count?: number;
   enrolled_child_ids?: number[];
@@ -43,6 +46,9 @@ interface ActivityClass {
   name: string;
   description: string | null;
   language: string;
+  is_global?: boolean;
+  school_name?: string | null;
+  tenant_name?: string | null;
   age_min: number | null;
   age_max: number | null;
   capacity: number | null;
@@ -91,11 +97,17 @@ function ActivityCard({ item }: { item: Activity }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardTitle, isLocked && { color: AppColors.onSurfaceVariant }]}>{item.name}</Text>
-          {item.school && (
-            <Text style={styles.cardSchool}>{item.school.name}</Text>
-          )}
+          {(item.tenant_name || item.school?.name) ? (
+            <Text style={styles.cardSchool}>{item.tenant_name ?? item.school?.name}</Text>
+          ) : null}
         </View>
         <View style={{ gap: 4, alignItems: 'flex-end' }}>
+          {item.is_global && (
+            <View style={styles.globalBadge}>
+              <Ionicons name="globe-outline" size={11} color="#7C3AED" />
+              <Text style={styles.globalBadgeText}>Global</Text>
+            </View>
+          )}
           {isEnrolled ? (
             <View style={styles.enrolledBadge}>
               <Ionicons name="checkmark-circle" size={12} color="#fff" />
@@ -162,6 +174,18 @@ function ActivityCard({ item }: { item: Activity }) {
         )}
       </View>
 
+      <View style={styles.cardFooter}>
+        {(item.tenant_name || item.school?.name) ? (
+          <View style={[styles.schoolBadge, item.is_global && styles.schoolBadgeGlobal]}>
+            <Ionicons name={item.is_global ? 'globe-outline' : 'business-outline'} size={11} color={item.is_global ? '#7C3AED' : AppColors.primary} />
+            <Text style={[styles.schoolBadgeText, item.is_global && { color: '#7C3AED' }]}>
+              {item.tenant_name ?? item.school?.name}
+            </Text>
+          </View>
+        ) : null}
+        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+      </View>
+
       {/* Kilitli etkinlik mesajı */}
       {isLocked && (
         <View style={styles.lockedRow}>
@@ -190,14 +214,24 @@ function ActivityClassCard({ item }: { item: ActivityClass }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>{item.name}</Text>
-          <Text style={styles.cardSchool}>{item.language.toUpperCase()}</Text>
+          <Text style={styles.cardSchool}>
+            {item.tenant_name ?? item.school_name ?? item.language.toUpperCase()}
+          </Text>
         </View>
-        {hasEnrolled && (
-          <View style={styles.enrolledBadge}>
-            <Ionicons name="checkmark-circle" size={13} color="#fff" />
-            <Text style={styles.enrolledText}>Kayıtlı</Text>
-          </View>
-        )}
+        <View style={{ gap: 4, alignItems: 'flex-end' }}>
+          {item.is_global && (
+            <View style={styles.globalBadge}>
+              <Ionicons name="globe-outline" size={11} color="#7C3AED" />
+              <Text style={styles.globalBadgeText}>Global</Text>
+            </View>
+          )}
+          {hasEnrolled && (
+            <View style={styles.enrolledBadge}>
+              <Ionicons name="checkmark-circle" size={13} color="#fff" />
+              <Text style={styles.enrolledText}>Kayıtlı</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {item.description ? (
@@ -238,6 +272,14 @@ function ActivityClassCard({ item }: { item: ActivityClass }) {
       </View>
 
       <View style={styles.cardFooter}>
+        {(item.tenant_name || item.school_name) ? (
+          <View style={[styles.schoolBadge, item.is_global && styles.schoolBadgeGlobal]}>
+            <Ionicons name={item.is_global ? 'globe-outline' : 'business-outline'} size={11} color={item.is_global ? '#7C3AED' : AppColors.primary} />
+            <Text style={[styles.schoolBadgeText, item.is_global && { color: '#7C3AED' }]}>
+              {item.tenant_name ?? item.school_name}
+            </Text>
+          </View>
+        ) : null}
         {item.is_paid ? (
           <View style={styles.paidBadge}>
             <Ionicons name="card-outline" size={12} color="#D97706" />
@@ -533,6 +575,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   enrollBadgeText: { fontSize: 11, color: AppColors.warning, fontWeight: '600' },
+  globalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  globalBadgeText: { fontSize: 11, color: '#7C3AED', fontWeight: '700' },
+  schoolBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: AppColors.primaryContainer,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  schoolBadgeGlobal: { backgroundColor: '#EDE9FE' },
+  schoolBadgeText: { fontSize: 11, color: AppColors.primary, fontWeight: '600' },
   cardLocked: { opacity: 0.85, backgroundColor: AppColors.surfaceContainerLow },
   lockedRow: {
     flexDirection: 'row',

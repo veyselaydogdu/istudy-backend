@@ -529,6 +529,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('schools/{school}/toggle-status', [\App\Http\Controllers\Schools\SchoolController::class, 'toggleStatus']);
 
         // ───────────────────────────────────────────────────
+        // GLOBAL ETKİNLİKLER — Tüm tenant ve veliler görebilir
+        // ───────────────────────────────────────────────────
+        Route::prefix('global-events')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'store']);
+            Route::get('/{id}', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'show']);
+            Route::put('/{id}', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'destroy']);
+            Route::get('/{id}/enrollments', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'enrollmentIndex']);
+            Route::get('/{id}/gallery', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'galleryIndex']);
+            Route::post('/{id}/gallery', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'galleryStore']);
+            Route::delete('/{id}/gallery/{galleryItem}', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'galleryDestroy']);
+        });
+
+        // ───────────────────────────────────────────────────
         // ETKİNLİK SINIFLARI — Tenant Geneli (okul seçimi opsiyonel)
         // ───────────────────────────────────────────────────
         Route::prefix('activity-classes')->group(function () {

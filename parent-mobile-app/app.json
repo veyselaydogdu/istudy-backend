@@ -41,12 +41,9 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiUrl": "http://192.168.0.87:8000/api"
+      "apiUrl": "http://192.168.128.73:8000/api"
     }
   }
 }
 
-//etkinlik ve bloglar için global paylaşım alanı veli globaldekileri görebilir. globaller loginsiz ana sayfada gözükebilir
-//aile detayında çocuklarda gözüksün
-//tenant okul detay aileler sekmesi aile detayında sorun var
 //etkinlik sınıfı oluştururken sınıfa özel oluşturuldu ama tüm öğrenciler eklenebilir oldu ve öğrenci kayıt edilirken hata verdi

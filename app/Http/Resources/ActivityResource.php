@@ -12,6 +12,8 @@ class ActivityResource extends JsonResource
         return [
             'id' => $this->id,
             'school_id' => $this->school_id,
+            'tenant_id' => $this->tenant_id,
+            'is_global' => $this->is_global,
             'academic_year_id' => $this->academic_year_id,
             'name' => $this->name,
             'description' => $this->description,
@@ -37,10 +39,17 @@ class ActivityResource extends JsonResource
                 fn () => $this->resource->getAttributes()['enrollments_count']
             ),
             'gallery_count' => $this->whenLoaded('gallery', fn () => $this->gallery->count()),
-            'school' => $this->whenLoaded('school', fn () => [
+            'school' => $this->whenLoaded('school', fn () => $this->school ? [
                 'id' => $this->school->id,
                 'name' => $this->school->name,
-            ]),
+            ] : null),
+            'tenant' => $this->whenLoaded('tenant', fn () => $this->tenant ? [
+                'id' => $this->tenant->id,
+                'name' => $this->tenant->name,
+            ] : null),
+            'tenant_name' => $this->is_global
+                ? ($this->relationLoaded('tenant') ? $this->tenant?->name : null)
+                : ($this->relationLoaded('school') && $this->school?->relationLoaded('tenant') ? $this->school->tenant?->name : null),
             'children' => ChildResource::collection($this->whenLoaded('children')),
             'classes' => $this->whenLoaded('classes', fn () => $this->classes->map(fn ($c) => [
                 'id' => $c->id,

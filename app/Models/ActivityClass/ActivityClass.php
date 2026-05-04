@@ -27,6 +27,7 @@ class ActivityClass extends BaseModel
         'age_max',
         'capacity',
         'is_school_wide',
+        'is_global',
         'is_active',
         'is_paid',
         'price',
@@ -47,6 +48,7 @@ class ActivityClass extends BaseModel
         return [
             'ulid' => 'string',
             'is_school_wide' => 'boolean',
+            'is_global' => 'boolean',
             'is_active' => 'boolean',
             'is_paid' => 'boolean',
             'invoice_required' => 'boolean',

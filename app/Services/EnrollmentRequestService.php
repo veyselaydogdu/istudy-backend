@@ -224,7 +224,9 @@ class EnrollmentRequestService extends BaseService
             ->whereHas('schools', fn ($q) => $q->where('schools.id', $schoolId))
             ->with([
                 'owner',
-                'children' => fn ($q) => $q->withoutGlobalScope('tenant')->where('school_id', $schoolId),
+                'children' => fn ($q) => $q->withoutGlobalScope('tenant')
+                    ->where('school_id', $schoolId)
+                    ->with(['allergens', 'conditions', 'medications']),
             ])
             ->paginate($perPage);
     }

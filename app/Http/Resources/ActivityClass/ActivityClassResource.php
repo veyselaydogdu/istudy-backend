@@ -20,6 +20,7 @@ class ActivityClassResource extends JsonResource
             'capacity' => $this->capacity,
             'active_enrollments_count' => $this->active_enrollments_count ?? null,
             'is_school_wide' => $this->is_school_wide,
+            'is_global' => $this->is_global,
             'is_active' => $this->is_active,
             'is_paid' => $this->is_paid,
             'price' => $this->price,

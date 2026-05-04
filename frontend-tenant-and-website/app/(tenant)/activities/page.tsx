@@ -5,12 +5,13 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { Activity, School, SchoolClass } from '@/types';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw, Users, MapPin } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw, Users, MapPin, Globe, Info } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type ActivityForm = {
     name: string;
     description: string;
+    is_global: boolean;
     is_paid: boolean;
     is_enrollment_required: boolean;
     cancellation_allowed: boolean;
@@ -27,7 +28,7 @@ type ActivityForm = {
 };
 
 const emptyForm: ActivityForm = {
-    name: '', description: '', is_paid: false, is_enrollment_required: false,
+    name: '', description: '', is_global: false, is_paid: false, is_enrollment_required: false,
     cancellation_allowed: false, cancellation_deadline: '',
     price: '', capacity: '', address: '',
     start_date: '', start_time: '', end_date: '', end_time: '',
@@ -41,6 +42,7 @@ export default function ActivitiesPage() {
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
     const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
 
+    const [eventTab, setEventTab] = useState<'school' | 'global'>('school');
     const [statusFilter, setStatusFilter] = useState<'active' | 'ended' | 'deleted'>('active');
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(false);
@@ -73,7 +75,6 @@ export default function ActivitiesPage() {
     }, [selectedSchoolId]);
 
     const fetchActivities = useCallback(async () => {
-        if (!selectedSchoolId) return;
         setLoading(true);
         try {
             const params: Record<string, string | number> = { page };
@@ -83,15 +84,23 @@ export default function ActivitiesPage() {
             } else {
                 params.status = statusFilter;
             }
-            const res = await apiClient.get(`/schools/${selectedSchoolId}/activities`, { params });
-            setActivities(res.data?.data ?? []);
-            setLastPage(res.data?.meta?.last_page ?? 1);
+
+            if (eventTab === 'global') {
+                const res = await apiClient.get('/global-events', { params });
+                setActivities(res.data?.data ?? []);
+                setLastPage(res.data?.meta?.last_page ?? 1);
+            } else {
+                if (!selectedSchoolId) { setActivities([]); setLoading(false); return; }
+                const res = await apiClient.get(`/schools/${selectedSchoolId}/activities`, { params });
+                setActivities(res.data?.data ?? []);
+                setLastPage(res.data?.meta?.last_page ?? 1);
+            }
         } catch {
             toast.error(t('activities.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [selectedSchoolId, page, statusFilter]);
+    }, [selectedSchoolId, page, statusFilter, eventTab]);
 
     useEffect(() => { fetchSchools(); }, [fetchSchools]);
     useEffect(() => {
@@ -101,10 +110,8 @@ export default function ActivitiesPage() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedSchoolId]);
-    useEffect(() => {
-        setPage(1);
-    }, [statusFilter]);
-    useEffect(() => { if (selectedSchoolId) fetchActivities(); }, [fetchActivities]);
+    useEffect(() => { setPage(1); }, [statusFilter, eventTab]);
+    useEffect(() => { fetchActivities(); }, [fetchActivities]);
 
     const openCreate = () => {
         setEditingActivity(null);
@@ -118,6 +125,7 @@ export default function ActivitiesPage() {
         setForm({
             name: activity.name,
             description: activity.description ?? '',
+            is_global: (activity as Activity & { is_global?: boolean }).is_global ?? false,
             is_paid: activity.is_paid ?? false,
             is_enrollment_required: activity.is_enrollment_required ?? false,
             cancellation_allowed: activity.cancellation_allowed ?? false,
@@ -159,7 +167,7 @@ export default function ActivitiesPage() {
             toast.error(t('activities.nameRequired'));
             return;
         }
-        if (!selectedSchoolId) {
+        if (!form.is_global && !selectedSchoolId) {
             toast.error(t('activities.schoolRequired'));
             return;
         }
@@ -178,8 +186,10 @@ export default function ActivitiesPage() {
         }
 
         setSaving(true);
-        const payload = {
-            school_id: Number(selectedSchoolId),
+
+        // Global etkinlikte school_id gerekmez, ayrı endpoint kullanılır
+        const isGlobal = form.is_global;
+        const basePayload = {
             name: form.name.trim(),
             description: form.description || null,
             is_paid: form.is_paid,
@@ -195,15 +205,26 @@ export default function ActivitiesPage() {
             start_time: form.start_time || null,
             end_date: form.end_date || null,
             end_time: form.end_time || null,
-            class_ids: form.class_ids,
             materials: form.materials.length > 0 ? form.materials : null,
         };
+        const payload = isGlobal
+            ? basePayload
+            : { ...basePayload, school_id: Number(selectedSchoolId), class_ids: form.class_ids };
+
         try {
             if (editingActivity) {
-                await apiClient.put(`/schools/${selectedSchoolId}/activities/${editingActivity.id}`, payload);
+                if (isGlobal) {
+                    await apiClient.put(`/global-events/${editingActivity.id}`, payload);
+                } else {
+                    await apiClient.put(`/schools/${selectedSchoolId}/activities/${editingActivity.id}`, payload);
+                }
                 toast.success(t('activities.updateSuccess'));
             } else {
-                await apiClient.post(`/schools/${selectedSchoolId}/activities`, payload);
+                if (isGlobal) {
+                    await apiClient.post('/global-events', payload);
+                } else {
+                    await apiClient.post(`/schools/${selectedSchoolId}/activities`, payload);
+                }
                 toast.success(t('activities.createSuccess'));
             }
             setShowModal(false);
@@ -238,7 +259,12 @@ export default function ActivitiesPage() {
         });
         if (!result.isConfirmed) return;
         try {
-            await apiClient.delete(`/schools/${selectedSchoolId}/activities/${activity.id}`);
+            const isGlobal = (activity as Activity & { is_global?: boolean }).is_global;
+            if (isGlobal) {
+                await apiClient.delete(`/global-events/${activity.id}`);
+            } else {
+                await apiClient.delete(`/schools/${selectedSchoolId}/activities/${activity.id}`);
+            }
             toast.success(t('activities.deleteSuccess'));
             fetchActivities();
         } catch {
@@ -262,36 +288,65 @@ export default function ActivitiesPage() {
         <div className="p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-2xl font-bold text-dark dark:text-white">{t('activities.title')}</h1>
-                <button type="button" className="btn btn-primary gap-2" onClick={openCreate} disabled={!selectedSchoolId}>
+                <button type="button" className="btn btn-primary gap-2" onClick={openCreate}>
                     <Plus className="h-4 w-4" />
                     {t('activities.addBtn')}
                 </button>
             </div>
 
             <div className="panel">
+                {/* Sekme: Okul / Global */}
+                <div className="mb-4 flex gap-1 border-b border-[#ebedf2] pb-3 dark:border-[#1b2e4b]">
+                    <button
+                        type="button"
+                        onClick={() => setEventTab('school')}
+                        className={`btn btn-sm gap-1.5 ${eventTab === 'school' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    >
+                        <Calendar className="h-3.5 w-3.5" /> Okul Etkinlikleri
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setEventTab('global')}
+                        className={`btn btn-sm gap-1.5 ${eventTab === 'global' ? 'btn-warning' : 'btn-outline-secondary'}`}
+                    >
+                        <Globe className="h-3.5 w-3.5" /> Global Etkinlikler
+                    </button>
+                </div>
+
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-                    <div>
-                        <label className="block text-sm font-medium text-dark dark:text-white-light">{t('activities.schoolLabel')}</label>
-                        <select
-                            className="form-select mt-1 max-w-xs"
-                            value={selectedSchoolId}
-                            onChange={e => setSelectedSchoolId(e.target.value)}
-                        >
-                            {schools.length === 0 && <option value="">{t('activities.noSchool')}</option>}
-                            {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                    </div>
+                    {eventTab === 'school' && (
+                        <div>
+                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('activities.schoolLabel')}</label>
+                            <select
+                                className="form-select mt-1 max-w-xs"
+                                value={selectedSchoolId}
+                                onChange={e => setSelectedSchoolId(e.target.value)}
+                            >
+                                {schools.length === 0 && <option value="">{t('activities.noSchool')}</option>}
+                                {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                    )}
                     <div className="flex gap-1">
-                        {(['active', 'ended', 'deleted'] as const).map(s => (
+                        {(['active', 'ended'] as const).map(s => (
                             <button
                                 key={s}
                                 type="button"
                                 onClick={() => setStatusFilter(s)}
                                 className={`btn btn-sm ${statusFilter === s ? 'btn-primary' : 'btn-outline-secondary'}`}
                             >
-                                {s === 'active' ? t('activities.statusActive') : s === 'ended' ? t('activities.statusEnded') : t('activities.statusDeleted')}
+                                {s === 'active' ? t('activities.statusActive') : t('activities.statusEnded')}
                             </button>
                         ))}
+                        {eventTab === 'school' && (
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter('deleted')}
+                                className={`btn btn-sm ${statusFilter === 'deleted' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                            >
+                                {t('activities.statusDeleted')}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -299,10 +354,12 @@ export default function ActivitiesPage() {
                     <div className="flex h-32 items-center justify-center">
                         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                     </div>
-                ) : !selectedSchoolId ? (
+                ) : (eventTab === 'school' && !selectedSchoolId) ? (
                     <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('activities.selectSchoolFirst')}</p>
                 ) : activities.length === 0 ? (
-                    <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('activities.noActivity')}</p>
+                    <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">
+                        {eventTab === 'global' ? 'Henüz global etkinlik oluşturulmamış.' : t('activities.noActivity')}
+                    </p>
                 ) : (
                     <>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -322,6 +379,11 @@ export default function ActivitiesPage() {
                                                     )}
                                                     {isEnded && (
                                                         <span className="badge badge-outline-warning text-xs">{t('activities.endedBadge')}</span>
+                                                    )}
+                                                    {(activity as Activity & { is_global?: boolean }).is_global && (
+                                                        <span className="badge badge-outline-warning text-xs flex items-center gap-1">
+                                                            <Globe className="h-3 w-3" /> Global
+                                                        </span>
                                                     )}
                                                     {activity.is_paid && (
                                                         <span className="badge badge-outline-success text-xs">{t('activities.paidBadge')}</span>
@@ -476,6 +538,34 @@ export default function ActivitiesPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Global Etkinlik Toggle */}
+                            <div className={`rounded-lg border-2 p-3 transition-colors ${form.is_global ? 'border-warning bg-warning/5' : 'border-[#ebedf2] dark:border-[#1b2e4b]'}`}>
+                                <label className="flex cursor-pointer items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <Globe className={`h-5 w-5 ${form.is_global ? 'text-warning' : 'text-[#888ea8]'}`} />
+                                        <span className="font-semibold text-dark dark:text-white">Global Etkinlik</span>
+                                    </div>
+                                    <div className={`relative h-6 w-11 rounded-full transition-colors ${form.is_global ? 'bg-warning' : 'bg-[#e0e6ed] dark:bg-[#1b2e4b]'}`}>
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only"
+                                            checked={form.is_global}
+                                            onChange={e => setForm(prev => ({ ...prev, is_global: e.target.checked, class_ids: [] }))}
+                                        />
+                                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${form.is_global ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                    </div>
+                                </label>
+                                {form.is_global && (
+                                    <div className="mt-2 flex items-start gap-2 rounded-md bg-warning/10 p-2 text-xs text-warning">
+                                        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        <p>
+                                            <strong>Bu etkinlik herkese açıktır.</strong> Sistemdeki tüm kurumlar ve veliler görebilir.
+                                            Okul veya sınıfa özel kısıtlama uygulanamaz.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">{t('activities.nameLabel')}</label>
                                 <input
@@ -544,7 +634,7 @@ export default function ActivitiesPage() {
                                 </div>
                             )}
 
-                            {schoolClasses.length > 0 && (
+                            {schoolClasses.length > 0 && !form.is_global && (
                                 <div>
                                     <label className="mb-2 block text-sm font-medium text-dark dark:text-white-light">
                                         {t('activities.classesLabel')}

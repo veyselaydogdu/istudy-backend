@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -8,7 +8,34 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import AuthImg from '@/components/AuthImg';
 import { School, SchoolClass, Child, Teacher, AcademicYear, SchoolTeacher, TeacherRoleType, TeacherProfile, EnrollmentRequest, SchoolParent } from '@/types';
-import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight, Baby, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Users, BookOpen, X, UserPlus, ToggleLeft, ToggleRight, GraduationCap, Copy, RefreshCw, CheckCircle, XCircle, Clock, UserCheck, ChevronDown, ChevronRight, Baby, Eye, Phone, Building2, Globe, Award, Zap, FileText } from 'lucide-react';
+
+type TeacherFullDetail = SchoolTeacher & {
+    email?: string | null;
+    phone?: string | null;
+    phone_country_code?: string | null;
+    whatsapp_number?: string | null;
+    whatsapp_country_code?: string | null;
+    specialization?: string | null;
+    experience_years?: number | null;
+    hire_date?: string | null;
+    bio?: string | null;
+    linkedin_url?: string | null;
+    website_url?: string | null;
+    schools?: { id: number; name: string }[];
+    educations: { id: number; institution: string; degree: string; field_of_study: string; start_date: string | null; end_date: string | null; is_current: boolean; country: { id: number; name: string } | null; description: string | null; approval_status: 'pending' | 'approved' | 'rejected' }[];
+    certificates: { id: number; name: string; issuing_organization: string | null; issue_date: string | null; expiry_date: string | null; credential_url: string | null; description: string | null; approval_status: 'pending' | 'approved' | 'rejected' }[];
+    courses: { id: number; title: string; type: string; provider: string | null; start_date: string | null; end_date: string | null; duration_hours: number | null; location: string | null; is_online: boolean; description: string | null; approval_status: 'pending' | 'approved' | 'rejected' }[];
+    skills: { id: number; name: string; level: string; category: string }[];
+    blog_posts: { id: number; title: string; description: string | null; image_url: string | null; likes_count: number; comments_count: number; published_at: string | null; created_at: string | null }[];
+};
+
+const TEACHER_SKILL_LEVEL_BADGE: Record<string, string> = {
+    beginner: 'bg-gray-100 text-gray-600',
+    intermediate: 'bg-blue-50 text-blue-600',
+    advanced: 'bg-green-50 text-green-600',
+    expert: 'bg-purple-50 text-purple-600',
+};
 
 type ClassForm = { name: string; description: string; age_min: string; age_max: string; capacity: string; color: string; icon: string; academic_year_id: string };
 const emptyClassForm: ClassForm = { name: '', description: '', age_min: '', age_max: '', capacity: '20', color: '', icon: '', academic_year_id: '' };
@@ -67,7 +94,11 @@ export default function SchoolDetailPage() {
     const [loadingSchoolTeachers, setLoadingSchoolTeachers] = useState(false);
     const [teachersFetched, setTeachersFetched] = useState(false);
     const [roleTypes, setRoleTypes] = useState<TeacherRoleType[]>([]);
-    const [selectedTeacherDetail, setSelectedTeacherDetail] = useState<SchoolTeacher | null>(null);
+    const [viewingTeacherDetail, setViewingTeacherDetail] = useState<TeacherFullDetail | null>(null);
+    const [loadingTeacherDetail, setLoadingTeacherDetail] = useState(false);
+    const [teacherDetailTab, setTeacherDetailTab] = useState<'info' | 'education' | 'certificates' | 'courses' | 'skills' | 'blogs'>('info');
+    const [teacherDocBlobUrls, setTeacherDocBlobUrls] = useState<Record<string, { blobUrl: string; mimeType: string }>>({});
+    const [teacherDocModal, setTeacherDocModal] = useState<{ blobUrl: string; mimeType: string; name: string } | null>(null);
     const [selectedFamilyDetail, setSelectedFamilyDetail] = useState<SchoolParent | null>(null);
 
     // Enrollment requests
@@ -274,7 +305,7 @@ export default function SchoolDetailPage() {
         }
     };
 
-    const openChildDetail = async (childId: number) => {
+    const openChildDetail = async (childId: number | string) => {
         setLoadingChildDetail(true);
         setSelectedChild(null);
         try {
@@ -285,6 +316,29 @@ export default function SchoolDetailPage() {
         } finally {
             setLoadingChildDetail(false);
         }
+    };
+
+    const openTeacherDetail = async (teacher: SchoolTeacher) => {
+        setTeacherDetailTab('info');
+        setLoadingTeacherDetail(true);
+        setViewingTeacherDetail({ ...teacher, educations: [], certificates: [], courses: [], skills: [], blog_posts: [] } as TeacherFullDetail);
+        try {
+            const res = await apiClient.get(`/teachers/${teacher.id}`);
+            setViewingTeacherDetail(res.data?.data ?? null);
+        } catch {
+            toast.error(t('schools.detail.teacherDetailLoadError'));
+        } finally {
+            setLoadingTeacherDetail(false);
+        }
+    };
+
+    const closeTeacherDetail = () => {
+        setViewingTeacherDetail(null);
+        setTeacherDocModal(null);
+        setTeacherDocBlobUrls(prev => {
+            Object.values(prev).forEach(({ blobUrl }) => URL.revokeObjectURL(blobUrl));
+            return {};
+        });
     };
 
     const fetchSchoolLevelTeachers = useCallback(async () => {
@@ -1251,7 +1305,7 @@ export default function SchoolDetailPage() {
                                                         <button
                                                             type="button"
                                                             className="btn btn-sm btn-outline-primary p-2"
-                                                            onClick={() => setSelectedTeacherDetail(teacher)}
+                                                            onClick={() => openTeacherDetail(teacher)}
                                                             title={t('common.detail')}
                                                         >
                                                             <Eye className="h-4 w-4" />
@@ -1454,11 +1508,16 @@ export default function SchoolDetailPage() {
                                                             <p className="mb-2 text-xs font-semibold text-[#888ea8]">{t('schools.detail.childrenSubHeader')}</p>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {parent.children.map((child) => (
-                                                                    <div key={child.id} className="flex items-center gap-2 rounded-lg border border-[#ebedf2] bg-white px-3 py-1.5 dark:border-[#1b2e4b] dark:bg-[#0e1726]">
+                                                                    <button
+                                                                        key={child.id}
+                                                                        type="button"
+                                                                        className="flex items-center gap-2 rounded-lg border border-[#ebedf2] bg-white px-3 py-1.5 text-left hover:border-primary dark:border-[#1b2e4b] dark:bg-[#0e1726]"
+                                                                        onClick={e => { e.stopPropagation(); openChildDetail(child.id); }}
+                                                                    >
                                                                         <span className="font-medium text-dark dark:text-white">{child.name}</span>
                                                                         {child.birth_date && <span className="text-xs text-[#888ea8]">{new Date(child.birth_date).toLocaleDateString('tr-TR')}</span>}
                                                                         {child.gender && <span className="badge badge-outline-secondary text-xs">{child.gender === 'male' ? t('schools.detail.genderMale') : child.gender === 'female' ? t('schools.detail.genderFemale') : child.gender}</span>}
-                                                                    </div>
+                                                                    </button>
                                                                 ))}
                                                             </div>
                                                         </td>
@@ -1710,64 +1769,266 @@ export default function SchoolDetailPage() {
             </div>
 
             {/* Öğretmen Detay Modalı */}
-            {selectedTeacherDetail && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-[#0e1726] max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between border-b border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
-                            <h2 className="text-lg font-bold text-dark dark:text-white">{t('schools.detail.teacherDetailTitle')}</h2>
-                            <button type="button" onClick={() => setSelectedTeacherDetail(null)} className="text-[#888ea8] hover:text-danger">
+            {viewingTeacherDetail && (
+                <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-10">
+                    <div className="w-full max-w-3xl rounded-lg bg-white dark:bg-[#0e1726]">
+                        {/* Header */}
+                        <div className="flex items-start justify-between border-b border-[#ebedf2] p-5 dark:border-[#1b2e4b]">
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary">
+                                    {viewingTeacherDetail.name?.charAt(0)?.toUpperCase() ?? '?'}
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-dark dark:text-white">{viewingTeacherDetail.name}</h2>
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        {viewingTeacherDetail.title && <span className="text-sm text-[#888ea8]">{viewingTeacherDetail.title}</span>}
+                                        {viewingTeacherDetail.specialization && <span className="text-xs text-[#888ea8]">· {viewingTeacherDetail.specialization}</span>}
+                                        <span className={`badge text-xs ${viewingTeacherDetail.is_active ? 'badge-outline-success' : 'badge-outline-danger'}`}>
+                                            {viewingTeacherDetail.is_active ? t('schools.detail.statusActive') : t('schools.detail.statusInactive')}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" onClick={closeTeacherDetail} className="text-[#888ea8] hover:text-danger">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
-                        <div className="space-y-5 p-6">
-                            {/* Başlık kartı */}
-                            <div className="flex items-center gap-4 rounded-lg bg-primary/5 p-4">
-                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
-                                    {selectedTeacherDetail.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <p className="text-xl font-bold text-dark dark:text-white">{selectedTeacherDetail.name}</p>
-                                    {selectedTeacherDetail.title && (
-                                        <p className="text-sm text-[#888ea8]">{selectedTeacherDetail.title}</p>
-                                    )}
-                                    <span className={`badge mt-1 ${selectedTeacherDetail.is_active ? 'badge-outline-success' : 'badge-outline-secondary'}`}>
-                                        {selectedTeacherDetail.is_active ? t('schools.detail.statusActive') : t('schools.detail.statusInactive')}
-                                    </span>
-                                </div>
-                            </div>
 
-                            {/* Bilgi satırları */}
-                            <div className="divide-y divide-[#ebedf2] dark:divide-[#1b2e4b]">
-                                {selectedTeacherDetail.employment_type && (
-                                    <div className="flex justify-between py-2.5">
-                                        <span className="text-sm text-[#888ea8]">{t('schools.detail.employmentTypelabel')}</span>
-                                        <span className="text-sm font-medium text-dark dark:text-white">{employmentLabel(selectedTeacherDetail.employment_type)}</span>
-                                    </div>
-                                )}
-                                {selectedTeacherDetail.role_type && (
-                                    <div className="flex justify-between py-2.5">
-                                        <span className="text-sm text-[#888ea8]">{t('schools.detail.rolTypeLabel')}</span>
-                                        <span className="text-sm font-medium text-dark dark:text-white">{selectedTeacherDetail.role_type.name}</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Atandığı sınıflar */}
-                            <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#888ea8]">{t('schools.detail.assignedClassesLabel')}</p>
-                                {(selectedTeacherDetail.classes?.length ?? 0) === 0 ? (
-                                    <p className="text-sm text-[#888ea8]">{t('schools.detail.noClassAssigned')}</p>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2">
-                                        {selectedTeacherDetail.classes!.map(cls => (
-                                            <span key={cls.id} className="badge badge-outline-info">{cls.name}</span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                        {/* Sekmeler */}
+                        <div className="flex overflow-x-auto border-b border-[#ebedf2] dark:border-[#1b2e4b]">
+                            {([
+                                { key: 'info', icon: <Phone className="h-4 w-4" />, label: t('teachers.contactAndGeneral') },
+                                { key: 'education', icon: <GraduationCap className="h-4 w-4" />, label: t('teachers.educationTab') },
+                                { key: 'certificates', icon: <Award className="h-4 w-4" />, label: t('teachers.certificatesTab') },
+                                { key: 'courses', icon: <BookOpen className="h-4 w-4" />, label: t('teachers.coursesTab') },
+                                { key: 'skills', icon: <Zap className="h-4 w-4" />, label: t('teachers.skillsTab') },
+                                { key: 'blogs', icon: <FileText className="h-4 w-4" />, label: t('teachers.blogsTab') },
+                            ] as { key: typeof teacherDetailTab; icon: React.ReactNode; label: string }[]).map(tab => (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    onClick={() => setTeacherDetailTab(tab.key)}
+                                    className={`flex shrink-0 items-center gap-1.5 px-4 py-3 text-xs font-medium transition-colors ${teacherDetailTab === tab.key ? 'border-b-2 border-primary text-primary' : 'text-[#506690] hover:text-primary'}`}
+                                >
+                                    {tab.icon}{tab.label}
+                                </button>
+                            ))}
                         </div>
-                        <div className="border-t border-[#ebedf2] px-6 py-4 dark:border-[#1b2e4b]">
-                            <button type="button" className="btn btn-outline-secondary w-full" onClick={() => setSelectedTeacherDetail(null)}>{t('common.close')}</button>
+
+                        {/* İçerik */}
+                        <div className="p-5">
+                            {loadingTeacherDetail && (
+                                <div className="flex h-40 items-center justify-center">
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                </div>
+                            )}
+
+                            {!loadingTeacherDetail && teacherDetailTab === 'info' && (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        {viewingTeacherDetail.email && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><Phone className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">{t('teachers.inviteEmailLabel').replace(' *', '')}</p><p className="text-sm font-medium text-dark dark:text-white">{viewingTeacherDetail.email}</p></div>
+                                            </div>
+                                        )}
+                                        {viewingTeacherDetail.phone && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><Phone className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">{t('teachers.phoneLabel')}</p><p className="text-sm font-medium text-dark dark:text-white">{`${viewingTeacherDetail.phone_country_code ?? ''} ${viewingTeacherDetail.phone}`.trim()}</p></div>
+                                            </div>
+                                        )}
+                                        {viewingTeacherDetail.whatsapp_number && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><Phone className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">{t('teachers.whatsappLabel')}</p><p className="text-sm font-medium text-dark dark:text-white">{`${viewingTeacherDetail.whatsapp_country_code ?? ''} ${viewingTeacherDetail.whatsapp_number}`.trim()}</p></div>
+                                            </div>
+                                        )}
+                                        {viewingTeacherDetail.experience_years != null && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><GraduationCap className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">{t('teachers.experienceCol')}</p><p className="text-sm font-medium text-dark dark:text-white">{t('teachers.yearsExp', { count: viewingTeacherDetail.experience_years })}</p></div>
+                                            </div>
+                                        )}
+                                        {viewingTeacherDetail.employment_type && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><Building2 className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">{t('teachers.employmentCol')}</p><p className="text-sm font-medium text-dark dark:text-white">{employmentLabel(viewingTeacherDetail.employment_type)}</p></div>
+                                            </div>
+                                        )}
+                                        {viewingTeacherDetail.hire_date && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><Building2 className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">{t('teachers.hireDateLabel')}</p><p className="text-sm font-medium text-dark dark:text-white">{new Date(viewingTeacherDetail.hire_date).toLocaleDateString('tr-TR')}</p></div>
+                                            </div>
+                                        )}
+                                        {viewingTeacherDetail.role_type && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><Users className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">{t('schools.detail.rolTypeLabel')}</p><p className="text-sm font-medium text-dark dark:text-white">{viewingTeacherDetail.role_type.name}</p></div>
+                                            </div>
+                                        )}
+                                        {viewingTeacherDetail.linkedin_url && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><Globe className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">LinkedIn</p><p className="text-sm font-medium text-dark dark:text-white">{viewingTeacherDetail.linkedin_url}</p></div>
+                                            </div>
+                                        )}
+                                        {viewingTeacherDetail.website_url && (
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 text-primary"><Globe className="h-4 w-4" /></span>
+                                                <div><p className="text-xs text-[#888ea8]">Website</p><p className="text-sm font-medium text-dark dark:text-white">{viewingTeacherDetail.website_url}</p></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {viewingTeacherDetail.bio && (
+                                        <div className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                            <p className="mb-1 text-xs font-semibold text-[#888ea8]">{t('teachers.bioSection')}</p>
+                                            <p className="text-sm text-dark dark:text-white-light">{viewingTeacherDetail.bio}</p>
+                                        </div>
+                                    )}
+                                    {(viewingTeacherDetail.classes?.length ?? 0) > 0 && (
+                                        <div>
+                                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#888ea8]">{t('schools.detail.assignedClassesLabel')}</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {viewingTeacherDetail.classes!.map(cls => (
+                                                    <span key={cls.id} className="badge badge-outline-info">{cls.name}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {!loadingTeacherDetail && teacherDetailTab === 'education' && (
+                                <div className="space-y-3">
+                                    {viewingTeacherDetail.educations.length === 0 ? (
+                                        <div className="flex h-32 flex-col items-center justify-center gap-2 text-[#888ea8]"><GraduationCap className="h-10 w-10 opacity-40" /><p className="text-sm">{t('teachers.noEducation')}</p></div>
+                                    ) : viewingTeacherDetail.educations.map(e => (
+                                        <div key={e.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-semibold text-dark dark:text-white">{e.institution}</p>
+                                                    <p className="text-sm">{e.degree}{e.field_of_study && ` — ${e.field_of_study}`}</p>
+                                                    {e.approval_status === 'pending' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-warning text-xs"><Clock className="h-3 w-3" />Onay Bekliyor</span>}
+                                                    {e.approval_status === 'approved' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-success text-xs"><CheckCircle className="h-3 w-3" />Onaylandı</span>}
+                                                    {e.approval_status === 'rejected' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-danger text-xs"><XCircle className="h-3 w-3" />Reddedildi</span>}
+                                                </div>
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-[#888ea8]">
+                                                    {e.start_date ? new Date(e.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
+                                                    {' — '}
+                                                    {e.is_current ? t('teachers.ongoing') : e.end_date ? new Date(e.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
+                                                </span>
+                                            </div>
+                                            {e.country && <p className="mt-1 text-xs text-[#888ea8]">{e.country.name}</p>}
+                                            {e.description && <p className="mt-2 text-xs text-[#888ea8]">{e.description}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {!loadingTeacherDetail && teacherDetailTab === 'certificates' && (
+                                <div className="space-y-3">
+                                    {viewingTeacherDetail.certificates.length === 0 ? (
+                                        <div className="flex h-32 flex-col items-center justify-center gap-2 text-[#888ea8]"><Award className="h-10 w-10 opacity-40" /><p className="text-sm">{t('teachers.noCertificate')}</p></div>
+                                    ) : viewingTeacherDetail.certificates.map(c => (
+                                        <div key={c.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-semibold text-dark dark:text-white">{c.name}</p>
+                                                    {c.issuing_organization && <p className="text-sm text-[#888ea8]">{c.issuing_organization}</p>}
+                                                    {c.approval_status === 'pending' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-warning text-xs"><Clock className="h-3 w-3" />Onay Bekliyor</span>}
+                                                    {c.approval_status === 'approved' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-success text-xs"><CheckCircle className="h-3 w-3" />Onaylandı</span>}
+                                                    {c.approval_status === 'rejected' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-danger text-xs"><XCircle className="h-3 w-3" />Reddedildi</span>}
+                                                </div>
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-[#888ea8]">
+                                                    {c.issue_date ? new Date(c.issue_date).toLocaleDateString('tr-TR') : '—'}
+                                                    {c.expiry_date && ` — ${new Date(c.expiry_date).toLocaleDateString('tr-TR')}`}
+                                                </span>
+                                            </div>
+                                            {c.credential_url && <a href={c.credential_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">{t('teachers.viewCredential')}</a>}
+                                            {c.description && <p className="mt-2 text-xs text-[#888ea8]">{c.description}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {!loadingTeacherDetail && teacherDetailTab === 'courses' && (
+                                <div className="space-y-3">
+                                    {viewingTeacherDetail.courses.length === 0 ? (
+                                        <div className="flex h-32 flex-col items-center justify-center gap-2 text-[#888ea8]"><BookOpen className="h-10 w-10 opacity-40" /><p className="text-sm">{t('teachers.noCourse')}</p></div>
+                                    ) : viewingTeacherDetail.courses.map(c => (
+                                        <div key={c.id} className="rounded border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-semibold text-dark dark:text-white">{c.title}</p>
+                                                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                                                        <span className="badge badge-outline-primary text-xs">{c.type}</span>
+                                                        {c.provider && <span className="text-xs text-[#888ea8]">{c.provider}</span>}
+                                                        {c.is_online && <span className="badge badge-outline-info text-xs">Online</span>}
+                                                        {c.duration_hours && <span className="text-xs text-[#888ea8]">{c.duration_hours} {t('teachers.hoursUnit')}</span>}
+                                                    </div>
+                                                    {c.approval_status === 'pending' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-warning text-xs"><Clock className="h-3 w-3" />Onay Bekliyor</span>}
+                                                    {c.approval_status === 'approved' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-success text-xs"><CheckCircle className="h-3 w-3" />Onaylandı</span>}
+                                                    {c.approval_status === 'rejected' && <span className="mt-1 inline-flex items-center gap-1 badge badge-outline-danger text-xs"><XCircle className="h-3 w-3" />Reddedildi</span>}
+                                                </div>
+                                                <span className="shrink-0 whitespace-nowrap text-xs text-[#888ea8]">
+                                                    {c.start_date ? new Date(c.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : '?'}
+                                                    {c.end_date && ` — ${new Date(c.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' })}`}
+                                                </span>
+                                            </div>
+                                            {c.location && <p className="mt-1 text-xs text-[#888ea8]">📍 {c.location}</p>}
+                                            {c.description && <p className="mt-2 text-xs text-[#888ea8]">{c.description}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {!loadingTeacherDetail && teacherDetailTab === 'skills' && (
+                                <div>
+                                    {viewingTeacherDetail.skills.length === 0 ? (
+                                        <div className="flex h-32 flex-col items-center justify-center gap-2 text-[#888ea8]"><Zap className="h-10 w-10 opacity-40" /><p className="text-sm">{t('teachers.noSkill')}</p></div>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {viewingTeacherDetail.skills.map(s => (
+                                                <div key={s.id} className="flex items-center gap-1.5 rounded-full border border-[#ebedf2] px-3 py-1.5 dark:border-[#1b2e4b]">
+                                                    <span className="text-sm font-medium text-dark dark:text-white">{s.name}</span>
+                                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${TEACHER_SKILL_LEVEL_BADGE[s.level] ?? 'bg-gray-100 text-gray-600'}`}>
+                                                        {s.level}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {!loadingTeacherDetail && teacherDetailTab === 'blogs' && (
+                                <div className="space-y-3">
+                                    {viewingTeacherDetail.blog_posts.length === 0 ? (
+                                        <div className="flex h-32 flex-col items-center justify-center gap-2 text-[#888ea8]"><FileText className="h-10 w-10 opacity-40" /><p className="text-sm">{t('teachers.noBlog')}</p></div>
+                                    ) : viewingTeacherDetail.blog_posts.map(p => (
+                                        <div key={p.id} className="overflow-hidden rounded border border-[#ebedf2] dark:border-[#1b2e4b]">
+                                            {p.image_url && <img src={p.image_url} alt={p.title} className="h-40 w-full object-cover" />}
+                                            <div className="p-3">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <p className="font-semibold text-dark dark:text-white">{p.title}</p>
+                                                    <span className="whitespace-nowrap text-xs text-[#888ea8]">{p.published_at ? new Date(p.published_at).toLocaleDateString('tr-TR') : p.created_at ? new Date(p.created_at).toLocaleDateString('tr-TR') : '—'}</span>
+                                                </div>
+                                                {p.description && <p className="mt-1 line-clamp-2 text-xs text-[#888ea8]">{p.description}</p>}
+                                                <div className="mt-2 flex gap-4 text-xs text-[#888ea8]">
+                                                    <span>❤ {p.likes_count}</span>
+                                                    <span>💬 {p.comments_count}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t border-[#ebedf2] p-4 dark:border-[#1b2e4b]">
+                            <button type="button" className="btn btn-outline-secondary w-full" onClick={closeTeacherDetail}>{t('common.close')}</button>
                         </div>
                     </div>
                 </div>
@@ -1822,25 +2083,94 @@ export default function SchoolDetailPage() {
                                     <p className="text-sm text-[#888ea8]">{t('schools.detail.noRegisteredChildren')}</p>
                                 ) : (
                                     <div className="space-y-2">
-                                        {selectedFamilyDetail.children.map(child => (
-                                            <div key={child.id} className="flex items-center gap-3 rounded-lg border border-[#ebedf2] p-3 dark:border-[#1b2e4b]">
-                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-info/20 text-sm font-bold text-info">
-                                                    {child.name.charAt(0)}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="font-medium text-dark dark:text-white">{child.name}</p>
-                                                    <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-[#888ea8]">
-                                                        {child.birth_date && <span>{new Date(child.birth_date).toLocaleDateString('tr-TR')}</span>}
-                                                        {child.gender && <span>{child.gender === 'male' ? t('schools.detail.genderMale') : child.gender === 'female' ? t('schools.detail.genderFemale') : child.gender}</span>}
+                                        {selectedFamilyDetail.children.map(child => {
+                                            const age = child.birth_date
+                                                ? Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365.25 * 24 * 3600 * 1000))
+                                                : null;
+                                            return (
+                                                <div key={child.id} className="rounded-lg border border-[#ebedf2] dark:border-[#1b2e4b]">
+                                                    {/* Üst satır: avatar + ad + durum + detay */}
+                                                    <div className="flex items-center gap-3 p-3">
+                                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-info/20 text-sm font-bold text-info">
+                                                            {child.name.charAt(0)}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-dark dark:text-white">{child.name}</p>
+                                                            <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-[#888ea8]">
+                                                                {child.birth_date && (
+                                                                    <span>{new Date(child.birth_date).toLocaleDateString('tr-TR')}{age !== null && ` (${age} yaş)`}</span>
+                                                                )}
+                                                                {child.gender && (
+                                                                    <span>{child.gender === 'male' ? t('schools.detail.genderMale') : child.gender === 'female' ? t('schools.detail.genderFemale') : child.gender}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {child.status && (
+                                                            <span className={`badge ${child.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'} text-xs`}>
+                                                                {child.status === 'active' ? t('schools.detail.statusActive') : child.status}
+                                                            </span>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-info p-1.5"
+                                                            onClick={() => openChildDetail(child.id)}
+                                                            title={t('common.detail')}
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </button>
                                                     </div>
+                                                    {/* Sağlık bilgileri */}
+                                                    {((child.allergens && child.allergens.length > 0) || (child.conditions && child.conditions.length > 0) || (child.medications && child.medications.length > 0) || child.special_notes || child.parent_notes) && (
+                                                        <div className="border-t border-[#ebedf2] px-3 pb-3 pt-2 dark:border-[#1b2e4b] space-y-2">
+                                                            {child.allergens && child.allergens.length > 0 && (
+                                                                <div>
+                                                                    <p className="mb-1 text-xs font-semibold text-[#888ea8]">{t('schools.detail.allergensLabel')}</p>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {child.allergens.map(a => (
+                                                                            <span key={a.id} className={`badge text-xs ${a.risk_level === 'high' ? 'badge-outline-danger' : a.risk_level === 'medium' ? 'badge-outline-warning' : 'badge-outline-secondary'}`}>
+                                                                                {a.name}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {child.conditions && child.conditions.length > 0 && (
+                                                                <div>
+                                                                    <p className="mb-1 text-xs font-semibold text-[#888ea8]">{t('schools.detail.conditionsLabel')}</p>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {child.conditions.map(c => (
+                                                                            <span key={c.id} className="badge badge-outline-info text-xs">{c.name}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {child.medications && child.medications.length > 0 && (
+                                                                <div>
+                                                                    <p className="mb-1 text-xs font-semibold text-[#888ea8]">{t('schools.detail.medicationsLabel')}</p>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {child.medications.map(m => (
+                                                                            <span key={m.id} className="badge badge-outline-primary text-xs">{m.name}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {child.special_notes && (
+                                                                <div>
+                                                                    <p className="mb-1 text-xs font-semibold text-[#888ea8]">{t('schools.detail.specialNotesLabel')}</p>
+                                                                    <p className="text-xs text-dark dark:text-white">{child.special_notes}</p>
+                                                                </div>
+                                                            )}
+                                                            {child.parent_notes && (
+                                                                <div>
+                                                                    <p className="mb-1 text-xs font-semibold text-[#888ea8]">{t('schools.detail.parentNotesLabel')}</p>
+                                                                    <p className="text-xs text-dark dark:text-white">{child.parent_notes}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                {child.status && (
-                                                    <span className={`badge ${child.status === 'active' ? 'badge-outline-success' : 'badge-outline-secondary'} text-xs`}>
-                                                        {child.status === 'active' ? t('schools.detail.statusActive') : child.status}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { ActivityClass, School, SchoolClass } from '@/types';
-import { Plus, Trash2, Edit2, Eye, Users, Star, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, Users, Star, DollarSign, Globe, Info } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type ActivityClassForm = {
@@ -16,6 +16,7 @@ type ActivityClassForm = {
     age_max: string;
     capacity: string;
     is_school_wide: boolean;
+    is_global: boolean;
     is_active: boolean;
     is_paid: boolean;
     price: string;
@@ -33,7 +34,7 @@ type ActivityClassForm = {
 const emptyForm: ActivityClassForm = {
     name: '', description: '', language: 'tr',
     age_min: '', age_max: '', capacity: '',
-    is_school_wide: true, is_active: true,
+    is_school_wide: true, is_global: false, is_active: true,
     is_paid: false, price: '', currency: 'TRY',
     invoice_required: false,
     start_date: '', end_date: '', schedule: '', location: '', address: '', notes: '',
@@ -112,6 +113,7 @@ export default function ActivityClassesPage() {
             age_max: ac.age_max != null ? String(ac.age_max) : '',
             capacity: ac.capacity != null ? String(ac.capacity) : '',
             is_school_wide: ac.is_school_wide,
+            is_global: (ac as ActivityClass & { is_global?: boolean }).is_global ?? false,
             is_active: ac.is_active,
             is_paid: ac.is_paid,
             price: ac.price != null ? String(ac.price) : '',
@@ -134,14 +136,14 @@ export default function ActivityClassesPage() {
         try {
             const payload = {
                 ...form,
-                school_id: formSchoolId ? parseInt(formSchoolId) : null,
+                // Global ise okul ve sınıf ataması gönderilmez
+                school_id: form.is_global ? null : (formSchoolId ? parseInt(formSchoolId) : null),
                 age_min: form.age_min ? parseInt(form.age_min) : null,
                 age_max: form.age_max ? parseInt(form.age_max) : null,
                 capacity: form.capacity ? parseInt(form.capacity) : null,
                 address: form.address || null,
                 price: form.is_paid && form.price ? parseFloat(form.price) : null,
-                // Okul seçilmediyse sınıf seçimi de temizlenir
-                school_class_ids: formSchoolId ? form.school_class_ids : [],
+                school_class_ids: form.is_global ? [] : (formSchoolId ? form.school_class_ids : []),
             };
 
             if (editing) {
@@ -247,17 +249,28 @@ export default function ActivityClassesPage() {
                                     {activityClasses.map(ac => (
                                         <tr key={ac.id}>
                                             <td>
-                                                <div className="font-medium text-[#3b3f5c] dark:text-white">{ac.name}</div>
-                                                {ac.is_school_wide ? (
-                                                    <span className="text-xs text-[#888ea8]">Tüm okul</span>
-                                                ) : (
-                                                    <span className="text-xs text-[#888ea8]">{ac.school_classes?.map(c => c.name).join(', ')}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-[#3b3f5c] dark:text-white">{ac.name}</span>
+                                                    {(ac as ActivityClass & { is_global?: boolean }).is_global && (
+                                                        <span className="badge badge-outline-warning text-xs flex items-center gap-1">
+                                                            <Globe className="h-3 w-3" /> Global
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {!(ac as ActivityClass & { is_global?: boolean }).is_global && (
+                                                    ac.is_school_wide ? (
+                                                        <span className="text-xs text-[#888ea8]">Tüm okul</span>
+                                                    ) : (
+                                                        <span className="text-xs text-[#888ea8]">{ac.school_classes?.map(c => c.name).join(', ')}</span>
+                                                    )
                                                 )}
                                             </td>
                                             <td className="text-sm text-[#888ea8]">
-                                                {ac.school_id
-                                                    ? (schools.find(s => s.id === ac.school_id)?.name ?? `Okul #${ac.school_id}`)
-                                                    : <span className="badge badge-outline-info">Tüm Okullar</span>}
+                                                {(ac as ActivityClass & { is_global?: boolean }).is_global
+                                                    ? <span className="badge badge-outline-warning flex items-center gap-1"><Globe className="h-3 w-3" /> Tüm Sistem</span>
+                                                    : ac.school_id
+                                                        ? (schools.find(s => s.id === ac.school_id)?.name ?? `Okul #${ac.school_id}`)
+                                                        : <span className="badge badge-outline-info">Tüm Okullar</span>}
                                             </td>
                                             <td><span className="badge badge-outline-info uppercase">{ac.language}</span></td>
                                             <td className="text-sm">
@@ -340,12 +353,45 @@ export default function ActivityClassesPage() {
                         </div>
 
                         <div className="p-5 space-y-4">
-                            {/* Okul Seçimi (opsiyonel) */}
+                            {/* Global Etkinlik Sınıfı Toggle */}
+                            <div className={`rounded-lg border-2 p-3 transition-colors ${form.is_global ? 'border-warning bg-warning/5' : 'border-[#ebedf2] dark:border-[#1b2e4b]'}`}>
+                                <label className="flex cursor-pointer items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <Globe className={`h-5 w-5 ${form.is_global ? 'text-warning' : 'text-[#888ea8]'}`} />
+                                        <span className="font-semibold text-[#3b3f5c] dark:text-white">Global Etkinlik Sınıfı</span>
+                                    </div>
+                                    <div className={`relative h-6 w-11 rounded-full transition-colors ${form.is_global ? 'bg-warning' : 'bg-[#e0e6ed] dark:bg-[#1b2e4b]'}`}>
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only"
+                                            checked={form.is_global}
+                                            onChange={e => {
+                                                const val = e.target.checked;
+                                                setForm(prev => ({ ...prev, is_global: val, school_class_ids: [], is_school_wide: true }));
+                                                if (val) { setFormSchoolId(''); setFormSchoolClasses([]); }
+                                            }}
+                                        />
+                                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${form.is_global ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                    </div>
+                                </label>
+                                {form.is_global && (
+                                    <div className="mt-2 flex items-start gap-2 rounded-md bg-warning/10 p-2 text-xs text-warning">
+                                        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        <p>
+                                            <strong>Bu etkinlik sınıfı herkese açıktır.</strong> Sistemdeki tüm kurumlar ve veliler görebilir, çocuklarını kaydedebilir.
+                                            Okul veya sınıfa özel kısıtlama uygulanamaz.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Okul Seçimi (opsiyonel — global ise devre dışı) */}
                             <div>
                                 <label className="text-sm font-medium">{t('activityClasses.schoolLabel') || 'Okul (opsiyonel)'}</label>
                                 <select
-                                    className="form-select mt-1 w-full"
+                                    className={`form-select mt-1 w-full ${form.is_global ? 'opacity-40 cursor-not-allowed' : ''}`}
                                     value={formSchoolId}
+                                    disabled={form.is_global}
                                     onChange={e => {
                                         const val = e.target.value;
                                         setFormSchoolId(val);
@@ -356,6 +402,9 @@ export default function ActivityClassesPage() {
                                     <option value="">{t('activityClasses.selectSchool') || 'Tüm Okullar (Tenant Geneli)'}</option>
                                     {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
+                                {form.is_global && (
+                                    <p className="mt-1 text-xs text-[#888ea8]">Global etkinlik sınıflarında okul seçimi yapılamaz.</p>
+                                )}
                             </div>
 
                             {/* İsim & Dil */}
@@ -460,35 +509,37 @@ export default function ActivityClassesPage() {
                                 />
                             </div>
 
-                            {/* Kapsam — sadece okul seçiliyse sınıf seçimi göster */}
-                            <div>
-                                <label className="text-sm font-medium block mb-2">Kapsam</label>
-                                <div className="flex gap-4">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" name="scope" checked={form.is_school_wide} onChange={() => setForm(prev => ({ ...prev, is_school_wide: true, school_class_ids: [] }))} />
-                                        <span className="text-sm">{formSchoolId ? 'Tüm Okul' : 'Tüm Okullar'}</span>
-                                    </label>
-                                    {formSchoolId && (
+                            {/* Kapsam — global ise sınıf seçimi devre dışı */}
+                            {!form.is_global && (
+                                <div>
+                                    <label className="text-sm font-medium block mb-2">Kapsam</label>
+                                    <div className="flex gap-4">
                                         <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="scope" checked={!form.is_school_wide} onChange={() => setForm(prev => ({ ...prev, is_school_wide: false }))} />
-                                            <span className="text-sm">Belirli Sınıflar</span>
+                                            <input type="radio" name="scope" checked={form.is_school_wide} onChange={() => setForm(prev => ({ ...prev, is_school_wide: true, school_class_ids: [] }))} />
+                                            <span className="text-sm">{formSchoolId ? 'Tüm Okul' : 'Tüm Okullar'}</span>
                                         </label>
+                                        {formSchoolId && (
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="scope" checked={!form.is_school_wide} onChange={() => setForm(prev => ({ ...prev, is_school_wide: false }))} />
+                                                <span className="text-sm">Belirli Sınıflar</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                    {formSchoolId && !form.is_school_wide && formSchoolClasses.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {formSchoolClasses.map(sc => (
+                                                <label key={sc.id} className="flex items-center gap-1 cursor-pointer text-sm bg-[#f1f2f3] dark:bg-[#0e1726] px-3 py-1 rounded-full">
+                                                    <input type="checkbox" checked={form.school_class_ids.includes(sc.id)} onChange={() => toggleClass(sc.id)} />
+                                                    {sc.name}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {formSchoolId && !form.is_school_wide && formSchoolClasses.length === 0 && (
+                                        <p className="text-xs text-[#888ea8] mt-2">Bu okulda sınıf bulunamadı.</p>
                                     )}
                                 </div>
-                                {formSchoolId && !form.is_school_wide && formSchoolClasses.length > 0 && (
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {formSchoolClasses.map(sc => (
-                                            <label key={sc.id} className="flex items-center gap-1 cursor-pointer text-sm bg-[#f1f2f3] dark:bg-[#0e1726] px-3 py-1 rounded-full">
-                                                <input type="checkbox" checked={form.school_class_ids.includes(sc.id)} onChange={() => toggleClass(sc.id)} />
-                                                {sc.name}
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                                {formSchoolId && !form.is_school_wide && formSchoolClasses.length === 0 && (
-                                    <p className="text-xs text-[#888ea8] mt-2">Bu okulda sınıf bulunamadı.</p>
-                                )}
-                            </div>
+                            )}
 
                             {/* Ücret */}
                             <div>

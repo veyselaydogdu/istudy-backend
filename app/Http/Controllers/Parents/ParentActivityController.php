@@ -41,8 +41,11 @@ class ParentActivityController extends BaseParentController
             }
 
             $query = Activity::withoutGlobalScope('tenant')
-                ->whereIn('school_id', $schoolIds)
-                ->with(['school:id,name', 'classes:id,name'])
+                ->where(function ($q) use ($schoolIds) {
+                    $q->whereIn('school_id', $schoolIds)
+                        ->orWhere('is_global', true);
+                })
+                ->with(['school:id,name,tenant_id', 'school.tenant:id,name', 'classes:id,name', 'tenant:id,name'])
                 ->withCount('enrollments')
                 ->orderByDesc('start_date');
 
@@ -96,7 +99,7 @@ class ParentActivityController extends BaseParentController
                 ->pluck('school_id')
                 ->unique();
 
-            if (! $schoolIds->contains($activity->school_id)) {
+            if (! $activity->is_global && ! $schoolIds->contains($activity->school_id)) {
                 return $this->errorResponse('Bu etkinliğe erişim yetkiniz yok.', 403);
             }
 
@@ -110,7 +113,7 @@ class ParentActivityController extends BaseParentController
 
             $isEnrolled = count($enrolledChildIds) > 0;
 
-            $activity->load(['school:id,name', 'classes:id,name']);
+            $activity->load(['school:id,name,tenant_id', 'school.tenant:id,name', 'classes:id,name', 'tenant:id,name']);
             $activity->enrolled_child_ids = $enrolledChildIds;
 
             $canSeeExtras = ! $activity->is_enrollment_required || $isEnrolled;
@@ -186,13 +189,13 @@ class ParentActivityController extends BaseParentController
                 return $this->errorResponse('Çocuk bulunamadı veya bu aileye ait değil.', 404);
             }
 
-            if ($child->school_id !== $activity->school_id) {
+            if (! $activity->is_global && $child->school_id !== $activity->school_id) {
                 return $this->errorResponse('Bu çocuk etkinliğin okuluna kayıtlı değil.', 403);
             }
 
-            // Etkinlik belirli sınıflara özel ise çocuğun sınıfı kontrolü
+            // Etkinlik belirli sınıflara özel ise çocuğun sınıfı kontrolü (global etkinliklerde yok)
             $activity->loadMissing('classes');
-            if ($activity->classes->isNotEmpty()) {
+            if (! $activity->is_global && $activity->classes->isNotEmpty()) {
                 $childClassIds = $child->classes()->pluck('classes.id')->toArray();
                 $activityClassIds = $activity->classes->pluck('id')->toArray();
                 $eligible = count(array_intersect($childClassIds, $activityClassIds)) > 0;
@@ -339,7 +342,7 @@ class ParentActivityController extends BaseParentController
                 ->pluck('school_id')
                 ->unique();
 
-            if (! $schoolIds->contains($activity->school_id)) {
+            if (! $activity->is_global && ! $schoolIds->contains($activity->school_id)) {
                 return $this->errorResponse('Bu etkinliğe erişim yetkiniz yok.', 403);
             }
 

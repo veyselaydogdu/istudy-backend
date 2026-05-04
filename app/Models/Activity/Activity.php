@@ -7,6 +7,7 @@ use App\Models\Academic\SchoolClass;
 use App\Models\Base\BaseModel;
 use App\Models\Child\Child;
 use App\Models\School\School;
+use App\Models\Tenant\Tenant;
 
 class Activity extends BaseModel
 {
@@ -14,6 +15,8 @@ class Activity extends BaseModel
 
     protected $fillable = [
         'school_id',
+        'tenant_id',
+        'is_global',
         'academic_year_id',
         'name',
         'description',
@@ -36,6 +39,7 @@ class Activity extends BaseModel
     protected function casts(): array
     {
         return [
+            'is_global' => 'boolean',
             'is_paid' => 'boolean',
             'is_enrollment_required' => 'boolean',
             'cancellation_allowed' => 'boolean',
@@ -50,6 +54,11 @@ class Activity extends BaseModel
     public function children()
     {
         return $this->belongsToMany(Child::class, 'child_activity_enrollments', 'activity_id', 'child_id')->withTimestamps();
+    }
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class)->withDefault();
     }
 
     public function school()

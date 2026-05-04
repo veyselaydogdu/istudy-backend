@@ -54,6 +54,7 @@ interface ActivityDetail {
   description: string | null;
   is_paid: boolean;
   is_enrollment_required: boolean;
+  is_global?: boolean;
   cancellation_allowed: boolean;
   cancellation_deadline: string | null;
   price: string | null;
@@ -65,6 +66,8 @@ interface ActivityDetail {
   enrollments_count: number | null;
   school: { id: number; name: string } | null;
   school_id: number | null;
+  tenant?: { id: number; name: string } | null;
+  tenant_name?: string | null;
   classes: Array<{ id: number; name: string }>;
   gallery: GalleryItem[];
   materials: string[];
@@ -194,11 +197,11 @@ export default function ActivityEventDetailScreen() {
     void loadChildren();
   }, [load, loadChildren]);
 
-  // Etkinliğe uygun çocuklar: aynı okul, etkinliğin sınıf kısıtlaması varsa sınıf da uygun olmalı
+  // Etkinliğe uygun çocuklar: global etkinliklerde okul/sınıf kısıtlaması yok
   const eligibleChildren = (act: ActivityDetail): FamilyChild[] => {
     return children.filter((c) => {
-      if (c.school_id !== act.school_id) { return false; }
-      if (act.classes.length === 0) { return true; }
+      if (!act.is_global && c.school_id !== act.school_id) { return false; }
+      if (act.is_global || act.classes.length === 0) { return true; }
       const childClassIds = (c.classes ?? []).map((cl) => cl.id);
       return act.classes.some((ac) => childClassIds.includes(ac.id));
     });
@@ -302,11 +305,24 @@ export default function ActivityEventDetailScreen() {
             <Ionicons name="flag" size={36} color={AppColors.primary} />
           </View>
           <Text style={styles.heroName}>{activity.name}</Text>
-          {activity.school && (
+          {activity.is_global ? (
+            <View style={styles.globalRow}>
+              <Ionicons name="globe-outline" size={14} color="#7C3AED" />
+              <Text style={styles.globalText}>{activity.tenant_name ?? activity.tenant?.name ?? 'Global Etkinlik'}</Text>
+            </View>
+          ) : activity.tenant_name ? (
+            <Text style={styles.heroSchool}>{activity.tenant_name}</Text>
+          ) : activity.school ? (
             <Text style={styles.heroSchool}>{activity.school.name}</Text>
-          )}
+          ) : null}
 
           <View style={styles.heroBadges}>
+            {activity.is_global && (
+              <View style={[styles.badge, styles.badgePurple]}>
+                <Ionicons name="globe-outline" size={13} color="#7C3AED" />
+                <Text style={styles.badgeTextPurple}>Global</Text>
+              </View>
+            )}
             {isEnrolled ? (
               <View style={[styles.badge, styles.badgeGreen]}>
                 <Ionicons name="checkmark-circle" size={13} color="#fff" />
@@ -398,6 +414,17 @@ export default function ActivityEventDetailScreen() {
           ) : null}
 
           <View style={styles.infoGrid}>
+            {(activity.tenant_name || activity.school) && (
+              <View style={styles.infoRow}>
+                <Ionicons name={activity.is_global ? 'globe-outline' : 'business-outline'} size={16} color="#9CA3AF" />
+                <View>
+                  <Text style={styles.infoLabel}>{activity.is_global ? 'Düzenleyen' : 'Okul'}</Text>
+                  <Text style={styles.infoValue}>
+                    {activity.tenant_name ?? activity.school?.name}
+                  </Text>
+                </View>
+              </View>
+            )}
             {startFmt && (
               <View style={styles.infoRow}>
                 <Ionicons name="calendar-outline" size={16} color="#9CA3AF" />
@@ -749,6 +776,10 @@ const styles = StyleSheet.create({
   badgeTextAmber: { fontSize: 12, fontWeight: '700', color: AppColors.warning },
   badgeTextBlue: { fontSize: 12, fontWeight: '700', color: AppColors.primary },
   badgeTextGray: { fontSize: 12, fontWeight: '600', color: AppColors.onSurfaceVariant },
+  badgePurple: { backgroundColor: '#EDE9FE' },
+  badgeTextPurple: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
+  globalRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  globalText: { fontSize: 13, color: '#7C3AED', fontWeight: '600' },
 
   // Section
   section: {

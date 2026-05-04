@@ -50,9 +50,11 @@ class ParentActivityClassController extends BaseParentController
                         // VEYA tenant geneli (school_id null) olan etkinlikler
                         ->orWhere(function ($q2) use ($tenantIds) {
                             $q2->whereNull('school_id')->whereIn('tenant_id', $tenantIds);
-                        });
+                        })
+                        // VEYA herkese açık global etkinlikler
+                        ->orWhere('is_global', true);
                 })
-                ->with(['schoolClasses:id,name', 'teachers.user:id,name,surname'])
+                ->with(['schoolClasses:id,name', 'teachers.user:id,name,surname', 'school:id,name', 'tenant:id,name'])
                 ->withCount(['activeEnrollments']);
 
             $data = $query->latest()->paginate(request('per_page', 20));
@@ -118,9 +120,10 @@ class ParentActivityClassController extends BaseParentController
                 ->where('is_active', true)
                 ->where(function ($q) use ($schoolIds, $tenantIds) {
                     $q->whereIn('school_id', $schoolIds)
-                        ->orWhere(fn ($q2) => $q2->whereNull('school_id')->whereIn('tenant_id', $tenantIds));
+                        ->orWhere(fn ($q2) => $q2->whereNull('school_id')->whereIn('tenant_id', $tenantIds))
+                        ->orWhere('is_global', true);
                 })
-                ->with(['schoolClasses:id,name', 'teachers.user:id,name,surname', 'materials'])
+                ->with(['schoolClasses:id,name', 'teachers.user:id,name,surname', 'materials', 'school:id,name', 'tenant:id,name'])
                 ->findOrFail($activity_class_id);
 
             return $this->successResponse($this->formatActivityClass($activityClass));
@@ -156,17 +159,19 @@ class ParentActivityClassController extends BaseParentController
                 ->where('is_active', true)
                 ->findOrFail($activity_class_id);
 
-            // Okul kontrolü: etkinlik belirli bir okula aitse çocuğun o okulda kayıtlı olması gerekir.
-            // Tenant geneli etkinlikte (school_id null) okul kontrolü yapılmaz, tenant eşleşmesi yeterlidir.
-            if ($activityClass->school_id !== null && $child->school_id !== $activityClass->school_id) {
-                return $this->errorResponse('Çocuğunuz bu etkinlik sınıfının okuluna kayıtlı değil.', 422);
-            }
+            // Global etkinlik sınıflarında okul/tenant kontrolü yapılmaz
+            if (! $activityClass->is_global) {
+                // Okul kontrolü: etkinlik belirli bir okula aitse çocuğun o okulda kayıtlı olması gerekir
+                if ($activityClass->school_id !== null && $child->school_id !== $activityClass->school_id) {
+                    return $this->errorResponse('Çocuğunuz bu etkinlik sınıfının okuluna kayıtlı değil.', 422);
+                }
 
-            // Tenant geneli etkinlikte çocuğun herhangi bir okula kayıtlı olması gerekir
-            if ($activityClass->school_id === null) {
-                $childSchool = School::find($child->school_id);
-                if (! $childSchool || $childSchool->tenant_id !== $activityClass->tenant_id) {
-                    return $this->errorResponse('Bu etkinlik sınıfına erişim yetkiniz yok.', 422);
+                // Tenant geneli etkinlikte çocuğun herhangi bir okula kayıtlı olması gerekir
+                if ($activityClass->school_id === null) {
+                    $childSchool = School::find($child->school_id);
+                    if (! $childSchool || $childSchool->tenant_id !== $activityClass->tenant_id) {
+                        return $this->errorResponse('Bu etkinlik sınıfına erişim yetkiniz yok.', 422);
+                    }
                 }
             }
 
@@ -368,7 +373,8 @@ class ParentActivityClassController extends BaseParentController
             $activityClass = ActivityClass::withoutGlobalScope('tenant')
                 ->where(function ($q) use ($schoolIds, $tenantIds) {
                     $q->whereIn('school_id', $schoolIds)
-                        ->orWhere(fn ($q2) => $q2->whereNull('school_id')->whereIn('tenant_id', $tenantIds));
+                        ->orWhere(fn ($q2) => $q2->whereNull('school_id')->whereIn('tenant_id', $tenantIds))
+                        ->orWhere('is_global', true);
                 })
                 ->findOrFail($activity_class_id);
 
@@ -393,6 +399,9 @@ class ParentActivityClassController extends BaseParentController
         return [
             'id' => $ac->id,
             'name' => $ac->name,
+            'is_global' => $ac->is_global,
+            'school_name' => $ac->relationLoaded('school') ? $ac->school?->name : null,
+            'tenant_name' => $ac->relationLoaded('tenant') ? $ac->tenant?->name : null,
             'description' => $ac->description,
             'language' => $ac->language,
             'age_min' => $ac->age_min,

@@ -26,6 +26,9 @@ interface ActivityClassDetail {
   name: string;
   description: string | null;
   language: string;
+  is_global?: boolean;
+  school_name?: string | null;
+  tenant_name?: string | null;
   age_min: number | null;
   age_max: number | null;
   capacity: number | null;
@@ -215,7 +218,21 @@ export default function ActivityClassDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>{activityClass.name}</Text>
+          {activityClass.is_global ? (
+            <View style={styles.globalRow}>
+              <Ionicons name="globe-outline" size={14} color="#7C3AED" />
+              <Text style={styles.globalText}>{activityClass.tenant_name ?? 'Global Etkinlik Sınıfı'}</Text>
+            </View>
+          ) : (activityClass.tenant_name || activityClass.school_name) ? (
+            <Text style={styles.schoolNameText}>{activityClass.tenant_name ?? activityClass.school_name}</Text>
+          ) : null}
           <View style={styles.heroTags}>
+            {activityClass.is_global && (
+              <View style={styles.globalTag}>
+                <Ionicons name="globe-outline" size={12} color="#7C3AED" />
+                <Text style={styles.globalTagText}>Global</Text>
+              </View>
+            )}
             <View style={styles.langTag}>
               <Text style={styles.langTagText}>{activityClass.language.toUpperCase()}</Text>
             </View>
@@ -237,6 +254,15 @@ export default function ActivityClassDetailScreen() {
 
         {/* Info Cards */}
         <View style={styles.infoGrid}>
+          {(activityClass.school_name || activityClass.tenant_name) && (
+            <View style={[styles.infoCard, { flex: 2 }]}>
+              <Ionicons name={activityClass.is_global ? 'globe-outline' : 'business-outline'} size={20} color={activityClass.is_global ? '#7C3AED' : AppColors.primary} />
+              <Text style={styles.infoLabel}>{activityClass.is_global ? 'Düzenleyen' : 'Okul'}</Text>
+              <Text style={[styles.infoValue, activityClass.is_global && { color: '#7C3AED' }]}>
+                {activityClass.tenant_name ?? activityClass.school_name}
+              </Text>
+            </View>
+          )}
           {(activityClass.age_min != null || activityClass.age_max != null) && (
             <View style={styles.infoCard}>
               <Ionicons name="people-outline" size={20} color={AppColors.primary} />
@@ -451,6 +477,11 @@ const styles = StyleSheet.create({
   freeTag: { backgroundColor: AppColors.successContainer, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   freeTagText: { fontSize: 12, color: '#065F46', fontWeight: '600' },
   heroDesc: { fontSize: 14, color: AppColors.onSurfaceVariant, lineHeight: 20 },
+  globalRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  globalText: { fontSize: 13, color: '#7C3AED', fontWeight: '600' },
+  schoolNameText: { fontSize: 13, color: AppColors.onSurfaceVariant, marginBottom: 4 },
+  globalTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EDE9FE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  globalTagText: { fontSize: 12, color: '#7C3AED', fontWeight: '700' },
   infoGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
   infoCard: {
     flex: 1, minWidth: 140, backgroundColor: AppColors.white, borderRadius: 10,
