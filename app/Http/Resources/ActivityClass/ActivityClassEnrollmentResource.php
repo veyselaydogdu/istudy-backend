@@ -12,7 +12,7 @@ class ActivityClassEnrollmentResource extends JsonResource
         return [
             'id' => $this->id,
             'activity_class_id' => $this->activity_class_id,
-            'child_id' => $this->child_id,
+            'child_id' => $this->whenLoaded('child', fn () => $this->child?->ulid, $this->child_id),
             'status' => $this->status,
             'enrolled_by' => $this->enrolled_by,
             'enrolled_at' => $this->enrolled_at,

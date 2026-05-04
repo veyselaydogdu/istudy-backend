@@ -144,7 +144,7 @@ export default function ActivityClassDetailPage() {
         setEnrolling(true);
         try {
             await apiClient.post(`/activity-classes/${activityClass.id}/enrollments`, {
-                child_id: parseInt(enrollChildId),
+                child_id: enrollChildId,
                 notes: enrollNotes || undefined,
                 generate_invoice: enrollGenerateInvoice,
             });
@@ -312,7 +312,12 @@ export default function ActivityClassDetailPage() {
 
     // Filter out already enrolled children
     const enrolledChildIds = new Set(enrollments.map(e => e.child_id));
-    const availableChildren = schoolChildren.filter(c => !enrolledChildIds.has(c.id));
+    const restrictedClassIds = !activityClass.is_school_wide && activityClass.school_classes?.length
+        ? new Set(activityClass.school_classes.map(sc => sc.id))
+        : null;
+    const availableChildren = schoolChildren
+        .filter(c => !enrolledChildIds.has(c.id))
+        .filter(c => !restrictedClassIds || c.classes?.some(cls => restrictedClassIds.has(cls.id)));
 
     return (
         <div className="p-4">

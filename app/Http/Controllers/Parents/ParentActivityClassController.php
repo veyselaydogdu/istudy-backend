@@ -140,7 +140,7 @@ class ParentActivityClassController extends BaseParentController
     public function enroll(Request $request, int $activity_class_id): JsonResponse
     {
         $request->validate([
-            'child_id' => 'required|integer|exists:children,id',
+            'child_id' => 'required|string',
         ]);
 
         try {
@@ -153,7 +153,8 @@ class ParentActivityClassController extends BaseParentController
 
             $child = Child::withoutGlobalScope('tenant')
                 ->where('family_profile_id', $familyProfile->id)
-                ->findOrFail($request->child_id);
+                ->where(is_numeric($request->child_id) ? 'id' : 'ulid', $request->child_id)
+                ->firstOrFail();
 
             $activityClass = ActivityClass::withoutGlobalScope('tenant')
                 ->where('is_active', true)

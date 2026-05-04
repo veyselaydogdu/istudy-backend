@@ -78,13 +78,17 @@ class TenantActivityClassController extends BaseController
             'notes' => 'nullable|string',
             'is_global' => 'boolean',
             'school_class_ids' => 'nullable|array',
-            'school_class_ids.*' => 'string',
+            'school_class_ids.*' => 'nullable',
         ]);
+
+        $isGlobal = (bool) ($validated['is_global'] ?? false);
+
+        if (! $isGlobal && ! ($validated['is_school_wide'] ?? true) && empty($validated['school_class_ids'])) {
+            return $this->errorResponse('Belirli sınıflar seçildiğinde en az bir sınıf belirtilmelidir.', 422);
+        }
 
         try {
             DB::beginTransaction();
-
-            $isGlobal = (bool) ($validated['is_global'] ?? false);
 
             $activityClass = ActivityClass::create(array_merge($validated, [
                 'tenant_id' => $this->user()->tenant_id,
@@ -158,8 +162,15 @@ class TenantActivityClassController extends BaseController
             'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string',
             'school_class_ids' => 'nullable|array',
-            'school_class_ids.*' => 'string',
+            'school_class_ids.*' => 'nullable',
         ]);
+
+        $isGlobal = $validated['is_global'] ?? $activityClass->is_global;
+        $isSchoolWide = $validated['is_school_wide'] ?? $activityClass->is_school_wide;
+
+        if (! $isGlobal && ! $isSchoolWide && array_key_exists('school_class_ids', $validated) && empty($validated['school_class_ids'])) {
+            return $this->errorResponse('Belirli sınıflar seçildiğinde en az bir sınıf belirtilmelidir.', 422);
+        }
 
         try {
             DB::beginTransaction();
@@ -233,7 +244,7 @@ class TenantActivityClassController extends BaseController
     public function enrollmentStore(Request $request, int $activity_class_id): JsonResponse
     {
         $request->validate([
-            'child_id' => 'required|integer|exists:children,id',
+            'child_id' => 'required|string',
             'notes' => 'nullable|string',
             'generate_invoice' => 'boolean',
             'invoice_required' => 'boolean',
@@ -243,7 +254,9 @@ class TenantActivityClassController extends BaseController
         try {
             DB::beginTransaction();
             $activityClass = $this->findOwned($activity_class_id);
-            $child = Child::findOrFail($request->child_id);
+            $child = is_numeric($request->child_id)
+                ? Child::findOrFail($request->child_id)
+                : Child::where('ulid', $request->child_id)->firstOrFail();
 
             $existing = ActivityClassEnrollment::where('activity_class_id', $activityClass->id)
                 ->where('child_id', $child->id)->whereNull('deleted_at')->first();

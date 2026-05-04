@@ -132,6 +132,10 @@ export default function ActivityClassesPage() {
 
     const handleSave = async () => {
         if (!form.name.trim()) { toast.error('İsim zorunludur.'); return; }
+        if (!form.is_global && !form.is_school_wide && form.school_class_ids.length === 0) {
+            toast.error('Belirli sınıflar seçildiğinde en az bir sınıf seçmelisiniz.');
+            return;
+        }
         setSaving(true);
         try {
             const payload = {
