@@ -552,6 +552,7 @@ export type TenantNotification = {
 export type ActivityClass = {
     id: number
     school_id: number | null
+    school?: { id: string; name: string } | null
     name: string
     description?: string | null
     language: string
@@ -572,7 +573,7 @@ export type ActivityClass = {
     location?: string | null
     address?: string | null
     notes?: string | null
-    school_classes?: Array<{ id: number; name: string }>
+    school_classes?: Array<{ id: string; name: string }>
     teachers?: Array<{ id: number; name: string; role?: string | null }>
     materials?: ActivityClassMaterial[]
     created_at: string

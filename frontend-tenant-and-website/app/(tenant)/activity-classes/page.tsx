@@ -28,7 +28,7 @@ type ActivityClassForm = {
     location: string;
     address: string;
     notes: string;
-    school_class_ids: number[];
+    school_class_ids: string[];
 };
 
 const emptyForm: ActivityClassForm = {
@@ -184,7 +184,7 @@ export default function ActivityClassesPage() {
         }
     };
 
-    const toggleClass = (id: number) => {
+    const toggleClass = (id: string) => {
         setForm(prev => ({
             ...prev,
             school_class_ids: prev.school_class_ids.includes(id)
@@ -239,6 +239,7 @@ export default function ActivityClassesPage() {
                                     <tr>
                                         <th>{t('activityClasses.nameLabel').replace(' *','') || 'İsim'}</th>
                                         <th>{t('activityClasses.schoolLabel').split(' (')[0] || 'Okul'}</th>
+                                        <th>Sınıflar</th>
                                         <th>{t('activityClasses.languageLabel') || 'Dil'}</th>
                                         <th>{t('activityClasses.ageMinLabel').replace('Min ', '') || 'Yaş'}</th>
                                         <th>{t('activityClasses.capacityLabel') || 'Kapasite'}</th>
@@ -255,26 +256,28 @@ export default function ActivityClassesPage() {
                                             <td>
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium text-[#3b3f5c] dark:text-white">{ac.name}</span>
-                                                    {(ac as ActivityClass & { is_global?: boolean }).is_global && (
+                                                    {ac.is_global && (
                                                         <span className="badge badge-outline-warning text-xs flex items-center gap-1">
                                                             <Globe className="h-3 w-3" /> Global
                                                         </span>
                                                     )}
                                                 </div>
-                                                {!(ac as ActivityClass & { is_global?: boolean }).is_global && (
-                                                    ac.is_school_wide ? (
-                                                        <span className="text-xs text-[#888ea8]">Tüm okul</span>
-                                                    ) : (
-                                                        <span className="text-xs text-[#888ea8]">{ac.school_classes?.map(c => c.name).join(', ')}</span>
-                                                    )
-                                                )}
+                                            </td>
+                                                            <td className="text-sm text-[#888ea8]">
+                                                {ac.is_global
+                                                    ? <span className="badge badge-outline-warning flex items-center gap-1"><Globe className="h-3 w-3" /> Tüm Sistem</span>
+                                                    : ac.school
+                                                        ? ac.school.name
+                                                        : <span className="badge badge-outline-info">Tüm Okullar</span>}
                                             </td>
                                             <td className="text-sm text-[#888ea8]">
-                                                {(ac as ActivityClass & { is_global?: boolean }).is_global
-                                                    ? <span className="badge badge-outline-warning flex items-center gap-1"><Globe className="h-3 w-3" /> Tüm Sistem</span>
-                                                    : ac.school_id
-                                                        ? (schools.find(s => s.id === ac.school_id)?.name ?? `Okul #${ac.school_id}`)
-                                                        : <span className="badge badge-outline-info">Tüm Okullar</span>}
+                                                {ac.is_global ? (
+                                                    <span className="text-[#c8c8c8]">—</span>
+                                                ) : ac.is_school_wide || !ac.school_classes?.length ? (
+                                                    <span className="badge badge-outline-info">Tüm Sınıflar</span>
+                                                ) : (
+                                                    <span>{ac.school_classes.map(c => c.name).join(', ')}</span>
+                                                )}
                                             </td>
                                             <td><span className="badge badge-outline-info uppercase">{ac.language}</span></td>
                                             <td className="text-sm">

@@ -405,9 +405,12 @@ export default function ActivitiesPage() {
                                                         {activity.end_date && new Date(activity.end_date).toLocaleDateString('tr-TR')}
                                                     </p>
                                                 )}
-                                                {activity.classes && activity.classes.length > 0 && (
-                                                    <p className="mt-1 text-xs text-[#888ea8]">
-                                                        {t('activities.assignedClasses', { count: activity.classes.length })}
+                                                {!(activity as Activity & { is_global?: boolean }).is_global && (
+                                                    <p className="mt-1 flex items-center gap-1 text-xs text-[#888ea8]">
+                                                        <Users className="h-3 w-3 shrink-0" />
+                                                        {activity.classes && activity.classes.length > 0
+                                                            ? activity.classes.map(c => c.name).join(', ')
+                                                            : 'Tüm Sınıflar'}
                                                     </p>
                                                 )}
                                             </div>

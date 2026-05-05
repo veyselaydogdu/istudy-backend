@@ -34,8 +34,12 @@ class ActivityClassResource extends JsonResource
             'notes' => $this->notes,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'school' => $this->whenLoaded('school', fn () => [
+                'id' => $this->school->ulid,
+                'name' => $this->school->name,
+            ]),
             'school_classes' => $this->whenLoaded('schoolClasses', fn () => $this->schoolClasses->map(fn ($c) => [
-                'id' => $c->id,
+                'id' => $c->ulid,
                 'name' => $c->name,
             ])),
             'teachers' => $this->whenLoaded('teachers', fn () => $this->teachers->map(fn ($t) => [

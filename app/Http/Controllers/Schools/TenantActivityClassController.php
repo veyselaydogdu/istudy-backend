@@ -11,6 +11,7 @@ use App\Models\ActivityClass\ActivityClassInvoice;
 use App\Models\ActivityClass\ActivityClassMaterial;
 use App\Models\Child\Child;
 use App\Services\ActivityClassInvoiceService;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ class TenantActivityClassController extends BaseController
             $tenantId = $this->user()->tenant_id;
 
             $query = ActivityClass::where('tenant_id', $tenantId)
-                ->with(['schoolClasses:id,name', 'teachers.user:id,name,surname'])
+                ->with(['school:id,ulid,name', 'schoolClasses:id,ulid,name', 'teachers.user:id,name,surname'])
                 ->withCount(['activeEnrollments']);
 
             if ($schoolId = request('school_id')) {
@@ -101,7 +102,7 @@ class TenantActivityClassController extends BaseController
                 $activityClass->schoolClasses()->sync($this->resolveClassIds($validated['school_class_ids']));
             }
 
-            $activityClass->load(['schoolClasses:id,name', 'teachers.user:id,name,surname']);
+            $activityClass->load(['school:id,ulid,name', 'schoolClasses:id,ulid,name', 'teachers.user:id,name,surname']);
 
             DB::commit();
 
@@ -124,7 +125,8 @@ class TenantActivityClassController extends BaseController
             $this->authorizeOwnership($activityClass);
 
             $activityClass->load([
-                'schoolClasses:id,name',
+                'school:id,ulid,name',
+                'schoolClasses:id,ulid,name',
                 'teachers.user:id,name,surname',
                 'materials',
                 'activeEnrollments.child',
@@ -192,7 +194,13 @@ class TenantActivityClassController extends BaseController
                 }
             }
 
-            $activityClass->load(['schoolClasses:id,name', 'teachers.user:id,name,surname']);
+            $activityClass->load(['school:id,ulid,name', 'schoolClasses:id,ulid,name', 'teachers.user:id,name,surname']);
+
+            // Sınıf kısıtlamalı etkinlikte kapsam daraldıysa etkilenen kayıtları iptal et
+            if (! $isGlobal && ! ($activityClass->is_school_wide) && array_key_exists('school_class_ids', $validated)) {
+                $this->cancelEnrollmentsOutsideScope($activityClass);
+            }
+
             DB::commit();
 
             return $this->successResponse(
@@ -557,6 +565,62 @@ class TenantActivityClassController extends BaseController
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Etkinlik sınıfının kapsamı daraldığında, artık kapsam dışındaki çocukların kayıtlarını iptal eder.
+     * Ödeme yapılmışsa iade faturası oluşturur ve ebeveyne bildirim gönderir.
+     */
+    private function cancelEnrollmentsOutsideScope(ActivityClass $activityClass): void
+    {
+        $allowedClassIds = $activityClass->schoolClasses()->pluck('classes.id')->toArray();
+
+        if (empty($allowedClassIds)) {
+            return;
+        }
+
+        $enrollments = ActivityClassEnrollment::where('activity_class_id', $activityClass->id)
+            ->where('status', 'active')
+            ->with(['child.classes', 'familyProfile.owner'])
+            ->get();
+
+        foreach ($enrollments as $enrollment) {
+            $childClassIds = $enrollment->child?->classes?->pluck('id')->toArray() ?? [];
+            $inScope = ! empty(array_intersect($childClassIds, $allowedClassIds));
+
+            if ($inScope) {
+                continue;
+            }
+
+            $billingResult = (new ActivityClassInvoiceService)->handleEnrollmentCancellation(
+                $enrollment->id,
+                'Etkinlik sınıfı kapsam değişikliği — çocuğun sınıfı kapsam dışına çıkarıldı.'
+            );
+
+            $enrollment->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+            $enrollment->delete();
+
+            $parentUserId = $enrollment->familyProfile?->owner?->id;
+
+            if ($parentUserId) {
+                $message = "'{$activityClass->name}' etkinlik sınıfına olan kaydınız, sınıf kapsam değişikliği nedeniyle iptal edildi.";
+
+                if ($billingResult['refunded']) {
+                    $message .= ' Ödemeniz için iade faturası düzenlendi.';
+                }
+
+                (new NotificationService)->createAndDispatch([
+                    'type' => 'activity_class_enrollment_cancelled',
+                    'title' => 'Etkinlik Sınıfı Kaydı İptal Edildi',
+                    'body' => $message,
+                    'priority' => 'high',
+                    'school_id' => $activityClass->school_id,
+                    'action_type' => ActivityClass::class,
+                    'action_id' => $activityClass->id,
+                    'created_by' => $this->user()->id,
+                ], [$parentUserId]);
+            }
+        }
+    }
 
     private function authorizeOwnership(ActivityClass $activityClass): void
     {
