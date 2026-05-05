@@ -41,6 +41,20 @@ interface Activity {
   enrolled_child_ids?: number[];
 }
 
+interface MyActivityEnrollment {
+  activity_id: number;
+  name: string;
+  is_global: boolean;
+  is_paid: boolean;
+  price: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  school: { id: number; name: string } | null;
+  tenant_name: string | null;
+  children: Array<{ id: string; full_name: string }>;
+  enrolled_at: string;
+}
+
 interface ActivityClass {
   id: number;
   name: string;
@@ -298,11 +312,12 @@ function ActivityClassCard({ item }: { item: ActivityClass }) {
 
 // ─── Tab indicator ────────────────────────────────────────────────────────────
 
-type Tab = 'Etkinlikler' | 'Etkinlik Sınıfları';
+type Tab = 'Etkinlikler' | 'Etkinlik Sınıfları' | 'Etkinliklerim';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'Etkinlikler', label: 'Etkinlikler' },
   { key: 'Etkinlik Sınıfları', label: 'Etkinlik Sınıfları' },
+  { key: 'Etkinliklerim', label: 'Etkinliklerim' },
 ];
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -327,6 +342,12 @@ export default function ActivitiesScreen() {
   const [acRefreshing, setAcRefreshing] = useState(false);
   const [acLoadingMore, setAcLoadingMore] = useState(false);
   const [acFetched, setAcFetched] = useState(false);
+
+  // My enrollments state
+  const [myEnrollments, setMyEnrollments] = useState<MyActivityEnrollment[]>([]);
+  const [myLoading, setMyLoading] = useState(false);
+  const [myRefreshing, setMyRefreshing] = useState(false);
+  const [myFetched, setMyFetched] = useState(false);
 
   const switchTab = (tab: Tab) => setActiveTab(tab);
 
@@ -372,6 +393,20 @@ export default function ActivitiesScreen() {
     }
   }, []);
 
+  const loadMyEnrollments = useCallback(async () => {
+    try {
+      setMyLoading(true);
+      const res = await api.get('/parent/activities/my-enrollments');
+      setMyEnrollments(res.data?.data ?? []);
+      setMyFetched(true);
+    } catch (err) {
+      Alert.alert('Hata', getApiError(err));
+    } finally {
+      setMyLoading(false);
+      setMyRefreshing(false);
+    }
+  }, []);
+
   // İlk yükleme — Etkinlikler sekmesi açık
   useEffect(() => {
     if (!actFetched) { void loadActivities(1); }
@@ -382,7 +417,10 @@ export default function ActivitiesScreen() {
     if (activeTab === 'Etkinlik Sınıfları' && !acFetched) {
       void loadActivityClasses(1);
     }
-  }, [activeTab, acFetched, loadActivityClasses]);
+    if (activeTab === 'Etkinliklerim' && !myFetched) {
+      void loadMyEnrollments();
+    }
+  }, [activeTab, acFetched, myFetched, loadActivityClasses, loadMyEnrollments]);
 
   // ─── Render helpers ───────────────────────────────────────────────────────────
 
@@ -454,6 +492,97 @@ export default function ActivitiesScreen() {
     );
   };
 
+  // ─── My Enrollments list ──────────────────────────────────────────────────────
+
+  const renderMyEnrollments = () => {
+    if (myLoading) {
+      return <View style={styles.centered}><ActivityIndicator size="large" color={AppColors.primary} /></View>;
+    }
+    return (
+      <FlatList
+        data={myEnrollments}
+        keyExtractor={(item) => `my-${item.activity_id}`}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={myRefreshing}
+            onRefresh={() => { setMyRefreshing(true); void loadMyEnrollments(); }}
+          />
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push(`/(app)/activities/event/${item.activity_id}`)}
+            activeOpacity={0.75}
+          >
+            <View style={styles.cardHeader}>
+              <View style={[styles.cardIconWrap, { backgroundColor: AppColors.successContainer }]}>
+                <Ionicons name="checkmark-circle" size={20} color={AppColors.success} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                {item.tenant_name ? (
+                  <Text style={styles.cardSchool}>{item.tenant_name}</Text>
+                ) : null}
+              </View>
+              <View style={{ gap: 4, alignItems: 'flex-end' }}>
+                {item.is_global && (
+                  <View style={styles.globalBadge}>
+                    <Ionicons name="globe-outline" size={11} color="#7C3AED" />
+                    <Text style={styles.globalBadgeText}>Global</Text>
+                  </View>
+                )}
+                {item.is_paid ? (
+                  <View style={styles.paidBadge}>
+                    <Text style={styles.paidText}>{item.price} ₺</Text>
+                  </View>
+                ) : (
+                  <View style={styles.freeBadge}>
+                    <Text style={styles.freeText}>Ücretsiz</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.cardMeta}>
+              {(item.start_date || item.end_date) && (
+                <View style={styles.metaItem}>
+                  <Ionicons name="calendar-outline" size={13} color="#9CA3AF" />
+                  <Text style={styles.metaText}>{formatDateRange(item.start_date, item.end_date)}</Text>
+                </View>
+              )}
+              <View style={styles.metaItem}>
+                <Ionicons name="people-outline" size={13} color="#9CA3AF" />
+                <Text style={styles.metaText}>
+                  {item.children.map(c => c.full_name).join(', ')}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.cardFooter}>
+              {item.school?.name || item.tenant_name ? (
+                <View style={[styles.schoolBadge, item.is_global && styles.schoolBadgeGlobal]}>
+                  <Ionicons name={item.is_global ? 'globe-outline' : 'business-outline'} size={11} color={item.is_global ? '#7C3AED' : AppColors.primary} />
+                  <Text style={[styles.schoolBadgeText, item.is_global && { color: '#7C3AED' }]}>
+                    {item.tenant_name ?? item.school?.name}
+                  </Text>
+                </View>
+              ) : null}
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Ionicons name="calendar-clear-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Kayıt Yok</Text>
+            <Text style={styles.emptyText}>Henüz hiçbir etkinliğe kayıt olmadınız.</Text>
+          </View>
+        }
+      />
+    );
+  };
+
   // ─── Main render ──────────────────────────────────────────────────────────────
 
   return (
@@ -471,7 +600,9 @@ export default function ActivitiesScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        {activeTab === 'Etkinlikler' ? renderActivities() : renderActivityClasses()}
+        {activeTab === 'Etkinlikler' ? renderActivities()
+          : activeTab === 'Etkinlik Sınıfları' ? renderActivityClasses()
+          : renderMyEnrollments()}
       </View>
     </SafeAreaView>
   );

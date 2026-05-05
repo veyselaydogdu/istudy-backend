@@ -40,7 +40,7 @@ interface Participant {
 }
 
 interface FamilyChild {
-  id: number;
+  id: string;
   first_name: string;
   last_name: string;
   full_name: string;
@@ -62,7 +62,7 @@ interface ActivityDetail {
   start_time: string | null;
   end_date: string | null;
   end_time: string | null;
-  enrolled_child_ids: number[];
+  enrolled_child_ids: string[];
   enrollments_count: number | null;
   school: { id: number; name: string } | null;
   school_id: number | null;
@@ -169,7 +169,7 @@ export default function ActivityEventDetailScreen() {
   // Çocuk seçim modal state'i
   const [children, setChildren] = useState<FamilyChild[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerChildId, setPickerChildId] = useState<number | null>(null);
+  const [pickerChildId, setPickerChildId] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) { setLoading(true); }

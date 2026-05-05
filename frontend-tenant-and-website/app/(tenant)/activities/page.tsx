@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { Activity, School, SchoolClass } from '@/types';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw, Users, MapPin, Globe, Info } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw, Users, Globe, Info } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type ActivityForm = {
@@ -42,8 +42,7 @@ export default function ActivitiesPage() {
     const [selectedSchoolId, setSelectedSchoolId] = useState('');
     const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
 
-    const [eventTab, setEventTab] = useState<'school' | 'global'>('school');
-    const [statusFilter, setStatusFilter] = useState<'active' | 'ended' | 'deleted'>('active');
+    const [statusFilter, setStatusFilter] = useState<'active' | 'ended'>('active');
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
@@ -55,77 +54,71 @@ export default function ActivitiesPage() {
     const [saving, setSaving] = useState(false);
     const [materialInput, setMaterialInput] = useState('');
 
+    // Modal için seçilen okul (form.is_global=false iken)
+    const [formSchoolId, setFormSchoolId] = useState('');
+
     const fetchSchools = useCallback(async () => {
         try {
             const res = await apiClient.get('/schools');
             const data: School[] = res.data?.data ?? [];
             setSchools(data);
             if (data.length > 0) {
-                setSelectedSchoolId(String(data[0].id));
+                setFormSchoolId(String(data[0].id));
             }
         } catch { /* sessizce geç */ }
     }, []);
 
     const fetchSchoolClasses = useCallback(async () => {
-        if (!selectedSchoolId) return;
+        if (!formSchoolId) return;
         try {
-            const res = await apiClient.get(`/schools/${selectedSchoolId}/classes`);
+            const res = await apiClient.get(`/schools/${formSchoolId}/classes`);
             setSchoolClasses(res.data?.data ?? []);
         } catch { /* sessizce geç */ }
-    }, [selectedSchoolId]);
+    }, [formSchoolId]);
 
     const fetchActivities = useCallback(async () => {
         setLoading(true);
         try {
-            const params: Record<string, string | number> = { page };
-            if (statusFilter === 'deleted') {
-                params.with_trashed = 'true';
-                params.status = 'deleted';
-            } else {
-                params.status = statusFilter;
+            const params: Record<string, string | number> = { page, status: statusFilter };
+            if (selectedSchoolId) {
+                params.school_id = selectedSchoolId;
             }
-
-            if (eventTab === 'global') {
-                const res = await apiClient.get('/global-events', { params });
-                setActivities(res.data?.data ?? []);
-                setLastPage(res.data?.meta?.last_page ?? 1);
-            } else {
-                if (!selectedSchoolId) { setActivities([]); setLoading(false); return; }
-                const res = await apiClient.get(`/schools/${selectedSchoolId}/activities`, { params });
-                setActivities(res.data?.data ?? []);
-                setLastPage(res.data?.meta?.last_page ?? 1);
-            }
+            const res = await apiClient.get('/all-activities', { params });
+            setActivities(res.data?.data ?? []);
+            setLastPage(res.data?.meta?.last_page ?? 1);
         } catch {
             toast.error(t('activities.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [selectedSchoolId, page, statusFilter, eventTab]);
+    }, [selectedSchoolId, page, statusFilter]);
 
     useEffect(() => { fetchSchools(); }, [fetchSchools]);
     useEffect(() => {
-        if (selectedSchoolId) {
-            setPage(1);
+        if (formSchoolId) {
             fetchSchoolClasses();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedSchoolId]);
-    useEffect(() => { setPage(1); }, [statusFilter, eventTab]);
+    }, [formSchoolId, fetchSchoolClasses]);
+    useEffect(() => { setPage(1); }, [statusFilter, selectedSchoolId]);
     useEffect(() => { fetchActivities(); }, [fetchActivities]);
 
     const openCreate = () => {
         setEditingActivity(null);
         setForm(emptyForm);
         setMaterialInput('');
+        if (schools.length > 0) setFormSchoolId(String(schools[0].id));
         setShowModal(true);
     };
 
     const openEdit = (activity: Activity) => {
         setEditingActivity(activity);
+        const isGlobal = activity.is_global ?? false;
+        const schoolId = activity.school?.id ? String(activity.school.id) : (schools[0] ? String(schools[0].id) : '');
+        setFormSchoolId(schoolId);
         setForm({
             name: activity.name,
             description: activity.description ?? '',
-            is_global: (activity as Activity & { is_global?: boolean }).is_global ?? false,
+            is_global: isGlobal,
             is_paid: activity.is_paid ?? false,
             is_enrollment_required: activity.is_enrollment_required ?? false,
             cancellation_allowed: activity.cancellation_allowed ?? false,
@@ -162,32 +155,29 @@ export default function ActivitiesPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Frontend validation
         if (!form.name.trim()) {
             toast.error(t('activities.nameRequired'));
             return;
         }
-        if (!form.is_global && !selectedSchoolId) {
+        if (!form.is_global && !formSchoolId) {
             toast.error(t('activities.schoolRequired'));
             return;
         }
-        if (form.start_date && form.start_date < today) {
-            toast.error(t('activities.startDatePast'));
-            return;
-        }
-        if (form.end_date && form.end_date < today) {
-            toast.error(t('activities.endDatePast'));
-            return;
-        }
-        if (form.cancellation_allowed && form.cancellation_deadline && form.start_date
-            && form.cancellation_deadline > form.start_date) {
-            toast.error(t('activities.cancellationDeadlineError'));
-            return;
+        if (form.cancellation_allowed && form.cancellation_deadline) {
+            const startDt = form.start_date ? `${form.start_date}T${form.start_time || '00:00'}` : null;
+            const endDt = form.end_date ? `${form.end_date}T${form.end_time || '23:59'}` : null;
+            if (startDt && form.cancellation_deadline < startDt) {
+                toast.error('İptal son tarihi, etkinlik başlangıcından önce olamaz.');
+                return;
+            }
+            if (endDt && form.cancellation_deadline > endDt) {
+                toast.error('İptal son tarihi, etkinlik bitişinden sonra olamaz.');
+                return;
+            }
         }
 
         setSaving(true);
 
-        // Global etkinlikte school_id gerekmez, ayrı endpoint kullanılır
         const isGlobal = form.is_global;
         const basePayload = {
             name: form.name.trim(),
@@ -209,21 +199,21 @@ export default function ActivitiesPage() {
         };
         const payload = isGlobal
             ? basePayload
-            : { ...basePayload, school_id: Number(selectedSchoolId), class_ids: form.class_ids };
+            : { ...basePayload, school_id: Number(formSchoolId), class_ids: form.class_ids };
 
         try {
             if (editingActivity) {
                 if (isGlobal) {
                     await apiClient.put(`/global-events/${editingActivity.id}`, payload);
                 } else {
-                    await apiClient.put(`/schools/${selectedSchoolId}/activities/${editingActivity.id}`, payload);
+                    await apiClient.put(`/schools/${formSchoolId}/activities/${editingActivity.id}`, payload);
                 }
                 toast.success(t('activities.updateSuccess'));
             } else {
                 if (isGlobal) {
                     await apiClient.post('/global-events', payload);
                 } else {
-                    await apiClient.post(`/schools/${selectedSchoolId}/activities`, payload);
+                    await apiClient.post(`/schools/${formSchoolId}/activities`, payload);
                 }
                 toast.success(t('activities.createSuccess'));
             }
@@ -234,16 +224,6 @@ export default function ActivitiesPage() {
             toast.error(error.response?.data?.message ?? t('activities.createError'));
         } finally {
             setSaving(false);
-        }
-    };
-
-    const handleRestore = async (activity: Activity) => {
-        try {
-            await apiClient.post(`/schools/${selectedSchoolId}/activities/${activity.id}/restore`);
-            toast.success(t('activities.restoreSuccess'));
-            fetchActivities();
-        } catch {
-            toast.error(t('activities.restoreError'));
         }
     };
 
@@ -259,11 +239,10 @@ export default function ActivitiesPage() {
         });
         if (!result.isConfirmed) return;
         try {
-            const isGlobal = (activity as Activity & { is_global?: boolean }).is_global;
-            if (isGlobal) {
+            if (activity.is_global) {
                 await apiClient.delete(`/global-events/${activity.id}`);
             } else {
-                await apiClient.delete(`/schools/${selectedSchoolId}/activities/${activity.id}`);
+                await apiClient.delete(`/schools/${activity.school_id}/activities/${activity.id}`);
             }
             toast.success(t('activities.deleteSuccess'));
             fetchActivities();
@@ -284,6 +263,9 @@ export default function ActivitiesPage() {
     const f = (field: keyof ActivityForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
         setForm(prev => ({ ...prev, [field]: e.target.value }));
 
+    const isEnded = (activity: Activity) =>
+        !activity.deleted_at && !!activity.end_date && new Date(activity.end_date) < new Date(new Date().toDateString());
+
     return (
         <div className="p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -295,38 +277,18 @@ export default function ActivitiesPage() {
             </div>
 
             <div className="panel">
-                {/* Sekme: Okul / Global */}
-                <div className="mb-4 flex gap-1 border-b border-[#ebedf2] pb-3 dark:border-[#1b2e4b]">
-                    <button
-                        type="button"
-                        onClick={() => setEventTab('school')}
-                        className={`btn btn-sm gap-1.5 ${eventTab === 'school' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    >
-                        <Calendar className="h-3.5 w-3.5" /> Okul Etkinlikleri
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setEventTab('global')}
-                        className={`btn btn-sm gap-1.5 ${eventTab === 'global' ? 'btn-warning' : 'btn-outline-secondary'}`}
-                    >
-                        <Globe className="h-3.5 w-3.5" /> Global Etkinlikler
-                    </button>
-                </div>
-
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-                    {eventTab === 'school' && (
-                        <div>
-                            <label className="block text-sm font-medium text-dark dark:text-white-light">{t('activities.schoolLabel')}</label>
-                            <select
-                                className="form-select mt-1 max-w-xs"
-                                value={selectedSchoolId}
-                                onChange={e => setSelectedSchoolId(e.target.value)}
-                            >
-                                {schools.length === 0 && <option value="">{t('activities.noSchool')}</option>}
-                                {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                        </div>
-                    )}
+                    <div>
+                        <label className="block text-sm font-medium text-dark dark:text-white-light">{t('activities.schoolLabel')}</label>
+                        <select
+                            className="form-select mt-1 max-w-xs"
+                            value={selectedSchoolId}
+                            onChange={e => setSelectedSchoolId(e.target.value)}
+                        >
+                            <option value="">Tüm Okullar</option>
+                            {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                    </div>
                     <div className="flex gap-1">
                         {(['active', 'ended'] as const).map(s => (
                             <button
@@ -338,15 +300,6 @@ export default function ActivitiesPage() {
                                 {s === 'active' ? t('activities.statusActive') : t('activities.statusEnded')}
                             </button>
                         ))}
-                        {eventTab === 'school' && (
-                            <button
-                                type="button"
-                                onClick={() => setStatusFilter('deleted')}
-                                className={`btn btn-sm ${statusFilter === 'deleted' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                            >
-                                {t('activities.statusDeleted')}
-                            </button>
-                        )}
                     </div>
                 </div>
 
@@ -354,68 +307,82 @@ export default function ActivitiesPage() {
                     <div className="flex h-32 items-center justify-center">
                         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                     </div>
-                ) : (eventTab === 'school' && !selectedSchoolId) ? (
-                    <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('activities.selectSchoolFirst')}</p>
                 ) : activities.length === 0 ? (
-                    <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">
-                        {eventTab === 'global' ? 'Henüz global etkinlik oluşturulmamış.' : t('activities.noActivity')}
-                    </p>
+                    <p className="py-8 text-center text-[#515365] dark:text-[#888ea8]">{t('activities.noActivity')}</p>
                 ) : (
                     <>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {activities.map(activity => {
-                                const isDeleted = !!activity.deleted_at;
-                                const isEnded = !isDeleted && activity.end_date
-                                    ? new Date(activity.end_date) < new Date(new Date().toDateString())
-                                    : false;
-                                return (
-                                    <div key={activity.id} className={`rounded border p-4 ${isDeleted ? 'border-danger/30 bg-danger/5 dark:border-danger/20' : 'border-[#ebedf2] dark:border-[#1b2e4b]'}`}>
-                                        <div className="mb-2 flex items-start justify-between gap-2">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <h3 className={`font-semibold text-dark dark:text-white ${isDeleted ? 'line-through opacity-60' : ''}`}>{activity.name}</h3>
-                                                    {isDeleted && (
-                                                        <span className="badge badge-outline-danger text-xs">{t('activities.deletedBadge')}</span>
-                                                    )}
-                                                    {isEnded && (
-                                                        <span className="badge badge-outline-warning text-xs">{t('activities.endedBadge')}</span>
-                                                    )}
-                                                    {(activity as Activity & { is_global?: boolean }).is_global && (
+                        <div className="table-responsive">
+                            <table className="table-hover table">
+                                <thead>
+                                    <tr>
+                                        <th>{t('activities.nameLabel')}</th>
+                                        <th>Okul</th>
+                                        <th>Sınıflar</th>
+                                        <th>{t('activities.startDateLabel')}</th>
+                                        <th>Kayıt</th>
+                                        <th>Ücret</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {activities.map(activity => (
+                                        <tr key={activity.id}>
+                                            <td>
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className="font-medium text-dark dark:text-white">{activity.name}</span>
+                                                    {activity.is_global && (
                                                         <span className="badge badge-outline-warning text-xs flex items-center gap-1">
                                                             <Globe className="h-3 w-3" /> Global
                                                         </span>
                                                     )}
-                                                    {activity.is_paid && (
-                                                        <span className="badge badge-outline-success text-xs">{t('activities.paidBadge')}</span>
-                                                    )}
-                                                    {activity.is_enrollment_required && (
-                                                        <span className="badge badge-outline-info text-xs">{t('activities.enrollmentBadge')}</span>
+                                                    {isEnded(activity) && (
+                                                        <span className="badge badge-outline-secondary text-xs">{t('activities.endedBadge')}</span>
                                                     )}
                                                 </div>
-                                                {activity.description && (
-                                                    <p className="mt-1 text-sm text-[#515365] dark:text-[#888ea8] line-clamp-2">
-                                                        {activity.description}
-                                                    </p>
+                                            </td>
+                                            <td className="text-sm text-[#888ea8]">
+                                                {activity.is_global ? (
+                                                    <span className="text-[#c8c8c8]">—</span>
+                                                ) : (
+                                                    <span>{activity.school?.name ?? '—'}</span>
                                                 )}
-                                                {(activity.start_date || activity.end_date) && (
-                                                    <p className="mt-1 flex items-center gap-1 text-xs text-[#888ea8]">
-                                                        <Calendar className="h-3 w-3" />
-                                                        {activity.start_date && new Date(activity.start_date).toLocaleDateString('tr-TR')}
-                                                        {activity.start_date && activity.end_date && ' — '}
-                                                        {activity.end_date && new Date(activity.end_date).toLocaleDateString('tr-TR')}
-                                                    </p>
+                                            </td>
+                                            <td className="text-sm text-[#888ea8]">
+                                                {activity.is_global ? (
+                                                    <span className="text-[#c8c8c8]">—</span>
+                                                ) : activity.classes && activity.classes.length > 0 ? (
+                                                    <span>{activity.classes.map(c => c.name).join(', ')}</span>
+                                                ) : (
+                                                    <span className="badge badge-outline-info">Tüm Sınıflar</span>
                                                 )}
-                                                {!(activity as Activity & { is_global?: boolean }).is_global && (
-                                                    <p className="mt-1 flex items-center gap-1 text-xs text-[#888ea8]">
-                                                        <Users className="h-3 w-3 shrink-0" />
-                                                        {activity.classes && activity.classes.length > 0
-                                                            ? activity.classes.map(c => c.name).join(', ')
-                                                            : 'Tüm Sınıflar'}
-                                                    </p>
+                                            </td>
+                                            <td className="text-sm text-[#888ea8]">
+                                                {activity.start_date
+                                                    ? new Date(activity.start_date).toLocaleDateString('tr-TR')
+                                                    : '—'}
+                                                {activity.end_date && (
+                                                    <span className="text-xs"> – {new Date(activity.end_date).toLocaleDateString('tr-TR')}</span>
                                                 )}
-                                            </div>
-                                            <div className="flex shrink-0 gap-1">
-                                                {!isDeleted && (
+                                            </td>
+                                            <td>
+                                                {activity.is_enrollment_required ? (
+                                                    <span className="badge badge-outline-info text-xs">{t('activities.enrollmentBadge')}</span>
+                                                ) : (
+                                                    <span className="text-xs text-[#c8c8c8]">—</span>
+                                                )}
+                                            </td>
+                                            <td className="text-sm">
+                                                {activity.is_paid && activity.price != null ? (
+                                                    <span className="flex items-center gap-1 text-success font-medium">
+                                                        <DollarSign className="h-3.5 w-3.5" />
+                                                        {Number(activity.price).toFixed(2)} ₺
+                                                    </span>
+                                                ) : (
+                                                    <span className="badge badge-outline-success text-xs">Ücretsiz</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <div className="flex items-center gap-1">
                                                     <button
                                                         type="button"
                                                         className="btn btn-sm btn-outline-info p-1.5"
@@ -424,81 +391,28 @@ export default function ActivitiesPage() {
                                                     >
                                                         <ExternalLink className="h-3.5 w-3.5" />
                                                     </button>
-                                                )}
-                                                {isDeleted ? (
                                                     <button
                                                         type="button"
-                                                        className="btn btn-sm btn-outline-success p-1.5"
-                                                        onClick={() => handleRestore(activity)}
-                                                        title={t('common.restore')}
+                                                        className="btn btn-sm btn-outline-primary p-1.5"
+                                                        onClick={() => openEdit(activity)}
+                                                        title={t('common.edit')}
                                                     >
-                                                        <RotateCcw className="h-3.5 w-3.5" />
+                                                        <Edit2 className="h-3.5 w-3.5" />
                                                     </button>
-                                                ) : (
-                                                    <>
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-outline-primary p-1.5"
-                                                            onClick={() => openEdit(activity)}
-                                                            title={t('common.edit')}
-                                                        >
-                                                            <Edit2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-outline-danger p-1.5"
-                                                            onClick={() => handleDelete(activity)}
-                                                            title={t('common.delete')}
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {activity.is_paid && activity.price != null && (
-                                            <div className="mt-2 flex items-center gap-1 text-sm font-medium text-success">
-                                                <DollarSign className="h-3.5 w-3.5" />
-                                                {Number(activity.price).toFixed(2)} ₺
-                                            </div>
-                                        )}
-                                        {(activity.capacity != null || activity.address) && (
-                                            <div className="mt-2 flex flex-wrap gap-3">
-                                                {activity.capacity != null && (
-                                                    <span className="flex items-center gap-1 text-xs text-[#515365] dark:text-[#888ea8]">
-                                                        <Users className="h-3 w-3" />
-                                                        {t('activities.capacityLabel')}: {activity.enrollments_count ?? 0}/{activity.capacity}
-                                                        {activity.enrollments_count != null && activity.enrollments_count >= activity.capacity && (
-                                                            <span className="ml-1 badge badge-outline-danger text-xs">{t('common.noData')}</span>
-                                                        )}
-                                                    </span>
-                                                )}
-                                                {activity.address && (
-                                                    <span className="flex items-center gap-1 text-xs text-[#515365] dark:text-[#888ea8]">
-                                                        <MapPin className="h-3 w-3" />
-                                                        {activity.address}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                        {activity.materials && activity.materials.length > 0 && (
-                                            <div className="mt-2">
-                                                <p className="mb-1 text-xs font-medium text-[#515365] dark:text-[#888ea8]">
-                                                    {t('activities.materialsLabel')} ({activity.materials.length}):
-                                                </p>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {activity.materials.map((m, i) => (
-                                                        <span key={i} className="rounded bg-[#f1f3f5] px-1.5 py-0.5 text-xs text-dark dark:bg-[#1b2e4b] dark:text-white">
-                                                            {m}
-                                                        </span>
-                                                    ))}
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-danger p-1.5"
+                                                        onClick={() => handleDelete(activity)}
+                                                        title={t('common.delete')}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
 
                         {lastPage > 1 && (
@@ -569,6 +483,19 @@ export default function ActivitiesPage() {
                                 )}
                             </div>
 
+                            {!form.is_global && schools.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">{t('activities.schoolLabel')}</label>
+                                    <select
+                                        className="form-select mt-1"
+                                        value={formSchoolId}
+                                        onChange={e => setFormSchoolId(e.target.value)}
+                                    >
+                                        {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium text-dark dark:text-white-light">{t('activities.nameLabel')}</label>
                                 <input
@@ -629,8 +556,8 @@ export default function ActivitiesPage() {
                                                 className="form-input"
                                                 value={form.cancellation_deadline}
                                                 onChange={e => setForm(prev => ({ ...prev, cancellation_deadline: e.target.value }))}
-                                                min={today + 'T00:00'}
-                                                max={form.start_date ? form.start_date + 'T23:59' : undefined}
+                                                min={form.start_date ? `${form.start_date}T${form.start_time || '00:00'}` : today + 'T00:00'}
+                                                max={form.end_date ? `${form.end_date}T${form.end_time || '23:59'}` : undefined}
                                             />
                                         </div>
                                     )}

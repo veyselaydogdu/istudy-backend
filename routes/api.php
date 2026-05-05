@@ -246,6 +246,7 @@ Route::middleware(['auth:sanctum', 'abilities:role:parent'])->prefix('parent')->
     // ───────────────────────────────────────────────────
     Route::prefix('activities')->group(function () {
         Route::get('/', [\App\Http\Controllers\Parents\ParentActivityController::class, 'index']);
+        Route::get('/my-enrollments', [\App\Http\Controllers\Parents\ParentActivityController::class, 'myEnrollments']);
         Route::get('/{activity}', [\App\Http\Controllers\Parents\ParentActivityController::class, 'show']);
         Route::post('/{activity}/enroll', [\App\Http\Controllers\Parents\ParentActivityController::class, 'enroll']);
         Route::delete('/{activity}/unenroll', [\App\Http\Controllers\Parents\ParentActivityController::class, 'unenroll']);
@@ -527,6 +528,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Okul işlemleri
         Route::apiResource('schools', \App\Http\Controllers\Schools\SchoolController::class);
         Route::patch('schools/{school}/toggle-status', [\App\Http\Controllers\Schools\SchoolController::class, 'toggleStatus']);
+
+        // Tüm etkinlikler (global + okul) — birleşik liste
+        Route::get('/all-activities', [\App\Http\Controllers\Schools\GlobalActivityController::class, 'allIndex']);
 
         // ───────────────────────────────────────────────────
         // GLOBAL ETKİNLİKLER — Tüm tenant ve veliler görebilir

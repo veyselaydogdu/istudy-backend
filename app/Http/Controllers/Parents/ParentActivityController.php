@@ -55,13 +55,14 @@ class ParentActivityController extends BaseParentController
 
             $data = $query->paginate($request->integer('per_page', 20));
 
-            // Her etkinlik için velinin hangi çocuklarının kayıtlı olduğunu ekle
-            $enrollmentsByActivity = ActivityEnrollment::where('family_profile_id', $familyProfile->id)
-                ->whereIn('activity_id', $data->pluck('id'))
-                ->select('activity_id', 'child_id')
+            // Her etkinlik için velinin hangi çocuklarının kayıtlı olduğunu ekle (ULID döner)
+            $enrollmentsByActivity = ActivityEnrollment::where('activity_enrollments.family_profile_id', $familyProfile->id)
+                ->whereIn('activity_enrollments.activity_id', $data->pluck('id'))
+                ->join('children', 'children.id', '=', 'activity_enrollments.child_id')
+                ->select('activity_enrollments.activity_id', 'children.ulid')
                 ->get()
                 ->groupBy('activity_id')
-                ->map(fn ($rows) => $rows->pluck('child_id')->filter()->values()->toArray());
+                ->map(fn ($rows) => $rows->pluck('ulid')->filter()->values()->toArray());
 
             $data->getCollection()->transform(function ($activity) use ($enrollmentsByActivity) {
                 $activity->enrolled_child_ids = $enrollmentsByActivity->get($activity->id, []);
@@ -103,10 +104,11 @@ class ParentActivityController extends BaseParentController
                 return $this->errorResponse('Bu etkinliğe erişim yetkiniz yok.', 403);
             }
 
-            // Ailenin bu etkinliğe kayıtlı çocuk ID'leri
-            $enrolledChildIds = ActivityEnrollment::where('activity_id', $activity->id)
-                ->where('family_profile_id', $familyProfile->id)
-                ->pluck('child_id')
+            // Ailenin bu etkinliğe kayıtlı çocukların ULID'leri
+            $enrolledChildIds = ActivityEnrollment::where('activity_enrollments.activity_id', $activity->id)
+                ->where('activity_enrollments.family_profile_id', $familyProfile->id)
+                ->join('children', 'children.id', '=', 'activity_enrollments.child_id')
+                ->pluck('children.ulid')
                 ->filter()
                 ->values()
                 ->toArray();
@@ -169,7 +171,7 @@ class ParentActivityController extends BaseParentController
     public function enroll(Request $request, Activity $activity): JsonResponse
     {
         $data = $request->validate([
-            'child_id' => ['required', 'integer'],
+            'child_id' => ['required', 'string'],
         ]);
 
         try {
@@ -181,7 +183,7 @@ class ParentActivityController extends BaseParentController
 
             // Çocuk bu aileye mi ait ve etkinliğin okuluna kayıtlı mı?
             $child = Child::withoutGlobalScope('tenant')
-                ->where('id', $data['child_id'])
+                ->where(is_numeric($data['child_id']) ? 'id' : 'ulid', $data['child_id'])
                 ->where('family_profile_id', $familyProfile->id)
                 ->first();
 
@@ -266,7 +268,17 @@ class ParentActivityController extends BaseParentController
                 ->where('family_profile_id', $familyProfile->id);
 
             if ($childId) {
-                $query->where('child_id', $childId);
+                if (is_numeric($childId)) {
+                    $query->where('child_id', $childId);
+                } else {
+                    $child = Child::withoutGlobalScope('tenant')
+                        ->where('ulid', $childId)
+                        ->where('family_profile_id', $familyProfile->id)
+                        ->first();
+                    if ($child) {
+                        $query->where('child_id', $child->id);
+                    }
+                }
             }
 
             $enrollment = $query->first();
@@ -319,6 +331,71 @@ class ParentActivityController extends BaseParentController
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ParentActivityController::unenroll', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Velinin etkinlik kayıtları — tüm kayıtlı etkinlikler ve hangi çocukların katıldığı.
+     */
+    public function myEnrollments(): JsonResponse
+    {
+        try {
+            $familyProfile = $this->getFamilyProfile();
+
+            if (! $familyProfile) {
+                return $this->successResponse([]);
+            }
+
+            $familyChildIds = Child::withoutGlobalScope('tenant')
+                ->where('family_profile_id', $familyProfile->id)
+                ->pluck('id');
+
+            $enrollments = ActivityEnrollment::whereIn('child_id', $familyChildIds)
+                ->with([
+                    'activity' => fn ($q) => $q->withoutGlobalScope('tenant')
+                        ->with(['school:id,name', 'tenant:id,name']),
+                    'child' => fn ($q) => $q->withoutGlobalScope('tenant')
+                        ->select('id', 'ulid', 'first_name', 'last_name'),
+                ])
+                ->orderByDesc('enrolled_at')
+                ->get();
+
+            // Etkinlik bazında grupla
+            $grouped = $enrollments
+                ->groupBy('activity_id')
+                ->map(function ($rows) {
+                    $activity = $rows->first()->activity;
+                    if (! $activity) {
+                        return null;
+                    }
+
+                    return [
+                        'activity_id' => $activity->id,
+                        'name' => $activity->name,
+                        'is_global' => $activity->is_global,
+                        'is_paid' => $activity->is_paid,
+                        'price' => $activity->price,
+                        'start_date' => $activity->start_date?->toDateString(),
+                        'end_date' => $activity->end_date?->toDateString(),
+                        'school' => $activity->school ? ['id' => $activity->school->id, 'name' => $activity->school->name] : null,
+                        'tenant_name' => $activity->is_global
+                            ? $activity->tenant?->name
+                            : $activity->school?->name,
+                        'children' => $rows->map(fn ($e) => $e->child ? [
+                            'id' => $e->child->ulid,
+                            'full_name' => $e->child->full_name,
+                        ] : null)->filter()->values(),
+                        'enrolled_at' => $rows->first()->enrolled_at,
+                    ];
+                })
+                ->filter()
+                ->values();
+
+            return $this->successResponse($grouped);
+        } catch (\Throwable $e) {
+            Log::error('ParentActivityController::myEnrollments', ['message' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 500);
         }

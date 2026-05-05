@@ -61,7 +61,9 @@ class ActivityController extends BaseSchoolController
             DB::beginTransaction();
             $this->authorize('create', Activity::class);
 
-            $activity = $this->service->create($request->validated());
+            $activity = $this->service->create(array_merge($request->validated(), [
+                'tenant_id' => $this->user()->tenant_id,
+            ]));
 
             if ($request->has('class_ids')) {
                 $activity->classes()->sync($this->resolveClassIds($request->class_ids ?? []));

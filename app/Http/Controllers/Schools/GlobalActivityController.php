@@ -21,6 +21,43 @@ use Illuminate\Support\Facades\URL;
  */
 class GlobalActivityController extends BaseController
 {
+    public function allIndex(): JsonResponse
+    {
+        try {
+            $tenantId = $this->user()->tenant_id;
+
+            $query = Activity::withoutGlobalScope('tenant')
+                ->where('tenant_id', $tenantId)
+                ->withCount('enrollments')
+                ->with(['classes:id,name', 'school:id,name'])
+                ->latest('start_date');
+
+            if (request()->filled('status')) {
+                match (request('status')) {
+                    'active' => $query->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString())),
+                    'ended' => $query->whereNotNull('end_date')->where('end_date', '<', now()->toDateString()),
+                    default => null,
+                };
+            }
+
+            if (request()->filled('search')) {
+                $query->where('name', 'like', '%'.request('search').'%');
+            }
+
+            if (request()->filled('school_id')) {
+                $query->where('school_id', request('school_id'));
+            }
+
+            $data = $query->paginate(request()->integer('per_page', 15));
+
+            return $this->paginatedResponse(ActivityResource::collection($data));
+        } catch (\Throwable $e) {
+            Log::error('GlobalActivityController::allIndex', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse('Etkinlikler yüklenemedi.', 500);
+        }
+    }
+
     public function index(): JsonResponse
     {
         try {
@@ -63,7 +100,7 @@ class GlobalActivityController extends BaseController
             'is_paid' => 'boolean',
             'is_enrollment_required' => 'boolean',
             'cancellation_allowed' => 'boolean',
-            'cancellation_deadline' => 'nullable|date',
+            'cancellation_deadline' => 'nullable|date|after_or_equal:start_date|before_or_equal:end_date',
             'price' => 'nullable|numeric|min:0|required_if:is_paid,true',
             'capacity' => 'nullable|integer|min:1',
             'address' => 'nullable|string|max:500',
@@ -123,7 +160,7 @@ class GlobalActivityController extends BaseController
             'is_paid' => 'boolean',
             'is_enrollment_required' => 'boolean',
             'cancellation_allowed' => 'boolean',
-            'cancellation_deadline' => 'nullable|date',
+            'cancellation_deadline' => 'nullable|date|after_or_equal:start_date|before_or_equal:end_date',
             'price' => 'nullable|numeric|min:0',
             'capacity' => 'nullable|integer|min:1',
             'address' => 'nullable|string|max:500',
