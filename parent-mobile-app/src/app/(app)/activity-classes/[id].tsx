@@ -49,9 +49,11 @@ interface ActivityClassDetail {
 }
 
 interface FamilyChild {
-  id: number;
+  id: string;
   full_name: string;
   school_id: number | null;
+  birth_date: string | null;
+  classes: Array<{ id: number; name: string }>;
 }
 
 interface GalleryItem {
@@ -63,7 +65,7 @@ interface GalleryItem {
 interface MyEnrollment {
   enrollment_id: number;
   activity_class: { id: number } | null;
-  child: { id: number; name: string } | null;
+  child: { id: string; name: string } | null;
   invoice: {
     status: string;
     amount: string;
@@ -89,7 +91,7 @@ export default function ActivityClassDetailScreen() {
   const [myEnrollments, setMyEnrollments] = useState<MyEnrollment[]>([]);
   const [familyChildren, setFamilyChildren] = useState<FamilyChild[]>([]);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
-  const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState(false);
 
   const loadDetail = useCallback(async () => {
@@ -129,13 +131,29 @@ export default function ActivityClassDetailScreen() {
     myEnrollments
       .filter(e => e.activity_class?.id === activityClassId)
       .map(e => e.child?.id)
-      .filter((id): id is number => id != null)
+      .filter((id): id is string => id != null)
   );
 
-  const availableChildren = activityClass
-    ? familyChildren.filter(c =>
-        c.school_id != null && !enrolledChildIds.has(c.id)
-      )
+  const getIneligibleReason = (child: FamilyChild): string | null => {
+    if (!activityClass) return null;
+    if (child.birth_date && (activityClass.age_min != null || activityClass.age_max != null)) {
+      const today = new Date();
+      const birth = new Date(child.birth_date);
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+      if (activityClass.age_min != null && age < activityClass.age_min) return `Yaş sınırı: ${activityClass.age_min}+`;
+      if (activityClass.age_max != null && age > activityClass.age_max) return `Yaş sınırı: max ${activityClass.age_max}`;
+    }
+    if (!activityClass.is_school_wide && activityClass.school_classes?.length > 0) {
+      const allowedIds = new Set(activityClass.school_classes.map(c => c.id));
+      if (!child.classes?.some(c => allowedIds.has(c.id))) return 'Sınıf kısıtlaması';
+    }
+    return null;
+  };
+
+  const unenrolledChildren = activityClass
+    ? familyChildren.filter(c => !enrolledChildIds.has(c.id))
     : [];
 
   const handleEnroll = async () => {
@@ -201,6 +219,7 @@ export default function ActivityClassDetailScreen() {
   }
 
   const enrolledChildren = familyChildren.filter(c => enrolledChildIds.has(c.id));
+  const hasEligibleUnenrolled = unenrolledChildren.some(c => !getIneligibleReason(c));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -324,7 +343,7 @@ export default function ActivityClassDetailScreen() {
           ) : (
             <Text style={styles.noEnrollText}>Kayıtlı çocuğunuz yok.</Text>
           )}
-          {availableChildren.length > 0 && (
+          {unenrolledChildren.length > 0 && (
             <TouchableOpacity style={styles.enrollBtn} onPress={() => setShowEnrollModal(true)}>
               <Ionicons name="add-circle-outline" size={18} color="#fff" />
               <Text style={styles.enrollBtnText}>Çocuğumu Kayıt Et</Text>
@@ -394,20 +413,28 @@ export default function ActivityClassDetailScreen() {
             <Text style={styles.modalSubtitle}>Kayıt etmek istediğiniz çocuğu seçin</Text>
 
             <View style={styles.childList}>
-              {availableChildren.map(child => (
-                <TouchableOpacity
-                  key={child.id}
-                  style={[styles.childItem, selectedChildId === child.id && styles.childItemSelected]}
-                  onPress={() => setSelectedChildId(child.id)}
-                >
-                  <Ionicons
-                    name={selectedChildId === child.id ? 'checkmark-circle' : 'radio-button-off'}
-                    size={20}
-                    color={selectedChildId === child.id ? AppColors.primary : AppColors.onSurfaceVariant}
-                  />
-                  <Text style={styles.childName}>{child.full_name}</Text>
-                </TouchableOpacity>
-              ))}
+              {unenrolledChildren.map(child => {
+                const reason = getIneligibleReason(child);
+                const disabled = !!reason;
+                return (
+                  <TouchableOpacity
+                    key={child.id}
+                    style={[styles.childItem, selectedChildId === child.id && styles.childItemSelected, disabled && styles.childItemDisabled]}
+                    onPress={() => !disabled && setSelectedChildId(child.id)}
+                    activeOpacity={disabled ? 1 : 0.7}
+                  >
+                    <Ionicons
+                      name={selectedChildId === child.id ? 'checkmark-circle' : 'radio-button-off'}
+                      size={20}
+                      color={disabled ? AppColors.onSurfaceVariant : selectedChildId === child.id ? AppColors.primary : AppColors.onSurfaceVariant}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.childName, disabled && styles.childNameDisabled]}>{child.full_name}</Text>
+                      {reason ? <Text style={styles.childRestriction}>{reason}</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {activityClass.is_paid && (
@@ -425,9 +452,9 @@ export default function ActivityClassDetailScreen() {
                 <Text style={styles.modalCancelText}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalConfirm, (!selectedChildId || enrolling) && styles.modalConfirmDisabled]}
+                style={[styles.modalConfirm, (!selectedChildId || enrolling || !!getIneligibleReason(unenrolledChildren.find(c => c.id === selectedChildId)!)) && styles.modalConfirmDisabled]}
                 onPress={handleEnroll}
-                disabled={!selectedChildId || enrolling}
+                disabled={!selectedChildId || enrolling || !!getIneligibleReason(unenrolledChildren.find(c => c.id === selectedChildId)!)}
               >
                 {enrolling ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.modalConfirmText}>Kayıt Et</Text>}
               </TouchableOpacity>
@@ -519,7 +546,10 @@ const styles = StyleSheet.create({
   childList: { gap: 10, marginBottom: 16 },
   childItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 10, borderWidth: 1.5, borderColor: AppColors.surfaceContainer },
   childItemSelected: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryContainer },
+  childItemDisabled: { opacity: 0.45, backgroundColor: AppColors.surfaceContainerLow },
   childName: { fontSize: 15, color: AppColors.onSurface, fontWeight: '500' },
+  childNameDisabled: { color: AppColors.onSurfaceVariant },
+  childRestriction: { fontSize: 11, color: AppColors.error, marginTop: 2 },
   invoiceNotice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: AppColors.warningContainer, borderRadius: 8, padding: 12, marginBottom: 16 },
   invoiceNoticeText: { flex: 1, fontSize: 13, color: '#92400E' },
   modalActions: { flexDirection: 'row', gap: 12 },
