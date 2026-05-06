@@ -18,12 +18,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
+import { AppColors } from '@/constants/theme';
+import { InputField } from '@/components/ui/InputField';
 import api from '../../lib/api';
-import {
-  getApiError,
-  saveTeacherAuth,
-  teacherRegisterRequest,
-} from '../../lib/auth';
+import { getApiError, saveTeacherAuth, teacherRegisterRequest } from '../../lib/auth';
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -62,7 +60,7 @@ function CountryPickerModal({
           <View style={modalStyles.handle} />
           <Text style={modalStyles.title}>Ülke Kodu Seç</Text>
           <View style={modalStyles.searchRow}>
-            <Ionicons name="search-outline" size={16} color="#9CA3AF" />
+            <Ionicons name="search-outline" size={16} color={AppColors.onSurfaceVariant} />
             <TextInput
               style={modalStyles.searchInput}
               value={search}
@@ -101,19 +99,19 @@ function CountryPickerModal({
 const modalStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 36 : 20,
     maxHeight: '80%',
   },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB', alignSelf: 'center', marginBottom: 16 },
-  title: { fontSize: 17, fontWeight: '800', color: '#1F2937', paddingHorizontal: 20, marginBottom: 12 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: AppColors.surfaceContainer, alignSelf: 'center', marginBottom: 16 },
+  title: { fontSize: 17, fontWeight: '800', color: AppColors.onSurface, paddingHorizontal: 20, marginBottom: 12 },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 12,
     marginHorizontal: 20,
     paddingHorizontal: 12,
@@ -121,21 +119,21 @@ const modalStyles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  searchInput: { flex: 1, fontSize: 14, color: '#1F2937', padding: 0 },
+  searchInput: { flex: 1, fontSize: 14, color: AppColors.onSurface, padding: 0 },
   item: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 13, gap: 12 },
   flag: { fontSize: 22, width: 30 },
-  itemName: { flex: 1, fontSize: 14, color: '#1F2937', fontWeight: '500' },
-  itemCode: { fontSize: 14, color: '#208AEF', fontWeight: '700' },
-  separator: { height: 1, backgroundColor: '#F3F4F6', marginLeft: 62 },
+  itemName: { flex: 1, fontSize: 14, color: AppColors.onSurface, fontWeight: '500' },
+  itemCode: { fontSize: 14, color: AppColors.secondary, fontWeight: '700' },
+  separator: { height: 1, backgroundColor: AppColors.surfaceContainerLow, marginLeft: 62 },
   closeBtn: {
     marginHorizontal: 20,
     marginTop: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: AppColors.surfaceContainerLow,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  closeBtnText: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
+  closeBtnText: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
 });
 
 // ─── Password Strength ────────────────────────────────────
@@ -157,7 +155,7 @@ function calcStrength(pwd: string): PasswordStrength {
   return { score, hasLength, hasUpper, hasSpecial, hasNumber };
 }
 
-const BAR_COLORS = ['#EF4444', '#F59E0B', '#10B981', '#208AEF'];
+const BAR_COLORS = ['#EF4444', '#F59E0B', '#10B981', AppColors.secondary];
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const { score, hasLength, hasUpper, hasSpecial, hasNumber } = calcStrength(password);
@@ -212,6 +210,12 @@ const DEFAULT_COUNTRY: Country = {
   flag_emoji: '🇹🇷',
 };
 
+const INPUT_PROPS = {
+  placeholderTextColor: '#94918F',
+  style: { color: '#000', fontWeight: '500' as const },
+  inputRowStyle: { paddingVertical: 20, borderRadius: 50 },
+} as const;
+
 // ─── Main Screen ──────────────────────────────────────────
 
 export default function TeacherRegisterScreen() {
@@ -223,7 +227,6 @@ export default function TeacherRegisterScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [selectedCountry, setSelectedCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -308,189 +311,167 @@ export default function TeacherRegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.container}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Back */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
+          <View style={styles.cardShadow}>
+            <View style={styles.card}>
+              {/* Decorative blobs */}
+              <View style={styles.blobTopRight} />
+              <View style={styles.blobBottomLeft} />
 
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.iconWrap}>
-              <Ionicons name="school" size={32} color="#FFFFFF" />
-            </View>
-            <Text style={styles.title}>Öğretmen Kaydı</Text>
-            <Text style={styles.subtitle}>Hesabınızı oluşturun</Text>
-          </View>
-
-          {/* Form */}
-          <View style={styles.form}>
-            {/* Ad / Soyad */}
-            <View style={styles.row}>
-              <View style={[styles.inputWrap, styles.flex]}>
-                <Text style={styles.label}>Ad *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Adınız"
-                  placeholderTextColor="#9CA3AF"
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                />
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.logoBox}>
+                  <Ionicons name="school" size={40} color={AppColors.secondary} />
+                </View>
+                <Text style={styles.title}>Öğretmen Hesabı Oluştur</Text>
               </View>
-              <View style={[styles.inputWrap, styles.flex]}>
-                <Text style={styles.label}>Soyad *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Soyadınız"
-                  placeholderTextColor="#9CA3AF"
-                  value={surname}
-                  onChangeText={setSurname}
-                  autoCapitalize="words"
-                />
-              </View>
-            </View>
 
-            {/* E-posta */}
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>E-posta *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="ornek@email.com"
-                placeholderTextColor="#9CA3AF"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            {/* Telefon */}
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Telefon *</Text>
-              <View style={styles.phoneRow}>
-                <TouchableOpacity
-                  style={styles.countryBtn}
-                  onPress={() => setPickerVisible(true)}
-                  activeOpacity={0.7}
-                  disabled={countriesLoading}
-                >
-                  {countriesLoading ? (
-                    <ActivityIndicator size="small" color="#208AEF" />
-                  ) : (
-                    <>
-                      <Text style={styles.flagText}>{selectedCountry.flag_emoji}</Text>
-                      <Text style={styles.codeText}>+{selectedCountry.phone_code}</Text>
-                      <Ionicons name="chevron-down" size={13} color="#9CA3AF" />
-                    </>
-                  )}
-                </TouchableOpacity>
-                <View style={styles.phoneInputWrap}>
-                  <TextInput
-                    style={[styles.input, styles.phoneInput]}
-                    value={phone}
-                    onChangeText={handlePhoneChange}
-                    placeholder="5xx xxx xx xx"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="number-pad"
-                    maxLength={10}
-                  />
-                  {phone.length > 0 && (
-                    <Text style={styles.phoneCount}>{phone.length}/10</Text>
-                  )}
+              {/* Ad / Soyad */}
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <Text style={styles.fieldLabel}>AD</Text>
+                  <View style={styles.rawInputRow}>
+                    <TextInput
+                      style={styles.rawInput}
+                      value={name}
+                      onChangeText={setName}
+                      placeholder="Adınız"
+                      placeholderTextColor="#94918F"
+                      autoCapitalize="words"
+                    />
+                  </View>
+                </View>
+                <View style={styles.half}>
+                  <Text style={styles.fieldLabel}>SOYAD</Text>
+                  <View style={styles.rawInputRow}>
+                    <TextInput
+                      style={styles.rawInput}
+                      value={surname}
+                      onChangeText={setSurname}
+                      placeholder="Soyadınız"
+                      placeholderTextColor="#94918F"
+                      autoCapitalize="words"
+                    />
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {/* Şifre */}
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Şifre *</Text>
-              <View style={styles.passwordWrap}>
-                <Ionicons name="lock-closed-outline" size={17} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="En az 8 karakter"
-                  placeholderTextColor="#9CA3AF"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeBtn}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={17}
-                    color="#9CA3AF"
-                  />
+              {/* E-posta */}
+              <InputField
+                label="E-posta Adresi"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="ogretmen@ornek.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                icon={<Ionicons name="mail-outline" size={18} color={AppColors.onSurfaceVariant} />}
+                {...INPUT_PROPS}
+              />
+
+              {/* Telefon */}
+              <View style={styles.fieldWrap}>
+                <Text style={styles.fieldLabel}>TELEFON</Text>
+                <View style={styles.phoneRow}>
+                  <TouchableOpacity
+                    style={styles.countryBtn}
+                    onPress={() => setPickerVisible(true)}
+                    activeOpacity={0.7}
+                    disabled={countriesLoading}
+                  >
+                    {countriesLoading ? (
+                      <ActivityIndicator size="small" color={AppColors.secondary} />
+                    ) : (
+                      <>
+                        <Text style={styles.flagText}>{selectedCountry.flag_emoji}</Text>
+                        <Text style={styles.codeText}>+{selectedCountry.phone_code}</Text>
+                        <Ionicons name="chevron-down" size={13} color={AppColors.onSurfaceVariant} />
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <View style={[styles.rawInputRow, styles.phoneInput]}>
+                    <TextInput
+                      style={styles.rawInput}
+                      value={phone}
+                      onChangeText={handlePhoneChange}
+                      placeholder="5xx xxx xx xx"
+                      placeholderTextColor="#94918F"
+                      keyboardType="number-pad"
+                      maxLength={10}
+                    />
+                    {phone.length > 0 && (
+                      <Text style={styles.phoneCount}>{phone.length}/10</Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              {/* Şifre */}
+              <InputField
+                label="Şifre"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="En az 8 karakter"
+                passwordToggle
+                autoCapitalize="none"
+                icon={<Ionicons name="lock-closed-outline" size={18} color={AppColors.onSurfaceVariant} />}
+                {...INPUT_PROPS}
+              />
+              <PasswordStrengthBar password={password} />
+
+              {/* Şifre Tekrar */}
+              <InputField
+                label="Şifre Tekrar"
+                value={passwordConfirmation}
+                onChangeText={setPasswordConfirmation}
+                placeholder="Şifrenizi tekrar girin"
+                passwordToggle
+                autoCapitalize="none"
+                icon={<Ionicons name="lock-closed-outline" size={18} color={AppColors.onSurfaceVariant} />}
+                inputRowStyle={{
+                  paddingVertical: 20,
+                  borderRadius: 50,
+                  ...(passwordConfirmation.length > 0 && {
+                    borderColor: password === passwordConfirmation ? '#10B981' : '#EF4444',
+                  }),
+                }}
+                placeholderTextColor="#94918F"
+                style={{ color: '#000', fontWeight: '500' }}
+              />
+
+              {/* Kayıt ol butonu */}
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleRegister}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                {loading ? (
+                  <ActivityIndicator color={AppColors.white} />
+                ) : (
+                  <Text style={styles.buttonText}>Hesap Oluştur</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Footer */}
+              <View style={styles.footer}>
+                <TouchableOpacity onPress={() => router.replace('/(auth)/teacher-login')} activeOpacity={0.7}>
+                  <Text style={styles.footerText}>
+                    Zaten hesabınız var mı?{' '}
+                    <Text style={styles.footerLink}>Giriş Yapın</Text>
+                  </Text>
                 </TouchableOpacity>
               </View>
-              <PasswordStrengthBar password={password} />
             </View>
-
-            {/* Şifre Tekrar */}
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Şifre Tekrar *</Text>
-              <View style={[
-                styles.passwordWrap,
-                passwordConfirmation.length > 0 && {
-                  borderColor: password === passwordConfirmation ? '#10B981' : '#EF4444',
-                },
-              ]}>
-                <Ionicons name="lock-closed-outline" size={17} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="Şifrenizi tekrar girin"
-                  placeholderTextColor="#9CA3AF"
-                  value={passwordConfirmation}
-                  onChangeText={setPasswordConfirmation}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
-                {passwordConfirmation.length > 0 && (
-                  <Ionicons
-                    name={password === passwordConfirmation ? 'checkmark-circle' : 'close-circle'}
-                    size={17}
-                    color={password === passwordConfirmation ? '#10B981' : '#EF4444'}
-                  />
-                )}
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.registerBtn, loading && styles.registerBtnDisabled]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.registerBtnText}>Hesap Oluştur</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.loginLink}
-              onPress={() => router.replace('/(auth)/teacher-login')}
-            >
-              <Text style={styles.loginLinkText}>
-                Zaten hesabınız var mı?{' '}
-                <Text style={styles.loginLinkBold}>Giriş Yapın</Text>
-              </Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -506,100 +487,173 @@ export default function TeacherRegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8FF' },
+  safeArea: {
+    flex: 1,
+    backgroundColor: AppColors.surfaceContainerLow,
+  },
   flex: { flex: 1 },
-  container: { paddingHorizontal: 24, paddingBottom: 40 },
-  backBtn: { paddingTop: 8, paddingBottom: 4, alignSelf: 'flex-start' },
-  header: { alignItems: 'center', paddingTop: 16, paddingBottom: 28 },
-  iconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    backgroundColor: '#208AEF',
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+    paddingVertical: 32,
+  },
+  cardShadow: {
+    borderRadius: 32,
+    shadowColor: AppColors.secondary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  card: {
+    backgroundColor: AppColors.white,
+    borderRadius: 32,
+    padding: 32,
+    overflow: 'hidden',
+    gap: 14,
+  },
+  blobTopRight: {
+    position: 'absolute',
+    top: -48,
+    right: -48,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: AppColors.secondaryContainer,
+    opacity: 0.6,
+  },
+  blobBottomLeft: {
+    position: 'absolute',
+    bottom: -56,
+    left: -56,
+    width: 192,
+    height: 192,
+    borderRadius: 96,
+    backgroundColor: AppColors.infoContainer,
+    opacity: 0.5,
+  },
+
+  header: {
+    alignItems: 'center',
+    paddingTop: 8,
+    marginBottom: 4,
+  },
+  logoBox: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: AppColors.secondaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#208AEF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
-  title: { fontSize: 26, fontWeight: '800', color: '#1F2937', marginBottom: 6 },
-  subtitle: { fontSize: 15, color: '#6B7280' },
-  form: { gap: 0 },
-  row: { flexDirection: 'row', gap: 12 },
-  inputWrap: { marginBottom: 14 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 15,
-    color: '#1F2937',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+  title: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: AppColors.secondary,
+    letterSpacing: -0.5,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  passwordWrap: {
+  subtitle: {
+    fontSize: 14,
+    color: AppColors.onSurfaceVariant,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+
+  fieldLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: AppColors.onSurfaceVariant,
+    letterSpacing: 0.8,
+    marginLeft: 2,
+    marginBottom: 6,
+  },
+  fieldWrap: {
+    gap: 0,
+  },
+
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  half: {
+    flex: 1,
+    gap: 6,
+  },
+
+  rawInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 13,
-    paddingVertical: 12,
-    gap: 9,
+    backgroundColor: AppColors.inputBackgroundGrey,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
+    borderRadius: 50,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+    gap: 10,
   },
-  inputIcon: { flexShrink: 0 },
-  passwordInput: {
+  rawInput: {
     flex: 1,
     fontSize: 15,
-    color: '#1F2937',
+    color: '#000',
+    fontWeight: '500',
     padding: 0,
   },
-  eyeBtn: {},
-  phoneRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+
+  phoneRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
   countryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 12,
-    paddingVertical: 13,
+    backgroundColor: AppColors.inputBackgroundGrey,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceContainer,
+    borderRadius: 50,
+    paddingHorizontal: 14,
+    paddingVertical: 20,
     gap: 6,
-    minWidth: 100,
   },
   flagText: { fontSize: 18 },
-  codeText: { fontSize: 14, fontWeight: '700', color: '#1F2937' },
-  phoneInputWrap: { flex: 1, position: 'relative' },
-  phoneInput: { paddingRight: 40 },
-  phoneCount: {
-    position: 'absolute',
-    right: 12,
-    top: '50%',
-    transform: [{ translateY: -8 }],
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  registerBtn: {
-    backgroundColor: '#208AEF',
-    borderRadius: 16,
-    paddingVertical: 15,
+  codeText: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
+  phoneInput: { flex: 1 },
+  phoneCount: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500' },
+
+  button: {
+    backgroundColor: AppColors.secondary,
+    borderRadius: 50,
+    paddingVertical: 24,
     alignItems: 'center',
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.secondaryDim,
     marginTop: 8,
-    shadowColor: '#208AEF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  registerBtnDisabled: { opacity: 0.6 },
-  registerBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  loginLink: { alignItems: 'center', marginTop: 20 },
-  loginLinkText: { fontSize: 14, color: '#6B7280' },
-  loginLinkBold: { color: '#208AEF', fontWeight: '700' },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: AppColors.white,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+
+  footer: {
+    alignItems: 'center',
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  footerText: {
+    fontSize: 14,
+    color: AppColors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  footerLink: {
+    color: AppColors.secondary,
+    fontWeight: '800',
+  },
 });
