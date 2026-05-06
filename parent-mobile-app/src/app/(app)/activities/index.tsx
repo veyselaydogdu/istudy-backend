@@ -100,20 +100,19 @@ function ActivityCard({ item }: { item: Activity }) {
   const dateRange = formatDateRange(item.start_date, item.end_date);
   const enrolledCount = item.enrolled_child_ids?.length ?? 0;
   const isEnrolled = enrolledCount > 0;
-  const isLocked = item.is_enrollment_required && !isEnrolled;
 
   return (
     <TouchableOpacity
-      style={[styles.card, isLocked && styles.cardLocked]}
+      style={styles.card}
       onPress={() => router.push(`/(app)/activities/event/${item.id}`)}
       activeOpacity={0.75}
     >
       <View style={styles.cardHeader}>
-        <View style={[styles.cardIconWrap, isLocked && { backgroundColor: AppColors.surfaceContainerLow }]}>
-          <Ionicons name="flag-outline" size={20} color={isLocked ? AppColors.onSurfaceVariant : AppColors.primary} />
+        <View style={styles.cardIconWrap}>
+          <Ionicons name="flag-outline" size={20} color={AppColors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.cardTitle, isLocked && { color: AppColors.onSurfaceVariant }]}>{item.name}</Text>
+          <Text style={styles.cardTitle}>{item.name}</Text>
           {(item.tenant_name || item.school?.name) ? (
             <Text style={styles.cardSchool}>{item.tenant_name ?? item.school?.name}</Text>
           ) : null}
@@ -150,7 +149,7 @@ function ActivityCard({ item }: { item: Activity }) {
       </View>
 
       {item.description ? (
-        <Text style={[styles.cardDesc, isLocked && { color: AppColors.surfaceContainer }]} numberOfLines={2}>{item.description}</Text>
+        <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
       ) : null}
 
       <View style={styles.cardMeta}>
@@ -203,13 +202,6 @@ function ActivityCard({ item }: { item: Activity }) {
         <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
       </View>
 
-      {/* Kilitli etkinlik mesajı */}
-      {isLocked && (
-        <View style={styles.lockedRow}>
-          <Ionicons name="lock-closed-outline" size={12} color="#9CA3AF" />
-          <Text style={styles.lockedText}>Detayları görmek için etkinliğe katılın</Text>
-        </View>
-      )}
     </TouchableOpacity>
   );
 }
