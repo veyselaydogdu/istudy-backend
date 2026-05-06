@@ -16,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
 import { AppColors } from '@/constants/theme';
-import { Button } from '@/components/ui/Button';
 import { InputField } from '@/components/ui/InputField';
 import { getApiError, loginRequest } from '../../lib/auth';
 
@@ -45,90 +44,109 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Hero banner — primary-container background */}
-        <View style={styles.heroBanner}>
-          <View style={styles.logoBox}>
-            <Ionicons name="school" size={40} color={AppColors.primary} />
-          </View>
-          <Text style={styles.heroTitle}>iStudy</Text>
-          <Text style={styles.heroSubtitle}>Eğitimin En Eğlenceli Hali!</Text>
-          {/* Badge pill */}
-          <View style={styles.newBadge}>
-            <Text style={styles.newBadgeText}>YENİ!</Text>
-          </View>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Card shadow wrapper */}
+          <View style={styles.cardShadow}>
+            <View style={styles.card}>
+              {/* Decorative blobs */}
+              <View style={styles.blobTopRight} />
+              <View style={styles.blobBottomLeft} />
 
-        {/* White card form area */}
-        <View style={styles.cardOuter}>
-          <ScrollView
-            contentContainerStyle={styles.cardScroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.formTitle}>Giriş Yap</Text>
-            <Text style={styles.formSubtitle}>Hesabınıza erişin</Text>
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.logoBox}>
+                  <Ionicons name="school" size={40} color={AppColors.primary} />
+                </View>
+                <Text style={styles.title}>Tekrar Hoş Geldin!</Text>
+                <Text style={styles.subtitle}>Çocuğunuzun gelişimini takip edin.</Text>
+              </View>
 
-            <View style={styles.fields}>
-              <InputField
-                label="E-posta"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="ornek@mail.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                icon={<Ionicons name="mail-outline" size={18} color={AppColors.onSurfaceVariant} />}
-              />
+              {/* Form */}
+              <View style={styles.fields}>
+                <InputField
+                  label="E-posta Adresi"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="veli@ornek.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholderTextColor="#94918F"
+                  style={{
+                      color: '#000',
+                      fontWeight: '500'
+                  }}
+                  inputRowStyle={{
+                      paddingVertical: 20,
+                      borderRadius: 50
+                  }}
+                  icon={<Ionicons name="mail-outline" size={18} color={AppColors.onSurfaceVariant} />}
+                />
 
-              <InputField
-                label="Şifre"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Şifrenizi girin"
-                passwordToggle
-                icon={<Ionicons name="lock-closed-outline" size={18} color={AppColors.onSurfaceVariant} />}
-              />
-            </View>
+                <InputField
+                  label="Şifre"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••••"
+                  passwordToggle
+                  placeholderTextColor="#94918F"
+                  style={{
+                      color: '#000',
+                      fontWeight: '500'
+                  }}
+                  inputRowStyle={{
+                      paddingVertical: 20,
+                      borderRadius: 50,
+                  }}
+                  icon={<Ionicons name="lock-closed-outline" size={18} color={AppColors.onSurfaceVariant} />}
+                />
+              </View>
 
-            <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
-              Şifremi Unuttum
-            </Link>
+              <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
+                Şifremi Unuttum
+              </Link>
 
-            <Button
-              label="Giriş Yap"
-              variant="primary"
-              size="lg"
-              fullWidth
-              loading={loading}
-              onPress={handleLogin}
-            />
-
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>veya</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <Link href="/(auth)/register" asChild>
-              <TouchableOpacity activeOpacity={0.85} style={styles.outlineButton}>
-                <Text style={styles.outlineButtonText}>Hesap Oluştur</Text>
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                {loading ? (
+                  <ActivityIndicator color={AppColors.white} />
+                ) : (
+                  <Text style={styles.buttonText}>Giriş Yap</Text>
+                )}
               </TouchableOpacity>
-            </Link>
 
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/teacher-login')}
-              style={styles.teacherLink}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.teacherLinkText}>Öğretmen Girişi →</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+              {/* Footer */}
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>
+                  Hesabınız yok mu?{' '}
+                  <Link href="/(auth)/register" style={styles.footerLink}>
+                    Kayıt Olun
+                  </Link>
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/(auth)/teacher-login')}
+                  style={styles.teacherLink}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.teacherLinkText}>Öğretmen Girişi →</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -137,138 +155,126 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: AppColors.primaryContainer,
+    backgroundColor: AppColors.surfaceContainerLow,
   },
   flex: { flex: 1 },
-
-  heroBanner: {
-    alignItems: 'center',
-    paddingTop: 28,
-    paddingBottom: 44,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+    paddingVertical: 32,
+  },
+  cardShadow: {
+    borderRadius: 32,
+    shadowColor: AppColors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  card: {
+    backgroundColor: AppColors.white,
+    borderRadius: 32,
+    padding: 32,
+    overflow: 'hidden',
+  },
+  blobTopRight: {
+    position: 'absolute',
+    top: -48,
+    right: -48,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     backgroundColor: AppColors.primaryContainer,
-    gap: 6,
-    position: 'relative',
+    opacity: 0.35,
+  },
+  blobBottomLeft: {
+    position: 'absolute',
+    bottom: -56,
+    left: -56,
+    width: 192,
+    height: 192,
+    borderRadius: 96,
+    backgroundColor: AppColors.tertiaryContainer,
+    opacity: 0.2,
+  },
+
+  header: {
+    alignItems: 'center',
+    paddingTop: 16,
+    marginBottom: 32,
   },
   logoBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 22,
-    backgroundColor: AppColors.white,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: AppColors.surfaceContainerLow,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
-    borderBottomWidth: 4,
-    borderBottomColor: AppColors.primaryDim,
-    shadowColor: AppColors.primaryDim,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 16,
   },
-  heroTitle: {
-    fontSize: 34,
+  title: {
+    fontSize: 28,
     fontWeight: '900',
     color: AppColors.primary,
     letterSpacing: -0.5,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  heroSubtitle: {
-    fontSize: 14,
-    color: AppColors.primaryDim,
-    fontWeight: '700',
-  },
-  newBadge: {
-    position: 'absolute',
-    top: 24,
-    right: 80,
-    backgroundColor: AppColors.tertiaryContainer,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 20,
-    transform: [{ rotate: '-12deg' }],
-  },
-  newBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: AppColors.tertiary,
-    letterSpacing: 0.5,
-  },
-
-  cardOuter: {
-    flex: 1,
-    backgroundColor: AppColors.surface,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    overflow: 'hidden',
-  },
-  cardScroll: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
-  },
-  formTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: AppColors.onSurface,
-    marginBottom: 4,
-  },
-  formSubtitle: {
+  subtitle: {
     fontSize: 14,
     color: AppColors.onSurfaceVariant,
-    marginBottom: 28,
+    textAlign: 'center',
     fontWeight: '500',
   },
+
   fields: {
     gap: 14,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   forgotLink: {
-    color: AppColors.primary,
-    fontSize: 13,
-    textAlign: 'right',
+    color: AppColors.secondary,
+    fontSize: 12,
     fontWeight: '700',
+    textAlign: 'right',
     marginBottom: 24,
   },
-  divider: {
-    flexDirection: 'row',
+
+  button: {
+    backgroundColor: AppColors.primary,
+    borderRadius: 50,
+    paddingVertical: 24,
+    alignItems: 'center',
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.primaryDim,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: AppColors.white,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+
+  footer: {
+    marginTop: 28,
     alignItems: 'center',
     gap: 12,
-    marginVertical: 20,
   },
-  dividerLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: AppColors.surfaceContainer,
-    borderRadius: 1,
-  },
-  dividerText: {
+  footerText: {
+    fontSize: 14,
     color: AppColors.onSurfaceVariant,
-    fontSize: 13,
-    fontWeight: '700',
+    textAlign: 'center',
   },
-  outlineButton: {
-    backgroundColor: AppColors.white,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: AppColors.surfaceContainer,
-    borderBottomWidth: 5,
-    borderBottomColor: AppColors.surfaceContainer,
-    shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  outlineButtonText: {
+  footerLink: {
     color: AppColors.primary,
-    fontSize: 16,
     fontWeight: '800',
+    fontSize: 14,
   },
   teacherLink: {
-    marginTop: 20,
-    alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   teacherLinkText: {
     color: AppColors.onSurfaceVariant,

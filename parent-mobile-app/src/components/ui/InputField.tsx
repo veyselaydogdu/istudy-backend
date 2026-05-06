@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
   StyleSheet,
+  StyleProp,
   Text,
   TextInput,
   type TextInputProps,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from 'react-native';
 
 import { AppColors } from '@/constants/theme';
@@ -17,6 +19,8 @@ interface InputFieldProps extends TextInputProps {
   /** Show a show/hide password toggle button */
   passwordToggle?: boolean;
   error?: string;
+  /** Override styles on the input row container (e.g. borderRadius, paddingVertical) */
+  inputRowStyle?: StyleProp<ViewStyle>;
 }
 
 /**
@@ -34,6 +38,7 @@ export function InputField({
   error,
   secureTextEntry,
   style,
+  inputRowStyle,
   ...rest
 }: InputFieldProps) {
   const [focused, setFocused] = useState(false);
@@ -49,12 +54,13 @@ export function InputField({
           styles.inputRow,
           focused && styles.inputRowFocused,
           error ? styles.inputRowError : undefined,
+          inputRowStyle,
         ]}
       >
         {icon && <View style={styles.iconLeft}>{icon}</View>}
         <TextInput
           style={[styles.input, style]}
-          placeholderTextColor={AppColors.surfaceContainer}
+          placeholderTextColor={rest.placeholderTextColor ?? AppColors.surfaceContainer}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           secureTextEntry={isSecure}
@@ -89,11 +95,9 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.surfaceContainerLow,
+    backgroundColor: AppColors.inputBackgroundGrey,
     borderWidth: 2,
     borderColor: AppColors.surfaceContainer,
-    borderBottomWidth: 3,
-    borderBottomColor: '#CED4DA',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 13,
@@ -109,6 +113,7 @@ const styles = StyleSheet.create({
   },
   iconLeft: {
     flexShrink: 0,
+      marginLeft: 10
   },
   input: {
     flex: 1,

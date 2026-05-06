@@ -61,6 +61,10 @@ export const AppColors = {
   warningContainer: '#FFF9DB',
   info: '#1971C2',
   infoContainer: '#E7F5FF',
+
+    //inputs
+    inputBackgroundGrey: '#d9dfe6'
+
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;

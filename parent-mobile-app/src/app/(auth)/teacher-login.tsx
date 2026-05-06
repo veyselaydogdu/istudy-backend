@@ -9,20 +9,20 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../_layout';
+import { AppColors } from '@/constants/theme';
+import { InputField } from '@/components/ui/InputField';
 import { getApiError, saveTeacherAuth, teacherLoginRequest } from '../../lib/auth';
 
 export default function TeacherLoginScreen() {
   const { signInAsTeacher } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -45,105 +45,109 @@ export default function TeacherLoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Blue header banner */}
-        <View style={styles.heroBanner}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="person" size={32} color="#FFFFFF" />
-          </View>
-          <Text style={styles.heroTitle}>iStudy</Text>
-          <Text style={styles.heroSubtitle}>Öğretmen Portalı</Text>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Card shadow wrapper */}
+          <View style={styles.cardShadow}>
+            <View style={styles.card}>
+              {/* Decorative blobs */}
+              <View style={styles.blobTopRight} />
+              <View style={styles.blobBottomLeft} />
 
-        {/* White card form */}
-        <View style={styles.cardOuter}>
-          <ScrollView
-            contentContainerStyle={styles.cardScroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.formTitle}>Öğretmen Girişi</Text>
-            <Text style={styles.formSubtitle}>iStudy öğretmen hesabınızla giriş yapın</Text>
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.logoBox}>
+                  <Ionicons name="person" size={40} color={AppColors.secondary} />
+                </View>
+                <Text style={styles.title}>Hoş Geldiniz!</Text>
+                <Text style={styles.subtitle}>Öğretmen hesabınızla giriş yapın.</Text>
+              </View>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>E-posta</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="mail-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
+              {/* Form */}
+              <View style={styles.fields}>
+                <InputField
+                  label="E-posta Adresi"
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="ornek@mail.com"
-                  placeholderTextColor="#C4C9D4"
+                  placeholder="ogretmen@ornek.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  placeholderTextColor="#94918F"
+                  style={{
+                      color: '#000',
+                      fontWeight: '500'
+                  }}
+                  inputRowStyle={{
+                      paddingVertical: 20,
+                      borderRadius: 50,
+                  }}
+                  icon={<Ionicons name="mail-outline" size={18} color={AppColors.onSurfaceVariant} />}
                 />
-              </View>
-            </View>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Şifre</Text>
-              <View style={styles.inputRow}>
-                <Ionicons name="lock-closed-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
+                <InputField
+                  label="Şifre"
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="Şifrenizi girin"
-                  placeholderTextColor="#C4C9D4"
-                  secureTextEntry={!showPassword}
+                  placeholder="••••••••"
+                  passwordToggle
+                  placeholderTextColor="#94918F"
+                  style={{
+                      color: '#000',
+                      fontWeight: '500'
+                  }}
+                  inputRowStyle={{
+                      paddingVertical: 20,
+                      borderRadius: 50,
+                  }}
+                  icon={<Ionicons name="lock-closed-outline" size={18} color={AppColors.onSurfaceVariant} />}
                 />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                {loading ? (
+                  <ActivityIndicator color={AppColors.white} />
+                ) : (
+                  <Text style={styles.buttonText}>Giriş Yap</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Footer */}
+              <View style={styles.footer}>
                 <TouchableOpacity
-                  onPress={() => setShowPassword((v) => !v)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={() => router.push('/(auth)/teacher-register')}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color="#9CA3AF"
-                  />
+                  <Text style={styles.footerText}>
+                    Hesabınız yok mu?{' '}
+                    <Text style={styles.footerLink}>Kayıt Olun</Text>
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push('/(auth)/login')}
+                  style={styles.parentLink}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.parentLinkText}>← Veli Girişi</Text>
                 </TouchableOpacity>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>Giriş Yap</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/teacher-register')}
-              style={styles.registerLink}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.registerLinkText}>
-                Hesabınız yok mu?{' '}
-                <Text style={styles.registerLinkBold}>Kayıt Ol</Text>
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/login')}
-              style={styles.parentLink}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.parentLinkText}>← Veli Girişi</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -152,133 +156,122 @@ export default function TeacherLoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#208AEF',
+    backgroundColor: AppColors.surfaceContainerLow,
   },
-  flex: {
-    flex: 1,
-  },
-  heroBanner: {
-    alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 40,
-    backgroundColor: '#208AEF',
-    gap: 8,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  flex: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
+    padding: 20,
+    paddingVertical: 32,
   },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+  cardShadow: {
+    borderRadius: 32,
+    shadowColor: AppColors.secondary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6,
   },
-  heroSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-  },
-  cardOuter: {
-    flex: 1,
-    backgroundColor: '#F5F8FF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+  card: {
+    backgroundColor: AppColors.white,
+    borderRadius: 32,
+    padding: 32,
     overflow: 'hidden',
   },
-  cardScroll: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
+  blobTopRight: {
+    position: 'absolute',
+    top: -48,
+    right: -48,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: AppColors.secondaryContainer,
+    opacity: 0.6,
   },
-  formTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1F2937',
-    marginBottom: 4,
+  blobBottomLeft: {
+    position: 'absolute',
+    bottom: -56,
+    left: -56,
+    width: 192,
+    height: 192,
+    borderRadius: 96,
+    backgroundColor: AppColors.infoContainer,
+    opacity: 0.5,
   },
-  formSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 28,
+
+  header: {
+    alignItems: 'center',
+    paddingTop: 16,
+    marginBottom: 32,
   },
-  field: {
+  logoBox: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: AppColors.secondaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: AppColors.secondary,
+    letterSpacing: -0.5,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 10,
+  subtitle: {
+    fontSize: 14,
+    color: AppColors.onSurfaceVariant,
+    textAlign: 'center',
+    fontWeight: '500',
   },
-  inputIcon: {
-    flexShrink: 0,
+
+  fields: {
+    gap: 14,
+    marginBottom: 24,
   },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1F2937',
-    padding: 0,
-  },
+
   button: {
-    backgroundColor: '#208AEF',
-    borderRadius: 14,
-    paddingVertical: 16,
+    backgroundColor: AppColors.secondary,
+    borderRadius: 50,
+    paddingVertical: 24,
     alignItems: 'center',
-    shadowColor: '#208AEF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    marginTop: 8,
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.secondaryDim,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    color: AppColors.white,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
-  registerLink: {
-    marginTop: 16,
+
+  footer: {
+    marginTop: 28,
     alignItems: 'center',
-    paddingVertical: 4,
+    gap: 12,
   },
-  registerLinkText: {
+  footerText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: AppColors.onSurfaceVariant,
+    textAlign: 'center',
   },
-  registerLinkBold: {
-    color: '#208AEF',
-    fontWeight: '700',
+  footerLink: {
+    color: AppColors.secondary,
+    fontWeight: '800',
   },
   parentLink: {
-    marginTop: 12,
-    alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   parentLinkText: {
-    color: '#208AEF',
+    color: AppColors.onSurfaceVariant,
     fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '700',
   },
 });
