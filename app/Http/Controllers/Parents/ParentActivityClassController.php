@@ -319,7 +319,12 @@ class ParentActivityClassController extends BaseParentController
 
             $enrollments = ActivityClassEnrollment::whereIn('child_id', $childIds)
                 ->where('status', 'active')
-                ->with(['activityClass' => fn ($q) => $q->withoutGlobalScope('tenant'), 'child:id,ulid,first_name,last_name', 'invoice'])
+                ->with([
+                    'activityClass' => fn ($q) => $q->withoutGlobalScope('tenant')
+                        ->with(['school:id,name', 'tenant:id,name']),
+                    'child:id,ulid,first_name,last_name',
+                    'invoice',
+                ])
                 ->get();
 
             $data = $enrollments->map(function ($enrollment) {

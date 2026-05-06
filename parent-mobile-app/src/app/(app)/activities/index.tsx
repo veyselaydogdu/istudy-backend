@@ -41,16 +41,19 @@ interface Activity {
   enrolled_child_ids?: number[];
 }
 
-interface MyActivityEnrollment {
-  activity_id: number;
+interface KatildiklarimItem {
+  key: string;
+  type: 'activity' | 'activity_class';
+  id: number;
   name: string;
   is_global: boolean;
   is_paid: boolean;
   price: string | null;
+  currency: string;
   start_date: string | null;
   end_date: string | null;
-  school: { id: number; name: string } | null;
   tenant_name: string | null;
+  school_name: string | null;
   children: Array<{ id: string; full_name: string }>;
   enrolled_at: string;
 }
@@ -85,7 +88,7 @@ interface ActivityClass {
 
 function formatDateRange(start: string | null, end: string | null): string | null {
   if (!start && !end) { return null; }
-  const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  const fmt = (d: string) => new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
   if (start && end) { return `${fmt(start)} – ${fmt(end)}`; }
   if (start) { return `${fmt(start)}'den itibaren`; }
   return `${fmt(end!)}'e kadar`;
@@ -312,12 +315,14 @@ function ActivityClassCard({ item }: { item: ActivityClass }) {
 
 // ─── Tab indicator ────────────────────────────────────────────────────────────
 
-type Tab = 'Etkinlikler' | 'Etkinlik Sınıfları' | 'Etkinliklerim';
+type Tab = 'Etkinlikler' | 'Etkinlik Sınıfları' | 'Katıldıklarım';
+type KatilFilter = 'all' | 'activity' | 'activity_class';
+type KatilSort = 'date_desc' | 'date_asc';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'Etkinlikler', label: 'Etkinlikler' },
   { key: 'Etkinlik Sınıfları', label: 'Etkinlik Sınıfları' },
-  { key: 'Etkinliklerim', label: 'Etkinliklerim' },
+  { key: 'Katıldıklarım', label: 'Katıldıklarım' },
 ];
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -343,11 +348,13 @@ export default function ActivitiesScreen() {
   const [acLoadingMore, setAcLoadingMore] = useState(false);
   const [acFetched, setAcFetched] = useState(false);
 
-  // My enrollments state
-  const [myEnrollments, setMyEnrollments] = useState<MyActivityEnrollment[]>([]);
+  // Katıldıklarım state
+  const [katildiklarim, setKatildiklarim] = useState<KatildiklarimItem[]>([]);
   const [myLoading, setMyLoading] = useState(false);
   const [myRefreshing, setMyRefreshing] = useState(false);
   const [myFetched, setMyFetched] = useState(false);
+  const [katilFilter, setKatilFilter] = useState<KatilFilter>('all');
+  const [katilSort, setKatilSort] = useState<KatilSort>('date_desc');
 
   const switchTab = (tab: Tab) => setActiveTab(tab);
 
@@ -396,8 +403,62 @@ export default function ActivitiesScreen() {
   const loadMyEnrollments = useCallback(async () => {
     try {
       setMyLoading(true);
-      const res = await api.get('/parent/activities/my-enrollments');
-      setMyEnrollments(res.data?.data ?? []);
+      const [actRes, acRes] = await Promise.all([
+        api.get('/parent/activities/my-enrollments'),
+        api.get('/parent/activity-classes/my-enrollments'),
+      ]);
+
+      const actItems: KatildiklarimItem[] = (actRes.data?.data ?? []).map((e: {
+        activity_id: number; name: string; is_global: boolean; is_paid: boolean;
+        price: string | null; start_date: string | null; end_date: string | null;
+        tenant_name: string | null; school: { id: number; name: string } | null;
+        children: Array<{ id: string; full_name: string }>; enrolled_at: string;
+      }) => ({
+        key: `act-${e.activity_id}`,
+        type: 'activity' as const,
+        id: e.activity_id,
+        name: e.name,
+        is_global: e.is_global,
+        is_paid: e.is_paid,
+        price: e.price,
+        currency: '₺',
+        start_date: e.start_date,
+        end_date: e.end_date,
+        tenant_name: e.tenant_name,
+        school_name: e.school?.name ?? null,
+        children: e.children,
+        enrolled_at: e.enrolled_at,
+      }));
+
+      const acItems: KatildiklarimItem[] = (acRes.data?.data ?? []).map((e: {
+        enrollment_id: number;
+        activity_class: { id: number; name: string; is_global?: boolean; is_paid: boolean;
+          price: string | null; currency: string; start_date: string | null; end_date: string | null;
+          tenant_name?: string | null; school?: { id: number; name: string } | null } | null;
+        child: { id: string; name: string } | null;
+        enrolled_at: string;
+      }) => {
+        const ac = e.activity_class;
+        if (!ac) { return null; }
+        return {
+          key: `ac-${e.enrollment_id}`,
+          type: 'activity_class' as const,
+          id: ac.id,
+          name: ac.name,
+          is_global: ac.is_global ?? false,
+          is_paid: ac.is_paid,
+          price: ac.price,
+          currency: ac.currency ?? '₺',
+          start_date: ac.start_date ?? null,
+          end_date: ac.end_date ?? null,
+          tenant_name: ac.tenant_name ?? null,
+          school_name: ac.school_name ?? null,
+          children: e.child ? [{ id: e.child.id, full_name: e.child.name }] : [],
+          enrolled_at: e.enrolled_at,
+        };
+      }).filter(Boolean) as KatildiklarimItem[];
+
+      setKatildiklarim([...actItems, ...acItems]);
       setMyFetched(true);
     } catch (err) {
       Alert.alert('Hata', getApiError(err));
@@ -417,7 +478,7 @@ export default function ActivitiesScreen() {
     if (activeTab === 'Etkinlik Sınıfları' && !acFetched) {
       void loadActivityClasses(1);
     }
-    if (activeTab === 'Etkinliklerim' && !myFetched) {
+    if (activeTab === 'Katıldıklarım' && !myFetched) {
       void loadMyEnrollments();
     }
   }, [activeTab, acFetched, myFetched, loadActivityClasses, loadMyEnrollments]);
@@ -492,16 +553,26 @@ export default function ActivitiesScreen() {
     );
   };
 
-  // ─── My Enrollments list ──────────────────────────────────────────────────────
+  // ─── Katıldıklarım list ───────────────────────────────────────────────────────
 
-  const renderMyEnrollments = () => {
+  const filteredKatildiklarim = katildiklarim
+    .filter((item) => katilFilter === 'all' || item.type === katilFilter)
+    .sort((a, b) => {
+      const dateA = a.start_date ?? a.enrolled_at;
+      const dateB = b.start_date ?? b.enrolled_at;
+      return katilSort === 'date_desc'
+        ? dateB.localeCompare(dateA)
+        : dateA.localeCompare(dateB);
+    });
+
+  const renderKatildiklarim = () => {
     if (myLoading) {
       return <View style={styles.centered}><ActivityIndicator size="large" color={AppColors.primary} /></View>;
     }
     return (
       <FlatList
-        data={myEnrollments}
-        keyExtractor={(item) => `my-${item.activity_id}`}
+        data={filteredKatildiklarim}
+        keyExtractor={(item) => item.key}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -509,32 +580,79 @@ export default function ActivitiesScreen() {
             onRefresh={() => { setMyRefreshing(true); void loadMyEnrollments(); }}
           />
         }
+        ListHeaderComponent={
+          <View style={myStyles.controls}>
+            {/* Filtre */}
+            <View style={myStyles.filterRow}>
+              {([
+                { key: 'all', label: 'Tümü' },
+                { key: 'activity', label: 'Etkinlikler' },
+                { key: 'activity_class', label: 'Sınıflar' },
+              ] as { key: KatilFilter; label: string }[]).map((f) => (
+                <TouchableOpacity
+                  key={f.key}
+                  style={[myStyles.filterChip, katilFilter === f.key && myStyles.filterChipActive]}
+                  onPress={() => setKatilFilter(f.key)}
+                >
+                  <Text style={[myStyles.filterChipText, katilFilter === f.key && myStyles.filterChipTextActive]}>
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {/* Sıralama */}
+            <View style={myStyles.sortRow}>
+              <Ionicons name="swap-vertical-outline" size={14} color={AppColors.onSurfaceVariant} />
+              {([
+                { key: 'date_desc', label: 'Tarihe göre ↓' },
+                { key: 'date_asc', label: 'Tarihe göre ↑' },
+              ] as { key: KatilSort; label: string }[]).map((s) => (
+                <TouchableOpacity
+                  key={s.key}
+                  style={[myStyles.sortChip, katilSort === s.key && myStyles.sortChipActive]}
+                  onPress={() => setKatilSort(s.key)}
+                >
+                  <Text style={[myStyles.sortChipText, katilSort === s.key && myStyles.sortChipTextActive]}>
+                    {s.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => router.push(`/(app)/activities/event/${item.activity_id}`)}
+            onPress={() => router.push(
+              item.type === 'activity'
+                ? `/(app)/activities/event/${item.id}`
+                : `/(app)/activities/${item.id}`
+            )}
             activeOpacity={0.75}
           >
             <View style={styles.cardHeader}>
-              <View style={[styles.cardIconWrap, { backgroundColor: AppColors.successContainer }]}>
-                <Ionicons name="checkmark-circle" size={20} color={AppColors.success} />
+              <View style={[styles.cardIconWrap, { backgroundColor: item.type === 'activity' ? AppColors.successContainer : AppColors.primaryContainer }]}>
+                <Ionicons
+                  name={item.type === 'activity' ? 'flag' : 'star'}
+                  size={18}
+                  color={item.type === 'activity' ? AppColors.success : AppColors.primary}
+                />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>{item.name}</Text>
-                {item.tenant_name ? (
-                  <Text style={styles.cardSchool}>{item.tenant_name}</Text>
+                {(item.tenant_name ?? item.school_name) ? (
+                  <Text style={styles.cardSchool}>{item.tenant_name ?? item.school_name}</Text>
                 ) : null}
               </View>
               <View style={{ gap: 4, alignItems: 'flex-end' }}>
-                {item.is_global && (
-                  <View style={styles.globalBadge}>
-                    <Ionicons name="globe-outline" size={11} color="#7C3AED" />
-                    <Text style={styles.globalBadgeText}>Global</Text>
-                  </View>
-                )}
+                <View style={item.type === 'activity' ? myStyles.typeBadgeAct : myStyles.typeBadgeAc}>
+                  <Text style={item.type === 'activity' ? myStyles.typeBadgeActText : myStyles.typeBadgeAcText}>
+                    {item.type === 'activity' ? 'Etkinlik' : 'Sınıf'}
+                  </Text>
+                </View>
                 {item.is_paid ? (
                   <View style={styles.paidBadge}>
-                    <Text style={styles.paidText}>{item.price} ₺</Text>
+                    <Text style={styles.paidText}>{item.price} {item.currency}</Text>
                   </View>
                 ) : (
                   <View style={styles.freeBadge}>
@@ -551,23 +669,31 @@ export default function ActivitiesScreen() {
                   <Text style={styles.metaText}>{formatDateRange(item.start_date, item.end_date)}</Text>
                 </View>
               )}
-              <View style={styles.metaItem}>
-                <Ionicons name="people-outline" size={13} color="#9CA3AF" />
-                <Text style={styles.metaText}>
-                  {item.children.map(c => c.full_name).join(', ')}
-                </Text>
-              </View>
+              {item.children.length > 0 && (
+                <View style={styles.metaItem}>
+                  <Ionicons name="people-outline" size={13} color="#9CA3AF" />
+                  <Text style={styles.metaText}>{item.children.map(c => c.full_name).join(', ')}</Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.cardFooter}>
-              {item.school?.name || item.tenant_name ? (
-                <View style={[styles.schoolBadge, item.is_global && styles.schoolBadgeGlobal]}>
-                  <Ionicons name={item.is_global ? 'globe-outline' : 'business-outline'} size={11} color={item.is_global ? '#7C3AED' : AppColors.primary} />
-                  <Text style={[styles.schoolBadgeText, item.is_global && { color: '#7C3AED' }]}>
-                    {item.tenant_name ?? item.school?.name}
-                  </Text>
-                </View>
-              ) : null}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                {(item.school_name || item.tenant_name) ? (
+                  <View style={[styles.schoolBadge, item.is_global && styles.schoolBadgeGlobal]}>
+                    <Ionicons name={item.is_global ? 'globe-outline' : 'business-outline'} size={11} color={item.is_global ? '#7C3AED' : AppColors.primary} />
+                    <Text style={[styles.schoolBadgeText, item.is_global && { color: '#7C3AED' }]}>
+                      {item.tenant_name ?? item.school_name}
+                    </Text>
+                  </View>
+                ) : null}
+                {item.is_global && (
+                  <View style={styles.globalBadge}>
+                    <Ionicons name="globe-outline" size={11} color="#7C3AED" />
+                    <Text style={styles.globalBadgeText}>Global</Text>
+                  </View>
+                )}
+              </View>
               <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
             </View>
           </TouchableOpacity>
@@ -576,7 +702,13 @@ export default function ActivitiesScreen() {
           <View style={styles.emptyWrap}>
             <Ionicons name="calendar-clear-outline" size={48} color="#D1D5DB" />
             <Text style={styles.emptyTitle}>Kayıt Yok</Text>
-            <Text style={styles.emptyText}>Henüz hiçbir etkinliğe kayıt olmadınız.</Text>
+            <Text style={styles.emptyText}>
+              {katilFilter === 'all'
+                ? 'Henüz hiçbir etkinliğe veya sınıfa kayıt olmadınız.'
+                : katilFilter === 'activity'
+                  ? 'Katıldığınız etkinlik bulunmuyor.'
+                  : 'Kayıtlı olduğunuz etkinlik sınıfı bulunmuyor.'}
+            </Text>
           </View>
         }
       />
@@ -602,7 +734,7 @@ export default function ActivitiesScreen() {
       <View style={styles.content}>
         {activeTab === 'Etkinlikler' ? renderActivities()
           : activeTab === 'Etkinlik Sınıfları' ? renderActivityClasses()
-          : renderMyEnrollments()}
+          : renderKatildiklarim()}
       </View>
     </SafeAreaView>
   );
@@ -744,4 +876,48 @@ const styles = StyleSheet.create({
   emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: AppColors.onSurface },
   emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', paddingHorizontal: 32 },
+});
+
+// ─── Katıldıklarım styles ─────────────────────────────────────────────────────
+
+const myStyles = StyleSheet.create({
+  controls: { gap: 8, marginBottom: 4 },
+  filterRow: { flexDirection: 'row', gap: 6 },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: AppColors.surfaceContainer,
+    backgroundColor: AppColors.white,
+  },
+  filterChipActive: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryContainer },
+  filterChipText: { fontSize: 12, fontWeight: '600', color: AppColors.onSurfaceVariant },
+  filterChipTextActive: { color: AppColors.primary },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sortChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: AppColors.surfaceContainer,
+    backgroundColor: AppColors.white,
+  },
+  sortChipActive: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryContainer },
+  sortChipText: { fontSize: 12, fontWeight: '500', color: AppColors.onSurfaceVariant },
+  sortChipTextActive: { color: AppColors.primary, fontWeight: '700' },
+  typeBadgeAct: {
+    backgroundColor: AppColors.successContainer,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  typeBadgeActText: { fontSize: 10, color: AppColors.success, fontWeight: '700' },
+  typeBadgeAc: {
+    backgroundColor: AppColors.primaryContainer,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  typeBadgeAcText: { fontSize: 10, color: AppColors.primary, fontWeight: '700' },
 });
