@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
 import { AppHeader } from '@/components/ui/AppHeader';
+import { Avatar } from '@/components/ui/Avatar';
 import api from '../../../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -25,6 +25,8 @@ interface ChildOption {
   school_name: string | null;
   class_id: number | null;
   class_name: string | null;
+  class_color?: string | null;
+  profile_photo?: string | null;
 }
 
 interface Allergen {
@@ -56,7 +58,7 @@ interface DayMenu {
   meals: MealEntry[];
 }
 
-// ─── Turkish day names ────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 const TR_MONTHS = [
@@ -64,133 +66,155 @@ const TR_MONTHS = [
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${d.getDate()} ${TR_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
-
 function getDayName(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return TR_DAYS[d.getDay()];
+  return TR_DAYS[new Date(dateStr + 'T00:00:00').getDay()];
 }
 
-// ─── Risk badge ───────────────────────────────────────────────────────────────
+function getDayNumber(dateStr: string): number {
+  return new Date(dateStr + 'T00:00:00').getDate();
+}
 
-const RISK_CONFIG = {
-  high:   { bg: '#FEE2E2', text: AppColors.error, label: 'Yüksek' },
-  medium: { bg: AppColors.warningContainer, text: AppColors.warning, label: 'Orta' },
-  low:    { bg: '#DCFCE7', text: AppColors.success, label: 'Düşük' },
-};
-
-function RiskBadge({ level }: { level: Allergen['risk_level'] }) {
-  const cfg = level ? RISK_CONFIG[level] : null;
-  if (!cfg) { return null; }
+function isToday(dateStr: string): boolean {
+  const today = new Date();
+  const d = new Date(dateStr + 'T00:00:00');
   return (
-    <View style={[styles.riskBadge, { backgroundColor: cfg.bg }]}>
-      <Text style={[styles.riskBadgeText, { color: cfg.text }]}>{cfg.label}</Text>
-    </View>
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
   );
 }
 
-// ─── Accordion day card ───────────────────────────────────────────────────────
+const MEAL_TYPE_CONFIG: Record<string, { icon: string; bg: string; color: string }> = {
+  'Kahvaltı':    { icon: 'sunny-outline',       bg: '#FFF7ED', color: '#D97706' },
+  'Öğle Yemeği': { icon: 'restaurant-outline',  bg: AppColors.primaryContainer, color: AppColors.primary },
+  'Akşam Yemeği':{ icon: 'moon-outline',         bg: '#EDE9FE', color: '#7C3AED' },
+  'Ara Öğün':    { icon: 'cafe-outline',         bg: '#DCFCE7', color: AppColors.success },
+};
 
-function DayCard({ day }: { day: DayMenu }) {
+function getMealTypeConfig(type: string | null) {
+  if (type && MEAL_TYPE_CONFIG[type]) { return MEAL_TYPE_CONFIG[type]; }
+  return { icon: 'fast-food-outline', bg: AppColors.surfaceContainer, color: AppColors.onSurfaceVariant };
+}
+
+// ─── DayCard ─────────────────────────────────────────────────────────────────
+
+function DayCard({ day, childName }: { day: DayMenu; childName: string }) {
   const [expanded, setExpanded] = useState(false);
-  const animation = useRef(new Animated.Value(0)).current;
+  const anim = useRef(new Animated.Value(0)).current;
+  const today = isToday(day.date);
 
   const toggle = () => {
-    const toValue = expanded ? 0 : 1;
-    Animated.timing(animation, {
-      toValue,
+    Animated.timing(anim, {
+      toValue: expanded ? 0 : 1,
       duration: 220,
       useNativeDriver: false,
     }).start();
     setExpanded(!expanded);
   };
 
+  const dayNumber = getDayNumber(day.date);
   const dayName = getDayName(day.date);
-  const dateLabel = formatDate(day.date);
   const mealCount = day.meals.length;
 
+  const allAllergens = day.meals.flatMap((e) =>
+    e.meal.ingredients.flatMap((i) => i.allergens)
+  );
+  const hasAllergens = allAllergens.length > 0;
+
   return (
-    <View style={styles.dayCard}>
+    <View style={[styles.dayCard, today && expanded && styles.dayCardActive]}>
       <TouchableOpacity style={styles.dayHeader} onPress={toggle} activeOpacity={0.75}>
         <View style={styles.dayHeaderLeft}>
-          <View style={styles.dayNameBadge}>
-            <Text style={styles.dayNameText}>{dayName.slice(0, 3).toUpperCase()}</Text>
+          <View style={[styles.dateBox, today && styles.dateBoxToday]}>
+            <Text style={[styles.dateNumber, today && styles.dateNumberToday]}>{dayNumber}</Text>
           </View>
           <View>
-            <Text style={styles.dayDateText}>{dateLabel}</Text>
-            <Text style={styles.daySubText}>
-              {mealCount === 0 ? 'Menü girilmemiş' : `${mealCount} öğün`}
+            <Text style={[styles.dayName, today && styles.dayNameToday]}>{dayName}</Text>
+            <Text style={[styles.daySubText, today && styles.daySubToday]}>
+              {today ? 'Bugünün Menüsü' : mealCount === 0 ? 'Menü girilmemiş' : `${mealCount} öğün`}
             </Text>
           </View>
         </View>
-        <Animated.View
-          style={{
-            transform: [{
-              rotate: animation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }),
-            }],
-          }}
-        >
-          <Ionicons name="chevron-down" size={20} color={mealCount > 0 ? AppColors.primary : AppColors.surfaceContainer} />
-        </Animated.View>
+        <View style={[styles.chevronBox, today && styles.chevronBoxToday]}>
+          <Animated.View
+            style={{
+              transform: [{
+                rotate: anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }),
+              }],
+            }}
+          >
+            <Ionicons
+              name="chevron-down"
+              size={18}
+              color={today ? AppColors.primary : AppColors.onSurfaceVariant}
+            />
+          </Animated.View>
+        </View>
       </TouchableOpacity>
 
-      {expanded && mealCount > 0 && (
+      {expanded && (
         <View style={styles.dayBody}>
-          {day.meals.map((entry, idx) => (
-            <View key={entry.id} style={[styles.mealBlock, idx > 0 && styles.mealBlockBorder]}>
-              <View style={styles.mealHeader}>
-                <Ionicons name="restaurant-outline" size={15} color={AppColors.primary} />
-                <Text style={styles.mealName}>{entry.meal.name}</Text>
-                {entry.meal.meal_type ? (
-                  <View style={styles.mealTypeBadge}>
-                    <Text style={styles.mealTypeText}>{entry.meal.meal_type}</Text>
-                  </View>
-                ) : null}
+          {hasAllergens && (
+            <View style={styles.allergenWarning}>
+              <Ionicons name="warning" size={18} color={AppColors.error} />
+              <View style={styles.allergenWarningText}>
+                <Text style={styles.allergenWarningTitle}>{childName} — Alerjen Uyarısı</Text>
+                <Text style={styles.allergenWarningBody}>
+                  {[...new Set(allAllergens.map((a) => a.name))].join(', ')}
+                </Text>
               </View>
+            </View>
+          )}
 
-              {entry.meal.ingredients.length > 0 ? (
-                <View style={styles.ingredientList}>
-                  {entry.meal.ingredients.map((ing) => (
-                    <View key={ing.id} style={styles.ingredientRow}>
-                      <View style={styles.ingredientDot} />
-                      <Text style={styles.ingredientName}>{ing.name}</Text>
-                      {ing.allergens.length > 0 && (
+          {mealCount === 0 ? (
+            <Text style={styles.emptyDayText}>Bu gün için menü planlanmamış.</Text>
+          ) : (
+            <View style={styles.mealList}>
+              {day.meals.map((entry) => {
+                const cfg = getMealTypeConfig(entry.meal.meal_type);
+                return (
+                  <View key={entry.id} style={styles.mealItem}>
+                    <View style={[styles.mealIcon, { backgroundColor: AppColors.primary }]}>
+                      <Ionicons name={cfg.icon as any} size={22} color={'white'} />
+                    </View>
+                    <View style={styles.mealContent}>
+                      <Text style={styles.mealTypeName}>
+                        {entry.meal.meal_type ?? entry.meal.name}
+                      </Text>
+                      {entry.meal.ingredients.length > 0 ? (
+                        <Text style={styles.mealIngredients} numberOfLines={3}>
+                          {entry.meal.ingredients.map((i) => i.name).join(', ')}
+                        </Text>
+                      ) : (
+                        <Text style={styles.mealIngredients}>Besin bilgisi yok</Text>
+                      )}
+                      {entry.meal.ingredients.some((i) => i.allergens.length > 0) && (
                         <View style={styles.allergenChips}>
-                          {ing.allergens.map((a) => (
-                            <View key={a.id} style={styles.allergenChip}>
-                              <Ionicons name="warning-outline" size={10} color="#D97706" />
-                              <Text style={styles.allergenChipText}>{a.name}</Text>
-                              <RiskBadge level={a.risk_level} />
-                            </View>
-                          ))}
+                          {entry.meal.ingredients
+                            .flatMap((i) => i.allergens)
+                            .map((a) => (
+                              <View key={a.id} style={styles.allergenChip}>
+                                <Ionicons name="warning-outline" size={10} color="#D97706" />
+                                <Text style={styles.allergenChipText}>{a.name}</Text>
+                              </View>
+                            ))}
                         </View>
                       )}
                     </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.noIngredient}>Besin öğesi bilgisi yok</Text>
-              )}
+                  </View>
+                );
+              })}
             </View>
-          ))}
-        </View>
-      )}
-
-      {expanded && mealCount === 0 && (
-        <View style={styles.emptyDay}>
-          <Text style={styles.emptyDayText}>Bu gün için menü planlanmamış.</Text>
+          )}
         </View>
       )}
     </View>
   );
 }
 
-// ─── Child selector ───────────────────────────────────────────────────────────
+// ─── Child Pills ─────────────────────────────────────────────────────────────
 
-function ChildSelector({
+function ChildPills({
   children,
   selected,
   onSelect,
@@ -199,52 +223,49 @@ function ChildSelector({
   selected: ChildOption | null;
   onSelect: (c: ChildOption) => void;
 }) {
-  const [open, setOpen] = useState(false);
-
   if (children.length <= 1) { return null; }
-
   return (
-    <View style={styles.selectorWrap}>
-      <TouchableOpacity style={styles.selectorBtn} onPress={() => setOpen(!open)} activeOpacity={0.8}>
-        <Ionicons name="people-outline" size={17} color={AppColors.primary} />
-        <Text style={styles.selectorText} numberOfLines={1}>
-          {selected?.full_name ?? 'Çocuk seçin'}
-        </Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#6B7280" />
-      </TouchableOpacity>
-      {open && (
-        <View style={styles.selectorDropdown}>
-          {children.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              style={[styles.selectorItem, selected?.id === c.id && styles.selectorItemActive]}
-              onPress={() => { onSelect(c); setOpen(false); }}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.selectorItemText, selected?.id === c.id && styles.selectorItemTextActive]}>
-                {c.full_name}
-              </Text>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.pillsRow}
+    >
+      {children.map((c) => {
+        const active = selected?.id === c.id;
+        return (
+          <TouchableOpacity
+            key={c.id}
+            style={[styles.pill, active && styles.pillActive]}
+            onPress={() => onSelect(c)}
+            activeOpacity={0.7}
+          >
+            <Avatar
+              name={c.full_name}
+              size={32}
+              shape="circle"
+              color={c.class_color ?? undefined}
+              uri={c.profile_photo ?? undefined}
+            />
+            <View style={styles.pillLabels}>
               {c.class_name ? (
-                <Text style={styles.selectorItemSub}>{c.class_name}</Text>
+                <Text style={[styles.pillSub, active && styles.pillSubActive]}>
+                  {c.class_name}
+                </Text>
               ) : null}
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
   );
 }
 
-// ─── Month navigator ──────────────────────────────────────────────────────────
+// ─── Month Navigator ─────────────────────────────────────────────────────────
 
 function MonthNav({
-  year,
-  month,
-  onChange,
+  year, month, onChange,
 }: {
-  year: number;
-  month: number;
-  onChange: (y: number, m: number) => void;
+  year: number; month: number; onChange: (y: number, m: number) => void;
 }) {
   const prev = () => {
     if (month === 1) { onChange(year - 1, 12); } else { onChange(year, month - 1); }
@@ -254,7 +275,7 @@ function MonthNav({
     if (year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth() + 1)) { return; }
     if (month === 12) { onChange(year + 1, 1); } else { onChange(year, month + 1); }
   };
-  const isCurrentOrFuture = (() => {
+  const atMax = (() => {
     const now = new Date();
     return year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth() + 1);
   })();
@@ -267,41 +288,36 @@ function MonthNav({
       <Text style={styles.monthNavLabel}>{TR_MONTHS[month - 1]} {year}</Text>
       <TouchableOpacity
         onPress={next}
-        style={[styles.monthNavBtn, isCurrentOrFuture && styles.monthNavBtnDisabled]}
+        style={[styles.monthNavBtn, atMax && styles.monthNavBtnDisabled]}
         activeOpacity={0.7}
-        disabled={isCurrentOrFuture}
+        disabled={atMax}
       >
-        <Ionicons name="chevron-forward" size={20} color={isCurrentOrFuture ? AppColors.surfaceContainer : AppColors.primary} />
+        <Ionicons name="chevron-forward" size={20} color={atMax ? AppColors.surfaceContainer : AppColors.primary} />
       </TouchableOpacity>
     </View>
   );
 }
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function MealMenuScreen() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-
   const [childOptions, setChildOptions] = useState<ChildOption[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildOption | null>(null);
   const [childrenLoaded, setChildrenLoaded] = useState(false);
-
   const [menuData, setMenuData] = useState<DayMenu[]>([]);
   const [loadingChildren, setLoadingChildren] = useState(true);
   const [loadingMenu, setLoadingMenu] = useState(false);
 
-  // Çocukları yükle (tek seferlik)
   const loadChildren = useCallback(async () => {
     setLoadingChildren(true);
     try {
       const res = await api.get<{ data: ChildOption[] }>('/parent/meal-menus/children');
       const list = res.data.data ?? [];
       setChildOptions(list);
-      if (list.length > 0 && !selectedChild) {
-        setSelectedChild(list[0]);
-      }
+      if (list.length > 0 && !selectedChild) { setSelectedChild(list[0]); }
       setChildrenLoaded(true);
     } catch {
       setChildrenLoaded(true);
@@ -310,7 +326,6 @@ export default function MealMenuScreen() {
     }
   }, [selectedChild]);
 
-  // Yemek takvimini yükle
   const loadMenu = useCallback(async (childId: number, y: number, m: number) => {
     setLoadingMenu(true);
     try {
@@ -325,33 +340,22 @@ export default function MealMenuScreen() {
     }
   }, []);
 
-  // İlk yükleme
   useFocusEffect(
     useCallback(() => {
-      if (!childrenLoaded) {
-        void loadChildren();
-      }
+      if (!childrenLoaded) { void loadChildren(); }
     }, [childrenLoaded, loadChildren])
   );
 
-  // Çocuk veya ay değişince menüyü yenile
   React.useEffect(() => {
-    if (selectedChild) {
-      void loadMenu(selectedChild.id, year, month);
-    }
+    if (selectedChild) { void loadMenu(selectedChild.id, year, month); }
   }, [selectedChild, year, month, loadMenu]);
-
-  const handleMonthChange = (y: number, m: number) => {
-    setYear(y);
-    setMonth(m);
-  };
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   if (loadingChildren) {
     return (
       <SafeAreaView style={styles.safeArea} edges={[]}>
-        <AppHeader />
+        <AppHeader title="Yemek Menüsü" />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -359,11 +363,10 @@ export default function MealMenuScreen() {
     );
   }
 
-  if (!loadingChildren && childOptions.length === 0) {
+  if (childOptions.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea} edges={[]}>
-        <StatusBar style="dark" backgroundColor={AppColors.surfaceContainerLow} />
-        <AppHeader />
+        <AppHeader title="Yemek Menüsü" />
         <View style={styles.centered}>
           <Ionicons name="restaurant-outline" size={52} color="#D1D5DB" />
           <Text style={styles.emptyTitle}>Okula Kayıtlı Çocuk Yok</Text>
@@ -383,7 +386,6 @@ export default function MealMenuScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={[]}>
-      <StatusBar style="dark" backgroundColor={AppColors.surfaceContainerLow} />
       <AppHeader title="Yemek Menüsü" subtitle={childSubtitle} />
 
       <ScrollView
@@ -391,17 +393,14 @@ export default function MealMenuScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Çocuk seçici — birden fazla çocuk varsa gösterilir */}
-        <ChildSelector
+        <ChildPills
           children={childOptions}
           selected={selectedChild}
           onSelect={(c) => setSelectedChild(c)}
         />
 
-        {/* Ay navigasyonu */}
-        <MonthNav year={year} month={month} onChange={handleMonthChange} />
+        <MonthNav year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m); }} />
 
-        {/* Yemek listesi */}
         {loadingMenu ? (
           <View style={styles.menuLoading}>
             <ActivityIndicator size="small" color={AppColors.primary} />
@@ -418,7 +417,7 @@ export default function MealMenuScreen() {
         ) : (
           <View style={styles.dayList}>
             {menuData.map((day) => (
-              <DayCard key={day.date} day={day} />
+              <DayCard key={day.date} day={day} childName={selectedChild?.full_name ?? ''} />
             ))}
           </View>
         )}
@@ -432,92 +431,67 @@ export default function MealMenuScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
-
-
-  scroll: { flex: 1, backgroundColor: AppColors.surface },
+  scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
 
-  // Child selector
-  selectorWrap: { position: 'relative', zIndex: 10 },
-  selectorBtn: {
+  // Child pills
+  pillsRow: { paddingHorizontal: 4, gap: 10, paddingBottom: 4, marginTop: 10, flexGrow: 1, justifyContent: 'center' },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: AppColors.white,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: AppColors.surfaceContainer,
-    shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: AppColors.surfaceContainer,
   },
-  selectorText: { flex: 1, fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
-  selectorDropdown: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: AppColors.white,
-    borderRadius: 14,
-    marginTop: 4,
-    shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  selectorItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainerLow,
-  },
-  selectorItemActive: { backgroundColor: AppColors.primaryContainer },
-  selectorItemText: { fontSize: 14, fontWeight: '600', color: AppColors.onSurface },
-  selectorItemTextActive: { color: AppColors.primary },
-  selectorItemSub: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  pillActive: { backgroundColor: AppColors.primary },
+  pillLabels: { marginLeft: 8, alignItems: 'center', justifyContent: 'center', minHeight: 32 },
+  pillText: { fontSize: 13, fontWeight: '700', color: AppColors.onSurfaceVariant },
+  pillTextActive: { color: AppColors.white },
+  pillSub: { fontSize: 14, fontWeight: '700', color: AppColors.onSurfaceVariant, marginTop: 1, opacity: 0.75 },
+  pillSubActive: { color: AppColors.white, opacity: 0.85 },
 
   // Month nav
   monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: AppColors.white,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: AppColors.surfaceContainer,
-    shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  monthNavBtn: { padding: 4 },
+  monthNavBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: AppColors.surfaceContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   monthNavBtnDisabled: { opacity: 0.35 },
-  monthNavLabel: { fontSize: 16, fontWeight: '800', color: AppColors.onSurface },
+  monthNavLabel: { fontSize: 18, fontWeight: '800', color: AppColors.onSurface },
 
   // Day list
-  dayList: { gap: 8 },
+  dayList: { gap: 10 },
 
   // Day card
   dayCard: {
     backgroundColor: AppColors.white,
-    borderRadius: 16,
+    borderRadius: 50,
     overflow: 'hidden',
-    borderBottomWidth: 3,
-    borderBottomColor: AppColors.surfaceContainer,
     shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
+    padding: 7
+  },
+  dayCardActive: {
+    borderWidth: 1.5,
+    borderColor: AppColors.primaryContainer,
+    shadowColor: AppColors.primary,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   dayHeader: {
     flexDirection: 'row',
@@ -526,51 +500,81 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  dayHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dayNameBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: AppColors.primaryContainer,
+  dayHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+
+  // Date box
+  dateBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: AppColors.surfaceContainer,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dayNameText: { fontSize: 11, fontWeight: '800', color: AppColors.primary },
-  dayDateText: { fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
-  daySubText: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 1 },
-
-  dayBody: { paddingHorizontal: 16, paddingBottom: 14 },
-  emptyDay: { paddingHorizontal: 16, paddingBottom: 14 },
-  emptyDayText: { fontSize: 13, color: AppColors.onSurfaceVariant },
-
-  // Meal block
-  mealBlock: { paddingVertical: 10 },
-  mealBlockBorder: { borderTopWidth: 1, borderTopColor: AppColors.surfaceContainerLow },
-  mealHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  mealName: { flex: 1, fontSize: 14, fontWeight: '700', color: AppColors.onSurface },
-  mealTypeBadge: {
-    backgroundColor: AppColors.successContainer,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  mealTypeText: { fontSize: 11, fontWeight: '600', color: AppColors.success },
-
-  // Ingredients
-  ingredientList: { gap: 6 },
-  ingredientRow: { gap: 4 },
-  ingredientDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
+  dateBoxToday: {
     backgroundColor: AppColors.primary,
-    marginTop: 8,
-    position: 'absolute',
-    left: 0,
-    top: 0,
+    shadowColor: AppColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  ingredientName: { fontSize: 13, color: AppColors.onSurfaceVariant, paddingLeft: 12 },
-  allergenChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingLeft: 12, marginTop: 4 },
+  dateNumber: { fontSize: 20, fontWeight: '900', color: AppColors.primary },
+  dateNumberToday: { color: AppColors.white },
+
+  dayName: { fontSize: 16, fontWeight: '700', color: AppColors.onSurface },
+  dayNameToday: { color: AppColors.primary },
+  daySubText: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 2 },
+  daySubToday: { color: `${AppColors.primary}99` },
+
+  chevronBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: AppColors.surfaceContainerLow,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chevronBoxToday: { backgroundColor: `${AppColors.primary}18` },
+
+  // Day body
+  dayBody: { paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
+
+  // Allergen warning
+  allergenWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 14,
+    padding: 12,
+  },
+  allergenWarningText: { flex: 1 },
+  allergenWarningTitle: { fontSize: 13, fontWeight: '700', color: AppColors.error },
+  allergenWarningBody: { fontSize: 12, color: `${AppColors.error}CC`, marginTop: 2 },
+
+  // Meal list
+  mealList: { gap: 10 },
+  mealItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: AppColors.mealCartDetailBackground,
+    borderRadius: 18,
+    padding: 14,
+  },
+  mealIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  mealContent: { flex: 1 },
+  mealTypeName: { fontSize: 14, fontWeight: '800', color: AppColors.onSurface },
+  mealIngredients: { fontSize: 13, color: AppColors.onSurfaceVariant, marginTop: 3, lineHeight: 18 },
+  allergenChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   allergenChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -579,14 +583,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: AppColors.tertiaryContainer,
   },
   allergenChipText: { fontSize: 11, color: AppColors.warning, fontWeight: '600' },
-  riskBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
-  riskBadgeText: { fontSize: 9, fontWeight: '700' },
 
-  noIngredient: { fontSize: 12, color: AppColors.onSurfaceVariant, paddingLeft: 12 },
+  emptyDayText: { fontSize: 13, color: AppColors.onSurfaceVariant, paddingBottom: 4 },
 
   // Empty states
   emptyTitle: { fontSize: 17, fontWeight: '700', color: AppColors.onSurface, textAlign: 'center' },

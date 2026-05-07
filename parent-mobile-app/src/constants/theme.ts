@@ -35,6 +35,7 @@ export const AppColors = {
   secondary: '#4895EF',
   secondaryContainer: '#E7F5FF',
   secondaryDim: '#2E86E0',
+  mealCartDetailBackground: '#F2F6FB',
 
   // Tertiary — for "YENİ!" badges / highlights
   tertiary: '#E67700',
@@ -44,6 +45,7 @@ export const AppColors = {
   surface: '#F8F9FA',
   surfaceContainer: '#E9ECEF',
   surfaceContainerLow: '#F1F3F5',
+
 
   // Text
   onSurface: '#212529',

@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Parents;
 
 use App\Models\Child\Child;
 use App\Models\Health\MealMenuSchedule;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ParentMealMenuController extends BaseParentController
 {
+    use HandlesMediaStorage;
+
     /**
      * Aile çocuklarını sınıf bilgisiyle listele (çocuk seçici için)
      */
@@ -25,17 +28,19 @@ class ParentMealMenuController extends BaseParentController
             $children = Child::withoutGlobalScope('tenant')
                 ->where('family_profile_id', $familyProfile->id)
                 ->whereNotNull('school_id')
-                ->with(['classes:id,name', 'school:id,name'])
+                ->with(['classes:id,name,color', 'school:id,name'])
                 ->get()
                 ->map(fn ($child) => [
                     'id' => $child->id,
-                    'name' => $child->name,
-                    'surname' => $child->surname,
-                    'full_name' => trim(($child->name ?? '').' '.($child->surname ?? '')),
+                    'full_name' => trim(($child->first_name ?? '').' '.($child->last_name ?? '')),
                     'school_id' => $child->school_id,
                     'school_name' => $child->school?->name,
                     'class_id' => $child->classes->first()?->id,
                     'class_name' => $child->classes->first()?->name,
+                    'class_color' => $child->classes->first()?->color,
+                    'profile_photo' => $child->profile_photo
+                        ? $this->privateSignedUrl('parent.child.photo', ['child' => $child->id])
+                        : null,
                 ]);
 
             return $this->successResponse($children, 'Çocuklar getirildi.');
