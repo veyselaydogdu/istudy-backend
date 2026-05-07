@@ -28,6 +28,7 @@ class ActivityClass extends BaseModel
         'capacity',
         'is_school_wide',
         'is_global',
+        'cover_image',
         'is_active',
         'is_paid',
         'price',

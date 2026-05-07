@@ -5,8 +5,9 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { ActivityClass, School, SchoolClass } from '@/types';
-import { Plus, Trash2, Edit2, Eye, Users, Star, DollarSign, Globe, Info } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, Users, Star, DollarSign, Globe, Info, ImageIcon } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import AuthImg from '@/components/AuthImg';
 
 type ActivityClassForm = {
     name: string;
@@ -56,6 +57,8 @@ export default function ActivityClassesPage() {
     const [editing, setEditing] = useState<ActivityClass | null>(null);
     const [form, setForm] = useState<ActivityClassForm>(emptyForm);
     const [saving, setSaving] = useState(false);
+    const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+    const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
 
     const fetchSchools = useCallback(async () => {
         try {
@@ -96,6 +99,8 @@ export default function ActivityClassesPage() {
         setForm(emptyForm);
         setFormSchoolId('');
         setFormSchoolClasses([]);
+        setCoverImageFile(null);
+        setCoverImagePreview(null);
         setShowModal(true);
     };
 
@@ -105,6 +110,8 @@ export default function ActivityClassesPage() {
         setFormSchoolId(schoolId);
         if (schoolId) fetchFormSchoolClasses(schoolId);
         else setFormSchoolClasses([]);
+        setCoverImageFile(null);
+        setCoverImagePreview((ac as ActivityClass & { cover_image_url?: string }).cover_image_url ?? null);
         setForm({
             name: ac.name,
             description: ac.description ?? '',
@@ -150,13 +157,25 @@ export default function ActivityClassesPage() {
                 school_class_ids: form.is_global ? [] : (formSchoolId ? form.school_class_ids : []),
             };
 
+            let savedId: string;
             if (editing) {
                 await apiClient.put(`/activity-classes/${editing.id}`, payload);
+                savedId = editing.id;
                 toast.success('Etkinlik sınıfı güncellendi.');
             } else {
-                await apiClient.post('/activity-classes', payload);
+                const res = await apiClient.post('/activity-classes', payload);
+                savedId = res.data?.data?.id;
                 toast.success('Etkinlik sınıfı oluşturuldu.');
             }
+
+            if (coverImageFile && savedId) {
+                const fd = new FormData();
+                fd.append('cover_image', coverImageFile);
+                await apiClient.post(`/activity-classes/${savedId}/cover-image`, fd, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+            }
+
             setShowModal(false);
             fetchActivityClasses();
         } catch (err: unknown) {
@@ -576,6 +595,47 @@ export default function ActivityClassesPage() {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Kapak Fotoğrafı */}
+                            <div>
+                                <label className="text-sm font-medium flex items-center gap-2">
+                                    <ImageIcon className="h-4 w-4" /> Kapak Fotoğrafı
+                                    <span className="text-[#888ea8] font-normal">(opsiyonel, max 5MB)</span>
+                                </label>
+                                <div className="mt-2 flex items-start gap-4">
+                                    {coverImagePreview && (
+                                        <div className="relative h-24 w-40 shrink-0 overflow-hidden rounded-lg border border-[#e0e6ed]">
+                                            {coverImageFile
+                                                ? <img src={coverImagePreview!} alt="Kapak" className="h-full w-full object-cover" />
+                                                : <AuthImg src={coverImagePreview} className="h-full w-full object-cover" />
+                                            }
+                                            <button
+                                                type="button"
+                                                onClick={() => { setCoverImagePreview(null); setCoverImageFile(null); }}
+                                                className="absolute right-1 top-1 rounded-full bg-red-500 p-0.5 text-white hover:bg-red-600"
+                                                title="Kaldır"
+                                            >
+                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                    )}
+                                    <label className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-[#e0e6ed] px-6 py-4 text-[#888ea8] hover:border-primary hover:text-primary transition-colors">
+                                        <ImageIcon className="h-6 w-6" />
+                                        <span className="text-xs">{coverImagePreview ? 'Değiştir' : 'Fotoğraf Seç'}</span>
+                                        <input
+                                            type="file"
+                                            className="sr-only"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                setCoverImageFile(file);
+                                                setCoverImagePreview(URL.createObjectURL(file));
+                                            }}
+                                        />
+                                    </label>
+                                </div>
                             </div>
 
                             {/* Notlar */}

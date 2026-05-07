@@ -17,6 +17,7 @@ class Activity extends BaseModel
         'school_id',
         'tenant_id',
         'is_global',
+        'cover_image',
         'academic_year_id',
         'name',
         'description',

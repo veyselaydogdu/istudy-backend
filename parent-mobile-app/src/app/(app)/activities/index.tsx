@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -17,8 +18,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppColors } from '@/constants/theme';
 import { AppHeader } from '@/components/ui/AppHeader';
 import { TabSelector } from '@/components/ui/TabSelector';
+import { PrivateImage } from '@/components/ui/PrivateImage';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
+
+const { width: SCREEN_W } = Dimensions.get('window');
+const CARD_IMG_HEIGHT = 160;
+const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,6 +36,7 @@ interface Activity {
   is_enrollment_required: boolean;
   is_global?: boolean;
   price: string | null;
+  currency?: string;
   capacity: number | null;
   address: string | null;
   start_date: string | null;
@@ -39,7 +46,8 @@ interface Activity {
   tenant_name?: string | null;
   classes: Array<{ id: number; name: string }>;
   enrollments_count?: number;
-  enrolled_child_ids?: number[];
+  enrolled_child_ids?: string[];
+  cover_image_url?: string | null;
 }
 
 interface KatildiklarimItem {
@@ -57,6 +65,7 @@ interface KatildiklarimItem {
   school_name: string | null;
   children: Array<{ id: string; full_name: string }>;
   enrolled_at: string;
+  cover_image_url?: string | null;
 }
 
 interface ActivityClass {
@@ -83,230 +92,262 @@ interface ActivityClass {
   is_school_wide: boolean;
   school_classes: Array<{ id: number; name: string }>;
   enrolled_child_ids: number[];
+  cover_image_url?: string | null;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Cover Card ───────────────────────────────────────────────────────────────
 
-function formatDateRange(start: string | null, end: string | null): string | null {
-  if (!start && !end) { return null; }
-  const fmt = (d: string) => new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
-  if (start && end) { return `${fmt(start)} – ${fmt(end)}`; }
-  if (start) { return `${fmt(start)}'den itibaren`; }
-  return `${fmt(end!)}'e kadar`;
+interface CoverCardProps {
+  name: string;
+  coverImageUrl?: string | null;
+  schoolLabel?: string | null;
+  isGlobal?: boolean;
+  startDate?: string | null;
+  description?: string | null;
+  footerLeft?: React.ReactNode;
+  footerRight?: React.ReactNode;
+  onPress: () => void;
+}
+
+function CoverCard({ name, coverImageUrl, schoolLabel, isGlobal, startDate, description, footerLeft, footerRight, onPress }: CoverCardProps) {
+  const date = startDate ? new Date(startDate) : null;
+
+  return (
+    <TouchableOpacity style={cardStyles.card} onPress={onPress} activeOpacity={0.75}>
+      {/* Cover */}
+      <View style={cardStyles.coverWrap}>
+        {coverImageUrl ? (
+          <PrivateImage uri={coverImageUrl} style={cardStyles.coverImage} contentFit="cover" />
+        ) : (
+          <View style={[cardStyles.coverImage, cardStyles.coverPlaceholder]} />
+        )}
+        <View style={cardStyles.coverOverlay} />
+
+        <View style={cardStyles.coverBottom}>
+          <View style={{ flex: 1 }}>
+            <View style={cardStyles.metaRow}>
+              {isGlobal ? (
+                <View style={cardStyles.globalBadge}>
+                  <Ionicons name="globe-outline" size={9} color="#fff" />
+                  <Text style={cardStyles.globalBadgeText}>Global</Text>
+                </View>
+              ) : null}
+              {schoolLabel ? (
+                <Text style={cardStyles.coverSchool} numberOfLines={1}>{schoolLabel}</Text>
+              ) : null}
+            </View>
+            <Text style={cardStyles.coverTitle} numberOfLines={2}>{name}</Text>
+          </View>
+
+          {date ? (
+            <View style={cardStyles.dateBadge}>
+              <Text style={cardStyles.dateBadgeDay}>{date.getDate()}</Text>
+              <Text style={cardStyles.dateBadgeMonth}>{TR_MONTHS[date.getMonth()]}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Description */}
+      {description ? (
+        <View style={cardStyles.descWrap}>
+          <Text style={cardStyles.descText} numberOfLines={2}>{description}</Text>
+        </View>
+      ) : null}
+
+      {/* Footer */}
+      {(footerLeft || footerRight) ? (
+        <View style={cardStyles.footer}>
+          <View style={cardStyles.footerLeft}>{footerLeft}</View>
+          {footerRight}
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+}
+
+function FooterChip({ icon, text, color }: { icon: string; text: string; color?: string }) {
+  return (
+    <View style={cardStyles.footerChip}>
+      <Ionicons name={icon as never} size={12} color={color ?? AppColors.onSurfaceVariant} />
+      <Text style={[cardStyles.footerChipText, color ? { color } : null]} numberOfLines={1}>{text}</Text>
+    </View>
+  );
 }
 
 // ─── Activity card ────────────────────────────────────────────────────────────
 
 function ActivityCard({ item }: { item: Activity }) {
-  const dateRange = formatDateRange(item.start_date, item.end_date);
+  const schoolLabel = item.is_global
+    ? (item.tenant_name ?? item.tenant?.name ?? null)
+    : (item.school?.name ?? item.tenant_name ?? null);
+
+  const classNames = (item.classes ?? []).length > 0
+    ? item.classes.map(c => c.name).join(', ')
+    : null;
+
   const enrolledCount = item.enrolled_child_ids?.length ?? 0;
   const isEnrolled = enrolledCount > 0;
 
-  return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => router.push(`/(app)/activities/event/${item.id}`)}
-      activeOpacity={0.75}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.cardIconWrap}>
-          <Ionicons name="flag-outline" size={20} color={AppColors.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{item.name}</Text>
-          {(item.tenant_name || item.school?.name) ? (
-            <Text style={styles.cardSchool}>{item.tenant_name ?? item.school?.name}</Text>
-          ) : null}
-        </View>
-        <View style={{ gap: 4, alignItems: 'flex-end' }}>
-          {item.is_global && (
-            <View style={styles.globalBadge}>
-              <Ionicons name="globe-outline" size={11} color="#7C3AED" />
-              <Text style={styles.globalBadgeText}>Global</Text>
-            </View>
-          )}
-          {isEnrolled ? (
-            <View style={styles.enrolledBadge}>
-              <Ionicons name="checkmark-circle" size={12} color="#fff" />
-              <Text style={styles.enrolledText}>
-                {enrolledCount > 1 ? `${enrolledCount} Çocuk` : 'Katıldınız'}
-              </Text>
-            </View>
-          ) : item.is_enrollment_required ? (
-            <View style={styles.enrollBadge}>
-              <Text style={styles.enrollBadgeText}>Kayıt Gerekli</Text>
-            </View>
-          ) : null}
-          {item.is_paid ? (
-            <View style={styles.paidBadge}>
-              <Text style={styles.paidText}>{item.price} ₺</Text>
-            </View>
-          ) : (
-            <View style={styles.freeBadge}>
-              <Text style={styles.freeText}>Ücretsiz</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {item.description ? (
-        <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+  const footerLeft = (
+    <View style={cardStyles.footerChips}>
+      {item.address ? <FooterChip icon="location-outline" text={item.address} /> : null}
+      {item.capacity ? (
+        <FooterChip icon="people-outline" text={`${item.enrollments_count ?? 0}/${item.capacity}`} />
+      ) : item.enrollments_count != null ? (
+        <FooterChip icon="people-outline" text={`${item.enrollments_count} katılımcı`} />
       ) : null}
+      {classNames ? <FooterChip icon="school-outline" text={classNames} /> : null}
+    </View>
+  );
 
-      <View style={styles.cardMeta}>
-        {dateRange && (
-          <View style={styles.metaItem}>
-            <Ionicons name="calendar-outline" size={13} color="#9CA3AF" />
-            <Text style={styles.metaText}>{dateRange}</Text>
-          </View>
-        )}
-        <View style={styles.metaItem}>
-          <Ionicons name="school-outline" size={13} color="#9CA3AF" />
-          <Text style={styles.metaText}>
-            {(item.classes ?? []).length > 0
-              ? item.classes.map((c) => c.name).join(', ')
-              : 'Her sınıfa açık'}
-          </Text>
+  const footerRight = item.is_paid ? (
+    <View style={[cardStyles.priceBadge, cardStyles.priceBadgePaid]}>
+      <Ionicons name="card-outline" size={11} color="#D97706" />
+      <Text style={cardStyles.priceBadgePaidText}>{item.price} {item.currency ?? '₺'}</Text>
+    </View>
+  ) : (
+    <View style={[cardStyles.priceBadge, cardStyles.priceBadgeFree]}>
+      <Text style={cardStyles.priceBadgeFreeText}>Ücretsiz</Text>
+    </View>
+  );
+
+  return (
+    <View style={{ position: 'relative' }}>
+      <CoverCard
+        name={item.name}
+        coverImageUrl={item.cover_image_url}
+        schoolLabel={schoolLabel}
+        isGlobal={item.is_global}
+        startDate={item.start_date}
+        description={item.description}
+        footerLeft={footerLeft}
+        footerRight={footerRight}
+        onPress={() => router.push(`/(app)/activities/event/${item.id}`)}
+      />
+      {isEnrolled ? (
+        <View style={cardStyles.enrolledOverlay}>
+          <Ionicons name="checkmark-circle" size={12} color="#fff" />
+          <Text style={cardStyles.enrolledOverlayText}>{enrolledCount > 1 ? `${enrolledCount} Çocuk` : 'Katıldınız'}</Text>
         </View>
-        {item.capacity != null && (
-          <View style={styles.metaItem}>
-            <Ionicons name="people-outline" size={13} color={item.enrollments_count != null && item.enrollments_count >= item.capacity ? AppColors.error : AppColors.onSurfaceVariant} />
-            <Text style={[styles.metaText, item.enrollments_count != null && item.enrollments_count >= item.capacity ? { color: AppColors.error } : null]}>
-              {item.enrollments_count ?? 0}/{item.capacity}
-              {item.enrollments_count != null && item.enrollments_count >= item.capacity ? ' (Dolu)' : ' kontenjan'}
-            </Text>
-          </View>
-        )}
-        {item.address && (
-          <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={13} color="#9CA3AF" />
-            <Text style={styles.metaText}>{item.address}</Text>
-          </View>
-        )}
-        {item.enrollments_count != null && item.capacity == null && (
-          <View style={styles.metaItem}>
-            <Ionicons name="people-outline" size={13} color="#9CA3AF" />
-            <Text style={styles.metaText}>{item.enrollments_count} katılımcı</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.cardFooter}>
-        {(item.tenant_name || item.school?.name) ? (
-          <View style={[styles.schoolBadge, item.is_global && styles.schoolBadgeGlobal]}>
-            <Ionicons name={item.is_global ? 'globe-outline' : 'business-outline'} size={11} color={item.is_global ? '#7C3AED' : AppColors.primary} />
-            <Text style={[styles.schoolBadgeText, item.is_global && { color: '#7C3AED' }]}>
-              {item.tenant_name ?? item.school?.name}
-            </Text>
-          </View>
-        ) : null}
-        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-      </View>
-
-    </TouchableOpacity>
+      ) : item.is_enrollment_required ? (
+        <View style={[cardStyles.enrolledOverlay, { backgroundColor: AppColors.warning }]}>
+          <Text style={cardStyles.enrolledOverlayText}>Kayıt Gerekli</Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 // ─── ActivityClass card ───────────────────────────────────────────────────────
 
 function ActivityClassCard({ item }: { item: ActivityClass }) {
-  const hasEnrolled = item.enrolled_child_ids.length > 0;
+  const schoolLabel = item.is_global
+    ? (item.tenant_name ?? null)
+    : (item.school_name ?? item.tenant_name ?? null);
+
+  const classNames = item.is_school_wide || !item.school_classes?.length
+    ? 'Tüm Sınıflar'
+    : item.school_classes.map(c => c.name).join(', ');
+
+  const footerLeft = (
+    <View style={cardStyles.footerChips}>
+      {item.location ? <FooterChip icon="location-outline" text={item.location} /> : null}
+      {item.address && !item.location ? <FooterChip icon="location-outline" text={item.address} /> : null}
+      {item.capacity ? (
+        <FooterChip icon="people-outline" text={`${item.active_enrollments_count}/${item.capacity}`} />
+      ) : null}
+      <FooterChip icon="school-outline" text={classNames} />
+    </View>
+  );
+
+  const footerRight = item.is_paid ? (
+    <View style={[cardStyles.priceBadge, cardStyles.priceBadgePaid]}>
+      <Ionicons name="card-outline" size={11} color="#D97706" />
+      <Text style={cardStyles.priceBadgePaidText}>{item.price} {item.currency}</Text>
+    </View>
+  ) : (
+    <View style={[cardStyles.priceBadge, cardStyles.priceBadgeFree]}>
+      <Text style={cardStyles.priceBadgeFreeText}>Ücretsiz</Text>
+    </View>
+  );
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => router.push(`/(app)/activities/${item.id}`)}
-      activeOpacity={0.75}
-    >
-      <View style={styles.cardHeader}>
-        <View style={[styles.cardIconWrap, { backgroundColor: AppColors.successContainer }]}>
-          <Ionicons name="star-outline" size={20} color={AppColors.success} />
+    <View style={{ position: 'relative' }}>
+      <CoverCard
+        name={item.name}
+        coverImageUrl={item.cover_image_url}
+        schoolLabel={schoolLabel}
+        isGlobal={item.is_global}
+        startDate={item.start_date}
+        description={item.description}
+        footerLeft={footerLeft}
+        footerRight={footerRight}
+        onPress={() => router.push(`/(app)/activities/${item.id}`)}
+      />
+      {item.enrolled_child_ids.length > 0 ? (
+        <View style={cardStyles.enrolledOverlay}>
+          <Ionicons name="checkmark-circle" size={12} color="#fff" />
+          <Text style={cardStyles.enrolledOverlayText}>Kayıtlı</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{item.name}</Text>
-          <Text style={styles.cardSchool}>
-            {item.tenant_name ?? item.school_name ?? item.language.toUpperCase()}
-          </Text>
-        </View>
-        <View style={{ gap: 4, alignItems: 'flex-end' }}>
-          {item.is_global && (
-            <View style={styles.globalBadge}>
-              <Ionicons name="globe-outline" size={11} color="#7C3AED" />
-              <Text style={styles.globalBadgeText}>Global</Text>
-            </View>
-          )}
-          {hasEnrolled && (
-            <View style={styles.enrolledBadge}>
-              <Ionicons name="checkmark-circle" size={13} color="#fff" />
-              <Text style={styles.enrolledText}>Kayıtlı</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {item.description ? (
-        <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
       ) : null}
-
-      <View style={styles.cardMeta}>
-        {(item.age_min != null || item.age_max != null) && (
-          <View style={styles.metaItem}>
-            <Ionicons name="people-outline" size={13} color="#9CA3AF" />
-            <Text style={styles.metaText}>{item.age_min ?? '?'}-{item.age_max ?? '?'} yaş</Text>
-          </View>
-        )}
-        {item.schedule && (
-          <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={13} color="#9CA3AF" />
-            <Text style={styles.metaText}>{item.schedule}</Text>
-          </View>
-        )}
-        {item.location && (
-          <View style={styles.metaItem}>
-            <Ionicons name="business-outline" size={13} color="#9CA3AF" />
-            <Text style={styles.metaText}>{item.location}</Text>
-          </View>
-        )}
-        {item.address && (
-          <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={13} color="#9CA3AF" />
-            <Text style={styles.metaText}>{item.address}</Text>
-          </View>
-        )}
-        {item.capacity ? (
-          <View style={styles.metaItem}>
-            <Ionicons name="person-outline" size={13} color="#9CA3AF" />
-            <Text style={styles.metaText}>{item.active_enrollments_count}/{item.capacity}</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.cardFooter}>
-        {(item.tenant_name || item.school_name) ? (
-          <View style={[styles.schoolBadge, item.is_global && styles.schoolBadgeGlobal]}>
-            <Ionicons name={item.is_global ? 'globe-outline' : 'business-outline'} size={11} color={item.is_global ? '#7C3AED' : AppColors.primary} />
-            <Text style={[styles.schoolBadgeText, item.is_global && { color: '#7C3AED' }]}>
-              {item.tenant_name ?? item.school_name}
-            </Text>
-          </View>
-        ) : null}
-        {item.is_paid ? (
-          <View style={styles.paidBadge}>
-            <Ionicons name="card-outline" size={12} color="#D97706" />
-            <Text style={styles.paidText}>{item.price} {item.currency}</Text>
-          </View>
-        ) : (
-          <View style={styles.freeBadge}>
-            <Text style={styles.freeText}>Ücretsiz</Text>
-          </View>
-        )}
-        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-      </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
-// ─── Tab indicator ────────────────────────────────────────────────────────────
+// ─── Katıldıklarım card ───────────────────────────────────────────────────────
+
+function KatilCard({ item }: { item: KatildiklarimItem }) {
+  const schoolLabel = item.is_global
+    ? (item.tenant_name ?? null)
+    : (item.school_name ?? item.tenant_name ?? null);
+
+  const footerLeft = (
+    <View style={cardStyles.footerChips}>
+      {item.children.length > 0 ? (
+        <FooterChip icon="people-outline" text={item.children.map(c => c.full_name).join(', ')} />
+      ) : null}
+    </View>
+  );
+
+  const footerRight = item.is_paid ? (
+    <View style={[cardStyles.priceBadge, cardStyles.priceBadgePaid]}>
+      <Ionicons name="card-outline" size={11} color="#D97706" />
+      <Text style={cardStyles.priceBadgePaidText}>{item.price} {item.currency}</Text>
+    </View>
+  ) : (
+    <View style={[cardStyles.priceBadge, cardStyles.priceBadgeFree]}>
+      <Text style={cardStyles.priceBadgeFreeText}>Ücretsiz</Text>
+    </View>
+  );
+
+  const dest = item.type === 'activity'
+    ? `/(app)/activities/event/${item.id}`
+    : `/(app)/activities/${item.id}`;
+
+  return (
+    <View style={{ position: 'relative' }}>
+      <CoverCard
+        name={item.name}
+        coverImageUrl={item.cover_image_url}
+        schoolLabel={schoolLabel}
+        isGlobal={item.is_global}
+        startDate={item.start_date}
+        footerLeft={footerLeft}
+        footerRight={footerRight}
+        onPress={() => router.push(dest as never)}
+      />
+      <View style={[cardStyles.enrolledOverlay, { backgroundColor: AppColors.primary }]}>
+        <Ionicons name="checkmark-circle" size={12} color="#fff" />
+        <Text style={cardStyles.enrolledOverlayText}>
+          {item.type === 'activity' ? 'Etkinlik' : 'Sınıf'}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Tab types ────────────────────────────────────────────────────────────────
 
 type Tab = 'Etkinlikler' | 'Etkinlik Sınıfları' | 'Katıldıklarım';
 type KatilFilter = 'all' | 'activity' | 'activity_class';
@@ -323,7 +364,6 @@ const TABS: { key: Tab; label: string }[] = [
 export default function ActivitiesScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('Etkinlikler');
 
-  // Activities state
   const [activities, setActivities] = useState<Activity[]>([]);
   const [actPage, setActPage] = useState(1);
   const [actLastPage, setActLastPage] = useState(1);
@@ -332,7 +372,6 @@ export default function ActivitiesScreen() {
   const [actLoadingMore, setActLoadingMore] = useState(false);
   const [actFetched, setActFetched] = useState(false);
 
-  // ActivityClasses state
   const [activityClasses, setActivityClasses] = useState<ActivityClass[]>([]);
   const [acPage, setAcPage] = useState(1);
   const [acLastPage, setAcLastPage] = useState(1);
@@ -341,17 +380,12 @@ export default function ActivitiesScreen() {
   const [acLoadingMore, setAcLoadingMore] = useState(false);
   const [acFetched, setAcFetched] = useState(false);
 
-  // Katıldıklarım state
   const [katildiklarim, setKatildiklarim] = useState<KatildiklarimItem[]>([]);
   const [myLoading, setMyLoading] = useState(false);
   const [myRefreshing, setMyRefreshing] = useState(false);
   const [myFetched, setMyFetched] = useState(false);
   const [katilFilter, setKatilFilter] = useState<KatilFilter>('all');
   const [katilSort, setKatilSort] = useState<KatilSort>('date_desc');
-
-  const switchTab = (tab: Tab) => setActiveTab(tab);
-
-  // ─── Activities load ──────────────────────────────────────────────────────────
 
   const loadActivities = useCallback(async (pageNum = 1, append = false) => {
     try {
@@ -371,8 +405,6 @@ export default function ActivitiesScreen() {
       setActLoadingMore(false);
     }
   }, []);
-
-  // ─── ActivityClasses load ─────────────────────────────────────────────────────
 
   const loadActivityClasses = useCallback(async (pageNum = 1, append = false) => {
     try {
@@ -421,13 +453,17 @@ export default function ActivitiesScreen() {
         school_name: e.school?.name ?? null,
         children: e.children,
         enrolled_at: e.enrolled_at,
+        cover_image_url: null,
       }));
 
       const acItems: KatildiklarimItem[] = (acRes.data?.data ?? []).map((e: {
         enrollment_id: number;
-        activity_class: { id: number; name: string; is_global?: boolean; is_paid: boolean;
+        activity_class: {
+          id: number; name: string; is_global?: boolean; is_paid: boolean;
           price: string | null; currency: string; start_date: string | null; end_date: string | null;
-          tenant_name?: string | null; school?: { id: number; name: string } | null } | null;
+          tenant_name?: string | null; school?: { id: number; name: string } | null;
+          school_name?: string | null;
+        } | null;
         child: { id: string; name: string } | null;
         enrolled_at: string;
       }) => {
@@ -445,9 +481,10 @@ export default function ActivitiesScreen() {
           start_date: ac.start_date ?? null,
           end_date: ac.end_date ?? null,
           tenant_name: ac.tenant_name ?? null,
-          school_name: ac.school_name ?? null,
+          school_name: ac.school_name ?? ac.school?.name ?? null,
           children: e.child ? [{ id: e.child.id, full_name: e.child.name }] : [],
           enrolled_at: e.enrolled_at,
+          cover_image_url: null,
         };
       }).filter(Boolean) as KatildiklarimItem[];
 
@@ -461,24 +498,16 @@ export default function ActivitiesScreen() {
     }
   }, []);
 
-  // İlk yükleme — Etkinlikler sekmesi açık
   useEffect(() => {
     if (!actFetched) { void loadActivities(1); }
   }, [actFetched, loadActivities]);
 
-  // Tab değişince lazy yükle
   useEffect(() => {
-    if (activeTab === 'Etkinlik Sınıfları' && !acFetched) {
-      void loadActivityClasses(1);
-    }
-    if (activeTab === 'Katıldıklarım' && !myFetched) {
-      void loadMyEnrollments();
-    }
+    if (activeTab === 'Etkinlik Sınıfları' && !acFetched) { void loadActivityClasses(1); }
+    if (activeTab === 'Katıldıklarım' && !myFetched) { void loadMyEnrollments(); }
   }, [activeTab, acFetched, myFetched, loadActivityClasses, loadMyEnrollments]);
 
   // ─── Render helpers ───────────────────────────────────────────────────────────
-
-  // ─── Activities list ──────────────────────────────────────────────────────────
 
   const renderActivities = () => {
     if (actLoading) {
@@ -490,15 +519,8 @@ export default function ActivitiesScreen() {
         keyExtractor={(item) => `act-${item.id}`}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => <ActivityCard item={item} />}
-        refreshControl={
-          <RefreshControl
-            refreshing={actRefreshing}
-            onRefresh={() => { setActRefreshing(true); void loadActivities(1); }}
-          />
-        }
-        onEndReached={() => {
-          if (!actLoadingMore && actPage < actLastPage) { void loadActivities(actPage + 1, true); }
-        }}
+        refreshControl={<RefreshControl refreshing={actRefreshing} onRefresh={() => { setActRefreshing(true); void loadActivities(1); }} />}
+        onEndReached={() => { if (!actLoadingMore && actPage < actLastPage) { void loadActivities(actPage + 1, true); } }}
         onEndReachedThreshold={0.3}
         ListFooterComponent={actLoadingMore ? <ActivityIndicator color={AppColors.primary} style={styles.moreLoader} /> : null}
         ListEmptyComponent={
@@ -512,8 +534,6 @@ export default function ActivitiesScreen() {
     );
   };
 
-  // ─── ActivityClasses list ─────────────────────────────────────────────────────
-
   const renderActivityClasses = () => {
     if (acLoading) {
       return <View style={styles.centered}><ActivityIndicator size="large" color={AppColors.primary} /></View>;
@@ -524,15 +544,8 @@ export default function ActivitiesScreen() {
         keyExtractor={(item) => `ac-${item.id}`}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => <ActivityClassCard item={item} />}
-        refreshControl={
-          <RefreshControl
-            refreshing={acRefreshing}
-            onRefresh={() => { setAcRefreshing(true); void loadActivityClasses(1); }}
-          />
-        }
-        onEndReached={() => {
-          if (!acLoadingMore && acPage < acLastPage) { void loadActivityClasses(acPage + 1, true); }
-        }}
+        refreshControl={<RefreshControl refreshing={acRefreshing} onRefresh={() => { setAcRefreshing(true); void loadActivityClasses(1); }} />}
+        onEndReached={() => { if (!acLoadingMore && acPage < acLastPage) { void loadActivityClasses(acPage + 1, true); } }}
         onEndReachedThreshold={0.3}
         ListFooterComponent={acLoadingMore ? <ActivityIndicator color={AppColors.primary} style={styles.moreLoader} /> : null}
         ListEmptyComponent={
@@ -546,16 +559,12 @@ export default function ActivitiesScreen() {
     );
   };
 
-  // ─── Katıldıklarım list ───────────────────────────────────────────────────────
-
   const filteredKatildiklarim = katildiklarim
     .filter((item) => katilFilter === 'all' || item.type === katilFilter)
     .sort((a, b) => {
       const dateA = a.start_date ?? a.enrolled_at;
       const dateB = b.start_date ?? b.enrolled_at;
-      return katilSort === 'date_desc'
-        ? dateB.localeCompare(dateA)
-        : dateA.localeCompare(dateB);
+      return katilSort === 'date_desc' ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
     });
 
   const renderKatildiklarim = () => {
@@ -567,15 +576,9 @@ export default function ActivitiesScreen() {
         data={filteredKatildiklarim}
         keyExtractor={(item) => item.key}
         contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={myRefreshing}
-            onRefresh={() => { setMyRefreshing(true); void loadMyEnrollments(); }}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={myRefreshing} onRefresh={() => { setMyRefreshing(true); void loadMyEnrollments(); }} />}
         ListHeaderComponent={
           <View style={myStyles.controls}>
-            {/* Filtre */}
             <View style={myStyles.filterRow}>
               {([
                 { key: 'all', label: 'Tümü' },
@@ -587,13 +590,10 @@ export default function ActivitiesScreen() {
                   style={[myStyles.filterChip, katilFilter === f.key && myStyles.filterChipActive]}
                   onPress={() => setKatilFilter(f.key)}
                 >
-                  <Text style={[myStyles.filterChipText, katilFilter === f.key && myStyles.filterChipTextActive]}>
-                    {f.label}
-                  </Text>
+                  <Text style={[myStyles.filterChipText, katilFilter === f.key && myStyles.filterChipTextActive]}>{f.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            {/* Sıralama */}
             <View style={myStyles.sortRow}>
               <Ionicons name="swap-vertical-outline" size={14} color={AppColors.onSurfaceVariant} />
               {([
@@ -605,92 +605,13 @@ export default function ActivitiesScreen() {
                   style={[myStyles.sortChip, katilSort === s.key && myStyles.sortChipActive]}
                   onPress={() => setKatilSort(s.key)}
                 >
-                  <Text style={[myStyles.sortChipText, katilSort === s.key && myStyles.sortChipTextActive]}>
-                    {s.label}
-                  </Text>
+                  <Text style={[myStyles.sortChipText, katilSort === s.key && myStyles.sortChipTextActive]}>{s.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push(
-              item.type === 'activity'
-                ? `/(app)/activities/event/${item.id}`
-                : `/(app)/activities/${item.id}`
-            )}
-            activeOpacity={0.75}
-          >
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconWrap, { backgroundColor: item.type === 'activity' ? AppColors.successContainer : AppColors.primaryContainer }]}>
-                <Ionicons
-                  name={item.type === 'activity' ? 'flag' : 'star'}
-                  size={18}
-                  color={item.type === 'activity' ? AppColors.success : AppColors.primary}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                {(item.tenant_name ?? item.school_name) ? (
-                  <Text style={styles.cardSchool}>{item.tenant_name ?? item.school_name}</Text>
-                ) : null}
-              </View>
-              <View style={{ gap: 4, alignItems: 'flex-end' }}>
-                <View style={item.type === 'activity' ? myStyles.typeBadgeAct : myStyles.typeBadgeAc}>
-                  <Text style={item.type === 'activity' ? myStyles.typeBadgeActText : myStyles.typeBadgeAcText}>
-                    {item.type === 'activity' ? 'Etkinlik' : 'Sınıf'}
-                  </Text>
-                </View>
-                {item.is_paid ? (
-                  <View style={styles.paidBadge}>
-                    <Text style={styles.paidText}>{item.price} {item.currency}</Text>
-                  </View>
-                ) : (
-                  <View style={styles.freeBadge}>
-                    <Text style={styles.freeText}>Ücretsiz</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.cardMeta}>
-              {(item.start_date || item.end_date) && (
-                <View style={styles.metaItem}>
-                  <Ionicons name="calendar-outline" size={13} color="#9CA3AF" />
-                  <Text style={styles.metaText}>{formatDateRange(item.start_date, item.end_date)}</Text>
-                </View>
-              )}
-              {item.children.length > 0 && (
-                <View style={styles.metaItem}>
-                  <Ionicons name="people-outline" size={13} color="#9CA3AF" />
-                  <Text style={styles.metaText}>{item.children.map(c => c.full_name).join(', ')}</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.cardFooter}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                {(item.school_name || item.tenant_name) ? (
-                  <View style={[styles.schoolBadge, item.is_global && styles.schoolBadgeGlobal]}>
-                    <Ionicons name={item.is_global ? 'globe-outline' : 'business-outline'} size={11} color={item.is_global ? '#7C3AED' : AppColors.primary} />
-                    <Text style={[styles.schoolBadgeText, item.is_global && { color: '#7C3AED' }]}>
-                      {item.tenant_name ?? item.school_name}
-                    </Text>
-                  </View>
-                ) : null}
-                {item.is_global && (
-                  <View style={styles.globalBadge}>
-                    <Ionicons name="globe-outline" size={11} color="#7C3AED" />
-                    <Text style={styles.globalBadgeText}>Global</Text>
-                  </View>
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-            </View>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => <KatilCard item={item} />}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="calendar-clear-outline" size={48} color="#D1D5DB" />
@@ -708,18 +629,13 @@ export default function ActivitiesScreen() {
     );
   };
 
-  // ─── Main render ──────────────────────────────────────────────────────────────
-
   return (
     <SafeAreaView style={styles.safeArea} edges={[]}>
+      <StatusBar style="dark" />
       <AppHeader title="Etkinlikler" />
-
-      {/* Tab bar */}
       <View style={styles.tabWrap}>
-        <TabSelector tabs={TABS} activeKey={activeTab} onSelect={switchTab} />
+        <TabSelector tabs={TABS} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
-
-      {/* Content */}
       <View style={styles.content}>
         {activeTab === 'Etkinlikler' ? renderActivities()
           : activeTab === 'Etkinlik Sınıfları' ? renderActivityClasses()
@@ -729,129 +645,83 @@ export default function ActivitiesScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Cover card styles ────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
-
-  tabWrap: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
-  },
-
-  content: { flex: 1, backgroundColor: AppColors.surface },
-  listContent: { padding: 16, gap: 12 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
-  moreLoader: { marginVertical: 16 },
-
-  // Cards
+const cardStyles = StyleSheet.create({
   card: {
     backgroundColor: AppColors.white,
     borderRadius: 16,
-    padding: 14,
-    borderBottomWidth: 3,
-    borderBottomColor: AppColors.surfaceContainer,
+    overflow: 'hidden',
     shadowColor: AppColors.onSurface,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    gap: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  cardIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: AppColors.primaryContainer,
-    justifyContent: 'center',
-    alignItems: 'center',
+  coverWrap: { width: '100%', height: CARD_IMG_HEIGHT, position: 'relative' },
+  coverImage: { width: '100%', height: CARD_IMG_HEIGHT },
+  coverPlaceholder: { backgroundColor: AppColors.primary },
+  coverOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.40)' },
+  coverBottom: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingBottom: 12, gap: 10,
   },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: AppColors.onSurface },
-  cardSchool: { fontSize: 12, color: AppColors.onSurfaceVariant, marginTop: 1 },
-  cardDesc: { fontSize: 13, color: AppColors.onSurfaceVariant, lineHeight: 18 },
-
-  cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 12, color: AppColors.onSurfaceVariant },
-
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: AppColors.surfaceContainerLow,
-    paddingTop: 8,
-    marginTop: 2,
-  },
-
-  paidBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: AppColors.warningContainer,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  paidText: { fontSize: 12, color: AppColors.warning, fontWeight: '600' },
-  freeBadge: { backgroundColor: AppColors.successContainer, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  freeText: { fontSize: 12, color: AppColors.success, fontWeight: '600' },
-  enrolledBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: AppColors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  enrolledText: { fontSize: 11, color: AppColors.white, fontWeight: '600' },
-  enrollBadge: {
-    backgroundColor: AppColors.warningContainer,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  enrollBadgeText: { fontSize: 11, color: AppColors.warning, fontWeight: '600' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
   globalBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#EDE9FE',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    backgroundColor: '#7C3AED', borderRadius: 8,
+    paddingHorizontal: 6, paddingVertical: 2,
   },
-  globalBadgeText: { fontSize: 11, color: '#7C3AED', fontWeight: '700' },
-  schoolBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: AppColors.primaryContainer,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+  globalBadgeText: { fontSize: 9, color: '#fff', fontWeight: '700' },
+  coverSchool: { fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
+  coverTitle: { fontSize: 17, fontWeight: '800', color: '#fff', lineHeight: 22 },
+  dateBadge: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  schoolBadgeGlobal: { backgroundColor: '#EDE9FE' },
-  schoolBadgeText: { fontSize: 11, color: AppColors.primary, fontWeight: '600' },
-  cardLocked: { opacity: 0.85, backgroundColor: AppColors.surfaceContainerLow },
-  lockedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.surfaceContainerLow,
-    paddingTop: 8,
-    marginTop: 2,
-  },
-  lockedText: { fontSize: 12, color: AppColors.onSurfaceVariant },
+  dateBadgeDay: { fontSize: 16, fontWeight: '800', color: '#fff', lineHeight: 20 },
+  dateBadgeMonth: { fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.9)', lineHeight: 12 },
 
-  // Empty
+  descWrap: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
+  descText: { fontSize: 13, color: AppColors.onSurfaceVariant, lineHeight: 18 },
+
+  footer: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderTopWidth: 1, borderTopColor: AppColors.surfaceContainerLow,
+  },
+  footerLeft: { flex: 1 },
+  footerChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  footerChip: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  footerChipText: { fontSize: 11, color: AppColors.onSurfaceVariant, maxWidth: 90 },
+
+  priceBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginLeft: 8 },
+  priceBadgePaid: { backgroundColor: AppColors.warningContainer },
+  priceBadgePaidText: { fontSize: 11, color: '#D97706', fontWeight: '700' },
+  priceBadgeFree: { backgroundColor: AppColors.successContainer },
+  priceBadgeFreeText: { fontSize: 11, color: '#065F46', fontWeight: '700' },
+
+  enrolledOverlay: {
+    position: 'absolute', top: 10, right: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: AppColors.primary, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  enrolledOverlayText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+});
+
+// ─── Screen styles ────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
+  tabWrap: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: AppColors.white, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainer },
+  content: { flex: 1, backgroundColor: AppColors.surface },
+  listContent: { padding: 16, gap: 14 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
+  moreLoader: { marginVertical: 16 },
   emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: AppColors.onSurface },
   emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', paddingHorizontal: 32 },
@@ -862,41 +732,13 @@ const styles = StyleSheet.create({
 const myStyles = StyleSheet.create({
   controls: { gap: 8, marginBottom: 4 },
   filterRow: { flexDirection: 'row', gap: 6 },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: AppColors.surfaceContainer,
-    backgroundColor: AppColors.white,
-  },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: AppColors.surfaceContainer, backgroundColor: AppColors.white },
   filterChipActive: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryContainer },
   filterChipText: { fontSize: 12, fontWeight: '600', color: AppColors.onSurfaceVariant },
   filterChipTextActive: { color: AppColors.primary },
   sortRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sortChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: AppColors.surfaceContainer,
-    backgroundColor: AppColors.white,
-  },
+  sortChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1.5, borderColor: AppColors.surfaceContainer, backgroundColor: AppColors.white },
   sortChipActive: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryContainer },
   sortChipText: { fontSize: 12, fontWeight: '500', color: AppColors.onSurfaceVariant },
   sortChipTextActive: { color: AppColors.primary, fontWeight: '700' },
-  typeBadgeAct: {
-    backgroundColor: AppColors.successContainer,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  typeBadgeActText: { fontSize: 10, color: AppColors.success, fontWeight: '700' },
-  typeBadgeAc: {
-    backgroundColor: AppColors.primaryContainer,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  typeBadgeAcText: { fontSize: 10, color: AppColors.primary, fontWeight: '700' },
 });

@@ -126,6 +126,14 @@ Route::middleware(['auth:sanctum', 'signed'])->group(function () {
     // Tenant — öğretmen belge sunumu (resmi evrak, auth+signed zorunlu)
     Route::get('/teacher-approvals/document/{type}/{id}', [\App\Http\Controllers\Schools\TeacherApprovalController::class, 'serveCredentialDocument'])
         ->name('tenant.credential.document');
+
+    // Etkinlik kapak fotoğrafı
+    Route::get('/activity-cover/{activity}/serve', [\App\Http\Controllers\Schools\ActivityController::class, 'serveCoverImage'])
+        ->name('activity.cover.serve');
+
+    // Etkinlik sınıfı kapak fotoğrafı
+    Route::get('/activity-class-cover/{activityClass}/serve', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'serveCoverImage'])
+        ->name('activity-class.cover.serve');
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -556,6 +564,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/{activityClass}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'show']);
             Route::put('/{activityClass}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'update']);
             Route::delete('/{activityClass}', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'destroy']);
+            Route::post('/{activityClass}/cover-image', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'uploadCoverImage']);
 
             Route::get('/{activity_class_id}/enrollments', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'enrollmentIndex']);
             Route::post('/{activity_class_id}/enrollments', [\App\Http\Controllers\Schools\TenantActivityClassController::class, 'enrollmentStore']);
@@ -667,6 +676,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('children/{child}/unenroll', [\App\Http\Controllers\Schools\ChildController::class, 'unenroll']);
             Route::apiResource('activities', \App\Http\Controllers\Schools\ActivityController::class);
             Route::post('activities/{activityId}/restore', [\App\Http\Controllers\Schools\ActivityController::class, 'restore']);
+            Route::post('activities/{activity}/cover-image', [\App\Http\Controllers\Schools\ActivityController::class, 'uploadCoverImage']);
             Route::get('activities/{activity}/enrollments', [\App\Http\Controllers\Schools\ActivityController::class, 'enrollmentIndex']);
             Route::get('activities/{activity}/gallery', [\App\Http\Controllers\Schools\ActivityController::class, 'galleryIndex']);
             Route::post('activities/{activity}/gallery', [\App\Http\Controllers\Schools\ActivityController::class, 'galleryStore']);

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\URL;
 
 class ActivityResource extends JsonResource
 {
@@ -14,6 +15,9 @@ class ActivityResource extends JsonResource
             'school_id' => $this->school_id,
             'tenant_id' => $this->tenant_id,
             'is_global' => $this->is_global,
+            'cover_image_url' => $this->cover_image
+                ? URL::signedRoute('activity.cover.serve', ['activity' => $this->id], now()->addMinutes(60))
+                : null,
             'academic_year_id' => $this->academic_year_id,
             'name' => $this->name,
             'description' => $this->description,

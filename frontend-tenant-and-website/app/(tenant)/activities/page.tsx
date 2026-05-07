@@ -5,8 +5,9 @@ import Swal from 'sweetalert2';
 import apiClient from '@/lib/apiClient';
 import { Activity, School, SchoolClass } from '@/types';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw, Users, Globe, Info } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Calendar, DollarSign, PackagePlus, ExternalLink, RotateCcw, Users, Globe, Info, ImageIcon } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import AuthImg from '@/components/AuthImg';
 
 type ActivityForm = {
     name: string;
@@ -53,6 +54,8 @@ export default function ActivitiesPage() {
     const [form, setForm] = useState<ActivityForm>(emptyForm);
     const [saving, setSaving] = useState(false);
     const [materialInput, setMaterialInput] = useState('');
+    const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+    const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
 
     // Modal için seçilen okul (form.is_global=false iken)
     const [formSchoolId, setFormSchoolId] = useState('');
@@ -106,12 +109,16 @@ export default function ActivitiesPage() {
         setEditingActivity(null);
         setForm(emptyForm);
         setMaterialInput('');
+        setCoverImageFile(null);
+        setCoverImagePreview(null);
         if (schools.length > 0) setFormSchoolId(String(schools[0].id));
         setShowModal(true);
     };
 
     const openEdit = (activity: Activity) => {
         setEditingActivity(activity);
+        setCoverImageFile(null);
+        setCoverImagePreview((activity as Activity & { cover_image_url?: string }).cover_image_url ?? null);
         const isGlobal = activity.is_global ?? false;
         const schoolId = activity.school?.id ? String(activity.school.id) : (schools[0] ? String(schools[0].id) : '');
         setFormSchoolId(schoolId);
@@ -202,21 +209,35 @@ export default function ActivitiesPage() {
             : { ...basePayload, school_id: Number(formSchoolId), class_ids: form.class_ids };
 
         try {
+            let savedActivityId: number | null = null;
+            let savedSchoolId: string = formSchoolId;
             if (editingActivity) {
                 if (isGlobal) {
                     await apiClient.put(`/global-events/${editingActivity.id}`, payload);
                 } else {
                     await apiClient.put(`/schools/${formSchoolId}/activities/${editingActivity.id}`, payload);
                 }
+                savedActivityId = editingActivity.id;
                 toast.success(t('activities.updateSuccess'));
             } else {
                 if (isGlobal) {
-                    await apiClient.post('/global-events', payload);
+                    const res = await apiClient.post('/global-events', payload);
+                    savedActivityId = res.data?.data?.id;
                 } else {
-                    await apiClient.post(`/schools/${formSchoolId}/activities`, payload);
+                    const res = await apiClient.post(`/schools/${formSchoolId}/activities`, payload);
+                    savedActivityId = res.data?.data?.id;
                 }
                 toast.success(t('activities.createSuccess'));
             }
+
+            if (coverImageFile && savedActivityId && !isGlobal && savedSchoolId) {
+                const fd = new FormData();
+                fd.append('cover_image', coverImageFile);
+                await apiClient.post(`/schools/${savedSchoolId}/activities/${savedActivityId}/cover-image`, fd, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+            }
+
             setShowModal(false);
             fetchActivities();
         } catch (err: unknown) {
@@ -659,6 +680,47 @@ export default function ActivitiesPage() {
                                         value={form.address}
                                         onChange={f('address')}
                                     />
+                                </div>
+                            </div>
+
+                            {/* Kapak Fotoğrafı */}
+                            <div>
+                                <label className="mb-2 flex items-center gap-1 text-sm font-medium text-dark dark:text-white-light">
+                                    <ImageIcon className="h-4 w-4 text-primary" />
+                                    Kapak Fotoğrafı
+                                    <span className="text-[#888ea8] font-normal">(opsiyonel, max 5MB)</span>
+                                </label>
+                                <div className="flex items-start gap-4">
+                                    {coverImagePreview && (
+                                        <div className="relative h-24 w-40 shrink-0 overflow-hidden rounded-lg border border-[#e0e6ed]">
+                                            {coverImageFile
+                                                ? <img src={coverImagePreview!} alt="Kapak" className="h-full w-full object-cover" />
+                                                : <AuthImg src={coverImagePreview} className="h-full w-full object-cover" />
+                                            }
+                                            <button
+                                                type="button"
+                                                onClick={() => { setCoverImagePreview(null); setCoverImageFile(null); }}
+                                                className="absolute right-1 top-1 rounded-full bg-red-500 p-0.5 text-white hover:bg-red-600"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    <label className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-[#e0e6ed] px-6 py-4 text-[#888ea8] hover:border-primary hover:text-primary transition-colors">
+                                        <ImageIcon className="h-6 w-6" />
+                                        <span className="text-xs">{coverImagePreview ? 'Değiştir' : 'Fotoğraf Seç'}</span>
+                                        <input
+                                            type="file"
+                                            className="sr-only"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                setCoverImageFile(file);
+                                                setCoverImagePreview(URL.createObjectURL(file));
+                                            }}
+                                        />
+                                    </label>
                                 </div>
                             </div>
 

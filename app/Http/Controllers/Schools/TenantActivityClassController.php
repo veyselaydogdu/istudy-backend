@@ -12,6 +12,7 @@ use App\Models\ActivityClass\ActivityClassMaterial;
 use App\Models\Child\Child;
 use App\Services\ActivityClassInvoiceService;
 use App\Services\NotificationService;
+use App\Traits\HandlesMediaStorage;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,8 @@ use Illuminate\Support\Facades\URL;
  */
 class TenantActivityClassController extends BaseController
 {
+    use HandlesMediaStorage;
+
     public function index(): JsonResponse
     {
         try {
@@ -230,6 +233,43 @@ class TenantActivityClassController extends BaseController
 
             return $this->errorResponse($e->getMessage(), $e->getCode() ?: 400);
         }
+    }
+
+    // ── Kapak Fotoğrafı ───────────────────────────────────────────────────────
+
+    public function uploadCoverImage(Request $request, ActivityClass $activityClass): JsonResponse
+    {
+        $request->validate([
+            'cover_image' => 'required|file|mimes:jpg,jpeg,png,webp|max:5120',
+        ]);
+
+        try {
+            $this->authorizeOwnership($activityClass);
+
+            if ($activityClass->cover_image) {
+                $this->deletePrivate($activityClass->cover_image);
+            }
+
+            $tenantId = $this->user()->tenant_id;
+            $path = $this->storePrivate($request->file('cover_image'), "tenants/{$tenantId}/activity-classes/{$activityClass->id}/cover");
+            $activityClass->update(['cover_image' => $path]);
+
+            return $this->successResponse(
+                ['cover_image_url' => $this->privateSignedUrl('activity-class.cover.serve', ['activityClass' => $activityClass->getRouteKey()], 60)],
+                'Kapak fotoğrafı yüklendi.'
+            );
+        } catch (\Throwable $e) {
+            Log::error('TenantActivityClassController::uploadCoverImage', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    public function serveCoverImage(ActivityClass $activityClass)
+    {
+        abort_unless($activityClass->cover_image, 404);
+
+        return $this->servePrivate($activityClass->cover_image);
     }
 
     // ── Kayıtlar ──────────────────────────────────────────────────────────────

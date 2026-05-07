@@ -11,6 +11,7 @@ use App\Models\Activity\ActivityEnrollment;
 use App\Models\Activity\ActivityGalleryItem;
 use App\Services\ActivityInvoiceService;
 use App\Services\ActivityService;
+use App\Traits\HandlesMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\URL;
 
 class ActivityController extends BaseSchoolController
 {
+    use HandlesMediaStorage;
+
     public function __construct(protected ActivityService $service)
     {
         parent::__construct();
@@ -208,6 +211,41 @@ class ActivityController extends BaseSchoolController
 
             return $this->errorResponse($e->getMessage(), $e->getCode() ?: 400);
         }
+    }
+
+    // ── Kapak Fotoğrafı ───────────────────────────────────────────────────────
+
+    public function uploadCoverImage(Request $request, int $school_id, Activity $activity): JsonResponse
+    {
+        $request->validate([
+            'cover_image' => 'required|file|mimes:jpg,jpeg,png,webp|max:5120',
+        ]);
+
+        try {
+            if ($activity->cover_image) {
+                $this->deletePrivate($activity->cover_image);
+            }
+
+            $tenantId = $this->user()->tenant_id;
+            $path = $this->storePrivate($request->file('cover_image'), "tenants/{$tenantId}/activities/{$activity->id}/cover");
+            $activity->update(['cover_image' => $path]);
+
+            return $this->successResponse(
+                ['cover_image_url' => $this->privateSignedUrl('activity.cover.serve', ['activity' => $activity->id], 60)],
+                'Kapak fotoğrafı yüklendi.'
+            );
+        } catch (\Throwable $e) {
+            Log::error('ActivityController::uploadCoverImage', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: 400);
+        }
+    }
+
+    public function serveCoverImage(Activity $activity)
+    {
+        abort_unless($activity->cover_image, 404);
+
+        return $this->servePrivate($activity->cover_image);
     }
 
     // ── Katılımcılar ──────────────────────────────────────────────────────────

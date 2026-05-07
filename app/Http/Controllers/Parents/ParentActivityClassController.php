@@ -428,6 +428,9 @@ class ParentActivityClassController extends BaseParentController
             'school_classes' => $ac->relationLoaded('schoolClasses') ? $ac->schoolClasses->map(fn ($c) => ['id' => $c->id, 'name' => $c->name]) : null,
             'teachers' => $ac->relationLoaded('teachers') ? $ac->teachers->map(fn ($t) => ['id' => $t->id, 'name' => $t->user->name.' '.$t->user->surname, 'role' => $t->pivot->role ?? null]) : null,
             'materials' => $ac->relationLoaded('materials') ? $ac->materials : null,
+            'cover_image_url' => $ac->cover_image
+                ? \Illuminate\Support\Facades\URL::signedRoute('activity-class.cover.serve', ['activityClass' => $ac->ulid], now()->addMinutes(60))
+                : null,
         ];
     }
 }
