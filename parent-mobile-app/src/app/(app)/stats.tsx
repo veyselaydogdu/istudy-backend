@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -105,7 +106,7 @@ export default function StatsScreen() {
 
   if (loadingChildren) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -114,12 +115,9 @@ export default function StatsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar style="dark" backgroundColor={AppColors.white} />
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>İstatistikler</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <StatusBar style="dark" backgroundColor={AppColors.surfaceContainerLow} />
+      <AppHeader title="İstatistikler" />
 
       <ScrollView
         contentContainerStyle={styles.container}
@@ -294,18 +292,8 @@ export default function StatsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.white },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
 
   container: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16, backgroundColor: AppColors.surface },
 

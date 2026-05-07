@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,12 +15,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import { Avatar } from '@/components/ui/Avatar';
-import { Card } from '@/components/ui/Card';
 import { PrivateImage } from '@/components/ui/PrivateImage';
-import { TabSelector } from '@/components/ui/TabSelector';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Post {
   title: string;
@@ -51,6 +53,8 @@ interface BlogPost {
 
 type FeedTab = 'schools' | 'teachers';
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) { return ''; }
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -65,6 +69,8 @@ function timeAgo(dateStr: string | null): string {
 
 const CONTENT_LIMIT = 200;
 
+// ─── Post Card ───────────────────────────────────────────────────────────────
+
 function PostCard({ post }: { post: Post }) {
   const [expanded, setExpanded] = React.useState(false);
   const isLong = post.content.length > CONTENT_LIMIT;
@@ -72,57 +78,86 @@ function PostCard({ post }: { post: Post }) {
     ? post.content.slice(0, CONTENT_LIMIT) + '...'
     : post.content;
 
+  const authorName = post.author
+    ? `${post.author.name} ${post.author.surname}`
+    : post.school_name ?? 'Okul';
+
   return (
-      <TouchableOpacity onPress={() => router.replace(`/(app)/schools/${post.school_id}/post/${post.id}` as never)} activeOpacity={0.88}>
-        <Card style={styles.postCard}>
-            <View style={styles.pinnedRow}>
+    <TouchableOpacity
+      onPress={() => router.replace(`/(app)/schools/${post.school_id}/post/${post.id}` as never)}
+      activeOpacity={0.88}
+    >
+      <View style={styles.card}>
+        {/* Decorative blob */}
+        <View style={styles.cardBlob} />
+
+        {/* Header */}
+        <View style={styles.cardHeader}>
+          <View style={styles.authorLeft}>
+            <Avatar name={authorName} size={48} shape="rounded" color={AppColors.primary} />
+            <View style={styles.authorMeta}>
+              <View style={styles.authorNameRow}>
+                <Text style={styles.authorName} numberOfLines={1}>{authorName}</Text>
                 {post.is_pinned && (
-          <Ionicons name="pin" size={12} color={AppColors.secondary} />
-      )}
-            {post.school_name ? (
-                <View style={styles.schoolBadge}>
-                    <Text style={styles.schoolBadgeText}>{post.school_name}</Text>
-                </View>
-            ) : null}
+                  <Ionicons name="pin" size={12} color={AppColors.secondary} />
+                )}
+                {post.is_global && (
+                  <View style={styles.globalBadge}>
+                    <Text style={styles.globalBadgeText}>Genel</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.authorSub}>
+                {post.school_name ? `${post.school_name} • ` : ''}{timeAgo(post.published_at)}
+              </Text>
+            </View>
+          </View>
         </View>
-            {post.media.length > 0 && (
-                <PrivateImage uri={post.media[0].url} style={styles.postImage} />
-            )}
-            <View style={styles.authorRow}>
-        <View style={styles.authorInfo}>
-          <Text style={styles.authorName}>{post.title}</Text>
-        </View>
-        {post.is_global && (
-          <View style={styles.globalBadge}>
-            <Text style={styles.globalBadgeText}>Genel</Text>
+
+        {/* Title */}
+        <Text style={styles.postTitle}>{post.title}</Text>
+
+        {/* Content */}
+        <Text style={styles.content}>{displayContent}</Text>
+        {isLong && !expanded && (
+          <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setExpanded(true); }} activeOpacity={0.7}>
+            <Text style={styles.readMore}>devamını oku</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Image */}
+        {post.media.length > 0 && (
+          <View style={styles.imageWrap}>
+            <PrivateImage uri={post.media[0].url} style={styles.postImage} />
           </View>
         )}
-      </View>
-      <Text style={styles.content}>{displayContent}</Text>
-      {isLong && !expanded && (
-        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setExpanded(true); }} activeOpacity={0.7}>
-          <Text style={styles.readMore}>devamını oku</Text>
-        </TouchableOpacity>
-      )}
-      <View style={styles.footer}>
-          <View style={styles.footerInIcons}>
-              <View style={styles.stat}>
-                  <Ionicons name="heart-outline" size={18} color={AppColors.onSurfaceVariant} />
-                  <Text style={styles.statText}>{post.reactions_count}</Text>
+
+        {/* Action bar */}
+        <View style={styles.actionBar}>
+          <View style={styles.actionLeft}>
+            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+              <View style={styles.actionIconWrap}>
+                <Ionicons name="heart" size={18} color={AppColors.primary} />
               </View>
-              <View style={styles.stat}>
-                  <Ionicons name="chatbubble-outline" size={18} color={AppColors.onSurfaceVariant} />
-                  <Text style={styles.statText}>{post.comments_count}</Text>
+              <Text style={styles.actionCount}>{post.reactions_count}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+              <View style={[styles.actionIconWrap, styles.actionIconTertiary]}>
+                <Ionicons name="chatbubble" size={18} color={AppColors.tertiary} />
               </View>
+              <Text style={styles.actionCount}>{post.comments_count}</Text>
+            </TouchableOpacity>
           </View>
-        <View style={styles.publishedAt}>
-          <Text style={styles.publishedAt}>{timeAgo(post.published_at)}</Text>
+          <TouchableOpacity style={styles.shareBtn} activeOpacity={0.7}>
+            <Ionicons name="share-outline" size={18} color={AppColors.onSurfaceVariant} />
+          </TouchableOpacity>
         </View>
       </View>
-    </Card>
-      </TouchableOpacity>
+    </TouchableOpacity>
   );
 }
+
+// ─── Blog Post Card ───────────────────────────────────────────────────────────
 
 function BlogPostCard({ post, onLike }: { post: BlogPost; onLike: (id: number) => void }) {
   const teacherName = post.teacher?.name ?? 'Öğretmen';
@@ -132,53 +167,81 @@ function BlogPostCard({ post, onLike }: { post: BlogPost; onLike: (id: number) =
       activeOpacity={0.88}
       onPress={() => router.push(`/(app)/teachers/${post.teacher?.id}/blog/${post.id}` as never)}
     >
-      <Card style={styles.postCard}>
-        <View style={styles.authorRow}>
-          <TouchableOpacity
-            onPress={() => router.push(`/(app)/teachers/${post.teacher?.id}` as never)}
-          >
-            <Avatar name={teacherName} size={48} shape="rounded" color={AppColors.secondary} />
-          </TouchableOpacity>
-          <View style={styles.authorInfo}>
-            <Text style={styles.authorName}>{teacherName}</Text>
-            {post.teacher?.title ? (
-              <Text style={styles.publishedAt}>{post.teacher.title}</Text>
+      <View style={styles.card}>
+        {/* Header */}
+        <View style={styles.cardHeader}>
+          <View style={styles.authorLeft}>
+            <TouchableOpacity onPress={() => router.push(`/(app)/teachers/${post.teacher?.id}` as never)}>
+              <Avatar name={teacherName} size={48} shape="rounded" color={AppColors.secondary} />
+            </TouchableOpacity>
+            <View style={styles.authorMeta}>
+              <Text style={styles.authorName}>{teacherName}</Text>
+              <Text style={styles.authorSub}>
+                {post.teacher?.title ? `${post.teacher.title} • ` : ''}{timeAgo(post.published_at)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Content */}
+        {post.image_url ? (
+          <>
+            <Text style={styles.postTitle}>{post.title}</Text>
+            {post.description ? (
+              <Text style={styles.content} numberOfLines={3}>{post.description}</Text>
+            ) : null}
+            <View style={styles.imageWrap}>
+              <PrivateImage uri={post.image_url} style={styles.postImage} />
+            </View>
+          </>
+        ) : (
+          /* Gradient announcement card when no image */
+          <View style={styles.announcementCard}>
+            <View style={styles.announcementBlob} />
+            <View style={styles.announcementIcon}>
+              <Ionicons name="megaphone" size={22} color={AppColors.white} />
+            </View>
+            <Text style={styles.announcementTitle}>{post.title}</Text>
+            {post.description ? (
+              <Text style={styles.announcementDesc}>{post.description}</Text>
             ) : null}
           </View>
-          <Text style={styles.publishedAt}>{timeAgo(post.published_at)}</Text>
-        </View>
-        <Text style={styles.blogTitle}>{post.title}</Text>
-        {post.description ? (
-          <Text style={styles.content} numberOfLines={3}>
-            {post.description}
-          </Text>
-        ) : null}
-        {post.image_url ? (
-          <PrivateImage uri={post.image_url} style={styles.postImage} />
-        ) : null}
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.stat} onPress={() => onLike(post.id)}>
-            <Ionicons
-              name={post.is_liked ? 'heart' : 'heart-outline'}
-              size={18}
-              color={post.is_liked ? AppColors.errorContainer : AppColors.onSurfaceVariant}
-            />
-            <Text style={styles.statText}>{post.likes_count}</Text>
-          </TouchableOpacity>
-          <View style={styles.stat}>
-            <Ionicons name="chatbubble-outline" size={18} color={AppColors.onSurfaceVariant} />
-            <Text style={styles.statText}>{post.comments_count}</Text>
+        )}
+
+        {/* Action bar */}
+        <View style={styles.actionBar}>
+          <View style={styles.actionLeft}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => onLike(post.id)} activeOpacity={0.7}>
+              <View style={[styles.actionIconWrap, post.is_liked && styles.actionIconLiked]}>
+                <Ionicons
+                  name={post.is_liked ? 'heart' : 'heart-outline'}
+                  size={18}
+                  color={post.is_liked ? AppColors.error : AppColors.onSurfaceVariant}
+                />
+              </View>
+              <Text style={styles.actionCount}>{post.likes_count}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+              <View style={[styles.actionIconWrap, styles.actionIconTertiary]}>
+                <Ionicons name="chatbubble-outline" size={18} color={AppColors.onSurfaceVariant} />
+              </View>
+              <Text style={styles.actionCount}>{post.comments_count}</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Card>
+      </View>
     </TouchableOpacity>
   );
 }
 
-const FEED_TABS = [
-  { key: 'schools' as FeedTab, label: 'Okullarım' },
-  { key: 'teachers' as FeedTab, label: 'Öğretmenler' },
+// ─── Feed Tabs ────────────────────────────────────────────────────────────────
+
+const FEED_TABS: { key: FeedTab; label: string }[] = [
+  { key: 'schools', label: 'Okullarım' },
+  { key: 'teachers', label: 'Öğretmenler' },
 ];
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<FeedTab>('schools');
@@ -211,11 +274,10 @@ export default function FeedScreen() {
           setPage(meta.current_page);
           setLastPage(meta.last_page);
         } else {
-          const endpoint = `/parent/feed/schools?page=${currentPage}`;
           const response = await api.get<{
             data: Post[];
             meta: { current_page: number; last_page: number };
-          }>(endpoint);
+          }>(`/parent/feed/schools?page=${currentPage}`);
           const newPosts = response.data.data;
           const meta = response.data.meta;
           if (isRefresh || currentPage === 1) {
@@ -261,18 +323,14 @@ export default function FeedScreen() {
         await api.delete(`/parent/teacher-blogs/${blogPostId}/like`);
         setBlogPosts((prev) =>
           prev.map((p) =>
-            p.id === blogPostId
-              ? { ...p, is_liked: false, likes_count: p.likes_count - 1 }
-              : p
+            p.id === blogPostId ? { ...p, is_liked: false, likes_count: p.likes_count - 1 } : p
           )
         );
       } else {
         await api.post(`/parent/teacher-blogs/${blogPostId}/like`);
         setBlogPosts((prev) =>
           prev.map((p) =>
-            p.id === blogPostId
-              ? { ...p, is_liked: true, likes_count: p.likes_count + 1 }
-              : p
+            p.id === blogPostId ? { ...p, is_liked: true, likes_count: p.likes_count + 1 } : p
           )
         );
       }
@@ -281,32 +339,44 @@ export default function FeedScreen() {
     }
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar style="dark" backgroundColor={AppColors.white} />
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerGreeting}>Merhaba 👋</Text>
-          <Text style={styles.headerTitle}>Okul Günlüğü</Text>
-        </View>
-        <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
-          <Ionicons name="notifications-outline" size={22} color={AppColors.onSurfaceVariant} />
-          <View style={styles.bellDot} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Tab Selector */}
-      <View style={styles.tabWrap}>
-        <TabSelector tabs={FEED_TABS} activeKey={activeTab} onSelect={setActiveTab} />
-      </View>
-
+  const listHeader = (
+    <>
       {error && (
         <View style={styles.errorBox}>
           <Ionicons name="alert-circle-outline" size={16} color={AppColors.error} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
+      {/* Feed tab pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabPills}
+        style={styles.tabPillsOuter}
+      >
+        {FEED_TABS.map((tab) => {
+          const isActive = tab.key === activeTab;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tabPill, isActive && styles.tabPillActive]}
+              onPress={() => setActiveTab(tab.key)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabPillText, isActive && styles.tabPillTextActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </>
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <StatusBar style="dark" backgroundColor={AppColors.surfaceContainerLow} />
+      <AppHeader hasBellNotification />
 
       {activeTab === 'teachers' ? (
         <FlatList
@@ -314,6 +384,7 @@ export default function FeedScreen() {
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => <BlogPostCard post={item} onLike={handleLike} />}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={listHeader}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
           }
@@ -331,7 +402,9 @@ export default function FeedScreen() {
             ) : null
           }
           ListFooterComponent={
-            loading && blogPosts.length > 0 ? <ActivityIndicator color={AppColors.primary} style={styles.loader} /> : null
+            loading && blogPosts.length > 0
+              ? <ActivityIndicator color={AppColors.primary} style={styles.loader} />
+              : null
           }
         />
       ) : (
@@ -340,6 +413,7 @@ export default function FeedScreen() {
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => <PostCard post={item} />}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={listHeader}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={AppColors.primary} />
           }
@@ -357,7 +431,9 @@ export default function FeedScreen() {
             ) : null
           }
           ListFooterComponent={
-            loading && posts.length > 0 ? <ActivityIndicator color={AppColors.primary} style={styles.loader} /> : null
+            loading && posts.length > 0
+              ? <ActivityIndicator color={AppColors.primary} style={styles.loader} />
+              : null
           }
         />
       )}
@@ -366,91 +442,283 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.white },
+  safeArea: {
+    flex: 1,
+    backgroundColor: AppColors.surfaceContainerLow,
+  },
 
-  header: {
+  // ── Tab pills ──
+  tabPillsOuter: {
+    flexGrow: 0,
+  },
+  tabPills: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  tabPill: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
+    paddingVertical: 12,
+    borderRadius: 999,
     backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
+    shadowColor: AppColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  headerGreeting: {
-    fontSize: 12,
-    color: AppColors.onSurfaceVariant,
-    fontWeight: '600',
-    marginBottom: 2,
+  tabPillActive: {
+    backgroundColor: AppColors.primary,
+    borderBottomWidth: 4,
+    borderBottomColor: AppColors.primaryDim,
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: AppColors.primary,
-    letterSpacing: -0.3,
+  tabPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: AppColors.onSurface,
   },
-  bellBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  tabPillTextActive: {
+    color: AppColors.white,
+  },
+
+  // ── List ──
+  list: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    gap: 16,
+  },
+
+  // ── Card ──
+  card: {
+    backgroundColor: AppColors.white,
+    borderRadius: 28,
+    padding: 18,
+    shadowColor: AppColors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+    overflow: 'hidden',
+    gap: 12,
+  },
+  cardBlob: {
+    position: 'absolute',
+    top: -32,
+    right: -32,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: AppColors.primaryContainer,
+    opacity: 0.2,
+  },
+
+  // ── Card header ──
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  authorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  authorMeta: {
+    flex: 1,
+    gap: 2,
+  },
+  authorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  authorName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: AppColors.onSurface,
+    flexShrink: 1,
+  },
+  authorSub: {
+    fontSize: 12,
+    color: AppColors.tertiary,
+    fontWeight: '600',
+  },
+  globalBadge: {
+    backgroundColor: AppColors.primaryContainer,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  globalBadgeText: {
+    fontSize: 10,
+    color: AppColors.primary,
+    fontWeight: '700',
+  },
+
+  // ── Content ──
+  postTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: AppColors.onSurface,
+  },
+  content: {
+    fontSize: 14,
+    color: AppColors.onSurface,
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  readMore: {
+    fontSize: 13,
+    color: AppColors.primary,
+    fontWeight: '700',
+    marginTop: -4,
+  },
+
+  // ── Image ──
+  imageWrap: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  postImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 16,
+  },
+
+  // ── Announcement card (blog without image) ──
+  announcementCard: {
+    borderRadius: 16,
+    padding: 20,
+    backgroundColor: AppColors.primary,
+    overflow: 'hidden',
+    gap: 8,
+  },
+  announcementBlob: {
+    position: 'absolute',
+    bottom: -24,
+    right: -24,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  announcementIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+  },
+  announcementTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: AppColors.white,
+    lineHeight: 24,
+  },
+  announcementDesc: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+
+  // ── Action bar ──
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1.5,
+    borderTopColor: `${AppColors.surfaceContainer}80`,
+    paddingTop: 10,
+    marginTop: 2,
+  },
+  actionLeft: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: AppColors.surfaceContainerLow,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  bellDot: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: AppColors.error,
-    borderWidth: 1.5,
-    borderColor: AppColors.primaryContainer,
+  actionIconTertiary: {
+    backgroundColor: AppColors.surfaceContainerLow,
   },
-  tabWrap: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
+  actionIconLiked: {
+    backgroundColor: AppColors.errorContainer,
   },
-
-  list: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
-    gap: 12,
-    backgroundColor: AppColors.surface,
+  actionCount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: AppColors.onSurface,
+  },
+  shareBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: AppColors.surfaceContainerLow,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  postCard: { borderRadius: 16, padding: 16 },
-  pinnedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  schoolBadge: { backgroundColor: AppColors.primary, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
-  schoolBadgeText: { fontSize: 11, color: "white", fontWeight: '700' },
-  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  authorInfo: { flex: 1 },
-  authorName: { fontSize: 18, fontWeight: '600', color: AppColors.onSurface },
-  publishedAt: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '500', marginTop: 1},
-  globalBadge: { backgroundColor: AppColors.primaryContainer, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  globalBadgeText: { fontSize: 10, color: AppColors.primary, fontWeight: '700' },
-  blogTitle: { fontSize: 16, fontWeight: '800', color: AppColors.onSurface, marginBottom: 6 },
-  content: { fontSize: 14, color: AppColors.onSurface, lineHeight: 22, marginBottom: 12, fontWeight: '500' },
-  postImage: { width: '100%', height: 190, borderRadius: 12, marginBottom: 12},
-  footer: { flexDirection: 'row', gap: 18, borderTopWidth: 1, borderTopColor: AppColors.surfaceContainer, paddingTop: 10, marginTop: 4, justifyContent: "space-between" },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statText: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '600' },
-
-  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 8, backgroundColor: '#fee2e2', borderRadius: 12, padding: 12 },
-  errorText: { color: AppColors.error, fontSize: 13, flex: 1, fontWeight: '500' },
-
-  empty: { alignItems: 'center', paddingVertical: 60, gap: 10 },
-  emptyIconWrap: { width: 88, height: 88, borderRadius: 28, backgroundColor: AppColors.surfaceContainerLow, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  emptyTitle: { fontSize: 17, fontWeight: '800', color: AppColors.onSurface },
-  emptyText: { fontSize: 13, color: AppColors.onSurfaceVariant, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
-  loader: { paddingVertical: 20 },
-  footerInIcons: { flexDirection: 'row', gap: 18 },
-  readMore: { fontSize: 13, color: AppColors.primary, fontWeight: '600', marginBottom: 8, marginTop: -6 },
+  // ── Misc ──
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    backgroundColor: '#fee2e2',
+    borderRadius: 12,
+    padding: 12,
+  },
+  errorText: {
+    color: AppColors.error,
+    fontSize: 13,
+    flex: 1,
+    fontWeight: '500',
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 10,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    backgroundColor: AppColors.surfaceContainerLow,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: AppColors.onSurface,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: AppColors.onSurfaceVariant,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 20,
+  },
+  loader: {
+    paddingVertical: 20,
+  },
 });

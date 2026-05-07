@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -198,7 +199,8 @@ export default function ActivityClassDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={[]}>
+        <AppHeader title="..." showBack />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -208,10 +210,8 @@ export default function ActivityClassDetailScreen() {
 
   if (!activityClass) {
     return (
-      <SafeAreaView style={styles.container}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
-        </TouchableOpacity>
+      <SafeAreaView style={styles.container} edges={[]}>
+        <AppHeader title="Etkinlik" showBack />
         <View style={styles.loadingContainer}>
           <Text style={{ color: AppColors.onSurfaceVariant }}>Etkinlik sınıfı bulunamadı.</Text>
         </View>
@@ -223,17 +223,12 @@ export default function ActivityClassDetailScreen() {
   const hasEligibleUnenrolled = unenrolledChildren.some(c => !getIneligibleReason(c));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={[]}>
+      <AppHeader title={activityClass.name} showBack />
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-        </View>
 
         {/* Hero */}
         <View style={styles.hero}>
@@ -500,8 +495,6 @@ export default function ActivityClassDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  backBtn: { padding: 16 },
-  topBar: { padding: 16, backgroundColor: AppColors.white, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainerLow },
   hero: { backgroundColor: AppColors.white, padding: 20, marginBottom: 8 },
   heroTitle: { fontSize: 22, fontWeight: '700', color: AppColors.onSurface, marginBottom: 8 },
   heroTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },

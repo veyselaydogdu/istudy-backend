@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/ui/StatCard';
 import api from '../../../lib/api';
@@ -197,14 +198,8 @@ export default function InvoicesScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={AppColors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Faturalarım</Text>
-          <View style={{ width: 22 }} />
-        </View>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <AppHeader />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -213,15 +208,8 @@ export default function InvoicesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color={AppColors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Faturalarım</Text>
-        <View style={{ width: 22 }} />
-      </View>
-
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <AppHeader />
       <FlatList
         data={invoices}
         keyExtractor={(item) => String(item.id)}
@@ -274,19 +262,8 @@ export default function InvoicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
-  },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: AppColors.primary },
   list: { padding: 16, gap: 10 },
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
 

@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -264,7 +265,8 @@ export default function ActivityEventDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={[]}>
+        <AppHeader title="..." showBack />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -284,15 +286,8 @@ export default function ActivityEventDetailScreen() {
   const enrolledChildren = children.filter((c) => enrolledChildIds.includes(c.id));
 
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={24} color="#1A1A2E" />
-        </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>Etkinlik Detayı</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <AppHeader title={activity.name} showBack />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -727,17 +722,8 @@ const enrollStyles = StyleSheet.create({
 const TILE_SIZE = (SCREEN_W - 32 - 12) / 3;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: AppColors.surface },
+  safe: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  navTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E', flex: 1, textAlign: 'center' },
 
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40, gap: 16 },
 

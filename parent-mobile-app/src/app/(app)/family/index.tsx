@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SectionLabel } from '@/components/ui/SectionLabel';
@@ -154,7 +155,8 @@ export default function FamilyScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <AppHeader />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -163,12 +165,9 @@ export default function FamilyScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSub}>Yönet</Text>
-          <Text style={styles.headerTitle}>Ailem</Text>
-        </View>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <AppHeader />
+      <View style={styles.actionBar}>
         <Button
           label="Aile Oluştur"
           variant="primary"
@@ -401,21 +400,15 @@ export default function FamilyScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
+  actionBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 14,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
+    paddingBottom: 8,
   },
-  headerSub: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
   sectionLabelPad: { paddingHorizontal: 20, marginTop: 16, marginBottom: 8 },
   list: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 12 },
   // Davet

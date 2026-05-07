@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import { TabSelector } from '@/components/ui/TabSelector';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
@@ -710,12 +711,8 @@ export default function ActivitiesScreen() {
   // ─── Main render ──────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" backgroundColor={AppColors.white} />
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Etkinlikler</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <AppHeader title="Etkinlikler" />
 
       {/* Tab bar */}
       <View style={styles.tabWrap}>
@@ -735,17 +732,7 @@ export default function ActivitiesScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.white },
-
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
 
   tabWrap: {
     paddingHorizontal: 16,

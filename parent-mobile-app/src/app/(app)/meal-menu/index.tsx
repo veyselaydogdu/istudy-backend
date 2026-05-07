@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import api from '../../../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -349,7 +350,8 @@ export default function MealMenuScreen() {
 
   if (loadingChildren) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <AppHeader />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -359,11 +361,9 @@ export default function MealMenuScreen() {
 
   if (!loadingChildren && childOptions.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="dark" backgroundColor={AppColors.white} />
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Yemek Listesi</Text>
-        </View>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <StatusBar style="dark" backgroundColor={AppColors.surfaceContainerLow} />
+        <AppHeader />
         <View style={styles.centered}>
           <Ionicons name="restaurant-outline" size={52} color="#D1D5DB" />
           <Text style={styles.emptyTitle}>Okula Kayıtlı Çocuk Yok</Text>
@@ -375,19 +375,16 @@ export default function MealMenuScreen() {
     );
   }
 
+  const childSubtitle = selectedChild
+    ? selectedChild.class_name
+      ? `${selectedChild.class_name} · ${selectedChild.school_name ?? ''}`
+      : selectedChild.school_name ?? ''
+    : undefined;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" backgroundColor={AppColors.white} />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Yemek Listesi</Text>
-        {selectedChild && (
-          <Text style={styles.headerSub} numberOfLines={1}>
-            {selectedChild.class_name
-              ? `${selectedChild.class_name} · ${selectedChild.school_name ?? ''}`
-              : selectedChild.school_name ?? ''}
-          </Text>
-        )}
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <StatusBar style="dark" backgroundColor={AppColors.surfaceContainerLow} />
+      <AppHeader title="Yemek Menüsü" subtitle={childSubtitle} />
 
       <ScrollView
         style={styles.scroll}
@@ -433,19 +430,9 @@ export default function MealMenuScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.white },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
 
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
-  },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
-  headerSub: { fontSize: 13, color: AppColors.onSurfaceVariant, marginTop: 2, fontWeight: '500' },
 
   scroll: { flex: 1, backgroundColor: AppColors.surface },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },

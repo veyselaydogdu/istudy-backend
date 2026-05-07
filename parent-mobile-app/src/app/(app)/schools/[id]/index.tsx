@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
 
@@ -212,7 +213,8 @@ export default function SchoolDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <AppHeader title="..." showBack />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -233,16 +235,8 @@ export default function SchoolDetailScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-          <Text style={styles.backText}>← Geri</Text>
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle} numberOfLines={1}>
-          {school?.name ?? 'Okul'}
-        </Text>
-        <View style={{ width: 60 }} />
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <AppHeader title={school?.name ?? 'Okul'} showBack />
 
       <FlatList
         data={posts}
@@ -498,20 +492,8 @@ export default function SchoolDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainerLow,
-  },
-  backText: { color: AppColors.primary, fontSize: 15, fontWeight: '500', width: 60 },
-  topBarTitle: { fontSize: 17, fontWeight: '700', color: AppColors.onSurface, flex: 1, textAlign: 'center' },
   list: { paddingHorizontal: 20, paddingBottom: 20 },
   schoolCard: {
     backgroundColor: AppColors.white,

@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import { PrivateImage } from '@/components/ui/PrivateImage';
 import api from '../../../../lib/api';
 import { getApiError } from '../../../../lib/auth';
@@ -246,7 +247,8 @@ export default function ChildDetailScreen() {
 
   if (loading || !child) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <AppHeader title="..." showBack />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -257,17 +259,15 @@ export default function ChildDetailScreen() {
   const initials = `${child.first_name.charAt(0)}${child.last_name.charAt(0)}`.toUpperCase();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-          <Text style={styles.backText}>← Geri</Text>
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Çocuk Detayı</Text>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <AppHeader title={child.full_name} showBack />
+      <View style={styles.actionBar}>
         <TouchableOpacity
           onPress={() => router.push(`/(app)/children/${id}/edit`)}
           activeOpacity={0.7}
+          style={styles.editButton}
         >
-          <Text style={styles.editText}>Düzenle</Text>
+          <Text style={styles.editButtonText}>Düzenle</Text>
         </TouchableOpacity>
       </View>
 
@@ -646,40 +646,30 @@ const classStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: AppColors.surface,
+    backgroundColor: AppColors.surfaceContainerLow,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  topBar: {
+  actionBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainerLow,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  backText: {
+  editButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: AppColors.primaryContainer,
+  },
+  editButtonText: {
     color: AppColors.primary,
-    fontSize: 15,
-    fontWeight: '500',
-    width: 60,
-  },
-  topBarTitle: {
-    fontSize: 17,
+    fontSize: 13,
     fontWeight: '700',
-    color: AppColors.onSurface,
-  },
-  editText: {
-    color: AppColors.primary,
-    fontSize: 15,
-    fontWeight: '600',
-    width: 60,
-    textAlign: 'right',
   },
   container: {
     paddingHorizontal: 20,

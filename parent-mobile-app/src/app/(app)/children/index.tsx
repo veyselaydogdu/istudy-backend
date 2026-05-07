@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import { PrivateImage } from '@/components/ui/PrivateImage';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
@@ -141,7 +141,8 @@ export default function ChildrenScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <AppHeader title="Çocuklarım" showBack />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -150,13 +151,9 @@ export default function ChildrenScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" backgroundColor={AppColors.surface} />
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSub}>Takip Et</Text>
-          <Text style={styles.headerTitle}>Çocuklarım</Text>
-        </View>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <AppHeader title="Çocuklarım" showBack />
+      <View style={styles.actionBar}>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push('/(app)/children/add')}
@@ -224,18 +221,15 @@ export default function ChildrenScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
+  actionBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  headerSub: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500', marginBottom: 2 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: AppColors.onSurface },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',

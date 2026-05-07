@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -229,7 +230,8 @@ export default function FamilyDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <AppHeader title="..." showBack />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -238,16 +240,10 @@ export default function FamilyDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={24} color={AppColors.primary} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerSub}>Aile</Text>
-          <Text style={styles.headerTitle} numberOfLines={1}>{family?.family_name ?? '—'}</Text>
-        </View>
-        {isSuperParent && (
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <AppHeader title={family?.family_name ?? '—'} showBack />
+      {isSuperParent && (
+        <View style={styles.actionBar}>
           <Button
             label="Üye Ekle"
             variant="primary"
@@ -255,8 +251,8 @@ export default function FamilyDetailScreen() {
             icon={<Ionicons name="person-add-outline" size={14} color={AppColors.white} />}
             onPress={() => setShowAddModal(true)}
           />
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Aile Adı Kartı */}
       <TouchableOpacity
@@ -522,23 +518,15 @@ export default function FamilyDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
+  actionBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 14,
-    backgroundColor: AppColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainer,
-    gap: 10,
+    paddingBottom: 8,
   },
-  backBtn: { padding: 2 },
-  headerCenter: { flex: 1 },
-  headerSub: { fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
-  headerTitle: { fontSize: 20, fontWeight: '900', color: AppColors.primary, letterSpacing: -0.3 },
   familyNameCard: {
     flexDirection: 'row',
     alignItems: 'center',

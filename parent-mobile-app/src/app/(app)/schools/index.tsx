@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
+import { AppHeader } from '@/components/ui/AppHeader';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
 
@@ -206,7 +207,8 @@ export default function SchoolsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={[]}>
+        <AppHeader />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -215,12 +217,9 @@ export default function SchoolsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSub}>Kayıtlı</Text>
-          <Text style={styles.headerTitle}>Okullarım</Text>
-        </View>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
+      <AppHeader />
+      <View style={styles.actionBar}>
         <TouchableOpacity
           style={styles.joinButton}
           onPress={() => router.push('/(app)/schools/join')}
@@ -306,18 +305,15 @@ export default function SchoolsScreen() {
 // ─── Styles ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: AppColors.surface },
+  safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
+  actionBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  headerSub: { fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: '500', marginBottom: 2 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: AppColors.onSurface },
   joinButton: {
     flexDirection: 'row',
     alignItems: 'center',
