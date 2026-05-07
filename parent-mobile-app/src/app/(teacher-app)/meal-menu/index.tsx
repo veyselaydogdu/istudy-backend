@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -68,7 +69,6 @@ export default function TeacherMealMenuScreen() {
   const [loading, setLoading] = useState(false);
   const [classesLoading, setClassesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showClassPicker, setShowClassPicker] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -126,49 +126,35 @@ export default function TeacherMealMenuScreen() {
         <Text style={styles.headerTitle}>Yemek Listesi</Text>
       </View>
 
-      {/* Class picker */}
-      <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.classPicker}
-          onPress={() => setShowClassPicker((v) => !v)}
-          activeOpacity={0.75}
+      {/* Class picker — yatay pill row */}
+      {classes.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.classPills}
         >
-          <Ionicons name="book-outline" size={16} color="#208AEF" />
-          <Text style={styles.classPickerText}>
-            {selectedClass ? selectedClass.name : 'Sınıf seçin'}
-          </Text>
-          <Ionicons name={showClassPicker ? 'chevron-up' : 'chevron-down'} size={16} color="#6B7280" />
-        </TouchableOpacity>
-
-        {showClassPicker && (
-          <View style={styles.classDropdown}>
-            {classes.map((cls) => (
+          {classes.map((cls) => {
+            const active = selectedClass?.id === cls.id;
+            return (
               <TouchableOpacity
                 key={cls.id}
-                style={[
-                  styles.classOption,
-                  selectedClass?.id === cls.id && styles.classOptionActive,
-                ]}
-                onPress={() => {
-                  setSelectedClass(cls);
-                  setShowClassPicker(false);
-                }}
-                activeOpacity={0.75}
+                style={[styles.classPill, active && styles.classPillActive]}
+                onPress={() => setSelectedClass(cls)}
+                activeOpacity={0.7}
               >
-                <Text
-                  style={[
-                    styles.classOptionText,
-                    selectedClass?.id === cls.id && styles.classOptionTextActive,
-                  ]}
-                >
+                <Ionicons
+                  name="book-outline"
+                  size={14}
+                  color={active ? AppColors.white : AppColors.primary}
+                />
+                <Text style={[styles.classPillText, active && styles.classPillTextActive]} numberOfLines={1}>
                   {cls.name}
                 </Text>
-                <Text style={styles.classOptionSchool}>{cls.school_name}</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {/* Date picker */}
       <View style={styles.datePicker}>
@@ -290,64 +276,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: AppColors.onSurface,
   },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
-    zIndex: 10,
-  },
-  classPicker: {
+  classPills: { paddingHorizontal: 20, gap: 8, paddingBottom: 12 },
+  classPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: AppColors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: AppColors.surfaceContainer,
+    gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: AppColors.surfaceContainer,
   },
-  classPickerText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppColors.onSurface,
+  classPillActive: {
+    backgroundColor: AppColors.primary,
   },
-  classDropdown: {
-    backgroundColor: AppColors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: AppColors.surfaceContainer,
-    marginTop: 4,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  classOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.surfaceContainerLow,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  classOptionActive: {
-    backgroundColor: AppColors.primaryContainer,
-  },
-  classOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppColors.onSurface,
-  },
-  classOptionTextActive: {
-    color: AppColors.primary,
-  },
-  classOptionSchool: {
-    fontSize: 12,
+  classPillText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: AppColors.onSurfaceVariant,
+    maxWidth: 120,
+  },
+  classPillTextActive: {
+    color: AppColors.white,
   },
   datePicker: {
     flexDirection: 'row',
