@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Parents;
 
 use App\Models\Activity\Attendance;
 use App\Models\Activity\DailyChildReport;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -11,9 +12,9 @@ use Illuminate\Support\Facades\Log;
 class ParentDailyReportController extends BaseParentController
 {
     /**
-     * Son 30 günün rapor + devamsızlık özetini döner.
+     * Belirtilen ay (year+month) veya güncel ayın rapor + devamsızlık özetini döner.
      */
-    public function index(string $child): JsonResponse
+    public function index(Request $request, string $child): JsonResponse
     {
         $childModel = $this->findOwnedChild($child);
 
@@ -21,26 +22,30 @@ class ParentDailyReportController extends BaseParentController
             return $this->errorResponse('Çocuk bulunamadı.', 404);
         }
 
+        $year = (int) $request->query('year', now()->year);
+        $month = (int) $request->query('month', now()->month);
+
+        $firstDay = Carbon::create($year, $month, 1);
+        $from = $firstDay->toDateString();
+        $to = $firstDay->copy()->endOfMonth()->toDateString();
+
         try {
             $today = now()->toDateString();
-            $from = now()->subDays(29)->toDateString();
 
             $reports = DailyChildReport::withoutGlobalScope('tenant')
                 ->where('child_id', $childModel->id)
-                ->whereBetween('report_date', [$from, $today])
-                ->orderByDesc('report_date')
+                ->whereBetween('report_date', [$from, $to])
                 ->get()
                 ->keyBy(fn ($r) => $r->report_date->toDateString());
 
             $attendances = Attendance::where('child_id', $childModel->id)
-                ->whereBetween('attendance_date', [$from, $today])
-                ->orderByDesc('attendance_date')
+                ->whereBetween('attendance_date', [$from, $to])
                 ->get()
                 ->keyBy(fn ($a) => $a->attendance_date->toDateString());
 
             $days = [];
-            for ($i = 0; $i < 30; $i++) {
-                $dateStr = now()->subDays($i)->toDateString();
+            for ($day = 1; $day <= $firstDay->daysInMonth; $day++) {
+                $dateStr = Carbon::create($year, $month, $day)->toDateString();
                 $report = $reports->get($dateStr);
                 $attendance = $attendances->get($dateStr);
 
@@ -51,6 +56,7 @@ class ParentDailyReportController extends BaseParentController
                     'has_report' => (bool) $report,
                     'mood' => $report?->mood,
                     'appetite' => $report?->appetite,
+                    'notes' => $report?->notes,
                     'parent_notes' => $report?->parent_notes,
                     'can_edit' => $dateStr === $today
                         && in_array($attendance?->status, ['present', 'late'], true),

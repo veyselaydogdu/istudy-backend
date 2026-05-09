@@ -4,3 +4,5 @@ yemek ekleden öğün türü kalkacak, öğün türü yemek menüsüne yemek ekl
 etkinlik atölyesi sistemi rolü
 ücretli etkinlikte katılımcı ödeme bilgilerinin görülmesi (var geliştirilecek)
 etkinlik atölyesi rolü için ücret düşünülecek
+etkinlik iptallerinde kayıtlı çocuklar ödenmiş çocukların süreçleri kontrol edilecek
+

@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppColors } from '@/constants/theme';
 import { AppHeader } from '@/components/ui/AppHeader';
 import { Avatar } from '@/components/ui/Avatar';
+import { PillTabs } from '@/components/ui/PillTabs';
 import { PrivateImage } from '@/components/ui/PrivateImage';
 import api from '../../lib/api';
 import { getApiError } from '../../lib/auth';
@@ -348,28 +348,13 @@ export default function FeedScreen() {
         </View>
       )}
       {/* Feed tab pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabPills}
-        style={styles.tabPillsOuter}
-      >
-        {FEED_TABS.map((tab) => {
-          const isActive = tab.key === activeTab;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tabPill, isActive && styles.tabPillActive]}
-              onPress={() => setActiveTab(tab.key)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.tabPillText, isActive && styles.tabPillTextActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <PillTabs
+        items={FEED_TABS}
+        activeKey={activeTab}
+        onSelect={(key) => setActiveTab(key as FeedTab)}
+        showIcons={false}
+        scrollable={true}
+      />
     </>
   );
 
@@ -445,43 +430,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: AppColors.surfaceContainerLow,
-  },
-
-  // ── Tab pills ──
-  tabPillsOuter: {
-    flexGrow: 0,
-  },
-  tabPills: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  tabPill: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 999,
-    backgroundColor: AppColors.white,
-    shadowColor: AppColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  tabPillActive: {
-    backgroundColor: AppColors.primary,
-    borderBottomWidth: 4,
-    borderBottomColor: AppColors.primaryDim,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  tabPillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: AppColors.onSurface,
-  },
-  tabPillTextActive: {
-    color: AppColors.white,
   },
 
   // ── List ──

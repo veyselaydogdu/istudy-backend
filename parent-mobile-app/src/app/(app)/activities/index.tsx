@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppColors } from '@/constants/theme';
 import { AppHeader } from '@/components/ui/AppHeader';
-import { TabSelector } from '@/components/ui/TabSelector';
+import { PillTabs } from '@/components/ui/PillTabs';
 import { PrivateImage } from '@/components/ui/PrivateImage';
 import api from '../../../lib/api';
 import { getApiError } from '../../../lib/auth';
@@ -349,20 +349,20 @@ function KatilCard({ item }: { item: KatildiklarimItem }) {
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 
-type Tab = 'Etkinlikler' | 'Etkinlik Sınıfları' | 'Katıldıklarım';
+type Tab = 'Etkinlikler' | 'Etkinlik Sınıfları';
 type KatilFilter = 'all' | 'activity' | 'activity_class';
 type KatilSort = 'date_desc' | 'date_asc';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'Etkinlikler', label: 'Etkinlikler' },
   { key: 'Etkinlik Sınıfları', label: 'Etkinlik Sınıfları' },
-  { key: 'Katıldıklarım', label: 'Katıldıklarım' },
 ];
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ActivitiesScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('Etkinlikler');
+  const [showKatildiklarim, setShowKatildiklarim] = useState(false);
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [actPage, setActPage] = useState(1);
@@ -500,12 +500,16 @@ export default function ActivitiesScreen() {
 
   useEffect(() => {
     if (!actFetched) { void loadActivities(1); }
-  }, [actFetched, loadActivities]);
+    if (!myFetched) { void loadMyEnrollments(); }
+  }, [actFetched, myFetched, loadActivities, loadMyEnrollments]);
 
   useEffect(() => {
     if (activeTab === 'Etkinlik Sınıfları' && !acFetched) { void loadActivityClasses(1); }
-    if (activeTab === 'Katıldıklarım' && !myFetched) { void loadMyEnrollments(); }
-  }, [activeTab, acFetched, myFetched, loadActivityClasses, loadMyEnrollments]);
+  }, [activeTab, acFetched, loadActivityClasses]);
+
+  useEffect(() => {
+    if (showKatildiklarim && !myFetched) { void loadMyEnrollments(); }
+  }, [showKatildiklarim, myFetched, loadMyEnrollments]);
 
   // ─── Render helpers ───────────────────────────────────────────────────────────
 
@@ -629,17 +633,41 @@ export default function ActivitiesScreen() {
     );
   };
 
+  const enrollCount = katildiklarim.length;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={[]}>
       <StatusBar style="dark" />
-      <AppHeader title="Etkinlikler" />
+      <AppHeader
+        title="Etkinlikler"
+        rightContent={
+          <TouchableOpacity
+            style={[styles.enrollBtn, showKatildiklarim && styles.enrollBtnActive]}
+            onPress={() => setShowKatildiklarim((v) => !v)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.enrollBtnLabel, showKatildiklarim && styles.enrollBtnLabelActive]}>
+              Katıldıklarım
+            </Text>
+            {enrollCount > 0 && (
+              <View style={[styles.enrollBadge, showKatildiklarim && styles.enrollBadgeActive]}>
+                <Text style={[styles.enrollBadgeText, showKatildiklarim && styles.enrollBadgeTextActive]}>
+                  {enrollCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        }
+      />
       <View style={styles.tabWrap}>
-        <TabSelector tabs={TABS} activeKey={activeTab} onSelect={setActiveTab} />
+        <PillTabs items={TABS} activeKey={activeTab} onSelect={setActiveTab} showIcons={false} scrollable={true} />
       </View>
       <View style={styles.content}>
-        {activeTab === 'Etkinlikler' ? renderActivities()
-          : activeTab === 'Etkinlik Sınıfları' ? renderActivityClasses()
-          : renderKatildiklarim()}
+        {showKatildiklarim
+          ? renderKatildiklarim()
+          : activeTab === 'Etkinlikler'
+            ? renderActivities()
+            : renderActivityClasses()}
       </View>
     </SafeAreaView>
   );
@@ -717,14 +745,49 @@ const cardStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
-  tabWrap: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: AppColors.white, borderBottomWidth: 1, borderBottomColor: AppColors.surfaceContainer },
-  content: { flex: 1, backgroundColor: AppColors.surface },
+  tabWrap: { },
+  content: { flex: 1 },
   listContent: { padding: 16, gap: 14 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
   moreLoader: { marginVertical: 16 },
   emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: AppColors.onSurface },
   emptyText: { fontSize: 14, color: AppColors.onSurfaceVariant, textAlign: 'center', paddingHorizontal: 32 },
+
+  // ── Header "Katıldıklarım" button — PillTabs pill style, no bottom border ──
+  enrollBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: AppColors.white,
+    shadowColor: AppColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 6,
+  },
+  enrollBtnActive: {
+    backgroundColor: AppColors.primary,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  enrollBtnLabel: { fontSize: 13, fontWeight: '700', color: AppColors.onSurface },
+  enrollBtnLabelActive: { color: AppColors.white },
+  enrollBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: AppColors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  enrollBadgeActive: { backgroundColor: AppColors.white },
+  enrollBadgeText: { fontSize: 11, fontWeight: '800', color: AppColors.white },
+  enrollBadgeTextActive: { color: AppColors.primary },
 });
 
 // ─── Katıldıklarım styles ─────────────────────────────────────────────────────

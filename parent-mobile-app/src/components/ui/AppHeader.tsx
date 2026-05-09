@@ -13,6 +13,8 @@ interface AppHeaderProps {
   showBack?: boolean;
   hasBellNotification?: boolean;
   onBellPress?: () => void;
+  /** Replaces the bell button when provided. */
+  rightContent?: React.ReactNode;
 }
 
 export function AppHeader({
@@ -21,6 +23,7 @@ export function AppHeader({
   showBack = false,
   hasBellNotification = false,
   onBellPress,
+  rightContent,
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
 
@@ -49,10 +52,12 @@ export function AppHeader({
         </View>
       )}
 
-      <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8} onPress={onBellPress}>
-        <Ionicons name="notifications-outline" size={20} color={AppColors.primary} />
-        {hasBellNotification && <View style={styles.bellDot} />}
-      </TouchableOpacity>
+      {rightContent != null ? rightContent : (
+        <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8} onPress={onBellPress}>
+          <Ionicons name="notifications-outline" size={20} color={AppColors.primary} />
+          {hasBellNotification && <View style={styles.bellDot} />}
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

@@ -19,6 +19,9 @@ type ActivityForm = {
     cancellation_deadline: string;
     price: string;
     capacity: string;
+    age_min: string;
+    age_max: string;
+    language: string;
     address: string;
     start_date: string;
     start_time: string;
@@ -31,7 +34,7 @@ type ActivityForm = {
 const emptyForm: ActivityForm = {
     name: '', description: '', is_global: false, is_paid: false, is_enrollment_required: false,
     cancellation_allowed: false, cancellation_deadline: '',
-    price: '', capacity: '', address: '',
+    price: '', capacity: '', age_min: '', age_max: '', language: '', address: '',
     start_date: '', start_time: '', end_date: '', end_time: '',
     class_ids: [], materials: [],
 };
@@ -134,6 +137,9 @@ export default function ActivitiesPage() {
                 : '',
             price: activity.price != null ? String(activity.price) : '',
             capacity: activity.capacity != null ? String(activity.capacity) : '',
+            age_min: activity.age_min != null ? String(activity.age_min) : '',
+            age_max: activity.age_max != null ? String(activity.age_max) : '',
+            language: activity.language ?? '',
             address: activity.address ?? '',
             start_date: activity.start_date ? activity.start_date.slice(0, 10) : '',
             start_time: activity.start_time ?? '',
@@ -197,6 +203,9 @@ export default function ActivitiesPage() {
                 : null,
             price: form.is_paid && form.price ? Number(form.price) : null,
             capacity: form.capacity ? Number(form.capacity) : null,
+            age_min: form.age_min ? Number(form.age_min) : null,
+            age_max: form.age_max ? Number(form.age_max) : null,
+            language: form.language || null,
             address: form.address || null,
             start_date: form.start_date || null,
             start_time: form.start_time || null,
@@ -340,6 +349,10 @@ export default function ActivitiesPage() {
                                         <th>Okul</th>
                                         <th>Sınıflar</th>
                                         <th>{t('activities.startDateLabel')}</th>
+                                        <th>Yaş</th>
+                                        <th>Kontenjan</th>
+                                        <th>Katılımcı</th>
+                                        <th>Dil</th>
                                         <th>Kayıt</th>
                                         <th>Ücret</th>
                                         <th></th>
@@ -383,6 +396,33 @@ export default function ActivitiesPage() {
                                                     : '—'}
                                                 {activity.end_date && (
                                                     <span className="text-xs"> – {new Date(activity.end_date).toLocaleDateString('tr-TR')}</span>
+                                                )}
+                                            </td>
+                                            <td className="text-sm text-[#888ea8]">
+                                                {activity.age_min != null || activity.age_max != null ? (
+                                                    <span>{activity.age_min ?? 0}–{activity.age_max ?? 18} yaş</span>
+                                                ) : (
+                                                    <span className="text-[#c8c8c8]">—</span>
+                                                )}
+                                            </td>
+                                            <td className="text-sm text-[#888ea8]">
+                                                {activity.capacity != null ? (
+                                                    <span>{activity.capacity}</span>
+                                                ) : (
+                                                    <span className="text-[#c8c8c8]">—</span>
+                                                )}
+                                            </td>
+                                            <td className="text-sm text-[#888ea8]">
+                                                <span className="flex items-center gap-1">
+                                                    <Users className="h-3.5 w-3.5" />
+                                                    {activity.enrollments_count ?? 0}
+                                                </span>
+                                            </td>
+                                            <td className="text-sm text-[#888ea8]">
+                                                {activity.language ? (
+                                                    <span className="badge badge-outline-secondary text-xs">{activity.language}</span>
+                                                ) : (
+                                                    <span className="text-[#c8c8c8]">—</span>
                                                 )}
                                             </td>
                                             <td>
@@ -679,6 +719,47 @@ export default function ActivitiesPage() {
                                         className="form-input mt-1"
                                         value={form.address}
                                         onChange={f('address')}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                        Min Yaş <span className="font-normal text-[#888ea8]">(opsiyonel)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="form-input mt-1"
+                                        value={form.age_min}
+                                        onChange={f('age_min')}
+                                        min="0"
+                                        max="18"
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                        Max Yaş <span className="font-normal text-[#888ea8]">(opsiyonel)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="form-input mt-1"
+                                        value={form.age_max}
+                                        onChange={f('age_max')}
+                                        min="0"
+                                        max="18"
+                                        placeholder="18"
+                                    />
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <label className="block text-sm font-medium text-dark dark:text-white-light">
+                                        Dil <span className="font-normal text-[#888ea8]">(opsiyonel)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-input mt-1"
+                                        value={form.language}
+                                        onChange={f('language')}
+                                        placeholder="ör. Türkçe, İngilizce"
+                                        maxLength={10}
                                     />
                                 </div>
                             </div>

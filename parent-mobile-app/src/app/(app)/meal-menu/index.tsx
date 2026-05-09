@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppColors } from '@/constants/theme';
 import { AppHeader } from '@/components/ui/AppHeader';
 import { Avatar } from '@/components/ui/Avatar';
+import { PillTabs } from '@/components/ui/PillTabs';
 import api from '../../../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -224,39 +225,32 @@ function ChildPills({
   onSelect: (c: ChildOption) => void;
 }) {
   if (children.length <= 1) { return null; }
+
+  const items = children.map((c) => ({
+    key: String(c.id),
+    label: c.class_name ?? c.full_name,
+    icon: (
+      <Avatar
+        name={c.full_name}
+        size={28}
+        shape="circle"
+        color={c.class_color ?? undefined}
+        uri={c.profile_photo ?? undefined}
+      />
+    ),
+  }));
+
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.pillsRow}
-    >
-      {children.map((c) => {
-        const active = selected?.id === c.id;
-        return (
-          <TouchableOpacity
-            key={c.id}
-            style={[styles.pill, active && styles.pillActive]}
-            onPress={() => onSelect(c)}
-            activeOpacity={0.7}
-          >
-            <Avatar
-              name={c.full_name}
-              size={32}
-              shape="circle"
-              color={c.class_color ?? undefined}
-              uri={c.profile_photo ?? undefined}
-            />
-            <View style={styles.pillLabels}>
-              {c.class_name ? (
-                <Text style={[styles.pillSub, active && styles.pillSubActive]}>
-                  {c.class_name}
-                </Text>
-              ) : null}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+    <PillTabs
+      items={items}
+      activeKey={selected ? String(selected.id) : items[0]?.key ?? ''}
+      onSelect={(key) => {
+        const child = children.find((c) => String(c.id) === key);
+        if (child) { onSelect(child); }
+      }}
+      showIcons
+      scrollable={true}
+    />
   );
 }
 
@@ -433,23 +427,6 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
-
-  // Child pills
-  pillsRow: { paddingHorizontal: 4, gap: 10, paddingBottom: 4, marginTop: 10, flexGrow: 1, justifyContent: 'center' },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: AppColors.surfaceContainer,
-  },
-  pillActive: { backgroundColor: AppColors.primary },
-  pillLabels: { marginLeft: 8, alignItems: 'center', justifyContent: 'center', minHeight: 32 },
-  pillText: { fontSize: 13, fontWeight: '700', color: AppColors.onSurfaceVariant },
-  pillTextActive: { color: AppColors.white },
-  pillSub: { fontSize: 14, fontWeight: '700', color: AppColors.onSurfaceVariant, marginTop: 1, opacity: 0.75 },
-  pillSubActive: { color: AppColors.white, opacity: 0.85 },
 
   // Month nav
   monthNav: {

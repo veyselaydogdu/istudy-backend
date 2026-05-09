@@ -215,6 +215,17 @@ class ParentActivityController extends BaseParentController
                 return $this->errorResponse('Bu çocuk etkinliğe zaten kayıtlı.', 422);
             }
 
+            // Yaş aralığı kontrolü
+            if (($activity->age_min !== null || $activity->age_max !== null) && $child->birth_date !== null) {
+                $childAge = (int) now()->diffInYears($child->birth_date);
+                if ($activity->age_min !== null && $childAge < $activity->age_min) {
+                    return $this->errorResponse("Bu etkinlik en az {$activity->age_min} yaşındaki çocuklar içindir.", 422);
+                }
+                if ($activity->age_max !== null && $childAge > $activity->age_max) {
+                    return $this->errorResponse("Bu etkinlik en fazla {$activity->age_max} yaşındaki çocuklar içindir.", 422);
+                }
+            }
+
             // Kapasite kontrolü
             if ($activity->capacity !== null) {
                 $enrollmentCount = ActivityEnrollment::where('activity_id', $activity->id)->count();

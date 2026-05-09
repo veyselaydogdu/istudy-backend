@@ -258,12 +258,16 @@ export type Activity = {
     cancellation_deadline?: string | null
     price?: number
     capacity?: number | null
+    age_min?: number | null
+    age_max?: number | null
+    language?: string | null
     start_date?: string
     start_time?: string | null
     end_date?: string
     end_time?: string | null
     address?: string | null
     materials?: string[]
+    cover_image_url?: string | null
     school?: { id: number; name: string }
     classes?: SchoolClass[]
     enrollments_count?: number
