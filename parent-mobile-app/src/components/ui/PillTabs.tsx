@@ -47,7 +47,7 @@ export function PillTabs<T extends string>({
     return (
       <TouchableOpacity
         key={item.key}
-        style={[styles.pill, pillSizeStyle, isActive && styles.pillActive]}
+        style={[styles.pill, pillSizeStyle, isActive && styles.pillActive, showIcons && item.icon != null && styles.pillWithIcon]}
         onPress={() => onSelect(item.key)}
         activeOpacity={0.8}
       >
@@ -103,8 +103,12 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.primary,
     borderBottomWidth: 4,
     borderBottomColor: AppColors.primaryDim,
+    paddingTop: 4,
     shadowOpacity: 0,
     elevation: 0,
+  },
+  pillWithIcon: {
+    paddingLeft: 8,
   },
   iconWrap: {},
   label: {

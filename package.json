@@ -15,6 +15,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
-        "@anthropic-ai/claude-code": "^2.1.114"
+        "@anthropic-ai/claude-code": "^2.1.114",
+        "expo-linear-gradient": "^55.0.13"
     }
 }

@@ -28,41 +28,55 @@ export function AppHeader({
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-      <StatusBar style="dark" backgroundColor={AppColors.surfaceContainerLow} />
+    <View style={styles.wrapper}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <StatusBar style="dark" backgroundColor={AppColors.surfaceContainerLow} />
 
-      {showBack ? (
-        /* Back button layout */
-        <>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={22} color={AppColors.primary} />
+        {showBack ? (
+          /* Back button layout */
+          <>
+            <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={22} color={AppColors.primary} />
+            </TouchableOpacity>
+            <Text style={styles.pageTitle} numberOfLines={1}>{title ?? ''}</Text>
+          </>
+        ) : (
+          /* Logo layout */
+          <View style={styles.left}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="school" size={20} color={AppColors.primary} />
+            </View>
+            <View>
+              <Text style={styles.brand}>{title ?? 'iStudy'}</Text>
+              {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            </View>
+          </View>
+        )}
+
+        {rightContent != null ? rightContent : (
+          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8} onPress={onBellPress}>
+            <Ionicons name="notifications-outline" size={20} color={AppColors.primary} />
+            {hasBellNotification && <View style={styles.bellDot} />}
           </TouchableOpacity>
-          <Text style={styles.pageTitle} numberOfLines={1}>{title ?? ''}</Text>
-        </>
-      ) : (
-        /* Logo layout */
-        <View style={styles.left}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="school" size={20} color={AppColors.primary} />
-          </View>
-          <View>
-            <Text style={styles.brand}>{title ?? 'iStudy'}</Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          </View>
-        </View>
-      )}
-
-      {rightContent != null ? rightContent : (
-        <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8} onPress={onBellPress}>
-          <Ionicons name="notifications-outline" size={20} color={AppColors.primary} />
-          {hasBellNotification && <View style={styles.bellDot} />}
-        </TouchableOpacity>
-      )}
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    backgroundColor: '#C4C9CF',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    paddingBottom: 3,
+    shadowColor: AppColors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
+    zIndex: 10,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -72,12 +86,6 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.surfaceContainerLow,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
-    shadowColor: AppColors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 6,
-    zIndex: 10,
   },
   left: {
     flexDirection: 'row',

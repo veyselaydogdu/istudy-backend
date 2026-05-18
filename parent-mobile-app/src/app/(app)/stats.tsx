@@ -74,16 +74,16 @@ const TR_MONTHS_FULL = [
 const TR_DAYS_SHORT = ['Pt','Sa','Ça','Pe','Cu','Ct','Pz'];
 
 const MOOD_CONFIG = {
-  happy:   { emoji: '😀', color: AppColors.success, bg: '#DCFCE7', label: 'Mutlu' },
-  neutral: { emoji: '😐', color: '#6366F1',         bg: '#EEF2FF', label: 'Normal' },
-  sad:     { emoji: '😔', color: AppColors.error,   bg: '#FEE2E2', label: 'Üzgün' },
+  happy:   { emoji: '😀', color: AppColors.success,   bg: AppColors.successContainer,   label: 'Mutlu' },
+  neutral: { emoji: '😐', color: AppColors.secondary,  bg: AppColors.secondaryContainer, label: 'Normal' },
+  sad:     { emoji: '😔', color: AppColors.error,      bg: AppColors.errorContainer,     label: 'Üzgün' },
 } as const;
 type MoodKey = keyof typeof MOOD_CONFIG;
 
 const APPETITE_CONFIG = {
-  good: { emoji: '😋', color: AppColors.success,  bg: '#DCFCE7', label: 'İyi' },
-  fair: { emoji: '🙂', color: '#F59E0B',           bg: '#FEF3C7', label: 'Orta' },
-  poor: { emoji: '😕', color: AppColors.error,    bg: '#FEE2E2', label: 'Az' },
+  good: { emoji: '😋', color: AppColors.success,  bg: AppColors.successContainer,  label: 'İyi' },
+  fair: { emoji: '🙂', color: AppColors.warning,  bg: AppColors.warningContainer,  label: 'Orta' },
+  poor: { emoji: '😕', color: AppColors.error,    bg: AppColors.errorContainer,    label: 'Az' },
 } as const;
 type AppetiteKey = keyof typeof APPETITE_CONFIG;
 
@@ -282,7 +282,7 @@ function MoodSection({ childId, refreshToken }: { childId: number; refreshToken:
           <Text style={moodStyles.legendText}>Duygu</Text>
         </View>
         <View style={moodStyles.legendItem}>
-          <View style={[moodStyles.legendBar, { backgroundColor: '#F59E0B' }]} />
+          <View style={[moodStyles.legendBar, { backgroundColor: AppColors.secondary }]} />
           <Text style={moodStyles.legendText}>İştah</Text>
         </View>
       </View>
@@ -645,27 +645,28 @@ export default function StatsScreen() {
         ) : (
           <>
             {/* Çocuk seçici */}
-            <PillTabs
-              items={children.map((c) => ({
-                key: String(c.id),
-                label: c.full_name.split(' ')[0],
-                icon: (
-                  <Avatar
-                    name={c.full_name}
-                    size={28}
-                    shape="circle"
-                    uri={c.profile_photo}
-                  />
-                ),
-              }))}
-              activeKey={String(selectedChild?.id ?? '')}
-              onSelect={(key) => {
-                const child = children.find((c) => String(c.id) === key);
-                if (child) { setSelectedChild(child); }
-              }}
-              showIcons
-              style={{ paddingHorizontal: 0 }}
-            />
+            <View style={styles.pillTabsBreakout}>
+              <PillTabs
+                items={children.map((c) => ({
+                  key: String(c.id),
+                  label: c.full_name.split(' ')[0],
+                  icon: (
+                    <Avatar
+                      name={c.full_name}
+                      size={28}
+                      shape="circle"
+                      uri={c.profile_photo}
+                    />
+                  ),
+                }))}
+                activeKey={String(selectedChild?.id ?? '')}
+                onSelect={(key) => {
+                  const child = children.find((c) => String(c.id) === key);
+                  if (child) { setSelectedChild(child); }
+                }}
+                showIcons
+              />
+            </View>
 
             {loadingStats ? (
               <View style={styles.statsLoader}>
@@ -776,7 +777,7 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: AppColors.surfaceContainerLow },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16, backgroundColor: AppColors.surface },
+  container: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16 },
   statsLoader: { paddingVertical: 60, alignItems: 'center' },
 
   infoCard: { padding: 0, overflow: 'hidden' },
@@ -803,6 +804,7 @@ const styles = StyleSheet.create({
   noDataCard: { alignItems: 'center', padding: 24 },
   noDataText: { fontSize: 14, color: AppColors.onSurfaceVariant },
 
+  pillTabsBreakout: { marginHorizontal: -16 },
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 12 },
   emptyIconWrap: { width: 88, height: 88, borderRadius: 28, backgroundColor: AppColors.surfaceContainerLow, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   emptyTitle: { fontSize: 17, fontWeight: '800', color: AppColors.onSurface },
